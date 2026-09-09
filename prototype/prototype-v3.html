@@ -1,0 +1,1064 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>운영해 v3 프로토타입</title>
+<style>
+:root{
+  --bg:#f7f7f7; --card:#fff; --line:#e6e6e6; --line2:#efefef;
+  --ink:#1a1a1a; --ink2:#6b6b6b; --ink3:#9a9a9a; --dark:#262626;
+  --ai-bg:#eef3fc; --ai-line:#c9d9f2; --ai:#3f6fcb;
+  --ap-bg:#fdf6ea; --ap-line:#ebd9ae; --ap:#d9a02b;
+  --r:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font:14px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+a{color:inherit;text-decoration:none}
+
+/* ── chrome ───────────────────────────────── */
+.topbar{height:62px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 20px;position:sticky;top:0;z-index:20}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+.ph{background:#dcdcdc;border-radius:6px;flex:none}
+.ph.dot{border-radius:50%}
+.navnote{margin-left:auto;font-size:11px;color:var(--ink3);background:#f2f2f2;border-radius:8px;padding:6px 12px}
+.shell{display:flex;min-height:calc(100vh - 62px)}
+.sidebar{width:228px;flex:none;background:#fff;border-right:1px solid var(--line);padding:20px 12px}
+.navitem{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;color:var(--ink2);font-size:13px;text-align:left}
+.navitem .ph{width:14px;height:14px}
+.navitem:hover{background:#f4f4f4}
+.navitem.on{background:var(--dark);color:#fff;font-weight:600}
+.navitem.on .ph{background:#fff}
+.content{flex:1;min-width:0;padding:32px;display:flex;flex-direction:column;gap:20px}
+body.auth .sidebar,body.auth .navnote{display:none}
+body.auth .content{align-items:center;padding:56px 32px}
+
+/* ── primitives ───────────────────────────── */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px}
+.pad{padding:20px 22px}
+.row{display:flex;align-items:center;gap:10px}
+.between{display:flex;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+h1{font-size:26px;margin:0;letter-spacing:-.3px}
+h2{font-size:17px;margin:0}
+h3{font-size:14px;margin:0}
+.sub{font-size:13px;color:var(--ink2);margin:4px 0 0}
+.muted{color:var(--ink2)}
+.dim{color:var(--ink3)}
+.xs{font-size:11px}
+.sm{font-size:12px}
+.big{font-size:28px;font-weight:700;letter-spacing:-.5px}
+.divide{height:1px;background:var(--line2)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:11px;color:var(--ink2);background:#fff;white-space:nowrap}
+.chip.solid{background:#f1f1f1;border-color:#f1f1f1}
+.chip.ai{background:var(--ai-bg);border-color:var(--ai-line);color:#2c5aad}
+.chip.ap{background:var(--ap-bg);border-color:var(--ap-line);color:#9c6c11}
+.tag{display:inline-flex;justify-content:center;min-width:52px;border:1px solid var(--line);border-radius:8px;padding:3px 8px;font-size:11px;color:var(--ink2);background:#fafafa}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 14px;font-size:13px;white-space:nowrap}
+.btn:hover{background:#fafafa}
+.btn.dark{background:var(--dark);border-color:var(--dark);color:#fff}
+.btn.dark:hover{background:#000}
+.btn.pill{border-radius:999px}
+.btn.sm{padding:6px 11px;font-size:12px}
+.btn.wide{width:100%;justify-content:center;padding:13px}
+.link{font-size:12px;color:var(--ink2)}
+.link:hover{color:var(--ink);text-decoration:underline}
+.bar{height:8px;border-radius:999px;background:#ededed;overflow:hidden}
+.bar>span{display:block;height:100%;background:var(--dark);border-radius:999px}
+.note{background:#fafafa;border:1px solid var(--line2);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--ink2);line-height:1.6}
+.facts{margin:0;padding:0;list-style:none;font-size:13px;color:var(--ink2)}
+.facts li{padding:2px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.field label{display:flex;gap:6px;align-items:center;font-size:12px;margin-bottom:6px}
+.req{color:#c0392b;font-size:10px}
+.input{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:inherit;font-size:13px;background:#fff}
+.input::placeholder{color:var(--ink3)}
+.toggle{width:38px;height:22px;border-radius:999px;background:#dcdcdc;position:relative;flex:none}
+.toggle.on{background:var(--dark)}
+.toggle:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.toggle.on:after{left:19px}
+.crumb{font-size:12px;color:var(--ink2);margin-bottom:8px;display:inline-block}
+.crumb:hover{color:var(--ink)}
+
+/* ── approval list ────────────────────────── */
+.aprow{display:flex;align-items:center;gap:14px;padding:14px 18px}
+.aprow+.aprow{border-top:1px solid var(--line2)}
+.aprow .grow{flex:1;min-width:0}
+.aprow .t{font-size:13px;font-weight:600}
+.aprow .s{font-size:12px;color:var(--ink2);margin-top:2px}
+.apbox{border:1px solid var(--line);border-radius:14px;background:#fff}
+.apbox>.head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line2)}
+.gone{display:none}
+
+/* ── steps rail ───────────────────────────── */
+.rail{display:flex;gap:8px}
+.rail>div{flex:1;min-width:0}
+.rail .seg{height:6px;border-radius:3px;background:#ededed}
+.rail .seg.done{background:var(--dark)}
+.rail .seg.ai{background:var(--ai)}
+.rail .seg.ap{background:var(--ap)}
+.rail .seg.now{background:#111}
+.rail .lb{font-size:10px;color:var(--ink3);margin-top:7px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rail .lb.on{color:var(--ink);font-weight:600}
+.dots{display:flex;gap:6px;justify-content:center;padding-top:4px}
+.dots i{width:6px;height:6px;border-radius:50%;background:#dcdcdc}
+.dots i.on{background:var(--ink2)}
+
+/* ── budget chart ─────────────────────────── */
+.chart{display:flex;align-items:flex-end;gap:14px;height:190px}
+.chart>div{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%}
+.chart .v{font-size:11px;color:var(--ink2)}
+.chart .b{width:100%;border-radius:8px;background:#3a3a3a}
+.chart .b.est{background:#f3f3f3;border:1px dashed #c8c8c8}
+.chart .d{font-size:11px}
+.chart .n{font-size:10px;color:var(--ink3)}
+.flow{display:flex;gap:10px;font-size:12px;padding:5px 0}
+.flow .dt{width:44px;color:var(--ink3);flex:none}
+.flow .amt{margin-left:auto;font-variant-numeric:tabular-nums}
+
+/* ── wizard ───────────────────────────────── */
+.wiz{display:flex;align-items:center;gap:6px}
+.wiz .st{flex:1;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:14px 16px}
+.wiz .st.on{background:var(--dark);border-color:var(--dark);color:#fff}
+.wiz .num{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;flex:none;color:var(--ink2)}
+.wiz .st.on .num{background:#fff;color:var(--ink);border-color:#fff;font-weight:700}
+.wiz .st.ok .num{background:var(--dark);border-color:var(--dark);color:#fff}
+.wiz .tt{font-size:13px;font-weight:600}
+.wiz .ss{font-size:11px;opacity:.7}
+.wiz .arrow{color:var(--ink3);flex:none}
+
+/* ── chat ─────────────────────────────────── */
+.msg{display:flex;gap:12px;margin-bottom:16px}
+.msg .av{width:26px;height:26px;border-radius:8px;background:var(--dark);flex:none}
+.bub{background:#f4f4f4;border-radius:14px;padding:13px 16px;max-width:640px;font-size:13px;line-height:1.6}
+.msg.me{justify-content:flex-end}
+.msg.me .bub{background:var(--dark);color:#fff;max-width:520px}
+.qr{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.recall{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:12px}
+.recall .r{display:flex;gap:10px;padding:3px 0;align-items:center}
+.recall .r span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recall .r span:first-child{color:var(--ink2);width:70px;flex:none}
+.composer{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.composer input{flex:1;border:0;outline:0;font:inherit;font-size:13px}
+.composer input::placeholder{color:var(--ink3)}
+
+/* ── plan blocks (P2) ─────────────────────── */
+.groups{display:grid;grid-template-columns:1fr 1fr 1fr 240px;gap:16px;align-items:start}
+.group{background:#fafafa;border:1px solid var(--line);border-radius:14px;padding:16px}
+.blocks{display:flex;flex-direction:column;gap:10px;margin-top:12px;min-height:60px}
+.block{display:flex;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;cursor:grab}
+.block.ai{background:var(--ai-bg);border-color:var(--ai-line)}
+.block.ap{background:var(--ap-bg);border-color:var(--ap-line)}
+.block.drag{opacity:.35}
+.block .gr{color:var(--ink3);font-size:11px;letter-spacing:-2px;flex:none;padding-top:2px}
+.block .n{width:22px;height:22px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none}
+.block.ai .n{background:var(--ai);border-color:var(--ai);color:#fff}
+.block.ap .n{background:var(--ap);border-color:var(--ap);color:#fff}
+.block .bt{font-size:13px;font-weight:600}
+.block .bs{font-size:11px;color:var(--ink2);margin-top:2px}
+.dropzone{border:1px dashed #cfcfcf;border-radius:12px;padding:11px;text-align:center;font-size:11px;color:var(--ink3)}
+.dropzone.hot{border-color:var(--ink2);background:#f0f0f0;color:var(--ink)}
+.legend{display:flex;gap:14px;border:1px solid var(--line);border-radius:999px;padding:6px 14px;background:#fff}
+.legend span{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2)}
+.legend i{width:7px;height:7px;border-radius:50%;background:#dcdcdc}
+.legend i.ai{background:var(--ai)}
+.legend i.ap{background:var(--ap)}
+.legend i.self{border:1px solid #bbb;background:#fff}
+
+/* ── timeline (P3) ────────────────────────── */
+.tl{display:flex;flex-direction:column}
+.tlrow{display:grid;grid-template-columns:78px 20px 1fr;gap:12px}
+.tlrow .when{font-size:12px;color:var(--ink2);text-align:right;padding-top:10px;white-space:nowrap}
+.tlaxis{display:flex;flex-direction:column;align-items:center}
+.tlaxis .pt{width:11px;height:11px;border-radius:50%;background:#fff;border:2px solid #c9c9c9;margin-top:13px;flex:none}
+.tlaxis .pt.ai{background:var(--ai);border-color:var(--ai)}
+.tlaxis .pt.ap{background:var(--ap);border-color:var(--ap)}
+.tlaxis .ln{width:1px;flex:1;background:var(--line);min-height:10px}
+.tlbody{padding:8px 0 14px}
+.tlbody .ttl{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.tlbody .why{background:#fafafa;border:1px solid var(--line2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--ink2);margin-top:8px}
+
+/* ── records + panel ──────────────────────── */
+.filerow{display:flex;align-items:center;gap:12px;padding:11px 18px;font-size:13px}
+.filerow+.filerow{border-top:1px solid var(--line2)}
+.panel{width:300px;flex:none;background:#fff;border-left:1px solid var(--line);position:sticky;top:62px;height:calc(100vh - 62px);display:flex;flex-direction:column}
+.panel .ph2{padding:16px 18px;border-bottom:1px solid var(--line2);display:flex;align-items:center}
+.panel .body{flex:1;overflow:auto;padding:16px 18px}
+.panel .foot{border-top:1px solid var(--line2);padding:12px 14px;display:flex;gap:10px;align-items:center}
+.panel .bub{font-size:12px;padding:11px 13px;max-width:100%}
+.panel .msg{gap:8px;margin-bottom:14px}
+.panel .av{width:20px;height:20px;border-radius:6px}
+.sug{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12px;background:#fff;margin-top:8px}
+.sug:hover{background:#fafafa}
+
+/* ── auth ─────────────────────────────────── */
+.authcard{width:520px;max-width:100%;background:#fff;border:1px solid var(--line);border-radius:16px;padding:32px}
+.oauth{display:flex;flex-direction:column;gap:10px}
+.hr{display:flex;align-items:center;gap:12px;color:var(--ink3);font-size:12px;margin:18px 0}
+.hr:before,.hr:after{content:"";flex:1;height:1px;background:var(--line)}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:11px 18px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:99}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="logo"><i class="ph dot" style="width:20px;height:20px"></i>운영해</div>
+  <div class="navnote">추후 네비게이션 영역</div>
+</header>
+<div class="shell">
+  <aside class="sidebar" id="side"></aside>
+  <main class="content" id="view"></main>
+  <div id="panel"></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+/* ═════════ state ═════════ */
+const NAV = [['main','메인'],['plan','행사 계획'],['events','행사 목록'],['records','동아리 기록'],['mypage','마이 페이지']];
+
+const S = {
+  route: 'login',
+  evIdx: 0,
+  planStep: 1,
+  budgetEmpty: false,
+  chatOpen: true,          // 기록 페이지 챗봇 패널 — 기본 열림(✕로 닫고 '물어보기'로 다시 열기)
+  done: {},                 // 처리한 승인/확인 id
+  planChat: [],             // P1 추가 대화
+  panelChat: [],            // 기록 챗봇 추가 대화
+  memberListDone: false,
+  midCheckAdded: false,
+  drag: null,
+};
+
+const EVENTS = [
+  { id:'mt', name:'2026 봄 MT', stage:'수납 단계', badge:'진행 중', dday:'D-11', when:'3/21–3/22',
+    head:'3/21 출발까지 11일',
+    reason:'납부 마감이 이틀 남았는데 1차 안내 이후 사흘째 추가 입금이 없습니다. 계약금 납부일(3/14)이 명단 확정일(3/13)보다 하루 뒤라, 미납이 정리되지 않으면 인원 기준 없이 계약금을 넣게 됩니다.',
+    stepNote:'9단계 중 4단계 · 예정보다 하루 늦음',
+    steps:['과거 기록 참고','담당 배치','수요 조사','일정 확정','모집 공지','입금 확인','리허설','행사 진행','정산·기록'],
+    doneN:6,
+    approvals:[
+      {id:'a1',tag:'외부 발송',t:'미납자 4명에게 2차 납부 안내 문자 보내기',s:'대상 4명 · 비용 0원 · 마감 D-2'},
+      {id:'a2',tag:'이체',t:'펜션 계약금 100,000원 이체하고 예약 확정',s:'3/16부터 환불 불가 · 잔고 2,412,000원'},
+      {id:'a3',tag:'지출',t:'장보기·버스 잔금 등 지출 4건 묶음 승인',s:'합계 182,000원 · 영수증 4건 확인됨'},
+    ]},
+  { id:'sem', name:'3월 정기 세미나', stage:'연사 섭외 단계', badge:'진행 중', dday:'D-17', when:'3/27',
+    head:'3/27 개최까지 17일',
+    reason:'연사 두 분 중 한 분만 확정됐습니다. 참석 신청이 14명으로 지난 세미나 대비 낮아, 확정 안내를 보내며 홍보를 한 번 더 도는 편이 좋습니다.',
+    stepNote:'7단계 중 3단계 · 일정대로 진행 중',
+    steps:['과거 기록 참고','주제 확정','연사 섭외','장소 예약','참석 모집','세미나 진행','정산·기록'],
+    doneN:3,
+    approvals:[
+      {id:'b1',tag:'외부 발송',t:'연사 확정 안내 메일 발송',s:'대상 1명 · 외부 인사'},
+    ]},
+  { id:'new', name:'신입생 환영회', stage:'수요 조사 단계', badge:'진행 중', dday:'D-24', when:'4/3',
+    head:'4/3 개최까지 24일',
+    reason:'설문 응답이 41명으로 예상보다 많습니다. 장소 정원을 다시 확인하지 않으면 인원 초과가 생길 수 있습니다.',
+    stepNote:'8단계 중 3단계 · 예정보다 이틀 빠름',
+    steps:['과거 기록 참고','담당 배치','수요 조사','장소 확정','모집 공지','회비 수납','환영회 진행','정산·기록'],
+    doneN:3,
+    approvals:[
+      {id:'c1',tag:'지출',t:'현수막 제작비 25,000원 집행',s:'예산 홍보 항목 내 · 외부 결제'},
+    ]},
+];
+
+const FLOW = [
+  ['3/12','회비 미납분 4명','확정','+180,000'],
+  ['3/14','펜션 계약금','승인 대기','−100,000'],
+  ['3/18','버스 잔금·식자재','예상','−342,000'],
+  ['3/21','행사 당일 현장비','예상','−120,000'],
+  ['3/24','정산·뒤풀이','예상','−100,000'],
+];
+const CHART = [['241만','3/10','오늘',241,1],['259만','3/12','회비 마감',259,1],['249만','3/14','계약금',249,0],
+               ['215만','3/18','잔금 지급',215,0],['203만','3/21','행사',203,0],['193만','3/24','정산 끝',193,0]];
+
+/* P2 / P3 단계 블록 — 하나의 배열이 두 화면의 근거 */
+let BLOCKS = [
+  {g:0,t:'과거 기록 참고',s:'작년 정산·인스타·문서에서 인원·예산·장소 불러오기',k:'ai',d:'3/2'},
+  {g:0,t:'담당 인원 배치',s:'분야별 담당자 지정',k:'self',d:'3/3'},
+  {g:0,t:'가능 여부 확인',s:'장소·차량 전화 문의',k:'self',d:'3/4'},
+  {g:0,t:'사전 수요 조사',s:'폼 생성은 자동 · 단톡방 발송은 승인',k:'ap',d:'3/5',
+   why:'수요조사 폼을 만들어 단톡방에 올립니다. 폼 생성은 자동, 발송 직전 승인 한 번.',badge:'공지'},
+  {g:1,t:'세부사항 조정',s:'응답 반영해 인원·예산 다시 계산',k:'ai',d:'3/7',
+   why:'응답을 반영해 인원과 예산을 다시 계산합니다.'},
+  {g:1,t:'가능 여부 재확인',s:'조정된 조건으로 재문의',k:'self',d:'3/8'},
+  {g:1,t:'일정 확정',s:'최종 날짜 확정',k:'self',d:'3/9'},
+  {g:1,t:'최종 모집 공지',s:'구글 폼 생성 + 공지 발송 승인',k:'ap',d:'3/10',
+   why:'구글 폼 생성 + 단톡방 발송. 발송은 되돌릴 수 없어 승인이 필요합니다.',badge:'공지'},
+  {g:1,t:'입금 내역 확인',s:'입금자명 대조 · 미납 목록 갱신',k:'ai',d:'3/10–3/12',
+   why:'1인 45,000원 · 마감 3/12 23:59. 입금자명을 자동 대조하고, 미납자 안내는 D-2에 초안까지 준비합니다(발송은 승인).',badge:'수금'},
+  {g:2,t:'리허설',s:'당일 동선 점검',k:'self',d:'3/20'},
+  {g:2,t:'행사 시작',s:'출발 체크 · 인원 확인',k:'self',d:'3/21'},
+  {g:2,t:'영수 처리',s:'영수증 정리는 자동 · 지출 승인 필요',k:'ap',d:'3/23',
+   why:'영수증을 항목별로 정리하고, 예산 초과분만 묶어서 승인 요청합니다.',badge:'지출'},
+  {g:2,t:'피드백 기록',s:'회고 정리해 다음 행사 기록으로 저장',k:'ai',d:'3/25',
+   why:'이번 행사 기록을 다음 행사용 자료로 저장합니다.'},
+];
+const GROUPS = [['사전 준비','행사 기본 정보를 준비하고 사전 조사를 진행합니다'],
+                ['모집 · 확정','참가자를 모집하고 세부 사항을 확정합니다'],
+                ['행사 진행 · 마무리','행사를 실행하고 기록까지 남깁니다']];
+const EXCLUDED = [['발표 자료 준비','학술행사용'],['참가비 환급 정산','무료 행사용'],['외부 연사 섭외','학술행사용']];
+
+const FILES = [
+  ['회칙 · 규칙','3건','회칙과 환불·승인 기준이 담긴 문서. AI가 판단 기준으로 씁니다.',null,
+    [['동아리 회칙 (2024 개정).pdf','2026. 3. 1.','읽음'],['회비 및 환불 규정.hwp','2026. 3. 1.','읽음'],['임원 선출 규정.docx','2026. 2. 28.','읽음']]],
+  ['과거 행사 기록','8건','지난 행사의 결과보고와 명단. 계획 1단계에서 불러옵니다.','5건 더 보기 ⌄',
+    [['2025 봄 MT 결과보고.hwp','2026. 2. 28.','읽음'],['2025 신환회 정리.docx','2026. 2. 28.','읽음'],['2025 여름 해커톤 회고.md','2026. 2. 28.','읽는 중']]],
+  ['입출금 장부','12건','회비 수납과 지출 내역. 예산 전망의 기준이 됩니다.','9건 더 보기 ⌄',
+    [['2025 하반기 장부.xlsx','2026. 2. 28.','읽음'],['2025 상반기 장부.xlsx','2026. 2. 28.','읽음'],['2024 하반기 장부.csv','2026. 2. 28.','형식 확인 필요']]],
+  ['기타','2건','위 세 가지에 속하지 않는 파일. 분류가 없으면 AI가 제대로 활용하지 못합니다.',null,
+    [['단톡방 공지 캡처.png','2026. 3. 2.','읽지 못함'],['미분류 문서.pdf','2026. 3. 2.','읽지 못함']]],
+];
+
+/* ═════════ helpers ═════════ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const go = r => { S.route = r; render(); window.scrollTo(0,0); };
+let toastT;
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1900); }
+const ph = (w,h,cls='') => `<i class="ph ${cls}" style="width:${w}px;height:${h}px"></i>`;
+const legend = () => `<div class="legend"><span><i class="ai"></i>AI 실행</span><span><i class="ap"></i>승인 필요</span><span><i class="self"></i>직접 수행</span></div>`;
+const left = () => BLOCKS.map((b,i)=>({...b,n:i+1}));
+const alive = list => list.filter(a=>!S.done[a.id]);
+
+/* ═════════ S0 로그인 ═════════ */
+const login = () => `
+<div class="authcard">
+  <h1>로그인</h1><p class="sub">동아리 운영을 이어서 하시죠.</p>
+  <div style="height:24px"></div>
+  <div class="field" style="margin-bottom:16px"><label>이메일</label>
+    <input class="input" placeholder="name@knu.ac.kr" value="soogyeom@knu.ac.kr"></div>
+  <div class="field" style="margin-bottom:16px">
+    <label style="justify-content:space-between;width:100%">비밀번호<a class="link" href="#" data-act="wip">비밀번호를 잊으셨나요?</a></label>
+    <input class="input" type="password" value="password"></div>
+  <label class="row sm" style="margin-bottom:20px"><span class="toggle on" data-act="tg"></span>로그인 상태 유지</label>
+  <button class="btn dark wide" data-act="go" data-to="main">로그인</button>
+  <div class="hr">또는</div>
+  <div class="oauth">
+    <button class="btn wide" data-act="go" data-to="main">${ph(16,16,'dot')}Google 계정으로 계속하기</button>
+    <button class="btn wide" data-act="go" data-to="main">${ph(16,16,'dot')}카카오 계정으로 계속하기</button>
+  </div>
+  <div class="divide" style="margin:22px 0"></div>
+  <div class="row sm" style="justify-content:center">아직 계정이 없으신가요?
+    <a class="link" style="font-weight:600;color:var(--ink)" data-act="go" data-to="signup">회원가입</a></div>
+</div>`;
+
+/* ═════════ S1 회원가입 ═════════ */
+const signup = () => `
+<div class="authcard">
+  <h1>운영해 시작하기</h1>
+  <p class="sub">두 가지만 적으면 바로 쓸 수 있습니다. 나머지는 쓰면서 채워도 됩니다.</p>
+  <div style="height:26px"></div>
+  <h3 class="muted xs" style="margin-bottom:12px">계정</h3>
+  <div class="field" style="margin-bottom:14px"><label>이메일 <span class="req">필수</span></label><input class="input" placeholder="name@knu.ac.kr"></div>
+  <div class="field" style="margin-bottom:14px"><label>비밀번호 <span class="req">필수</span></label>
+    <input class="input" type="password" placeholder="••••••••"><p class="xs dim" style="margin:5px 0 0">8자 이상</p></div>
+  <div class="field" style="margin-bottom:14px"><label>이름 <span class="req">필수</span></label><input class="input" placeholder="박수겸"></div>
+  <div class="divide" style="margin:22px 0"></div>
+  <h3 class="muted xs" style="margin-bottom:12px">동아리</h3>
+  <div class="field" style="margin-bottom:14px"><label>동아리 이름 <span class="req">필수</span></label><input class="input" placeholder="컴퓨터학부 학술동아리 ○○"></div>
+  <div class="field" style="margin-bottom:10px"><label>분과 <span class="req">필수</span></label>
+    <select class="input"><option>선택하세요</option><option>학술</option><option>체육</option><option>공연</option><option>봉사</option><option>종교</option><option>친목</option></select></div>
+  <div class="row" style="flex-wrap:wrap;margin-bottom:16px">
+    ${['학술','체육','공연','봉사','종교','친목'].map(x=>`<button class="chip" data-act="pickchip">${x}</button>`).join('')}
+  </div>
+  <div class="field" style="margin-bottom:20px"><label>내 역할</label>
+    <select class="input"><option>총무</option><option>회장</option><option>부회장</option><option>부원</option></select></div>
+  <label class="row sm" style="margin-bottom:20px"><span class="toggle on" data-act="tg"></span>이용약관과 개인정보 처리방침에 동의합니다</label>
+  <button class="btn dark wide" data-act="go" data-to="mypage">가입하고 시작하기</button>
+  <div class="row sm" style="justify-content:center;margin-top:18px">이미 계정이 있으신가요?
+    <a class="link" style="font-weight:600;color:var(--ink)" data-act="go" data-to="login">로그인</a></div>
+</div>`;
+
+/* ═════════ M1 메인 ═════════ */
+function main(){
+  const e = EVENTS[S.evIdx], aps = alive(e.approvals);
+  return `
+  <div class="between">
+    <div class="grow"><h1>AI 비서</h1><p class="sub">행사는 알아서 굴러갑니다. 승인만 눌러주세요.</p></div>
+    <span class="sm dim">${S.evIdx+1} / ${EVENTS.length}</span>
+    <button class="btn sm" data-act="ev" data-d="-1">‹</button>
+    <button class="btn sm" data-act="ev" data-d="1">›</button>
+  </div>
+
+  <section class="card pad" style="display:flex;flex-direction:column;gap:18px">
+    <div class="between">
+      <h2>${e.name}</h2><span class="chip solid">${e.badge}</span>
+      <span class="grow"></span>
+      <span class="sm dim">${e.head}</span>
+      <button class="btn sm" data-act="opendetail" data-i="${S.evIdx}">행사 상세 보기 ›</button>
+    </div>
+
+    <div class="apbox">
+      <div class="head">
+        <h3>승인 대기 ${aps.length}건</h3><span class="chip">되돌릴 수 없는 일만 올립니다</span>
+        <span class="grow"></span>
+        <button class="btn dark sm pill" data-act="apall" data-ev="${e.id}">한 번에 처리</button>
+      </div>
+      ${aps.length ? aps.map(a=>`
+        <div class="aprow">
+          <span class="tag">${a.tag}</span>
+          <div class="grow"><div class="t">${a.t}</div><div class="s">${a.s}</div></div>
+          <button class="btn dark sm pill" data-act="ap" data-id="${a.id}">승인</button>
+          <button class="btn sm pill" data-act="later" data-id="${a.id}">나중에</button>
+        </div>`).join('')
+        : `<div class="aprow"><div class="grow muted sm" style="padding:8px 0">승인 대기가 없습니다. 처리된 일은 행사 상세의 진행 상황에 남습니다.</div></div>`}
+    </div>
+
+    <div class="note">
+      <div class="between" style="margin-bottom:6px"><b style="color:var(--ink);font-size:12px">이렇게 판단한 이유</b>
+        <span class="grow"></span><a class="link" data-act="opendetail" data-i="${S.evIdx}">자세히 ›</a></div>
+      ${e.reason}
+    </div>
+
+    <div>
+      <div class="between" style="margin-bottom:12px"><h3>진행 단계</h3><span class="grow"></span><span class="sm dim">${e.stepNote}</span></div>
+      <div class="rail">${e.steps.map((s,i)=>`<div><div class="seg ${i<e.doneN?'done':''}"></div><div class="lb ${i===e.doneN-1?'on':''}">${s}</div></div>`).join('')}</div>
+    </div>
+    <div class="dots">${EVENTS.map((_,i)=>`<i class="${i===S.evIdx?'on':''}"></i>`).join('')}</div>
+  </section>
+
+  ${S.budgetEmpty ? budgetEmpty() : budget()}`;
+}
+
+const budget = () => `
+<section class="card pad">
+  <div class="between" style="margin-bottom:18px">
+    <div class="grow"><h2>예산 전망</h2><p class="sub">지난 봄 MT 3회 평균 지출을 기준으로 앞으로의 입출금을 예측했습니다</p></div>
+    <span class="chip">예측 기준 · 과거 행사 평균</span>
+    <button class="btn sm" data-act="emptybudget">기준 바꾸기</button>
+  </div>
+  <div class="grid2" style="grid-template-columns:340px 1fr;gap:28px">
+    <div>
+      <p class="sm muted" style="margin:0">행사가 끝나면 남을 돈</p>
+      <p class="big" style="margin:4px 0">1,930,000원</p>
+      <p class="sm dim" style="margin:0">지금 잔고 2,412,000원 · 앞으로 482,000원 줄어듭니다</p>
+      <div class="divide" style="margin:16px 0"></div>
+      <p class="sm muted" style="margin:0 0 6px">예정된 입출금</p>
+      ${FLOW.map(([d,t,st,a])=>`<div class="flow"><span class="dt">${d}</span>
+        <span><b style="font-weight:600">${t}</b><br><span class="xs dim">${st}</span></span>
+        <span class="amt">${a}</span></div>`).join('')}
+    </div>
+    <div>
+      <div class="between" style="margin-bottom:14px"><h3>잔고 흐름</h3><span class="grow"></span>
+        <span class="row xs muted"><i style="width:8px;height:8px;border-radius:2px;background:#3a3a3a;display:inline-block"></i>확정
+        <i style="width:8px;height:8px;border-radius:2px;background:#e8e8e8;display:inline-block;margin-left:8px"></i>예상</span></div>
+      <div class="chart">
+        ${CHART.map(([v,d,n,val,fixed])=>{const h=Math.round((val-180)/80*95+42);
+          return `<div><span class="v">${v}</span><div class="b ${fixed?'':'est'}" style="height:${h}px"></div>
+          <span class="d">${d}</span><span class="n">${n}</span></div>`}).join('')}
+      </div>
+    </div>
+  </div>
+</section>`;
+
+const budgetEmpty = () => `
+<section class="card pad">
+  <div class="between" style="margin-bottom:18px">
+    <div class="grow"><h2>예산 전망</h2><p class="sub">앞으로의 입출금을 예측하려면 지난 행사 기록이 필요합니다</p></div>
+    <span class="chip">참고할 기록 0건</span>
+    <button class="btn sm" data-act="fullbudget">예측 있는 상태로</button>
+  </div>
+  <div class="grid2" style="grid-template-columns:1fr 380px;gap:28px">
+    <div>
+      <h3>아직 예측할 수 없습니다</h3>
+      <p class="sub" style="max-width:520px">지난 행사 정산 기록이 한 건이라도 있으면, 항목별 평균 지출을 기준으로 이번 행사가 끝났을 때 남을 돈을 계산해 드립니다.</p>
+      <div class="divide" style="margin:18px 0"></div>
+      <p class="sm muted" style="margin:0 0 10px">기록을 채우는 방법</p>
+      ${[['지난 정산 문서 올리기','엑셀·한글·사진 모두 가능합니다','추천'],
+         ['통장 내역 불러오기','은행 연동으로 과거 입출금을 가져옵니다',''],
+         ['이번 예산만 직접 입력','기록 없이도 계획 대비 잔액은 볼 수 있습니다','']]
+        .map(([t,s,rec])=>`<button class="card row" data-act="go" data-to="records" style="width:100%;padding:13px 14px;margin-bottom:8px;text-align:left">
+          ${ph(30,30)}<span class="grow"><b style="font-size:13px">${t}</b>${rec?` <span class="chip" style="margin-left:4px">${rec}</span>`:''}
+          <br><span class="xs dim">${s}</span></span><span class="dim">›</span></button>`).join('')}
+    </div>
+    <div class="note" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:28px">
+      <div class="row" style="gap:8px;align-items:flex-end;height:80px">
+        ${[36,52,30,64,44,58].map(h=>`<i style="width:26px;height:${h}px;background:#ededed;border-radius:6px;display:block"></i>`).join('')}
+      </div>
+      <b style="color:var(--ink);font-size:13px">데이터를 더 추가해 주세요</b>
+      <span class="xs dim" style="text-align:center">행사 한 번을 끝까지 진행하면<br>다음 행사부터 자동으로 예측됩니다</span>
+    </div>
+  </div>
+</section>`;
+
+/* ═════════ 계획 마법사 공통 ═════════ */
+const WSTEPS = [['큰 틀 잡기','챗봇과 대화'],['단계 배열','할 일 블록 정하기'],['흐름 확정','일정·수금·공지 붙이기']];
+const wizard = () => `<div class="wiz">${WSTEPS.map(([t,s],i)=>{
+  const n=i+1, on=n===S.planStep, ok=n<S.planStep;
+  return `${i?'<span class="arrow">›</span>':''}<button class="st ${on?'on':''} ${ok?'ok':''}" data-act="pstep" data-n="${n}">
+    <span class="num">${ok?'✓':n}</span><span><span class="tt">${t}</span><br><span class="ss">${s}</span></span></button>`}).join('')}</div>`;
+
+const composer = (ph2) => `<div class="composer">${ph(22,22)}
+  <input placeholder="${ph2}" data-role="chatinput">
+  <button class="btn dark sm pill" data-act="send">보내기</button></div>`;
+
+/* ═════════ P1 1단계 ═════════ */
+const P1_MSGS = [
+  {who:'ai',t:'어떤 행사를 준비하시나요?',qr:['MT','개총 · 신환회','피크닉','학술행사']},
+  {who:'me',t:'봄 MT요. 3월 셋째 주 주말에 1박 2일로 생각하고 있어요.'},
+  {who:'ai',t:'작년 봄 MT 기록을 찾았습니다. 이 내용을 출발점으로 쓸까요?',
+   recall:['2025 봄 MT · 정산 문서에서 불러옴',
+     ['참가 인원','32명 (신청 35명 · 취소 3명)'],['장소','가평 ○○펜션 1박'],
+     ['1인 회비','40,000원'],['총 지출','1,700,000원 (예비비 초과 1건)']]},
+  {who:'me',t:'네. 인원은 32명 정도, 예산은 200만 원 안쪽, 장소는 가평 아니면 양평이요.'},
+  {who:'ai',t:'정리했습니다. 이대로 다음 단계로 넘어가면 필요한 할 일 블록을 배열해 드릴게요.',
+   acts:[['다음 단계로','next'],['더 이야기할게요','more']]},
+];
+const DECIDED = [['행사 유형','MT',1],['일정','3/21–3/22 (1박 2일)',1],['예상 인원','32명',1],
+  ['예산 상한','2,000,000원',1],['장소 후보','가평 · 양평',1],['교통수단','아직',0],['활동 내용','아직',0]];
+
+function plan1(){
+  const msgs = P1_MSGS.concat(S.planChat);
+  return `
+  <div class="between">
+    <div class="grow"><h1>행사 계획</h1><p class="sub">새 행사 · 아직 저장되지 않음</p></div>
+    <button class="btn" data-act="save">임시 저장</button>
+    <button class="btn" data-act="reset">처음부터 다시</button>
+  </div>
+  ${wizard()}
+  <div class="grid2" style="grid-template-columns:1fr 300px;gap:20px;align-items:start">
+    <section class="card pad" id="chat">
+      ${msgs.map(m=>{
+        if(m.who==='me') return `<div class="msg me"><div class="bub">${esc(m.t)}</div></div>`;
+        let x = `<div class="msg"><div class="av"></div><div><div class="bub">${esc(m.t)}`;
+        if(m.qr) x += `<div class="qr">${m.qr.map(q=>`<button class="chip" data-act="qr" data-q="${esc(q)}">${q}</button>`).join('')}</div>`;
+        if(m.recall){ const [ttl,...rows]=m.recall;
+          x += `<div class="recall"><b class="xs dim" style="display:block;margin-bottom:6px">${ttl}</b>
+            ${rows.map(([k,v])=>`<div class="r"><span>${k}</span><span>${v}</span></div>`).join('')}</div>`;}
+        if(m.acts) x += `<div class="qr">${m.acts.map(([t,a],i)=>`<button class="btn ${i?'':'dark'} sm pill" data-act="${a==='next'?'pstep':'more'}" data-n="2">${t}</button>`).join('')}</div>`;
+        return x + `</div></div></div>`;
+      }).join('')}
+    </section>
+    <aside class="card pad">
+      <div class="between" style="margin-bottom:12px"><h3>지금까지 정해진 것</h3><span class="grow"></span><span class="sm dim">5 / 7</span></div>
+      ${DECIDED.map(([k,v,ok])=>`<div class="row sm" style="padding:5px 0">
+        <i style="width:7px;height:7px;border-radius:50%;background:${ok?'var(--ink)':'#dcdcdc'};flex:none"></i>
+        <span class="${ok?'':'dim'}">${k}</span><span class="grow"></span>
+        <span class="${ok?'':'dim'}" style="font-weight:${ok?600:400}">${v}</span></div>`).join('')}
+      <div class="divide" style="margin:14px 0"></div>
+      <p class="xs muted" style="margin:0">교통수단과 활동 내용은 다음 단계에서 정해도 됩니다. 비워두면 작년 기록을 그대로 씁니다.</p>
+    </aside>
+  </div>
+  ${composer('무엇이든 물어보거나 고쳐달라고 하세요. 예) 인원 40명으로 바꿔줘')}`;
+}
+
+/* ═════════ P2 2단계 ═════════ */
+function plan2(){
+  const b = left(), cnt = k => b.filter(x=>x.k===k).length;
+  return `
+  <div class="between">
+    <div class="grow"><h1>행사 계획</h1><p class="sub">2026 봄 MT · 32명 · 예산 2,000,000원</p></div>
+    ${legend()}
+    <button class="btn" data-act="pstep" data-n="1">‹ 1단계로 돌아가기</button>
+  </div>
+  ${wizard()}
+  <div class="card pad row" style="align-items:flex-start;gap:14px">
+    ${ph(22,22)}
+    <div><b style="font-size:13px">대화 내용을 보고 MT에 필요한 단계 ${b.length}개를 골라, 진행 순서대로 세 묶음으로 나눴습니다</b>
+    <p class="sub" style="margin-top:4px">블록을 끌어 순서를 바꿀 수 있습니다. 순서를 바꾸면 번호가 자동으로 다시 매겨집니다.</p></div>
+  </div>
+  <div class="groups">
+    ${GROUPS.map(([gt,gs],gi)=>{
+      const items = b.filter(x=>x.g===gi);
+      return `<div class="group">
+        <div class="row">${ph(16,16)}<b style="font-size:13px">${gt}</b><span class="grow"></span><span class="xs dim">${items.length}개 단계</span></div>
+        <p class="xs muted" style="margin:6px 0 0">${gs}</p>
+        <div class="blocks" data-g="${gi}">
+          ${items.map(x=>`<div class="block ${x.k==='self'?'':x.k}" draggable="true" data-n="${x.n}">
+            <span class="gr">⋮⋮</span><span class="n">${x.n}</span>
+            <span><span class="bt">${x.t}</span><br><span class="bs">${x.s}</span></span></div>`).join('')}
+          <div class="dropzone" data-g="${gi}">여기에 배치</div>
+        </div>
+      </div>`}).join('')}
+    <aside class="card pad">
+      <div class="row" style="margin-bottom:10px">${ph(16,16)}<b style="font-size:13px">단계 요약</b></div>
+      <div class="between"><span class="sm muted">총</span><span class="grow"></span><b style="font-size:18px">${b.length}단계</b></div>
+      <div class="divide" style="margin:12px 0"></div>
+      ${[['ai','AI 실행'],['ap','승인 필요'],['self','직접 수행']].map(([k,t])=>`
+        <div class="row sm" style="padding:4px 0"><i style="width:7px;height:7px;border-radius:50%;flex:none;background:${k==='ai'?'var(--ai)':k==='ap'?'var(--ap)':'#fff'};border:1px solid ${k==='self'?'#bbb':'transparent'}"></i>
+        <span class="muted">${t}</span><span class="grow"></span><b>${cnt(k)}</b></div>`).join('')}
+      <div class="divide" style="margin:12px 0"></div>
+      <p class="xs muted" style="margin:0">순서를 바꾸면 번호가 자동으로 다시 매겨집니다.<br>묶음을 넘어 옮겨도 됩니다.</p>
+    </aside>
+  </div>
+  <section class="card pad between">
+    <div class="grow"><h3>이번 행사에서 뺀 단계</h3>
+      <p class="sub">MT에는 해당이 없다고 판단했습니다. 필요하면 다시 추가할 수 있어요.</p></div>
+    ${EXCLUDED.map(([t,s])=>`<button class="btn" data-act="wip"><span class="dim">+</span>
+      <span style="text-align:left"><b style="font-size:12px">${t}</b><br><span class="xs dim">${s}</span></span></button>`).join('')}
+  </section>
+  <section class="card pad row" style="gap:14px">
+    ${ph(22,22)}
+    <div class="grow"><b style="font-size:13px">총 ${b.length}개 단계가 배열되어 있습니다</b>
+      <p class="sub" style="margin-top:2px">이 순서로 흐름을 만들면 다음 단계에서 일정과 담당자를 설정할 수 있습니다.</p></div>
+    <button class="btn" data-act="save">임시 저장</button>
+    <button class="btn dark pill" data-act="pstep" data-n="3">이 순서로 흐름 만들기 →</button>
+  </section>
+  ${composer('예) 리허설 빼줘 · 입금 확인을 모집 공지 앞으로 옮겨줘')}`;
+}
+
+/* ═════════ P3 3단계 ═════════ */
+function plan3(){
+  const b = left(), cnt = k => b.filter(x=>x.k===k).length;
+  return `
+  <div class="between">
+    <div class="grow"><h1>행사 계획</h1><p class="sub">2026 봄 MT · 3/2 준비 시작 → 3/25 기록 완료</p></div>
+    ${legend()}
+    <button class="btn" data-act="pstep" data-n="2">2단계로 돌아가기</button>
+    <button class="btn" data-act="save">임시 저장</button>
+  </div>
+  ${wizard()}
+  <div class="grid2" style="grid-template-columns:1fr 300px;gap:20px;align-items:start">
+    <section class="card pad">
+      <div class="tl">
+        ${b.map((x,i)=>`<div class="tlrow">
+          <span class="when">${x.d}</span>
+          <span class="tlaxis"><i class="pt ${x.k==='self'?'':x.k}"></i>${i<b.length-1?'<i class="ln"></i>':''}</span>
+          <div class="tlbody">
+            <div class="ttl">${x.t}
+              ${x.badge?`<span class="tag" style="min-width:0">${x.badge}</span>`:''}
+              <span class="grow"></span><a class="link" data-act="wip">수정</a></div>
+            ${x.why?`<div class="why">${x.why}</div>`:''}
+          </div></div>`).join('')}
+      </div>
+    </section>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <aside class="card pad">
+        <h3 style="margin-bottom:10px">이 계획 요약</h3>
+        ${[['전체 단계',b.length+'개'],['AI 실행',cnt('ai')+'개'],['승인 필요',cnt('ap')+'곳'],['직접 수행',cnt('self')+'개'],
+           ['수금','1회 · 1인 45,000원'],['공지','2회'],['기간','3/2 → 3/25']]
+          .map(([k,v])=>`<div class="row sm" style="padding:4px 0"><span class="muted">${k}</span><span class="grow"></span><b>${v}</b></div>`).join('')}
+      </aside>
+      <aside class="card pad">
+        <h3>시작 전에 확인하세요</h3>
+        <p class="sub">${S.midCheckAdded
+          ? '3/15에 중간 점검 단계를 넣었습니다. 인원 변동이 생기면 여기서 반영됩니다.'
+          : '입금 마감(3/12)과 리허설(3/20) 사이가 8일 비어 있습니다. 인원 변동이 생기면 반영할 단계가 없습니다.'}</p>
+        ${S.midCheckAdded?'':`<button class="btn sm" style="margin-top:12px" data-act="midcheck">중간 점검 단계 넣기</button>`}
+      </aside>
+      <aside class="card pad">
+        <button class="btn dark wide pill" data-act="startevent">이 계획으로 행사 시작하기</button>
+        <p class="xs muted" style="margin:12px 0 0">시작하면 행사 목록에 올라가고, 1번 단계부터 AI가 진행합니다. 계획은 진행 중에도 고칠 수 있습니다.</p>
+      </aside>
+    </div>
+  </div>
+  ${composer('예) 3/15에 중간 점검 넣어줘 · 회비 마감을 3/14로 미뤄줘')}`;
+}
+
+/* ═════════ L1 행사 목록 ═════════ */
+const CARDS = [
+  {i:0,meta:['32명 중 28명 납부','1,940,000원 중 588,000원 집행'],segs:[1,1,1,1,1,1,0,0,0]},
+  {i:1,meta:['참석 신청 14명','300,000원 중 0원 집행'],segs:[1,1,1,0,0,0,0]},
+  {i:2,meta:['설문 응답 41명','800,000원 중 25,000원 집행'],segs:[1,1,1,0,0,0,0,0]},
+];
+function events(){
+  const all = EVENTS.flatMap(e => e.approvals.map(a=>({...a,ev:e.name,evi:EVENTS.indexOf(e)})));
+  const aps = alive(all);
+  return `
+  <div class="between">
+    <div class="grow"><h1>행사 목록</h1><p class="sub">진행 중 3건 · 계획 중 1건 · 끝난 행사 7건</p></div>
+    <button class="btn dark pill" data-act="newplan">+ 새 행사 계획하기</button>
+  </div>
+  <section class="apbox">
+    <div class="head"><h3>승인 대기 ${aps.length}건</h3><span class="chip">되돌릴 수 없는 일만 올립니다</span>
+      <span class="grow"></span><button class="btn sm" data-act="apallall">전부 훑어보기</button></div>
+    ${aps.length ? aps.map(a=>`<div class="aprow">
+      <b style="font-size:12px;width:110px;flex:none">${a.ev}</b>
+      <span class="tag">${a.tag}</span>
+      <div class="grow"><div class="t">${a.t}</div><div class="s">${a.s}</div></div>
+      <button class="btn dark sm pill" data-act="ap" data-id="${a.id}">승인</button>
+      <button class="btn sm pill" data-act="opendetail" data-i="${a.evi}">열어보기</button></div>`).join('')
+      : `<div class="aprow"><span class="grow muted sm" style="padding:8px 0">모두 처리했습니다.</span></div>`}
+  </section>
+  <h2 style="margin-top:6px">진행 중인 행사</h2>
+  ${CARDS.map(c=>{const e=EVENTS[c.i], n=alive(e.approvals).length; return `
+    <section class="card pad" style="display:flex;flex-direction:column;gap:14px">
+      <div class="between">
+        <h2>${e.name}</h2><span class="chip solid">${e.stage}</span>
+        ${n?`<span class="chip ap">승인 대기 ${n}건</span>`:`<span class="chip">승인 대기 없음</span>`}
+        <span class="grow"></span>
+        <span class="sm dim">${e.when}</span><span class="chip solid">${e.dday}</span>
+        <button class="btn sm" data-act="opendetail" data-i="${c.i}">›</button>
+      </div>
+      <div class="rail">${c.segs.map(s=>`<div><div class="seg ${s?'done':''}"></div></div>`).join('')}</div>
+      <div class="between sm muted"><span>${c.meta[0]}</span><i class="ph" style="width:1px;height:12px"></i>
+        <span>${c.meta[1]}</span><span class="grow"></span>
+        <a class="link" data-act="opendetail" data-i="${c.i}">상세 진행 상황 보기</a></div>
+    </section>`}).join('')}
+  <div class="grid2">
+    <section class="card pad">
+      <h3 class="muted xs" style="margin-bottom:10px">계획 중</h3>
+      <div class="between"><b>여름 워크샵</b><span class="chip">2단계에서 멈춤</span>
+        <span class="grow"></span><a class="link" data-act="pstep" data-n="2">이어서 하기 ›</a></div>
+    </section>
+    <section class="card pad">
+      <h3 class="muted xs" style="margin-bottom:10px">끝난 행사</h3>
+      <div class="between"><b>7건</b><span class="sm dim">정산·회고 기록이 다음 계획의 기준이 됩니다</span>
+        <span class="grow"></span><a class="link" data-act="go" data-to="records">전체 보기 ›</a></div>
+    </section>
+  </div>`;
+}
+
+/* ═════════ L2 행사 상세 ═════════ */
+const L2STEPS = [['과거 기록','ai'],['담당 배치','self'],['수요 조사','ap'],['세부 조정','ai'],['가능 확인','self'],
+  ['일정 확정','self'],['모집 공지','ap'],['수요 마감','ap'],['입금 확인','now'],['리허설',''],['행사 시작',''],['영수 처리',''],['피드백','']];
+const CHECKS = [
+  {id:'k1',t:'입금자명이 명단과 다릅니다',d:'3/10',q:'“박지영 母” 45,000원 — 박지영 님 회비로 처리할까요?'},
+  {id:'k2',t:'어느 행사인지 모르겠습니다',d:'3/8',q:'학생회 지원금 500,000원 — 봄 MT에 넣을까요, 공동 회계로 둘까요?'},
+];
+const UNPAID = [['미납','김○○','3/2 신청','안내 발송 대기'],['미납','이○○','3/2 신청 · 작년에도 마감 후 납부','안내 발송 대기'],
+  ['미납','박○○','3/4 신청','안내 발송 대기'],['환불','정○○','3/9 참석 취소 요청','45,000원 환불 · 승인 필요']];
+
+function eventDetail(){
+  const e = EVENTS[S.evIdx], ck = alive(CHECKS);
+  return `
+  <div>
+    <a class="crumb" data-act="go" data-to="events">‹ 행사 목록</a>
+    <div class="between">
+      <div class="grow">
+        <div class="row"><h1>${e.name}</h1><span class="chip solid">${e.stage}</span>${legend()}</div>
+        <p class="sub">${e.when} · 가평 ○○펜션 · 참가 32명 · 출발까지 11일</p>
+      </div>
+      <button class="btn" data-act="pstep" data-n="3">계획 수정</button>
+      <button class="btn" data-act="wip">행사 취소</button>
+    </div>
+  </div>
+  <section class="card pad" style="display:flex;flex-direction:column;gap:16px">
+    <div class="between"><h3>진행 상황</h3><span class="chip solid">13단계 중 9번째</span>
+      <span class="grow"></span><span class="sm dim">단계를 누르면 그 단계에서 한 일과 할 일이 보입니다</span></div>
+    <div class="rail">${L2STEPS.map(([t,k])=>`<div><div class="seg ${k}"></div><div class="lb ${k==='now'?'on':''}">${t}</div></div>`).join('')}</div>
+    <div class="note" style="background:#fff;border-color:var(--line)">
+      <div class="between" style="margin-bottom:10px"><b style="color:var(--ink);font-size:14px">9. 입금 내역 확인</b>
+        <span class="chip solid">진행 중</span><span class="grow"></span><span class="sm dim">3/10 – 3/12</span></div>
+      <div class="grid2">
+        <div><b class="xs" style="color:var(--ink)">이 단계에서 한 일</b>
+          <ul class="facts" style="margin-top:6px"><li>· 입금 12건을 참가자 명단과 대조했습니다</li>
+          <li>· 입금자명이 다른 2건을 확인 요청으로 올렸습니다</li><li>· 미납자 목록을 5명 → 4명으로 갱신했습니다</li></ul></div>
+        <div><b class="xs" style="color:var(--ink)">남은 일</b>
+          <ul class="facts" style="margin-top:6px"><li>· 미납자 4명에게 2차 안내 발송 (승인 대기 중)</li>
+          <li>· 마감 3/12 23:59 이후 미납자 자동 정리</li></ul></div>
+      </div>
+    </div>
+  </section>
+  <div class="grid2" style="grid-template-columns:1fr 300px;align-items:start">
+    <section class="apbox">
+      <div class="head"><h3>확인 요청 ${ck.length}건</h3><span class="chip">되돌릴 수 있어 승인은 아닙니다</span></div>
+      ${ck.length?ck.map(c=>`<div class="aprow" style="align-items:flex-start;flex-direction:column;gap:8px">
+        <div class="between" style="width:100%"><b style="font-size:13px">${c.t}</b><span class="grow"></span><span class="sm dim">${c.d}</span></div>
+        <p class="sm muted" style="margin:0">${c.q}</p>
+        <div class="row">
+          <button class="btn dark sm pill" data-act="check" data-id="${c.id}" data-v="맞아요">맞아요</button>
+          <button class="btn sm pill" data-act="check" data-id="${c.id}" data-v="아니에요">아니에요</button>
+          <button class="btn sm pill" data-act="check" data-id="${c.id}" data-v="나중에">나중에</button></div>
+      </div>`).join('')
+      :`<div class="aprow"><span class="grow muted sm" style="padding:8px 0">확인 요청을 모두 처리했습니다.</span></div>`}
+    </section>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <aside class="card pad">
+        <h3>예산 현황</h3>
+        <p class="big" style="margin:8px 0 12px">588,000 <span class="sm muted" style="font-weight:400">/ 1,940,000원</span></p>
+        <div class="bar"><span style="width:30%"></span></div>
+        <p class="xs muted" style="margin:10px 0 0">진행은 9/13단계(69%)인데 집행은 30%입니다. 숙소 잔금과 식비가 남아 있습니다.</p>
+      </aside>
+      <aside class="card pad">
+        <h3 style="margin-bottom:12px">수납</h3>
+        <div class="bar"><span style="width:87.5%"></span></div>
+        <div class="between sm" style="margin-top:10px"><b>1,260,000원 걷힘</b><span class="grow"></span><span class="dim">목표 1,440,000원</span></div>
+      </aside>
+      <aside class="card">
+        <div class="between pad" style="padding:14px 18px"><h3>미납 · 환불</h3><span class="grow"></span><span class="sm dim">납부 28 / 32명</span></div>
+        ${UNPAID.map(([tg,n,s,r])=>`<div class="filerow" style="border-top:1px solid var(--line2)">
+          <span class="tag ${tg==='환불'?'':''}" style="min-width:40px;${tg==='환불'?'background:var(--ap-bg);border-color:var(--ap-line);color:#9c6c11':''}">${tg}</span>
+          <span class="grow"><b style="font-size:12px">${n}</b><br><span class="xs dim">${s}</span></span>
+          <span class="xs dim" style="text-align:right">${r}</span></div>`).join('')}
+      </aside>
+    </div>
+  </div>`;
+}
+
+/* ═════════ R1 동아리 기록 ═════════ */
+function records(){
+  return `
+  <div class="between">
+    <div class="grow"><h1>동아리 기록</h1><p class="sub">총 25건 · AI가 읽은 문서 22건</p></div>
+    <button class="btn" data-act="wip">분류 다시 하기</button>
+    <button class="btn dark pill" data-act="wip">+ 파일 올리기</button>
+  </div>
+  ${FILES.map(([t,n,desc,more,rows])=>`
+    <section class="card">
+      <div class="between" style="padding:14px 18px">
+        ${ph(16,16)}<b style="font-size:14px">${t}</b><span class="chip solid">${n}</span>
+        ${t==='기타'?'<span class="chip">되도록 쓰지 마세요</span>':''}
+        <span class="grow"></span><a class="link" data-act="wip">올리기 +</a></div>
+      <p class="sm muted" style="margin:0;padding:0 18px 12px">${desc}</p>
+      ${rows.map(([f,d,st])=>`<div class="filerow" style="border-top:1px solid var(--line2)">
+        ${ph(16,16)}<span class="grow">${f}</span><span class="sm dim">${d}</span>
+        <span class="chip ${st==='읽음'?'solid':''}">${st}</span><span class="dim">⋯</span></div>`).join('')}
+      ${more?`<div class="filerow" style="border-top:1px solid var(--line2);justify-content:center">
+        <a class="link" data-act="wip">${more}</a></div>`:''}
+    </section>`).join('')}
+  <div class="composer">
+    ${ph(22,22)}<input placeholder="기록에 대해 물어보세요. 예) 작년 봄 MT 때 1인당 얼마 걷었어?" data-role="askinput">
+    <span class="xs dim">저장되지 않는 일회성 대화</span>
+    <button class="btn dark sm pill" data-act="openchat">물어보기</button>
+  </div>`;
+}
+
+const PANEL_MSGS = [
+  {who:'me',t:'작년 봄 MT 때 1인당 얼마 걷었어?'},
+  {who:'ai',t:'1인당 40,000원이었습니다. 32명에게 걷어 총 1,280,000원이고, 학생회 지원금 420,000원을 더해 예산은 1,700,000원이었습니다.',
+   src:[['2025 하반기 장부.xlsx','회비 수납 시트'],['2025 봄 MT 결과보고.hwp','예산 항목']]},
+  {who:'me',t:'그때 예비비 모자랐다고 했었나?'},
+  {who:'ai',t:'네. 예비비 130,000원을 잡았는데 실제로는 172,000원을 썼고, 초과분 42,000원은 총무가 먼저 내고 나중에 정산했습니다.',
+   gap:'무엇에 초과 지출했는지는 장부에 항목이 비어 있어 확인할 수 없습니다.'},
+];
+const SUGGEST = ['올해는 예비비를 얼마로 잡는 게 좋을까?','작년 MT 참가 취소는 몇 건이었어?','환불 기준이 회칙에 있어?'];
+const ANSWERS = {
+  '올해는 예비비를 얼마로 잡는 게 좋을까?':'작년 초과분(42,000원)을 감안하면 총예산의 10%인 200,000원을 권합니다. 지난 3회 평균 초과율은 8%였습니다.',
+  '작년 MT 참가 취소는 몇 건이었어?':'3건입니다. 신청 35명 중 3명이 취소했고, 환불은 전액 처리했습니다.',
+  '환불 기준이 회칙에 있어?':'있습니다. 「회비 및 환불 규정.hwp」 4조에 행사 7일 전까지 전액, 3일 전까지 50%로 적어 있습니다.',
+};
+
+function panel(){
+  if(!S.chatOpen) return '';
+  const msgs = PANEL_MSGS.concat(S.panelChat);
+  return `<aside class="panel">
+    <div class="ph2"><b style="font-size:13px">기록에게 묻기</b><span class="grow" style="flex:1"></span>
+      <button data-act="closechat" class="dim">✕</button></div>
+    <div class="body">
+      <p class="xs dim" style="margin:0 0 16px">이 대화는 페이지를 벗어나면 사라집니다. 저장되지 않습니다.</p>
+      ${msgs.map(m=>{
+        if(m.who==='me') return `<div class="msg me"><div class="bub">${esc(m.t)}</div></div>`;
+        let x = `<div class="msg"><div class="av"></div><div class="bub">${esc(m.t)}`;
+        if(m.src) x += `<div class="recall"><b class="xs dim" style="display:block;margin-bottom:6px">근거로 쓴 기록</b>
+          ${m.src.map(([f,w])=>`<div class="r" style="gap:6px">${ph(12,12)}<span style="width:auto;flex:1;color:var(--ink)">${f}</span>
+          <span class="xs dim">${w}</span></div>`).join('')}</div>`;
+        if(m.gap) x += `<div class="recall"><b class="xs dim" style="display:block;margin-bottom:4px">기록에 없는 것</b>
+          <span class="xs muted">${m.gap}</span></div>`;
+        return x + `</div></div>`;
+      }).join('')}
+      <p class="xs dim" style="margin:18px 0 0">이어서 물어볼 만한 것</p>
+      ${SUGGEST.map(q=>`<button class="sug" data-act="ask" data-q="${esc(q)}">${q}</button>`).join('')}
+    </div>
+    <div class="foot">
+      <input class="input" style="border:0;padding:6px" placeholder="기록에 대해 물어보세요" data-role="askinput">
+      <button class="btn dark sm pill" data-act="asksend">보내기</button>
+    </div>
+  </aside>`;
+}
+
+/* ═════════ S2 마이 페이지 ═════════ */
+function mypage(){
+  const filled = S.memberListDone ? 2 : 1;
+  const pct = Math.round(filled/4*100);
+  const listState = S.memberListDone ? '입력됨' : '아직 비어 있음';
+  return `
+  <div class="between">
+    <div class="grow"><h1>마이 페이지</h1><p class="sub">박수겸 · 총무 · 컴퓨터학부 학술동아리</p></div>
+    <button class="btn" data-act="wip">계정 설정</button>
+    <button class="btn" data-act="go" data-to="login">로그아웃</button>
+  </div>
+  <section class="card pad between" style="gap:24px">
+    <div class="grow">
+      <div class="between" style="margin-bottom:8px"><b style="font-size:13px">동아리 정보 ${pct}% 채움</b>
+        <span class="grow"></span><span class="sm dim">${filled} / 4 항목</span></div>
+      <div class="bar"><span style="width:${pct}%"></span></div>
+      <p class="sm muted" style="margin:10px 0 0">회원 명단만 올려도 수납 대조와 미납 안내가 자동으로 돌아갑니다. 지금 가장 도움이 되는 항목입니다.</p>
+    </div>
+    <button class="btn dark pill" data-act="uploadmembers">${S.memberListDone?'회원 명단 확인':'회원 명단 올리기'}</button>
+  </section>
+  <div class="grid2" style="grid-template-columns:1fr 300px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <section class="card">
+        <div class="between" style="padding:14px 18px">
+          <b style="font-size:14px">동아리 정보</b><span class="chip solid">입력됨</span>
+          <span class="grow"></span><a class="link" data-act="wip">수정</a></div>
+        <div style="border-top:1px solid var(--line2);padding:14px 18px">
+          ${[['동아리 이름','컴퓨터학부 학술동아리 ○○'],['분과','학술'],['내 역할','총무'],['가입일','2026. 2. 28.']]
+            .map(([k,v])=>`<div class="row sm" style="padding:3px 0"><span class="muted" style="width:90px">${k}</span><b>${v}</b></div>`).join('')}
+        </div>
+      </section>
+      <section class="card">
+        <div class="between" style="padding:14px 18px">
+          <b style="font-size:14px">회원 명단</b><span class="chip ${S.memberListDone?'solid':''}">${listState}</span>
+          <span class="grow"></span><a class="link" data-act="uploadmembers">${S.memberListDone?'수정':'지금 채우기'}</a></div>
+        <div style="border-top:1px solid var(--line2);padding:14px 18px">
+          <p class="sm muted" style="margin:0 0 12px">이름과 연락처가 있어야 입금자명 대조와 미납 안내가 자동으로 됩니다. 연락처는 발송에만 쓰고 저장하지 않습니다.</p>
+          <div class="row" style="gap:10px;align-items:stretch">
+            ${[['CSV 올리기','양식을 받아 채운 뒤 올립니다','추천'],['표에 직접 입력','한 명씩 추가합니다',''],['구글 폼으로 수집','링크를 뿌려 본인이 입력하게 합니다','']]
+              .map(([t,s,rec])=>`<button class="btn" style="flex:1;display:block;text-align:left;padding:12px" data-act="uploadmembers">
+                <b style="font-size:12px">${t}</b>${rec?` <span class="chip">${rec}</span>`:''}<br><span class="xs dim">${s}</span></button>`).join('')}
+          </div>
+          <div class="row xs dim" style="margin-top:12px"><a class="link" data-act="wip">CSV 양식 내려받기 ↓</a>
+            <span>필요한 열: 이름 · 연락처 · 학번(선택) · 가입일(선택)</span></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="between" style="padding:14px 18px">
+          <b style="font-size:14px">현 재정 상태</b><span class="chip">아직 비어 있음</span>
+          <span class="grow"></span><a class="link" data-act="wip">지금 채우기</a></div>
+        <div style="border-top:1px solid var(--line2);padding:14px 18px">
+          <p class="sm muted" style="margin:0 0 12px">예산 전망과 지출 승인 기준의 출발점이 됩니다.</p>
+          <div class="row" style="gap:10px;align-items:stretch">
+            ${[['잔고 직접 입력','지금 통장에 있는 금액만 적으면 됩니다','추천'],['장부 파일 올리기','엑셀·CSV 장부가 있으면 그대로 올립니다','']]
+              .map(([t,s,rec])=>`<button class="btn" style="flex:1;display:block;text-align:left;padding:12px" data-act="wip">
+                <b style="font-size:12px">${t}</b>${rec?` <span class="chip">${rec}</span>`:''}<br><span class="xs dim">${s}</span></button>`).join('')}
+          </div>
+          <p class="xs dim" style="margin:12px 0 0">은행 연동은 지원하지 않습니다. 입출금은 장부나 직접 입력으로 반영합니다.</p>
+        </div>
+      </section>
+      <section class="card">
+        <div class="between" style="padding:14px 18px">
+          <b style="font-size:14px">동아리 기록</b><span class="chip">아직 비어 있음</span>
+          <span class="grow"></span><a class="link" data-act="go" data-to="records">지금 채우기</a></div>
+        <div style="border-top:1px solid var(--line2);padding:14px 18px">
+          <p class="sm muted" style="margin:0 0 12px">회칙, 환불 기한 같은 판단 기준과 지난 장부·행사 기록을 한곳에서 관리합니다. 여기 쌓인 내용이 계획 1단계에서 자동으로 불려옵니다.</p>
+          <div class="row" style="gap:0">
+            ${[['장부','0건'],['행사 기록','0건'],['회칙 문서','없음'],['판단 기준','기본값']]
+              .map(([k,v],i)=>`${i?'<i class="ph" style="width:1px;height:24px;margin:0 16px"></i>':''}
+              <span><span class="xs dim">${k}</span><br><b class="sm">${v}</b></span>`).join('')}
+            <span class="grow"></span>
+            <button class="btn sm" data-act="go" data-to="records">동아리 기록 페이지로 이동 ›</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <aside class="card pad">
+        <h3 style="margin-bottom:12px">채우면 달라지는 것</h3>
+        ${[['동아리 정보','',1],['회원 명단','수납 자동 대조',S.memberListDone?1:0],['현 재정 상태','예산 전망',0],['동아리 기록','계획 자동 초안',0]]
+          .map(([k,v,ok])=>`<div class="row sm" style="padding:5px 0">${ph(14,14,'dot')}
+            <span class="grow"><b style="font-size:12px">${k}</b>${v?`<br><span class="xs dim">${v}</span>`:''}</span>
+            <span class="chip ${ok?'solid':''}">${ok?'완료':'대기'}</span></div>`).join('')}
+      </aside>
+      <aside class="card pad">
+        <h3>나중에 해도 됩니다</h3>
+        <p class="sub">비어 있어도 행사 하나는 끝까지 진행할 수 있습니다. 다만 그 동안은 AI가 물어보는 횟수가 늘어납니다.</p>
+        <p class="xs dim" style="margin:10px 0 0">예: 회원 명단이 없으면 입금 12건을 전부 사람이 확인해야 합니다.</p>
+      </aside>
+    </div>
+  </div>`;
+}
+
+/* ═════════ router ═════════ */
+const SCREENS = {login, signup, main, events, event:eventDetail, records, mypage,
+  plan: () => S.planStep===1 ? plan1() : S.planStep===2 ? plan2() : plan3()};
+const NAVOF = {main:'main', plan:'plan', events:'events', event:'events', records:'records', mypage:'mypage'};
+
+function render(){
+  const auth = S.route==='login' || S.route==='signup';
+  document.body.classList.toggle('auth', auth);
+  $('#side').innerHTML = auth ? '' : NAV.map(([r,t])=>
+    `<button class="navitem ${NAVOF[S.route]===r?'on':''}" data-act="go" data-to="${r==='plan'?'plan':r}">${ph(14,14,'dot')}${t}</button>`).join('');
+  $('#view').innerHTML = SCREENS[S.route]();
+  $('#panel').innerHTML = S.route==='records' ? panel() : '';
+  if(S.route==='plan' && S.planStep===2) wireDrag();
+}
+
+/* ═════════ 액션 ═════════ */
+const chatVal = sel => { const el=$(sel); const v=el&&el.value.trim(); if(el) el.value=''; return v; };
+function planSay(q){
+  S.planChat.push({who:'me',t:q});
+  S.planChat.push({who:'ai',t:'“'+q+'” 반영했습니다. 오른쪽 요약을 확인하고 다음 단계로 넘어가세요.'});
+  render();
+  const c=$('#chat'); if(c) c.scrollTop = c.scrollHeight;
+}
+function askSay(q){
+  S.panelChat.push({who:'me',t:q});
+  S.panelChat.push({who:'ai',t: ANSWERS[q] || '그 내용은 올라온 기록에서 찾지 못했습니다. 관련 문서를 올려주시면 다시 답하겠습니다.'});
+  S.chatOpen = true; render();
+  const b=document.querySelector('.panel .body'); if(b) b.scrollTop = b.scrollHeight;
+}
+
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-act]'); if(!el) return;
+  const a = el.dataset.act;
+  const A = {
+    go:   () => go(el.dataset.to),
+    ev:   () => { S.evIdx = (S.evIdx + +el.dataset.d + EVENTS.length) % EVENTS.length; render(); },
+    opendetail: () => { S.evIdx = +el.dataset.i; go('event'); },
+    ap:   () => { S.done[el.dataset.id]=1; toast('승인했습니다. 활동 기록에 남습니다.'); render(); },
+    later:() => { S.done[el.dataset.id]=1; toast('나중에로 미뤘습니다.'); render(); },
+    apall:() => { EVENTS[S.evIdx].approvals.forEach(x=>S.done[x.id]=1); toast('승인 대기를 한 번에 처리했습니다.'); render(); },
+    apallall: () => { EVENTS.forEach(e=>e.approvals.forEach(x=>S.done[x.id]=1)); toast('전부 처리했습니다.'); render(); },
+    check:() => { S.done[el.dataset.id]=1; toast('“'+el.dataset.v+'”로 처리했습니다.'); render(); },
+    pstep:() => { S.planStep = +el.dataset.n; go('plan'); },
+    newplan: () => { S.planStep = 1; S.planChat = []; go('plan'); },
+    reset:() => { S.planChat = []; S.planStep = 1; toast('처음부터 다시 시작합니다.'); render(); },
+    save: () => toast('임시 저장했습니다.'),
+    more: () => planSay('조금 더 이야기하고 싶어요'),
+    qr:   () => planSay(el.dataset.q),
+    send: () => { const v = chatVal('[data-role="chatinput"]'); if(v) planSay(v); },
+    midcheck: () => {
+      if(S.midCheckAdded) return;
+      const i = BLOCKS.findIndex(b=>b.t==='입금 내역 확인');
+      BLOCKS.splice(i+1, 0, {g:1,t:'중간 점검',s:'인원 변동 반영 · 명단 재확인',k:'ai',d:'3/15',
+        why:'입금 마감 이후 인원 변동을 반영해 예산과 명단을 다시 계산합니다.'});
+      S.midCheckAdded = true; toast('3/15에 중간 점검 단계를 넣었습니다.'); render(); },
+    startevent: () => { toast('행사를 시작했습니다. 행사 목록에 올라갔습니다.'); go('events'); },
+    emptybudget: () => { S.budgetEmpty = true; render(); },
+    fullbudget:  () => { S.budgetEmpty = false; render(); },
+    openchat:  () => { const v = chatVal('[data-role="askinput"]'); if(v) askSay(v); else { S.chatOpen=true; render(); } },
+    closechat: () => { S.chatOpen = false; render(); },
+    ask:     () => askSay(el.dataset.q),
+    asksend: () => { const v = chatVal('.panel [data-role="askinput"]'); if(v) askSay(v); },
+    uploadmembers: () => { S.memberListDone = true; toast('회원 명단 32명을 불러왔습니다.'); render(); },
+    tg:   () => el.classList.toggle('on'),
+    pickchip: () => { el.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.remove('solid')); el.classList.add('solid'); },
+    wip:  () => toast('와이어프레임 프로토타입 — 이 동작은 아직 없습니다.'),
+  }[a];
+  if(A){ ev.preventDefault(); A(); }
+});
+
+document.addEventListener('keydown', ev => {
+  if(ev.key !== 'Enter') return;
+  const r = ev.target.dataset && ev.target.dataset.role;
+  if(r === 'chatinput'){ const v = chatVal('[data-role="chatinput"]'); if(v) planSay(v); }
+  if(r === 'askinput'){ const sel = ev.target.closest('.panel') ? '.panel [data-role="askinput"]' : '[data-role="askinput"]';
+    const v = chatVal(sel); if(v) askSay(v); }
+});
+
+/* ═════════ P2 블록 끌어 옮기기 ═════════ */
+function wireDrag(){
+  document.querySelectorAll('.block').forEach(b => {
+    b.addEventListener('dragstart', e => { S.drag = +b.dataset.n; b.classList.add('drag'); e.dataTransfer.effectAllowed='move'; });
+    b.addEventListener('dragend',   () => b.classList.remove('drag'));
+    b.addEventListener('dragover',  e => e.preventDefault());
+    b.addEventListener('drop',      e => { e.preventDefault(); e.stopPropagation(); dropAt(+b.dataset.n); });
+  });
+  document.querySelectorAll('.dropzone').forEach(z => {
+    z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('hot'); });
+    z.addEventListener('dragleave',() => z.classList.remove('hot'));
+    z.addEventListener('drop',     e => { e.preventDefault(); dropEnd(+z.dataset.g); });
+  });
+}
+const regroup = () => { BLOCKS = BLOCKS.slice().sort((a,b)=>a.g-b.g); };  // sort는 안정적 — 묶음 안 순서 유지
+function dropAt(targetN){
+  const from = S.drag - 1, to = targetN - 1;
+  if(S.drag == null || from === to) return;
+  const item = BLOCKS[from], g = BLOCKS[to].g;
+  BLOCKS.splice(from, 1);
+  item.g = g;
+  BLOCKS.splice(from < to ? to - 1 : to, 0, item);
+  regroup(); S.drag = null; render();
+}
+function dropEnd(g){
+  const from = S.drag - 1;
+  if(S.drag == null) return;
+  const [item] = BLOCKS.splice(from, 1);
+  item.g = g;
+  let last = -1; BLOCKS.forEach((b,i)=>{ if(b.g===g) last=i; });
+  BLOCKS.splice(last + 1, 0, item);
+  regroup(); S.drag = null; render();
+}
+
+render();
+</script>
+</body>
+</html>
