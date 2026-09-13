@@ -1,0 +1,5 @@
+{
+  "name": "fe",
+  "private": true,
+  "comment": "TODO: npm create vite 실행 후 실제 의존성/스크립트로 교체"
+}
