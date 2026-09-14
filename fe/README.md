@@ -108,6 +108,78 @@ ApprovalCard.tsx          버튼 클릭
 > 위 항목들도 원본 문서(5장) 상 세부 규칙(에러 포맷, 페이지네이션 파라미터명, 상태 코드별 처리 등)이
 > 아직 `___`로 비어 있는 부분이 많습니다. BE 쪽에서 5장이 마저 채워지면 이 문서에도 반영이 필요합니다.
 
+## API 응답 포맷
+
+### 1. 성공 응답 - 단건 조회
+`GET /api/events/1`
+
+\```json
+{
+  "data": {
+    "id": 1,
+    "name": "봄 MT",
+    "status": "UPCOMING",
+    "date": "2026-04-05"
+  },
+  "meta": null
+}
+\```
+
+### 2. 성공 응답 - 목록 조회 (페이지네이션)
+`GET /api/events?page=1&size=10`
+
+\```json
+{
+  "data": [
+    { "id": 1, "name": "봄 MT", "status": "UPCOMING", "date": "2026-04-05" },
+    { "id": 2, "name": "가을 체육대회", "status": "ENDED", "date": "2025-10-12" }
+  ],
+  "meta": {
+    "page": 1,
+    "size": 10,
+    "totalCount": 12
+  }
+}
+\```
+
+- `meta`가 없는 응답(단건 조회 등)은 `null`로 내려줌 (필드 자체는 항상 존재)
+- 목록 조회는 `page`, `size`, `totalCount`
+- `status`는 문자열 코드값으로 내려주고, 화면 표기 문구는 FE가 매핑
+
+\```javascript
+// status 예시
+export const STATUS_LABELS: Record<string, string> = {
+  UPCOMING: "예정",
+  ONGOING: "진행중",
+  ENDED: "종료",
+};
+\```
+
+### 3. 에러 응답
+\```json
+{
+  "error": {
+    "code": "EVENT_NOT_FOUND",
+    "message": "해당 행사를 찾을 수 없습니다."
+  }
+}
+\```
+
+- `code`: 문자열 상수. `{도메인}_{문제}` 형태로 네이밍 (예: `EVENT_NOT_FOUND`, `MEMBER_NOT_FOUND`)
+- `message`: 서버 기본 문구(로그/디버깅용), FE는 이 값을 그대로 화면에 띄우지 않고 `code` 기준으로 자체 문구를 매핑
+
+\```javascript
+// 매핑 예시
+export const ERROR_MESSAGES: Record<string, string> = {
+  EVENT_NOT_FOUND: "해당 행사를 찾을 수 없어요.",
+  UNAUTHORIZED: "로그인이 필요해요.",
+  FORBIDDEN: "권한이 없어요.",
+  VALIDATION_ERROR: "입력값을 다시 확인해주세요.",
+};
+
+export const DEFAULT_ERROR_MESSAGE = "일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요.";
+\```
+
 ## 환경변수
 
 | 이름 | 용도 | 담당 |
