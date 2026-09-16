@@ -1,0 +1,52 @@
+name: "🔧 작업 (문서 · 리팩토링 · 테스트 · 설정 · 삭제)"
+description: "기능 추가도 버그 수정도 아닌 작업. 아래에서 종류를 고릅니다."
+title: "<Docs|Refactor|Test|Chore|Remove>: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ 이 템플릿은 `type:` 라벨이 자동으로 붙지 않습니다.
+        아래에서 고른 종류에 맞는 라벨(`type: docs` 등)을 직접 붙이고,
+        **제목의 `<...>` 부분도 같은 값으로 바꿔주세요** (예: `Docs: API 응답 포맷 정리`).
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: 작업 종류
+      options:
+        - "Docs — 문서 수정"
+        - "Refactor — 코드 리팩토링 (동작 변화 없음)"
+        - "Test — 테스트 코드 추가·리팩토링"
+        - "Chore — 빌드 업무 수정, 패키지 관리"
+        - "Remove — 코드(파일) 삭제"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 파트
+      description: "고른 값에 맞는 `area:` 라벨도 함께 붙여주세요."
+      options:
+        - AI
+        - BE
+        - FE
+        - common (CI · 템플릿 · 루트 문서)
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 작업 내용
+      description: "무엇을 왜 하는지. 리팩토링이면 '동작은 그대로'라는 점이 드러나게 써주세요."
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      description: "선택 항목이지만, 범위가 번지기 쉬운 작업일수록 적어두는 게 좋습니다."
+    validations:
+      required: false

@@ -1,0 +1,53 @@
+name: "🐛 버그"
+description: "동작하지 않거나 의도와 다르게 동작하는 것을 신고합니다."
+title: "Fix: "
+labels: ["type: fix"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 파트
+      description: "고른 값에 맞는 `area:` 라벨도 함께 붙여주세요. 어디서 터지는지 모르면 짐작으로 고르고 본문에 적어주세요."
+      options:
+        - AI
+        - BE
+        - FE
+        - common (CI · 템플릿 · 루트 문서)
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: 현재 동작
+      description: "무엇이 어떻게 잘못되는지. 에러 메시지·로그·스크린샷이 있으면 붙여주세요."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 동작
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 재현 방법
+      description: "다른 사람이 그대로 따라 할 수 있게. 재현이 안 되면 버그 수정이 추측이 됩니다."
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: 환경
+      description: "브랜치·커밋, 실행 환경(로컬/배포), 브라우저·OS 등 관련된 것만."
+      placeholder: "develop 327bdde / 로컬 / Chrome 140 · macOS"
+    validations:
+      required: false
