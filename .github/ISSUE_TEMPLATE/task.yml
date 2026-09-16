@@ -1,0 +1,48 @@
+name: "작업"
+description: "구현할 기능과 작업 범위를 정리합니다."
+body:
+  - type: markdown
+    attributes:
+      value: |
+        이슈 1개 = PR 1개가 되도록 쪼개주세요.
+        작성 후 `area:` (AI/BE/FE/common) 와 `type:` (feat/fix/docs/...) 라벨을 붙여주세요.
+        여기서 고른 `type:` 이 그대로 커밋·PR 제목의 prefix 가 됩니다.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 무엇을 만드는가
+      description: "무엇을 왜 하는지 2~3줄."
+      placeholder: "행사 참가자가 QR 로 입장 체크인할 수 있게 한다. 현장에서 명단을 눈으로 찾는 시간을 줄이는 게 목적."
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 작업 범위
+      description: "체크리스트로 적으면 진행 상황이 이슈에서 바로 보입니다. 범위 밖으로 둘 것이 있으면 함께 적어주세요."
+      value: |
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      description: "무엇이 되면 이 이슈를 닫을 수 있는지. 구현 중 범위가 번지는 걸 막는 항목입니다."
+      placeholder: |
+        - QR 스캔 시 참가자 이름과 체크인 시각이 응답에 포함된다
+        - 이미 체크인한 참가자는 409 로 거절된다
+    validations:
+      required: true
+
+  - type: textarea
+    id: refs
+    attributes:
+      label: 참고 자료 · 관련 이슈
+      description: "API 명세, 와이어프레임, 선행 이슈(#번호), 참고 링크 등."
+    validations:
+      required: false
