@@ -1,4 +1,4 @@
-name: "작업"
+name: "작업 이슈"
 description: "구현할 기능과 작업 범위를 정리합니다."
 body:
   - type: markdown
