@@ -1,0 +1,57 @@
+# 로컬 환경변수·인증 정보
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.*
+credentials.*
+
+# Python·uv 로컬 환경과 캐시
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.uv-cache/
+*.egg-info/
+build/
+dist/
+
+# 테스트·정적 분석·노트북 캐시
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+
+# LangGraph 로컬 개발 서버 데이터
+.langgraph_api/
+
+# 로컬 LLM 캐시·체크포인트 DB와 SQLite 부속 파일
+.langchain.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# 로컬 실행 결과 저장 위치 (프로젝트에서 사용할 경우)
+/logs/
+/traces/
+/checkpoints/
+/vectorstore/
+*.log
+
+# OS·에디터 생성 파일
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# 의존성 잠금 파일은 팀에서 함께 관리
+!uv.lock

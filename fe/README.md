@@ -73,18 +73,23 @@ fe/
 │   │   ├── lib/                  format.ts, cn.ts
 │   │   └── hooks/                useDisclosure.ts 등
 │   └── styles/
-│       └── index.css             Tailwind 지시문 + 전역 스타일
+│       └── index.css             @import "tailwindcss" + 전역 스타일
 ├── .env.example
 ├── .gitignore
+├── .prettierrc                  Prettier 서식 규칙
+├── .prettierignore
+├── eslint.config.js             ESLint 규칙
 ├── index.html
 ├── package.json
-├── tailwind.config.ts
-├── tsconfig.json
+├── tailwind.config.ts           디자인 토큰 (index.css의 @config로 연결)
+├── tsconfig.json                아래 두 개를 참조만 함
+├── tsconfig.app.json            src/ 용. @/ 별칭도 여기
+├── tsconfig.node.json           설정 파일(vite.config.ts 등) 용
 └── vite.config.ts
 ```
 
-> 위 하위 파일들은 현재 구조 확정을 위한 자리표시(placeholder)이며,
-> 실제 내용은 `npm create vite`로 프로젝트를 스캐폴딩한 뒤 채워 넣을 예정입니다.
+> `src/` 아래 파일들은 아직 구조 확정을 위한 자리표시(placeholder)입니다.
+> 프로젝트 스캐폴딩은 완료되었고(#20), 내용은 각 기능 이슈에서 채워 넣습니다.
 
 ## 데이터가 흐르는 경로 (예: 승인 버튼)
 

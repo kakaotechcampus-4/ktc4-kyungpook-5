@@ -1,0 +1,6 @@
+dist
+node_modules
+package-lock.json
+
+# 마크다운은 표 정렬을 통째로 바꿔 문서 diff가 커진다. 문서는 사람이 쓴 대로 둔다.
+*.md

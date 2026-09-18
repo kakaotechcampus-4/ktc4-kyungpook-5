@@ -1,3 +1,4 @@
 {
-  "_comment": "TODO: npm create vite 실행 후 실제 tsconfig로 교체"
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
 }
