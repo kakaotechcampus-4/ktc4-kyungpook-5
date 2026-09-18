@@ -2,7 +2,7 @@
 
 ## 범위
 
-2~3명이 기능별로 작업할 수 있도록 planning, retrieval, operations를 분리합니다. 현재는 폴더와 역할만 정의하며 구현·trace·evaluation은 포함하지 않습니다.
+AI 팀 2명이 기능별로 작업할 수 있도록 planning, retrieval, operations를 분리합니다. 현재는 폴더와 역할만 정의하며 구현·trace·evaluation은 포함하지 않습니다.
 
 ## Agent와 Tool
 
@@ -21,7 +21,8 @@
 | BE | 행사 원본 상태, 금액·미납·환불 계산, 권한·승인 검증, 확정 변경과 실행 |
 | workflow | 기능 연결·분기와 AI 실행 상태 관리 |
 | tools | Agent가 사용할 도구의 입력·출력과 호출 처리 |
-| clients | BE API 통신·타임아웃·에러 공통 처리 |
+| facade / contracts | BE가 사용하는 공개 기능과 데이터 계약 |
+| ports | AI가 사용하는 BE 기능 계약과 구현체 주입 |
 
 LangGraph는 질문·수정·재계획의 분기와 반복을 연결하기 위해 사용합니다. 행사 변화는 BE에서 감지하여 필요한 AI 처리를 호출합니다.
 
@@ -48,3 +49,16 @@ BE가 전달한 참가 취소·입금·견적·지출 등의 변화와 계산 �
 ### 함께 동작하는 예시
 
 참가자가 취소되면 BE가 인원·예산을 재계산합니다. operations가 최소 인원 미달의 영향과 대응안을 정리하고, 필요한 경우 workflow가 retrieval로 과거 사례를 조회하거나 planning으로 수정 계획을 생성하도록 연결합니다. 승인 대상 변경의 검증과 최종 반영은 BE에서 수행합니다.
+
+## 모듈 의존 경계
+
+BE는 `app.ai`의 공개 이름만 import하며 AI 내부 구현에 직접 접근하지 않습니다.
+AI는 BE 모델·DB·서비스를 직접 import하지 않고 주입된 port를 사용합니다.
+공개 진입점은 `__init__.py`, 기능 구현은 `facade.py`, 공개 데이터는
+`contracts.py`, BE 기능 계약은 `ports.py`에 둡니다. 업무 계약은 미확정입니다.
+
+행사 원본 상태와 승인 레코드는 BE, AI 실행 체크포인트는 AI의 책임 범위입니다.
+저장·트랜잭션·실행 방식은 별도 합의 대상입니다.
+SSE·승인 interrupt·실행 재개는 이번 이전에서 구현하지 않습니다.
+
+이전 범위와 BE 후속 작업은 [migration.md](migration.md)를 참고하세요.
