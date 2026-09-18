@@ -1,23 +1,26 @@
 # AGENTS.md — 운영해 AI
 
-동아리 총무의 행사 계획·운영을 돕는 “운영해”의 AI 서비스다.
+동아리 총무의 행사 계획·운영을 돕는 “운영해”의 BE 내부 AI 모듈이다.
 행사 조건을 정리하고, 과거 기록을 근거로 계획과 대응안을 제안한다.
 
-이 규칙은 `ai/`와 그 하위 디렉터리에 적용한다.
-문서 내 경로는 별도 표시가 없으면 `ai/` 기준이다.
+이 규칙은 `be/app/ai/`와 그 하위 디렉터리에 적용한다.
+문서 내 경로는 별도 표시가 없으면 `be/app/ai/` 기준이다.
 
 ## 스택
 
-Python 3.12 · FastAPI · LangGraph · langchain-anthropic ·
-HTTPX · Pydantic · pydantic-settings · uv
+Python 3.12 · LangGraph · langchain-anthropic · Pydantic · pydantic-settings · uv
+FastAPI 앱과 실행 환경은 BE가 관리한다.
 
-의존성은 `pyproject.toml`, 설치 버전은 `uv.lock`을 기준으로 한다.
+통합 후 의존성은 `be/pyproject.toml`, 설치 버전은 `be/uv.lock`을 기준으로 한다.
+현재 통합은 BE 팀 후속 작업이며 이전 명세는 `docs/legacy-dependencies/`에 보존한다.
+참고 자료를 독립 프로젝트로 설치하지 않는다.
 
 ## 먼저 읽을 문서
 
 - `README.md`: 개발 환경·폴더 구조·미확정 항목
 - `docs/architecture.md`: 기능별 역할·구조·협업 기준
-- `.env.example`: 환경변수 항목
+- `.env.example`: 공통 환경에 합칠 AI 환경변수 항목
+- `docs/migration.md`: 이전 범위와 BE 팀 후속 작업
 
 구조가 변경되면 관련 문서도 함께 갱신한다.
 문서와 구현이 다르면 차이를 확인하고, 미확정 내용을 임의로 확정하지 않는다.
@@ -63,3 +66,10 @@ Sub Agent는 독립적인 판단이 필요한 경우에만 추가한다.
 - 공통 구조와 인터페이스 변경은 AI 리드 검토 대상으로 한다.
 - 동작·구조·설정이 바뀌면 관련 문서도 함께 갱신한다.
   구현된 내용과 예정된 내용을 구분한다.
+
+## 모듈 경계
+
+- BE는 `app.ai`의 공개 이름만 사용한다. 공개 계약은 합의 후 `__init__.py`에서 재공개한다.
+- AI는 BE 모델·DB·서비스를 직접 import하지 않고 `ports.py`의 계약을 통해 주입받는다.
+- AI 전용 작업은 `be/app/ai/**`에서 수행한다. 기존 BE 파일·공용 의존성·앱 초기화는 BE 팀 담당이다.
+- 인터페이스의 위치 정의와 실제 업무 계약 구현을 구분한다. 미합의 메서드를 만들지 않는다.
