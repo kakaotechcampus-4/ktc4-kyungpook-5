@@ -27,9 +27,11 @@ be/app/ai/
 ├── tests/               # AI 테스트 위치 (현재 빈 폴더)
 ├── docs/
 │   ├── architecture.md
+│   ├── requirements.md  # 사용자 경험 중심 AI 기능 요구사항 초안
 │   ├── migration.md     # 파일 대응표·BE 팀 후속 작업
 │   └── legacy-dependencies/ # 이전 서비스 의존성 원본, 설치 대상 아님
 ├── AGENTS.md
+├── CLAUDE.md            # AGENTS.md를 참조하는 Claude 진입점
 ├── .env.example         # 공통 환경변수에 합칠 항목의 참고 자료
 └── .gitignore
 ```
@@ -85,4 +87,4 @@ BE 팀의 의존성·초기화·주입 작업과 기존 공용 문서의 후속 
 SSE, 승인 interrupt, 체크포인트 저장소, 배포 통합은 이번 범위에 포함하지 않습니다.
 답변 토큰 스트리밍은 사용하지 않는 방향이며 단계 이벤트는 후속 설계 대상입니다.
 
-[작업 규칙](AGENTS.md) · [아키텍처](docs/architecture.md)
+[작업 규칙](AGENTS.md) · [아키텍처](docs/architecture.md) · [기능 요구사항](docs/requirements.md)
