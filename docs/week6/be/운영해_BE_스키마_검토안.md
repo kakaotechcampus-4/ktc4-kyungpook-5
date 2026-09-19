@@ -1,14 +1,4 @@
 # BE 스키마 검토안
-
-> FE [스키마 검토 요청](../fe/운영해_BE_스키마_검토요청.md)에 대한 답변. 이슈 #17.
-> **요청 13건은 전부 수용**했고, 확정 스키마는 `be/app/models/`가 기준입니다.
-
-| 누가 | 어디를 | 무엇을 |
-| --- | --- | --- |
-| **FE** | §4 | 명세를 고쳐야 하는 6건 |
-| **팀 회의** | §5 | 회의록 결정을 바꾼 3건(추인) + 아직 안 정해진 8건 |
-| **BE** | §6 | 이번에 넣지 않은 것 |
-
 ---
 
 ## 1. 변경 요청 7건 — 전부 수용
@@ -31,10 +21,8 @@
 | 2. `Event.title` / `Conversation.title` | `Conversation.title`은 nullable 유지. 계획 화면 제목은 `Event.title` 기준이 맞습니다 |
 | 3. `parse_error` 형식 | 확정 (§4-2) |
 | 4. 입출금이 한 열에 섞임 | 스키마가 아니라 파싱 규칙. 별도 이슈 |
-| MANUAL 단계가 항상 완료 | **C안** — `completed` 컬럼을 없애고 `completed_at`·`completed_by`로 판정합니다. 완료 API는 §4-6 |
-| `participants` 테이블 | 지적이 맞습니다. 금액 안건과 묶여 범위 밖 (§6) |
-
-**MANUAL을 C안으로 간 이유** — `completed`는 `COUNT(actions WHERE status=DONE)`으로 언제든 구할 수 있는 값이라 동기화 대상이 되고, Action이 0개면 `0 == 0`이 됩니다. B안(`CHECK` Action 자동 생성)은 `Action`이 `irreversible`·`approve_needed`를 가진 실행 단위라, 실행할 것 없는 `CHECK`가 섞이면 승인 판정(NF3)이 계속 예외를 답니다. 추적성은 `completed_by`로 동일하게 남습니다. **응답 필드(`completedCount`·`totalActionCount`)는 그대로입니다.**
+| MANUAL 단계가 항상 완료 | `completed` 컬럼을 없애고 `completed_at`·`completed_by`로 판정합니다. 완료 API는 아래 4-6
+| `participants` 테이블 | 지적이 맞습니다. 금액 안건과 묶여 범위 밖
 
 ## 3. 요청 표에 없던 컬럼 4개 — 함께 추가
 
@@ -106,9 +94,17 @@ FE가 모르는 `code`일 때 경고를 숨기지 않도록 `debugMessage`를 �
 { "steps": [ { "stepId": "stp_02", "phase": "PREPARATION" }, ... ] }
 ```
 
+```jsonc
+{ "steps": [
+{ "stepId": "stp_02", "phase": "PREPARATION" },
+{ "stepId": "stp_01", "phase": "PREPARATION" },
+{ "stepId": "stp_03", "phase": "RECRUITING" }
+] }
+```
+
 ### 4-6. 단계 완료 API 신설
 
-§2의 C안을 쓰려면 `completed_at`을 채울 경로가 필요합니다.
+`completed_at`을 채울 경로가 필요합니다.
 
 ```
 POST /api/v1/steps/{stepId}/complete
@@ -149,12 +145,9 @@ POST /api/v1/steps/{stepId}/complete
 
 ---
 
-## 5. 팀에 올리는 것
+## 5. 회의 · 확인이 필요한 것
 
-### 5-1. 회의록 결정을 바꾼 3건 — 추인 필요
-
-**아래 셋은 이미 코드에 반영했습니다.** 다만 9/16 회의록에서 정한 내용을 바꾸는 것이라
-팀 추인이 필요합니다. 반대가 있으면 되돌립니다. 셋 다 **API 응답은 바뀌지 않아 FE 영향이 없습니다.**
+### 팀 확인 필요 - 이미 코드에 반영함.
 
 | 항목 | 내용 |
 | --- | --- |
@@ -162,7 +155,7 @@ POST /api/v1/steps/{stepId}/complete
 | **날짜 타입** | 회의록은 전부 `datetime`이었으나 명세를 따라 `start_date`·`end_date`·`due_date`를 `DATE`로. `deadline`은 `TIMESTAMPTZ`("3/12 14:59") |
 | **`conversation.user_id`** | `users` 테이블이 없어 FK 대상이 없었습니다. `member_id`로 개명 |
 
-### 5-2. 아직 정해지지 않은 8건
+### 아직 정해지지 않은 것
 
 | 항목 | 내용 | 대상 |
 | --- | --- | --- |
