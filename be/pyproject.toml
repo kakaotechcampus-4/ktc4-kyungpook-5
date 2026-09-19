@@ -1,0 +1,24 @@
+[project]
+name = "unyounghae-be"
+version = "0.1.0"
+description = "운영해 백엔드 — 동아리 행사 보조 에이전트"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "nanoid>=2.0",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "sqlalchemy>=2.0.36",
+    "uvicorn[standard]>=0.32",
+]
+
+# AI 모듈(app/ai)의 LangGraph·langchain-anthropic 의존성은 AI 통합 시점에 추가한다.
+# 원본은 app/ai/docs/legacy-dependencies/ 에 보관되어 있으며 설치 대상이 아니다.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
