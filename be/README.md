@@ -1,6 +1,7 @@
 # 운영해 · BE
 
-현재는 **디렉터리 구조를 정의한 단계**입니다. 라우터·모델·규칙 엔진은 아직 구현되지 않았습니다.
+현재는 **ORM 모델까지 정의한 단계**입니다. 라우터·서비스·규칙 엔진과 DB 연결은 아직 구현되지 않았습니다.
+모델 확정 내역과 그 근거는 [BE 스키마 검토안](../docs/week6/be/운영해_BE_스키마_검토안.md)에 있습니다.
 
 ## 기술 스택
 
@@ -10,7 +11,7 @@
 | API 프레임워크 | FastAPI | FE와 AI가 호출하는 API 서버 |
 | DB | PostgreSQL | 금액은 정수 원 단위로만 저장 (NF2) |
 | ORM | SQLAlchemy 2.0 | 비동기 세션 사용 여부는 구현 시 결정 |
-| 마이그레이션 | Alembic | 도입 여부·시점 미정 |
+| 마이그레이션 | Alembic | DB가 아직 없어 리비전을 만들지 않았습니다. 첫 배포 직전에 초기 리비전 하나를 만듭니다 |
 | 파일 저장 | AWS S3 (`infra/s3.py`) | 영수증·기록 원본 업로드 |
 | 패키지 관리 | uv | AI와 동일하게 `pyproject.toml` 기반 |
 | 인증 | 미정 | JWT vs 세션 등 방식 확정 전, `core/security.py`에서 구현 |
@@ -20,6 +21,9 @@
 
 ### 확인이 필요한 항목
 
+- FE 명세 반영이 필요한 5건 — [검토안 §4](../docs/week6/be/운영해_BE_스키마_검토안.md)
+- 회의·확인이 필요한 항목 — [검토안 §5](../docs/week6/be/운영해_BE_스키마_검토안.md)
+- `participants` · `transactions` 테이블 — 금액 안건 확정 후 추가
 - FE/AI 내부 API의 엔드포인트명과 요청·응답 스키마
 - RAG 원본·근거 데이터(`records`)를 BE의 PostgreSQL에 메타데이터만 둘지, 임베딩까지 함께 둘지 (Milvus vs pgvector)
 - S3 버킷 구조와 접근 권한 — 영수증 등 민감 파일이 포함되어 NF6(민감정보 최소 수집)과 연결됨
@@ -41,9 +45,10 @@ be/
 │   │   ├── config.py
 │   │   ├── security.py
 │   │   ├── exceptions.py
+│   │   ├── enums.py           # 도메인 enum (DB·API 모두 문자열 코드)
 │   │   └── deps.py
 │   ├── db/
-│   │   ├── base.py
+│   │   ├── base.py            # Base · IdMixin · TimestampMixin · enum_column · JsonB
 │   │   └── session.py
 │   ├── routers/
 │   │   ├── auth.py
@@ -56,10 +61,13 @@ be/
 │   │   ├── events.py
 │   │   └── records.py
 │   ├── models/
-│   │   ├── auth.py
-│   │   ├── clubs.py
-│   │   ├── events.py
-│   │   └── records.py
+│   │   ├── __init__.py        # 전 모델 등록 (Base.metadata)
+│   │   ├── auth.py            # Auth
+│   │   ├── clubs.py           # Club · Member
+│   │   ├── events.py          # Event · Step · Action
+│   │   ├── records.py         # Record
+│   │   ├── agent.py           # AgentLog
+│   │   └── chat.py            # Conversation · Message
 │   ├── services/
 │   │   ├── auth_service.py
 │   │   ├── club_service.py
@@ -80,6 +88,7 @@ be/
 `.gitignore`, `README.md`, (uv 사용 시) `uv.lock`은 위 구조에 그대로 추가하면 됩니다. 빈 폴더는 `.gitkeep`으로 유지합니다.
 
 레이어드 아키텍처로 역할을 나누고, 레이어 내부는 인증(`auth`)·동아리(`clubs`)·행사(`events`)·기록(`records`) 도메인별로 파일을 나눕니다.
+`models/`에는 이 넷에 들어가지 않는 `agent.py`(AI 호출 로그)와 `chat.py`(계획 대화)를 더 둡니다. `events.py`에 함께 넣으면 한 파일에 테이블이 여섯 개가 되기 때문입니다.
 
 | 레이어 | 역할 |
 | --- | --- |
@@ -91,7 +100,7 @@ be/
 | `core` | 설정, 인증, 에러 처리 등 공통 모듈 |
 | `infra` | AI 서버, S3 등 외부 연동 |
 
-현재는 폴더 구조와 빈 파일 스텁까지만 작업했고, 로직 구현·DB 연결·인증 처리는 포함하지 않습니다.
+현재는 폴더 구조와 ORM 모델까지 작업했고, 라우터·서비스 로직과 DB 연결·인증 처리는 포함하지 않습니다.
 
 ## 모듈별 담당 범위
 
@@ -128,7 +137,23 @@ BE는 두 방향에서 호출됩니다.
 
 ## 데이터 모델
 
-모델은 라우터와 같은 경계로 `models/auth.py`, `models/clubs.py`, `models/events.py`, `models/records.py`로 나눕니다. `events.py`에는 계획·참가자·결제·지출·승인·업무 관련 테이블이 함께 들어가므로, 파일 하나가 커지면 클래스 단위로 섹션을 나눠 관리합니다. 승인(`Approval`)·Agent 실행 로그(`AgentRun`)를 이 파일에 포함할지 별도로 분리할지는 위 확인 필요 항목에 남겨뒀습니다.
+테이블 10개를 여섯 파일로 나눕니다.
+
+| 파일 | 테이블 |
+| --- | --- |
+| `models/clubs.py` | `clubs` · `members` |
+| `models/auth.py` | `auth` |
+| `models/events.py` | `events` · `steps` · `actions` |
+| `models/records.py` | `records` |
+| `models/agent.py` | `agent_log` |
+| `models/chat.py` | `conversations` · `messages` |
+
+공통 컬럼과 공유 컬럼 타입은 `db/base.py`에 있습니다. 모든 테이블이 `id`(접두어가 붙은 26자 문자열 PK)와
+`created_at` · `modified_at`을 가집니다.
+
+별도의 `Approval` 테이블은 두지 않습니다. 승인 대상은 `actions`이며 `status`와 `approve_needed`로
+관리합니다. 다만 `status`를 덮어쓰는 현재 구조는 NF4와 어긋나므로, 승인 이력 테이블은 승인 정책이
+확정된 뒤 별도로 추가합니다.
 
 ## 환경변수
 
