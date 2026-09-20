@@ -1,12 +1,13 @@
 // 라우트 정의
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter } from 'react-router-dom'
 import { AppLayout } from '@/app/layout/AppLayout'
 import S0LoginPage from '@/pages/S0LoginPage'
 import S1SignupPage from '@/pages/S1SignupPage'
 import S2MyPage from '@/pages/S2MyPage'
+import M1DashboardPage from '@/pages/M1DashboardPage'
 import ComingSoonPage from '@/pages/ComingSoonPage'
 
-// TODO: 메인(M1) / 행사 계획(P1·P2) / 행사 목록(L1) / 행사 상세(L2) / 동아리 기록(R1)은
+// TODO: 행사 계획(P1·P2) / 행사 목록(L1) / 행사 상세(L2) / 동아리 기록(R1)은
 // 아직 화면 구현 전이라 라우트에 없다. 완성되는 대로 AppLayout 하위에 추가한다.
 export const router = createBrowserRouter([
   { path: '/login', element: <S0LoginPage /> },
@@ -14,7 +15,7 @@ export const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
-      { index: true, element: <Navigate to="/mypage" replace /> },
+      { index: true, element: <M1DashboardPage /> },
       { path: 'mypage', element: <S2MyPage /> },
       { path: '*', element: <ComingSoonPage /> },
     ],
