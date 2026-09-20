@@ -1,8 +1,8 @@
-// SignupPage — 조립만 한다. 로직은 features/ 로.
+// S1 회원가입 — 조립만 한다. 로직은 features/ 로.
 import { AuthHeader } from '@/features/auth/components/AuthHeader'
 import { SignupForm } from '@/features/auth/components/SignupForm'
 
-export default function SignupPage() {
+export default function S1SignupPage() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center bg-[#f6f6f6]">
       <AuthHeader promptText="이미 계정이 있으신가요?" linkText="로그인" linkTo="/login" />

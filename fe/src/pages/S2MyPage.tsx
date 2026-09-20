@@ -1,4 +1,4 @@
-// MyPage — 조립만 한다. 로직은 features/ 로.
+// S2 마이 페이지 — 조립만 한다. 로직은 features/ 로.
 import { AccountCard } from '@/features/mypage/components/AccountCard'
 import { ActivityCard } from '@/features/mypage/components/ActivityCard'
 import { ClubInfoCard } from '@/features/mypage/components/ClubInfoCard'
@@ -8,7 +8,7 @@ import { NotificationCard } from '@/features/mypage/components/NotificationCard'
 import { ProfileCard } from '@/features/mypage/components/ProfileCard'
 import { useMyPage } from '@/features/mypage/hooks'
 
-export default function MyPage() {
+export default function S2MyPage() {
   const mypage = useMyPage()
 
   return (
