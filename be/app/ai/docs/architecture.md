@@ -2,7 +2,7 @@
 
 ## 범위
 
-AI 팀 2명이 기능별로 작업할 수 있도록 planning, retrieval, operations를 분리합니다. 현재는 폴더와 역할만 정의하며 구현·trace·evaluation은 포함하지 않습니다.
+AI 팀원이 기능별로 나누어 작업할 수 있도록 planning, retrieval, operations를 분리합니다. 현재는 폴더와 역할만 정의하며 구현·trace·evaluation은 포함하지 않습니다.
 
 ## Agent와 Tool
 
