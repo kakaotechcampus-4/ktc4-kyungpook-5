@@ -1,3 +1,7 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@config '../../tailwind.config.ts';
+
+/* 브라우저 다크모드에서 배경이 검게 나오지 않도록 명시한다. 다크모드 지원은 팀 논의 후. */
+body {
+  @apply bg-white text-gray-900;
+}
