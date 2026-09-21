@@ -1,6 +1,7 @@
 # 운영해 · BE
 
-현재는 **ORM 모델까지 정의한 단계**입니다. 라우터·서비스·규칙 엔진과 DB 연결은 아직 구현되지 않았습니다.
+현재는 **ORM 모델과 mock API 1개까지 구현한 단계**입니다. DB 연결·인증·규칙 엔진은 아직 없습니다.
+mock API는 DB 없이 고정 응답만 내려 FE가 화면을 실제 API에 붙여볼 수 있게 한 것입니다 (이슈 #30).
 모델 확정 내역과 그 근거는 [BE 스키마 검토안](../docs/week6/be/운영해_BE_스키마_검토안.md)에 있습니다.
 
 ## 기술 스택
@@ -85,8 +86,6 @@ be/
 └── pyproject.toml
 ```
 
-`.gitignore`, `README.md`, (uv 사용 시) `uv.lock`은 위 구조에 그대로 추가하면 됩니다. 빈 폴더는 `.gitkeep`으로 유지합니다.
-
 레이어드 아키텍처로 역할을 나누고, 레이어 내부는 인증(`auth`)·동아리(`clubs`)·행사(`events`)·기록(`records`) 도메인별로 파일을 나눕니다.
 `models/`에는 이 넷에 들어가지 않는 `agent.py`(AI 호출 로그)와 `chat.py`(계획 대화)를 더 둡니다. `events.py`에 함께 넣으면 한 파일에 테이블이 여섯 개가 되기 때문입니다.
 
@@ -99,8 +98,6 @@ be/
 | `db` | DB 연결과 세션 관리 |
 | `core` | 설정, 인증, 에러 처리 등 공통 모듈 |
 | `infra` | AI 서버, S3 등 외부 연동 |
-
-현재는 폴더 구조와 ORM 모델까지 작업했고, 라우터·서비스 로직과 DB 연결·인증 처리는 포함하지 않습니다.
 
 ## 모듈별 담당 범위
 
@@ -179,4 +176,43 @@ cp -n .env.example .env
 
 `.env`의 DB 연결 정보, AI 서비스 주소, S3 접근 정보를 로컬 환경에 맞게 설정하세요. 기존 `.env`는 덮어쓰지 않습니다.
 
-로컬 PostgreSQL은 Docker Compose로 띄우는 것을 기본으로 하되, 구체적인 compose 구성은 첫 구현 시 추가합니다. 현재는 의존성 설치만 가능하며 FastAPI 앱과 DB 연결이 구현되지 않아 서버 실행 명령은 제공하지 않습니다.
+로컬 PostgreSQL은 Docker Compose로 띄우는 것을 기본으로 하되, 구체적인 compose 구성은 첫 구현 시 추가합니다.
+아래 mock API는 DB에 접속하지 않으므로 `.env` 설정 없이도 실행됩니다.
+
+## 서버 실행
+
+```bash
+cd be
+uv run uvicorn app.main:app --reload
+```
+
+`http://localhost:8000/docs` 에서 스키마와 요청을 확인할 수 있습니다.
+CORS는 Vite 개발 서버(`http://localhost:5173`)만 허용합니다.
+
+## mock API
+
+| 엔드포인트 | 상태 |
+| --- | --- |
+| `GET /api/v1/events/{eventId}/actions` | 구현 완료 |
+| `GET /api/v1/events` | 미구현 |
+| `GET /api/v1/events/{eventId}/steps` | 미구현 |
+
+**유효한 `eventId`는 `evt_9f2c8a` 하나뿐입니다.** 다른 값은 404 `EVENT_NOT_FOUND`를 반환합니다.
+
+```bash
+# M1 승인 대기 (확인 요청 제외)
+curl "localhost:8000/api/v1/events/evt_9f2c8a/actions?status=PENDING&excludeType=CONFIRMATION"
+
+# L2 처리된 승인
+curl "localhost:8000/api/v1/events/evt_9f2c8a/actions?status=APPROVED,DONE,DENIED"
+
+# L2 확인 요청
+curl "localhost:8000/api/v1/events/evt_9f2c8a/actions?type=CONFIRMATION"
+```
+
+mock 단계의 한계입니다.
+
+- 인증이 없어 `canApprove`는 항상 `true`입니다.
+- `amount`는 컬럼이 있는데도 전건 `null`입니다. 이슈 #30의 합의를 따른 것이며, FE가 금액 표시를 검증해야 하면 채웁니다.
+- 확인 요청의 `options` / `allowManual`은 `actions.payload`(JSONB)에 담아 응답에서 펼칩니다. `type=CONFIRMATION`인 건에만 값이 있고 나머지는 `null`입니다.
+- fixture는 `app/services/event_service.py`에 있습니다. DB 연결 시 `list_actions()` 본문만 쿼리로 교체하면 라우터·스키마는 그대로 씁니다.
