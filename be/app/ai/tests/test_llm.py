@@ -55,12 +55,12 @@ def test_gpt_5_계열은_temperature를_적용하지_않는다(settings):
     assert build_chat_model(settings, temperature=0.2).temperature is None
 
 
-def test_chat_completions_경로를_고정한다(settings):
-    """모델명이나 요청 내용에 따라 Responses API로 전환되지 않아야 한다."""
+def test_responses_api_경로를_고정한다(settings):
+    """chat/completions 는 function tools 를 거부하므로 요청 내용과 무관하게 고정한다."""
     model = build_chat_model(settings)
 
-    assert model.use_responses_api is False
-    assert model._use_responses_api({"messages": []}) is False
+    assert model.use_responses_api is True
+    assert model._use_responses_api({"messages": []}) is True
 
 
 def test_기능별_구성을_덮어쓸_수_있다(settings):

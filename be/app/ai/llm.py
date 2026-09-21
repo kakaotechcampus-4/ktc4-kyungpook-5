@@ -13,7 +13,11 @@ from .config import AISettings, get_settings
 # 여기서 재시도해도 같은 행동이 중복 실행되지 않는다.
 DEFAULT_MAX_RETRIES = 2
 
-USE_RESPONSES_API = False
+# gpt-5.6-terra 는 /v1/chat/completions 에서 function tools 를 거부한다.
+# Agent 가 Tool 을 쓰려면 /v1/responses 를 써야 하므로 호출 경로를 여기에 고정한다.
+# 이 경로에서는 추론 깊이를 호출별로 정할 수 있어 기본값을 낮추지 않는다.
+# 단순한 Agent·노드는 build_chat_model(reasoning={"effort": "none"}) 처럼 줄여서 쓴다.
+USE_RESPONSES_API = True
 
 
 def build_chat_model(

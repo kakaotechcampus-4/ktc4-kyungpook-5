@@ -59,7 +59,16 @@ be/app/ai/
 기능별 조정이 필요하면 `build_chat_model()`을 사용합니다.
 `gpt-5` 계열은 `temperature=1` 외의 값을 받지 않으므로 답변을 일정하게
 유지할 때는 온도 대신 프롬프트와 구조화 출력을 사용합니다.
-호출 경로는 OpenAI 호환 Chat Completions로 고정합니다.
+
+호출 경로는 Responses API(`/v1/responses`)로 고정합니다.
+`gpt-5.6-terra`는 `/v1/chat/completions`에서 function tools를 거부하므로
+Agent가 Tool을 사용하려면 이 경로여야 합니다.
+이 경로에서는 응답 `content`가 문자열이 아니라 블록 목록으로 오므로
+본문만 필요하면 `response.text`를 사용합니다.
+
+추론 깊이는 호출별로 정합니다. 기본값은 낮추지 않고, 판단이 필요 없는 단순한
+Agent·노드에서만 `build_chat_model(reasoning={"effort": "none"})`으로 줄입니다.
+`none`은 추론을 끄고 나머지 값은 추론을 사용합니다.
 
 환경변수는 다음 항목을 사용하도록 구성합니다.
 
