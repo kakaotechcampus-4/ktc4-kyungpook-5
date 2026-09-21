@@ -5,6 +5,8 @@ description = "운영해 백엔드 — 동아리 행사 보조 에이전트"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
+    "langchain-openai>=1.0",
+    "langgraph>=1.2",
     "nanoid>=2.0",
     "psycopg[binary]>=3.2",
     "pydantic>=2.9",
@@ -13,8 +15,14 @@ dependencies = [
     "uvicorn[standard]>=0.32",
 ]
 
-# AI 모듈(app/ai)의 LangGraph·langchain-anthropic 의존성은 AI 통합 시점에 추가한다.
-# 원본은 app/ai/docs/legacy-dependencies/ 에 보관되어 있으며 설치 대상이 아니다.
+# AI 모듈(app/ai)은 OpenAI 호환 ML API 게이트웨이를 사용하므로
+# langchain-anthropic 대신 langchain-openai를 쓴다. openai 클라이언트는 함께 설치된다.
+# app/ai/docs/legacy-dependencies/ 의 원본은 이전 명세 보관용이며 설치 대상이 아니다.
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
 
 [build-system]
 requires = ["hatchling"]
