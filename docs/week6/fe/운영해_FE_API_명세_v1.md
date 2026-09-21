@@ -45,7 +45,7 @@
 | Base path | `/api/v1` |
 | JSON 키 | camelCase (BE에서 변환) |
 | 날짜 | `date`는 `YYYY-MM-DD`, `datetime`은 ISO 8601 UTC |
-| enum | **문자열 코드로 내려줌** (DB는 SmallInteger지만 API 경계에서 변환) |
+| enum | **문자열 코드로 내려줌** (DB도 `VARCHAR` 문자열 코드로 저장. 변환 계층 없음 — #17) |
 | 금액 | 정수(원 단위) |
 | 페이지네이션 | `?page=1&size=20`, page는 1부터 |
 | `meta` | **페이지네이션이 있는 목록만** 채움. 그 외 배열·단건은 `null` |
