@@ -195,8 +195,6 @@ CORS는 Vite 개발 서버(`http://localhost:5173`)만 허용합니다.
 
 ## mock API
 
-DB·비즈니스 로직 없이 고정 응답만 내려줍니다. 응답 형식은 `docs/week6/fe/운영해_FE_API_명세_v1.md`를 따릅니다.
-
 | 엔드포인트 | 상태 |
 | --- | --- |
 | `GET /api/v1/events/{eventId}/actions` | 구현 완료 |
@@ -220,4 +218,5 @@ mock 단계의 한계입니다.
 
 - 인증이 없어 `canApprove`는 항상 `true`입니다.
 - `amount`는 컬럼이 있는데도 전건 `null`입니다. 이슈 #30의 합의를 따른 것이며, FE가 금액 표시를 검증해야 하면 채웁니다.
+- 확인 요청의 `options` / `allowManual`은 `actions.payload`(JSONB)에 담아 응답에서 펼칩니다. `type=CONFIRMATION`인 건에만 값이 있고 나머지는 `null`입니다.
 - fixture는 `app/services/event_service.py`에 있습니다. DB 연결 시 `list_actions()` 본문만 쿼리로 교체하면 라우터·스키마는 그대로 씁니다.

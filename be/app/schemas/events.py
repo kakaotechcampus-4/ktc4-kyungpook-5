@@ -39,6 +39,13 @@ class ResolvedBy(CamelModel):
     role: MemberRole
 
 
+class ActionOption(CamelModel):
+    """CONFIRMATION 카드의 선택 버튼 하나."""
+
+    key: str
+    label: str
+
+
 class ActionOut(CamelModel):
     id: str
     type: ActionType
@@ -55,6 +62,9 @@ class ActionOut(CamelModel):
     resolved_at: UtcDateTime | None
     resolved_by: ResolvedBy | None
     deny_reason: str | None
+    # CONFIRMATION 전용. payload에서 펼쳐 담으며 다른 타입은 항상 null이다.
+    options: list[ActionOption] | None
+    allow_manual: bool | None
     can_approve: bool
 
 

@@ -34,6 +34,7 @@ _ACTIONS: list[dict] = [
         "status": ActionStatus.PENDING,
         "amount": None,
         "due_date": date(2026, 3, 12),
+        "payload": None,
         "step_id": "stp_03",
         "step_name": "입금 내역 확인",
         "resolved_at": None,
@@ -51,6 +52,7 @@ _ACTIONS: list[dict] = [
         "status": ActionStatus.PENDING,
         "amount": None,
         "due_date": date(2026, 3, 13),
+        "payload": None,
         "step_id": "stp_03",
         "step_name": "입금 내역 확인",
         "resolved_at": None,
@@ -68,6 +70,7 @@ _ACTIONS: list[dict] = [
         "status": ActionStatus.PENDING,
         "amount": None,
         "due_date": None,
+        "payload": None,
         "step_id": "stp_04",
         "step_name": "사전 안내",
         "resolved_at": None,
@@ -86,6 +89,13 @@ _ACTIONS: list[dict] = [
         "status": ActionStatus.PENDING,
         "amount": None,
         "due_date": None,
+        "payload": {
+            "options": [
+                {"key": "CHANGE_B", "label": "B펜션으로 변경"},
+                {"key": "KEEP_A", "label": "A펜션 유지"},
+            ],
+            "allow_manual": True,
+        },
         "step_id": None,
         "step_name": None,
         "resolved_at": None,
@@ -103,6 +113,7 @@ _ACTIONS: list[dict] = [
         "status": ActionStatus.DENIED,
         "amount": None,
         "due_date": None,
+        "payload": None,
         "step_id": "stp_02",
         "step_name": "세부사항 조정",
         "resolved_at": _utc(2026, 3, 8, 8, 2),
@@ -120,6 +131,7 @@ _ACTIONS: list[dict] = [
         "status": ActionStatus.DONE,
         "amount": None,
         "due_date": None,
+        "payload": None,
         "step_id": "stp_03",
         "step_name": "입금 내역 확인",
         "resolved_at": _utc(2026, 3, 9, 1, 30),
@@ -137,6 +149,7 @@ _ACTIONS: list[dict] = [
         "status": ActionStatus.APPROVED,
         "amount": None,
         "due_date": None,
+        "payload": None,
         "step_id": "stp_02",
         "step_name": "세부사항 조정",
         "resolved_at": _utc(2026, 3, 7, 23, 15),
@@ -145,6 +158,16 @@ _ACTIONS: list[dict] = [
         "can_approve": True,
     },
 ]
+
+
+def _expand_payload(row: dict) -> dict:
+    """CONFIRMATION 선택지는 payload(JSONB)에 들어 있다. 응답 평탄화는 여기서만 한다."""
+    payload = row["payload"] or {}
+    return {
+        **row,
+        "options": payload.get("options"),
+        "allow_manual": payload.get("allow_manual"),
+    }
 
 
 def list_actions(
@@ -174,4 +197,4 @@ def list_actions(
 
     total_count = len(rows)
     offset = (page - 1) * size
-    return rows[offset : offset + size], total_count
+    return [_expand_payload(row) for row in rows[offset : offset + size]], total_count
