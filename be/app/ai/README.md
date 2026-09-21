@@ -20,14 +20,14 @@ be/app/ai/
 ├── ports.py             # AI가 사용할 BE 조회·계산 인터페이스
 ├── config.py            # AI 전용 설정
 ├── errors.py            # AI 내부 오류 타입
-├── llm.py               # 공통 모델 구성
+├── llm.py               # 공통 채팅 모델 생성
 ├── features/
 │   ├── planning/        # 조건 확인·질문·계획 생성 및 수정
 │   ├── retrieval/       # 기록 검색·근거 구성
 │   └── operations/      # 변경 영향 설명·대응안
 ├── workflow/            # 기능 연결·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
-├── tests/               # AI 테스트 위치 (현재 빈 폴더)
+├── tests/               # AI 테스트 위치 (config, llm)
 ├── docs/
 │   ├── architecture.md
 │   ├── requirements.md  # 사용자 경험 중심 AI 기능 요구사항 초안
@@ -53,6 +53,13 @@ be/app/ai/
 
 사용 기술은 Python 3.12, LangGraph, langchain-openai, Pydantic, pydantic-settings입니다.
 모델 연동은 Elice ML API의 OpenAI 호환 API와 `ChatOpenAI`를 기준으로 합니다.
+메인 모델은 `gpt-5.6-terra`이며 모델명은 `AI_MODEL`로 전달합니다.
+
+모델은 `llm.py`에서만 만듭니다. 기본 구성은 `get_chat_model()`,
+기능별 조정이 필요하면 `build_chat_model()`을 사용합니다.
+`gpt-5` 계열은 `temperature=1` 외의 값을 받지 않으므로 답변을 일정하게
+유지할 때는 온도 대신 프롬프트와 구조화 출력을 사용합니다.
+호출 경로는 OpenAI 호환 Chat Completions로 고정합니다.
 
 환경변수는 다음 항목을 사용하도록 구성합니다.
 
