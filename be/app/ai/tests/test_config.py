@@ -79,3 +79,13 @@ def test_설정을_문자열로_만들어도_키가_남지_않는다(clean_env, 
     assert "super-secret-key" not in str(settings)
     assert "super-secret-key" not in settings.model_dump_json()
     assert settings.api_key.get_secret_value() == "super-secret-key"
+
+
+def test_요청_시간_제한을_빈_값으로_두면_기본값을_쓴다(clean_env, monkeypatch):
+    """.env 에 항목만 남기고 값을 비워두는 경우를 미설정과 같게 본다."""
+    monkeypatch.setenv("AI_REQUEST_TIMEOUT_SECONDS", "")
+
+    assert AISettings().request_timeout_seconds == 60.0
+
+    monkeypatch.setenv("AI_REQUEST_TIMEOUT_SECONDS", "   ")
+    assert AISettings().request_timeout_seconds == 60.0
