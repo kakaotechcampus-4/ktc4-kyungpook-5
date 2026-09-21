@@ -1,8 +1,39 @@
 // 서버 호출 함수 + 응답 타입
 //
-// TODO: M1 메인은 아직 FE API 명세에 없다. 화면 동작 확인용 목업이며,
-// 엔드포인트가 정해지면 shared/api/client 호출로 교체한다.
-import type { BudgetForecast, EventSummary } from '@/features/dashboard/types'
+// TODO: M1 메인은 대부분 아직 FE API 명세에 없어 화면 동작 확인용 목업이다.
+// 승인 대기 목록만 이슈 #30 mock API(GET /events/{eventId}/actions)가 나와 있어
+// 실제로 연동한다. 나머지(예산 전망, 진행 단계, 다른 행사 요약)는 BE 엔드포인트가
+// 생기는 대로 교체한다.
+import { apiGet } from '@/shared/api/client'
+import type { BudgetForecast, EventSummary, PendingAction } from '@/features/dashboard/types'
+
+const ACTION_TYPE_LABEL: Record<string, string> = {
+  EXTERNAL_SEND: '외부 발송',
+  TRANSFER: '이체',
+  EXPENSE: '지출',
+  CONTRACT: '계약',
+  NOTICE: '공지',
+  CONFIRMATION: '확인 요청',
+}
+
+interface ActionOutFromApi {
+  id: string
+  type: string
+  title: string
+  subtitle: string | null
+}
+
+export async function getPendingActionsFromApi(eventId: string): Promise<PendingAction[]> {
+  const actions = await apiGet<ActionOutFromApi[]>(
+    `/events/${eventId}/actions?status=PENDING&excludeType=CONFIRMATION`,
+  )
+  return actions.map((action) => ({
+    id: action.id,
+    typeLabel: ACTION_TYPE_LABEL[action.type] ?? action.type,
+    title: action.title,
+    subtitle: action.subtitle ?? '',
+  }))
+}
 
 export function getEventSummaries(): EventSummary[] {
   return [
