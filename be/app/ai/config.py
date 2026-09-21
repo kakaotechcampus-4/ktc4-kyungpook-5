@@ -6,9 +6,15 @@
 
 from functools import lru_cache
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .errors import AIConfigError
+
+
+def _text(value: str | SecretStr) -> str:
+    """설정값의 원문. SecretStr도 같은 방식으로 비어 있는지 본다."""
+    return value.get_secret_value() if isinstance(value, SecretStr) else value
 
 
 class AISettings(BaseSettings):
@@ -18,8 +24,10 @@ class AISettings(BaseSettings):
 
     # ML API 엔드포인트
     api_base_url: str = ""
-    # Authorization: Bearer 헤더에 사용할 키
-    api_key: str = ""
+    # Authorization: Bearer 헤더에 사용할 키.
+    # SecretStr이라 repr·model_dump 등 설정을 문자열로 만드는 경로에 값이 남지 않는다.
+    # 실제 값이 필요하면 api_key.get_secret_value()로 꺼낸다.
+    api_key: SecretStr = SecretStr("")
     # 사용할 모델 식별자
     model: str = ""
     # 단일 요청의 응답 대기 상한(초).
@@ -30,7 +38,7 @@ class AISettings(BaseSettings):
         missing = [
             name
             for name in ("api_base_url", "api_key", "model")
-            if not getattr(self, name).strip()
+            if not _text(getattr(self, name)).strip()
         ]
         if missing:
             names = ", ".join(f"AI_{name.upper()}" for name in missing)

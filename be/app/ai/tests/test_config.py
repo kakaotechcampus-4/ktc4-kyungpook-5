@@ -67,3 +67,15 @@ def test_환경변수를_읽는다(clean_env, monkeypatch):
     assert settings.api_base_url == "https://example.test/v1"
     assert settings.model == "gpt-5.6-terra"
     assert settings.request_timeout_seconds == 10.0
+
+
+def test_설정을_문자열로_만들어도_키가_남지_않는다(clean_env, monkeypatch):
+    """예외 출력·로그처럼 설정 객체를 통째로 찍는 경로를 막는다."""
+    monkeypatch.setenv("AI_API_KEY", "super-secret-key")
+
+    settings = AISettings()
+
+    assert "super-secret-key" not in repr(settings)
+    assert "super-secret-key" not in str(settings)
+    assert "super-secret-key" not in settings.model_dump_json()
+    assert settings.api_key.get_secret_value() == "super-secret-key"

@@ -6,7 +6,6 @@ from functools import lru_cache
 from typing import Any
 
 from langchain_openai import ChatOpenAI
-from pydantic import SecretStr
 
 from .config import AISettings, get_settings
 
@@ -35,8 +34,8 @@ def build_chat_model(
     params: dict[str, Any] = {
         "model": settings.model,
         "base_url": settings.api_base_url,
-        # SecretStr로 감싸 로그·예외 문자열에 키가 그대로 남지 않게 한다.
-        "api_key": SecretStr(settings.api_key),
+        # config에서 이미 SecretStr이라 로그·예외 문자열에 값이 그대로 남지 않는다.
+        "api_key": settings.api_key,
         "timeout": settings.request_timeout_seconds,
         "max_retries": max_retries,
         "use_responses_api": USE_RESPONSES_API,
