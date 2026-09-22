@@ -5,9 +5,11 @@ export interface ApiMeta {
   totalCount: number
 }
 
-export interface ApiSuccess<T> {
+// meta는 목록마다 모양이 다르다(페이지네이션이 있으면 ApiMeta, GET /records는 집계값).
+// 기본값을 ApiMeta로 둬서 기존 호출부는 그대로 둔다.
+export interface ApiSuccess<T, M = ApiMeta> {
   data: T
-  meta: ApiMeta | null
+  meta: M | null
 }
 
 export interface ApiErrorBody {

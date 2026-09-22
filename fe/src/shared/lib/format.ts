@@ -44,3 +44,10 @@ export function formatMonthDay(iso: string): string {
 export function formatDateTime(iso: string): string {
   return MONTH_DAY_TIME.format(new Date(iso)).replace(',', '')
 }
+
+// "2026-03-01T02:00:00Z" → "2026. 3. 1." (ko-KR medium이 정확히 이 모양이다)
+const DOT_DATE = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', dateStyle: 'medium' })
+
+export function formatDotDate(iso: string): string {
+  return DOT_DATE.format(new Date(iso))
+}
