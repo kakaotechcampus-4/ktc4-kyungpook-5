@@ -7,7 +7,14 @@ import pytest
 
 from app.ai.config import AISettings, get_settings
 from app.ai.errors import AIConfigError
-from app.ai.llm import DEFAULT_MAX_RETRIES, build_chat_model, get_chat_model
+from app.ai.llm import (
+    DEFAULT_MAX_RETRIES,
+    EMBEDDING_DIMENSIONS,
+    build_chat_model,
+    build_embeddings,
+    get_chat_model,
+    get_embeddings,
+)
 
 API_BASE_URL = "https://example.test/v1"
 API_KEY = "super-secret-key"
@@ -83,3 +90,76 @@ def test_공용_모델은_재사용된다(monkeypatch):
     finally:
         get_settings.cache_clear()
         get_chat_model.cache_clear()
+
+
+EMBEDDING_BASE_URL = "https://mlapi.test/embed/v1"
+EMBEDDING_MODEL = "text-embedding-3-small"
+
+
+@pytest.fixture
+def embedding_settings(settings):
+    return settings.model_copy(
+        update={
+            "embedding_base_url": EMBEDDING_BASE_URL,
+            "embedding_model": EMBEDDING_MODEL,
+        }
+    )
+
+
+def test_임베딩_설정값이_모델_구성에_반영된다(embedding_settings):
+    model = build_embeddings(embedding_settings)
+
+    assert model.model == EMBEDDING_MODEL
+    assert model.openai_api_base == EMBEDDING_BASE_URL
+    assert model.request_timeout == embedding_settings.request_timeout_seconds
+    assert model.max_retries == DEFAULT_MAX_RETRIES
+
+
+def test_임베딩은_채팅과_다른_주소를_쓴다(embedding_settings):
+    """게이트웨이가 모델마다 다른 경로로 배포돼 채팅 주소로 보내면 안 된다."""
+    assert build_embeddings(embedding_settings).openai_api_base != API_BASE_URL
+
+
+def test_임베딩_필수_설정이_없으면_모델을_만들지_않는다(settings):
+    with pytest.raises(AIConfigError, match="AI_EMBEDDING_BASE_URL"):
+        build_embeddings(settings)
+
+
+def test_임베딩_키를_그대로_노출하지_않는다(embedding_settings):
+    model = build_embeddings(embedding_settings)
+
+    assert API_KEY not in repr(model)
+    assert model.openai_api_key.get_secret_value() == API_KEY
+
+
+def test_임베딩은_문자열을_그대로_보낸다(embedding_settings):
+    """게이트웨이가 문서화한 input 형식이 문자열과 문자열 배열뿐이다."""
+    assert build_embeddings(embedding_settings).check_embedding_ctx_length is False
+
+
+def test_임베딩_차원은_모델_기본값을_쓴다(embedding_settings):
+    """dimensions 를 보내지 않으므로 저장소 컬럼 차원과 어긋나지 않는다."""
+    assert build_embeddings(embedding_settings).dimensions is None
+    assert EMBEDDING_DIMENSIONS == 1536
+
+
+def test_임베딩_구성을_덮어쓸_수_있다(embedding_settings):
+    model = build_embeddings(embedding_settings, max_retries=0, dimensions=512)
+
+    assert model.max_retries == 0
+    assert model.dimensions == 512
+
+
+def test_공용_임베딩은_재사용된다(monkeypatch):
+    monkeypatch.setenv("AI_API_KEY", API_KEY)
+    monkeypatch.setenv("AI_EMBEDDING_BASE_URL", EMBEDDING_BASE_URL)
+    monkeypatch.setenv("AI_EMBEDDING_MODEL", EMBEDDING_MODEL)
+    get_settings.cache_clear()
+    get_embeddings.cache_clear()
+
+    try:
+        assert get_embeddings() is get_embeddings()
+        assert get_embeddings().model == EMBEDDING_MODEL
+    finally:
+        get_settings.cache_clear()
+        get_embeddings.cache_clear()

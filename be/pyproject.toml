@@ -22,6 +22,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    # app/ai/scripts/check_ml_api.py 가 be/.env 를 직접 읽는다.
+    # uvicorn[standard] 를 통해 들어와 있었을 뿐 직접 의존성이 아니었다.
+    "python-dotenv>=1.0",
 ]
 
 [build-system]
