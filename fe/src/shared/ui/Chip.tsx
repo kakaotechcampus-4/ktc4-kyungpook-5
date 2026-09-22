@@ -2,7 +2,7 @@
 import type { HTMLAttributes } from 'react'
 import { cn } from '@/shared/lib/cn'
 
-type Variant = 'dark' | 'outline' | 'subtle'
+type Variant = 'dark' | 'outline' | 'subtle' | 'attention'
 
 interface ChipProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: Variant
@@ -12,6 +12,7 @@ const VARIANT_CLASS: Record<Variant, string> = {
   dark: 'bg-[#333] text-[#fafafa] border border-[#e3e3e3]',
   outline: 'bg-white text-[#808080] border border-[#e3e3e3]',
   subtle: 'bg-[#f9f9f9] text-[#6b6b6b] border border-[#e3e3e3]',
+  attention: 'bg-[#fcf2e5] text-[#4d4d4d] border border-[#e2c59b]',
 }
 
 export function Chip({ variant = 'dark', className, ...props }: ChipProps) {
