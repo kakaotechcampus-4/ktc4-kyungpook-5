@@ -12,6 +12,8 @@ AI는 정의된 Result/Draft 객체로 결과를 반환한다.
   외부 API의 camelCase 변환은 BE의 `app/schemas/`에서 처리한다.
 - EventType, ActionType 등의 도메인 코드값은 `app.core.enums`를 함께 사용한다.
   BE와 AI에서 같은 enum을 중복 정의하지 않는다.
+- 실패를 빈 값으로 돌려주지 않는다. 빈 계획·빈 답변은 호출한 쪽에서 성공과
+  구분되지 않으므로 계약에서 막는다(AI-COMMON-02).
 - AI는 계획과 행동을 제안만 한다.
   실제 DB 저장, ID 생성, 상태 관리, 권한 확인, 승인 및 실행은 BE가 담당한다.
   따라서 Step/Action ID, 상태값, 승인 여부 등은 이 계약에 포함하지 않는다.
@@ -78,8 +80,28 @@ class PlanChatRequest(ContractModel):
     event_id: str
     # 저장된 조건. 이미 정한 값을 다시 묻지 않기 위해 매 호출에 함께 넘긴다
     conditions: EventConditions
-    # 시간순 대화. 마지막 항목이 이번 사용자 발화
-    messages: tuple[ChatTurn, ...]
+    # 시간순 대화. 마지막 항목이 이번 사용자 발화다.
+    messages: tuple[ChatTurn, ...] = Field(min_length=1)
+
+    @field_validator("messages")
+    @classmethod
+    def _end_with_user_turn(cls, value: tuple[ChatTurn, ...]) -> tuple[ChatTurn, ...]:
+        """
+        계획 대화 요청은 반드시 이번 사용자 발화로 끝나야 한다.
+
+        사용자 발화가 빠진 채 이전 대화만 전달되거나,
+        AI 답변을 마지막으로 다시 호출하는 경우를 막는다.
+    
+
+        [참고]
+        화면에 처음 보이는 인사는 AI 호출 없이 BE가 붙이므로(FE 명세 POST /events)
+        이 계약이 받는 대화는 항상 사용자 발화로 끝난다. 이번 발화를 빠뜨리고
+        이력만 보내거나 직전 AI 답변이 마지막에 남은 호출을 여기서 거른다.
+        AI가 먼저 말을 거는 흐름이 생기면 이 전제부터 다시 본다.
+        """
+        if value[-1].role != MessageRole.USER:
+            raise ValueError("마지막 대화는 사용자 발화여야 합니다")
+        return value
 
 
 class PlanChatResult(ContractModel):
@@ -95,6 +117,18 @@ class PlanChatResult(ContractModel):
 
     # 계획안을 만들 만큼 모였는지에 대한 AI의 판단. 권유일 뿐이라 사용자는 무시할 수 있다
     ready_to_generate: bool
+
+    @field_validator("reply")
+    @classmethod
+    def _require_reply_content(cls, value: str) -> str:
+        """AI가 빈 답변을 정상 결과로 반환하지 못하게 한다.
+
+        빈 문자열이나 공백만 있는 답변은 실패와 구분하기 어렵고,
+        그대로 저장되면 화면에 빈 메시지가 남을 수 있다.
+        """
+        if not value.strip():
+            raise ValueError("답변 내용이 있어야 합니다")
+        return value
 
 
 class PlannedAction(ContractModel):
@@ -190,7 +224,9 @@ class PlanDraft(ContractModel):
     """
 
     # AI가 제안한 행사 진행 단계 목록
-    steps: tuple[PlannedStep, ...]
+    # 단계가 없으면 화면에 보여줄 것도, 확정 후 운영을 시작할 근거도 없다.
+    # 운영 시작에는 시작일과 단계 하나가 필요하다
+    steps: tuple[PlannedStep, ...] = Field(min_length=1)
 
     # AI가 짚은 문장 경고
     warnings: tuple[str, ...] = ()
