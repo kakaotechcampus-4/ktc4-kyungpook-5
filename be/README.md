@@ -78,6 +78,7 @@ be/
 │   │   └── record_service.py
 │   ├── infra/
 │   │   └── s3.py
+│   │   └── agent_client.py
 │   └── ai/                    # AI 모듈. 별도 서버 아님 — BE 프로세스 내부
 │       ├── __init__.py        # BE가 쓰는 단일 공개 진입점 (현재 공개 함수 없음)
 │       ├── facade.py          # BE → AI: 공개 기능 구현 위치
