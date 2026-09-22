@@ -1,0 +1,13 @@
+# 호스트 가상환경. 컨테이너 것과 플랫폼이 달라 들어가면 안 된다.
+.venv
+
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+
+# 실제 값이 든 설정. 이미지에 섞이면 안 된다.
+.env
+
+# 설치 대상이 아닌 보관용 의존성 파일.
+app/ai/docs/legacy-dependencies/
