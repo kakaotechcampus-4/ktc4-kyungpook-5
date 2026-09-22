@@ -5,16 +5,8 @@
 // 실제로 연동한다. 나머지(예산 전망, 진행 단계, 다른 행사 요약)는 BE 엔드포인트가
 // 생기는 대로 교체한다.
 import { apiGet } from '@/shared/api/client'
+import { ACTION_TYPE_LABEL } from '@/shared/lib/labels'
 import type { BudgetForecast, EventSummary, PendingAction } from '@/features/dashboard/types'
-
-const ACTION_TYPE_LABEL: Record<string, string> = {
-  EXTERNAL_SEND: '외부 발송',
-  TRANSFER: '이체',
-  EXPENSE: '지출',
-  CONTRACT: '계약',
-  NOTICE: '공지',
-  CONFIRMATION: '확인 요청',
-}
 
 interface ActionOutFromApi {
   id: string

@@ -13,7 +13,7 @@ export function setAccessToken(token: string | null): void {
   else localStorage.removeItem(TOKEN_KEY)
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit): Promise<ApiSuccess<T>> {
   const token = getAccessToken()
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
@@ -24,25 +24,34 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   })
 
-  if (res.status === 204) return undefined as T
+  if (res.status === 204) return { data: undefined as T, meta: null }
 
   const body = await res.json()
   if (!res.ok) throw new ApiError(body.error)
-  return (body as ApiSuccess<T>).data
+  return body as ApiSuccess<T>
 }
 
 export function apiGet<T>(path: string): Promise<T> {
-  return request<T>(path)
+  return request<T>(path).then((body) => body.data)
+}
+
+// 목록 조회는 meta.totalCount("12건 중 5건 표시")까지 필요해서 봉투째 돌려준다.
+export function apiGetPage<T>(path: string): Promise<ApiSuccess<T[]>> {
+  return request<T[]>(path)
 }
 
 export function apiPost<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined })
+  return request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }).then(
+    (res) => res.data,
+  )
 }
 
 export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined })
+  return request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }).then(
+    (res) => res.data,
+  )
 }
 
 export function apiDelete<T>(path: string): Promise<T> {
-  return request<T>(path, { method: 'DELETE' })
+  return request<T>(path, { method: 'DELETE' }).then((res) => res.data)
 }

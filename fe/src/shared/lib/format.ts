@@ -19,3 +19,28 @@ export function formatDateRange(startDate: string | null, endDate: string | null
     ? `${short(startDate)}–${short(endDate)}`
     : short(startDate)
 }
+
+// 서버는 시각을 ISO UTC로 주는데 화면 문구는 한국 기준이다. 표시 시점에만 KST로 바꾼다.
+const MONTH_DAY = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Seoul',
+  month: 'numeric',
+  day: 'numeric',
+})
+const MONTH_DAY_TIME = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Seoul',
+  month: 'numeric',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+})
+
+// "2026-03-12T14:59:00Z" → "3/12"
+export function formatMonthDay(iso: string): string {
+  return MONTH_DAY.format(new Date(iso))
+}
+
+// "2026-03-08T08:02:00Z" → "3/8 17:02"
+export function formatDateTime(iso: string): string {
+  return MONTH_DAY_TIME.format(new Date(iso)).replace(',', '')
+}
