@@ -7,11 +7,21 @@
 
 from datetime import UTC, date, datetime
 
-from app.core.enums import ActionStatus, ActionType, MemberRole
+from app.core.enums import (
+    ActionStatus,
+    ActionType,
+    EventStatus,
+    MemberRole,
+    StepActor,
+    StepState,
+)
 from app.core.exceptions import EventNotFound
 
 # fixture가 응답하는 유일한 행사. 다른 id는 EVENT_NOT_FOUND다.
 MOCK_EVENT_ID = "evt_9f2c8a"
+
+# dday·상태 계산의 기준일. 실제 시계 대신 fixture 날짜들과 맞춘 고정값이다.
+_TODAY = date(2026, 3, 10)
 
 _MANAGER = {"id": "mbr_01", "name": "박수겸", "role": MemberRole.MANAGER}
 _OWNER = {"id": "mbr_02", "name": "정하늘", "role": MemberRole.OWNER}
@@ -159,6 +169,73 @@ _ACTIONS: list[dict] = [
     },
 ]
 
+_EVENTS: list[dict] = [
+    {
+        "id": MOCK_EVENT_ID,
+        "club_id": "clb_3a71c0",
+        "title": "2026 봄 MT",
+        "status": EventStatus.ON_GOING,
+        "start_date": date(2026, 3, 21),
+        "end_date": date(2026, 3, 22),
+    },
+]
+
+# step_id는 _ACTIONS의 step_id와 맞춘다. completed_at 유무로 state(DONE/CURRENT/TODO)를
+# 계산하므로(이슈 #17 판단 A), 여기 값만 바꾸면 진행 상황이 바뀐다.
+_STEPS: list[dict] = [
+    {
+        "id": "stp_01",
+        "step_order": 10,
+        "name": "사전 조사",
+        "actor": StepActor.AI,
+        "started_time": _utc(2026, 3, 5, 0, 0),
+        "deadline": None,
+        "completed_at": _utc(2026, 3, 6, 10, 0),
+    },
+    {
+        "id": "stp_02",
+        "step_order": 20,
+        "name": "세부사항 조정",
+        "actor": StepActor.APPROVAL_REQUIRED,
+        "started_time": _utc(2026, 3, 6, 10, 0),
+        "deadline": None,
+        "completed_at": _utc(2026, 3, 9, 9, 0),
+    },
+    {
+        "id": "stp_03",
+        "step_order": 30,
+        "name": "입금 내역 확인",
+        "actor": StepActor.AI,
+        "started_time": _utc(2026, 3, 10, 0, 0),
+        "deadline": _utc(2026, 3, 12, 14, 59),
+        "completed_at": None,
+    },
+    {
+        "id": "stp_04",
+        "step_order": 40,
+        "name": "사전 안내",
+        "actor": StepActor.MANUAL,
+        "started_time": None,
+        "deadline": None,
+        "completed_at": None,
+    },
+]
+
+
+def _step_states(steps: list[dict]) -> dict[str, StepState]:
+    """이전 단계가 전부 completed_at 있으면 DONE, 처음 없는 곳이 CURRENT, 그 뒤는 TODO."""
+    states: dict[str, StepState] = {}
+    reached_current = False
+    for step in sorted(steps, key=lambda s: s["step_order"]):
+        if reached_current:
+            states[step["id"]] = StepState.TODO
+        elif step["completed_at"] is None:
+            states[step["id"]] = StepState.CURRENT
+            reached_current = True
+        else:
+            states[step["id"]] = StepState.DONE
+    return states
+
 
 def _expand_payload(row: dict) -> dict:
     """CONFIRMATION 선택지는 payload(JSONB)에 들어 있다. 응답 평탄화는 여기서만 한다."""
@@ -198,3 +275,97 @@ def list_actions(
     total_count = len(rows)
     offset = (page - 1) * size
     return [_expand_payload(row) for row in rows[offset : offset + size]], total_count
+
+
+def _pending_approval_count(event_id: str) -> int:
+    """M1 카드와 같은 기준(PENDING, CONFIRMATION 제외)으로 센다.
+
+    지금은 fixture 전체가 한 행사(evt_9f2c8a) 소속이라 event_id로 걸러도 결과는
+    같지만, DB 연결 후 쿼리로 바꿀 때 시그니처가 바뀌지 않도록 미리 받아둔다.
+    """
+    return len(
+        [
+            row
+            for row in _ACTIONS
+            if row["status"] == ActionStatus.PENDING
+            and row["type"] != ActionType.CONFIRMATION
+        ]
+        if event_id == MOCK_EVENT_ID
+        else []
+    )
+
+
+def list_events(
+    *,
+    club_id: str | None = None,
+    status: EventStatus | None = None,
+    page: int = 1,
+    size: int = 20,
+) -> tuple[list[dict], int]:
+    """행사 목록과 전체 건수를 돌려준다."""
+    rows = _EVENTS
+    if club_id is not None:
+        rows = [row for row in rows if row["club_id"] == club_id]
+    if status is not None:
+        rows = [row for row in rows if row["status"] == status]
+
+    total_count = len(rows)
+    offset = (page - 1) * size
+    page_rows = rows[offset : offset + size]
+
+    states = _step_states(_STEPS)
+    ordered_steps = sorted(_STEPS, key=lambda s: s["step_order"])
+    current_step = next(
+        (s for s in ordered_steps if states[s["id"]] == StepState.CURRENT), None
+    )
+    step_progress = [
+        {"step_order": s["step_order"], "state": states[s["id"]]} for s in ordered_steps
+    ]
+
+    result = [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "status": row["status"],
+            "start_date": row["start_date"],
+            "end_date": row["end_date"],
+            "dday": (row["start_date"] - _TODAY).days if row["start_date"] else None,
+            "current_step_name": current_step["name"] if current_step else None,
+            "step_progress": step_progress,
+            "pending_approval_count": _pending_approval_count(row["id"]),
+            "payment": None,
+            "budget": None,
+        }
+        for row in page_rows
+    ]
+    return result, total_count
+
+
+def list_steps(event_id: str) -> list[dict]:
+    """행사의 Step 목록을 step_order 순으로 돌려준다."""
+    if event_id != MOCK_EVENT_ID:
+        raise EventNotFound
+
+    ordered_steps = sorted(_STEPS, key=lambda s: s["step_order"])
+    states = _step_states(ordered_steps)
+
+    result = []
+    for step in ordered_steps:
+        step_actions = [row for row in _ACTIONS if row["step_id"] == step["id"]]
+        done_actions = [row for row in step_actions if row["status"] == ActionStatus.DONE]
+        remaining_actions = [
+            row
+            for row in step_actions
+            if row["status"] in (ActionStatus.PENDING, ActionStatus.APPROVED)
+        ]
+        result.append(
+            {
+                **step,
+                "state": states[step["id"]],
+                "completed_count": len(done_actions),
+                "total_action_count": len(step_actions),
+                "done_actions": done_actions,
+                "remaining_actions": remaining_actions,
+            }
+        )
+    return result
