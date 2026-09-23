@@ -2,12 +2,27 @@
 
 from fastapi import APIRouter, Query
 
-from app.core.enums import ActionStatus, ActionType
+from app.core.enums import ActionStatus, ActionType, EventStatus
 from app.core.exceptions import ValidationFailed
-from app.schemas.events import ActionListResponse
+from app.schemas.events import ActionListResponse, EventListResponse, StepListResponse
 from app.services import event_service
 
 router = APIRouter(prefix="/api/v1/events", tags=["events"])
+
+
+@router.get("", response_model=EventListResponse)
+def list_events(
+    club_id: str | None = Query(None, alias="clubId"),
+    status: EventStatus | None = Query(None),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+) -> EventListResponse:
+    rows, total_count = event_service.list_events(
+        club_id=club_id, status=status, page=page, size=size
+    )
+    return EventListResponse.model_validate(
+        {"data": rows, "meta": {"page": page, "size": size, "total_count": total_count}}
+    )
 
 
 def _parse_statuses(raw: str | None) -> list[ActionStatus] | None:
@@ -49,3 +64,9 @@ def list_event_actions(
     return ActionListResponse.model_validate(
         {"data": rows, "meta": {"page": page, "size": size, "total_count": total_count}}
     )
+
+
+@router.get("/{event_id}/steps", response_model=StepListResponse)
+def list_event_steps(event_id: str) -> StepListResponse:
+    rows = event_service.list_steps(event_id)
+    return StepListResponse.model_validate({"data": rows, "meta": None})
