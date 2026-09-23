@@ -36,6 +36,8 @@ Git은 커밋 비교 시 내용 유사성으로 이동을 감지합니다.
       함께 설치하는 openai 클라이언트를 사용하므로 직접 의존성 필요 여부만 확인한다.
 - [ ] AI_API_BASE_URL·AI_API_KEY·AI_MODEL을 공통 설정에 연결한다.
       ML API 키를 사용하므로 ANTHROPIC_API_KEY·ANTHROPIC_MODEL은 쓰지 않는다.
+- [ ] AI_EMBEDDING_BASE_URL·AI_EMBEDDING_MODEL도 함께 연결한다. 임베딩은 채팅과
+      다른 게이트웨이 배포라 주소가 다르다. 키가 같으면 AI_EMBEDDING_API_KEY는 비워둔다.
 - [ ] AI_SERVICE_BASE_URL·BACKEND_BASE_URL의 별도 서비스 전제를 제거한다.
 - [ ] BE 조회·계산 구현체를 합의된 AI port에 연결하고 AI 객체를 초기화한다.
 - [ ] BE 서비스는 app.ai에서 공개된 이름만 사용한다.

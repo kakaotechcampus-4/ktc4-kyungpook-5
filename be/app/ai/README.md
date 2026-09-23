@@ -20,7 +20,7 @@ be/app/ai/
 ├── ports.py             # AI가 사용할 BE 조회·계산 인터페이스
 ├── config.py            # AI 전용 설정
 ├── errors.py            # AI 내부 오류 타입
-├── llm.py               # 공통 채팅 모델 생성
+├── llm.py               # 공통 채팅·임베딩 모델 생성
 ├── features/
 │   ├── planning/        # 조건 확인·질문·계획 생성 및 수정
 │   ├── retrieval/       # 기록 검색·근거 구성
@@ -55,8 +55,12 @@ be/app/ai/
 모델 연동은 Elice ML API의 OpenAI 호환 API와 `ChatOpenAI`를 기준으로 합니다.
 메인 모델은 `gpt-5.6-terra`이며 모델명은 `AI_MODEL`로 전달합니다.
 
+임베딩은 `openai/text-embedding-3-small`을 같은 게이트웨이의 별도 배포로 호출합니다.
+출력은 1536차원이고 이 값이 저장소(pgvector) 컬럼 차원을 정합니다.
+
 모델은 `llm.py`에서만 만듭니다. 기본 구성은 `get_chat_model()`,
 기능별 조정이 필요하면 `build_chat_model()`을 사용합니다.
+임베딩은 `get_embeddings()`와 `build_embeddings()`를 사용합니다.
 `gpt-5` 계열은 `temperature=1` 외의 값을 받지 않으므로 답변을 일정하게
 유지할 때는 온도 대신 프롬프트와 구조화 출력을 사용합니다.
 
@@ -78,6 +82,9 @@ Agent·노드에서만 `build_chat_model(reasoning={"effort": "none"})`으로 �
 | `AI_API_KEY` | 모델 API 인증 키 |
 | `AI_MODEL` | 사용할 모델 |
 | `AI_REQUEST_TIMEOUT_SECONDS` | 모델 요청 제한 시간 |
+| `AI_EMBEDDING_BASE_URL` | 임베딩 API 기본 주소. 채팅과 다른 배포입니다 |
+| `AI_EMBEDDING_API_KEY` | 임베딩 API 인증 키. 비우면 `AI_API_KEY`를 씁니다 |
+| `AI_EMBEDDING_MODEL` | 사용할 임베딩 모델 |
 
 설정은 BE 실행 환경에서 전달하며 AI 모듈 전용 `.env`는 자동 로드하지 않습니다.
 의존성 설치와 실행은 BE에서 통합 관리합니다.

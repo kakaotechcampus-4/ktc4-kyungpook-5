@@ -2,6 +2,7 @@
 
 모델 호출: ML API에 HTTP 요청
 값이 없어도 import는 성공하고, 실제 호출 시점에 `require_api()`로 확인한다.
+임베딩은 게이트웨이의 별도 엔드포인트라 주소·모델을 따로 받고 `require_embedding()`으로 확인한다.
 """
 
 from functools import lru_cache
@@ -34,8 +35,25 @@ class AISettings(BaseSettings):
     api_key: SecretStr = SecretStr("")
     # 사용할 모델 식별자
     model: str = ""
-    # 단일 요청의 응답 대기 상한(초).
+    # 단일 요청의 응답 대기 상한(초). 채팅·임베딩 호출에 함께 적용한다.
     request_timeout_seconds: float = DEFAULT_REQUEST_TIMEOUT_SECONDS
+
+    # --- 임베딩 -------------------------------------------------------
+    # 임베딩은 채팅 모델과 다른 게이트웨이 주소로 배포된다(.../v1/embeddings).
+    # api_base_url을 재사용하면 채팅 배포로 요청이 가므로 주소를 따로 받는다.
+    embedding_base_url: str = ""
+    # 임베딩 배포의 키가 채팅과 다를 수 있어 따로 둔다.
+    # 비워두면 같은 계정의 키로 보고 api_key를 쓴다.
+    embedding_api_key: SecretStr = SecretStr("")
+    # 게이트웨이가 지원하는 임베딩 모델 식별자.
+    embedding_model: str = ""
+
+    @property
+    def resolved_embedding_api_key(self) -> SecretStr:
+        """임베딩 호출에 쓸 키. 따로 주지 않았으면 채팅과 같은 키를 쓴다."""
+        if _text(self.embedding_api_key).strip():
+            return self.embedding_api_key
+        return self.api_key
 
     @field_validator("request_timeout_seconds", mode="before")
     @classmethod
@@ -49,16 +67,27 @@ class AISettings(BaseSettings):
             return DEFAULT_REQUEST_TIMEOUT_SECONDS
         return value
 
-    def require_api(self) -> None:
-        """호출 직전에 필수 설정을 확인, 값 노출 X"""
-        missing = [
-            name
-            for name in ("api_base_url", "api_key", "model")
-            if not _text(getattr(self, name)).strip()
-        ]
+    def _require(self, *names: str) -> None:
+        """비어 있는 항목을 환경변수 이름으로 알린다. 값은 노출하지 않는다."""
+        missing = [name for name in names if not _text(getattr(self, name)).strip()]
         if missing:
-            names = ", ".join(f"AI_{name.upper()}" for name in missing)
-            raise AIConfigError(f"AI 설정이 비어 있습니다: {names}")
+            shown = ", ".join(f"AI_{name.upper()}" for name in missing)
+            raise AIConfigError(f"AI 설정이 비어 있습니다: {shown}")
+
+    def require_api(self) -> None:
+        """채팅 모델 호출 직전에 필수 설정을 확인한다."""
+        self._require("api_base_url", "api_key", "model")
+
+    def require_embedding(self) -> None:
+        """임베딩 호출 직전에 필수 설정을 확인한다.
+
+        키는 채팅과 같은 것을 쓸 수 있어 resolved_embedding_api_key로 본다.
+        """
+        self._require("embedding_base_url", "embedding_model")
+        if not _text(self.resolved_embedding_api_key).strip():
+            raise AIConfigError(
+                "AI 설정이 비어 있습니다: AI_EMBEDDING_API_KEY 또는 AI_API_KEY"
+            )
 
 
 @lru_cache(maxsize=1)

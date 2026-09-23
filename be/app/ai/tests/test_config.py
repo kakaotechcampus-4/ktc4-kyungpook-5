@@ -10,6 +10,9 @@ ENV_NAMES = (
     "AI_API_KEY",
     "AI_MODEL",
     "AI_REQUEST_TIMEOUT_SECONDS",
+    "AI_EMBEDDING_BASE_URL",
+    "AI_EMBEDDING_API_KEY",
+    "AI_EMBEDDING_MODEL",
 )
 
 
@@ -89,3 +92,48 @@ def test_요청_시간_제한을_빈_값으로_두면_기본값을_쓴다(clean_
 
     monkeypatch.setenv("AI_REQUEST_TIMEOUT_SECONDS", "   ")
     assert AISettings().request_timeout_seconds == 60.0
+
+
+def test_임베딩_설정이_없으면_확인_시점에_실패한다(clean_env):
+    with pytest.raises(AIConfigError) as error:
+        AISettings(api_key="test-key").require_embedding()
+
+    message = str(error.value)
+    assert "AI_EMBEDDING_BASE_URL" in message
+    assert "AI_EMBEDDING_MODEL" in message
+
+
+def test_임베딩_키를_비워두면_채팅_키를_쓴다(clean_env, monkeypatch):
+    """게이트웨이 배포가 달라도 같은 계정의 키를 쓰는 경우를 받는다."""
+    monkeypatch.setenv("AI_API_KEY", "shared-key")
+    monkeypatch.setenv("AI_EMBEDDING_BASE_URL", "https://mlapi.test/embed/v1")
+    monkeypatch.setenv("AI_EMBEDDING_MODEL", "text-embedding-3-small")
+
+    settings = AISettings()
+    settings.require_embedding()
+
+    assert settings.resolved_embedding_api_key.get_secret_value() == "shared-key"
+
+
+def test_임베딩_키를_따로_주면_그것을_쓴다(clean_env, monkeypatch):
+    monkeypatch.setenv("AI_API_KEY", "chat-key")
+    monkeypatch.setenv("AI_EMBEDDING_API_KEY", "embedding-key")
+
+    assert AISettings().resolved_embedding_api_key.get_secret_value() == "embedding-key"
+
+
+def test_키가_둘_다_없으면_임베딩_확인이_실패한다(clean_env, monkeypatch):
+    monkeypatch.setenv("AI_EMBEDDING_BASE_URL", "https://mlapi.test/embed/v1")
+    monkeypatch.setenv("AI_EMBEDDING_MODEL", "text-embedding-3-small")
+
+    with pytest.raises(AIConfigError, match="AI_EMBEDDING_API_KEY"):
+        AISettings().require_embedding()
+
+
+def test_임베딩_설정을_문자열로_만들어도_키가_남지_않는다(clean_env, monkeypatch):
+    monkeypatch.setenv("AI_EMBEDDING_API_KEY", "super-secret-embedding-key")
+
+    settings = AISettings()
+
+    assert "super-secret-embedding-key" not in repr(settings)
+    assert "super-secret-embedding-key" not in settings.model_dump_json()
