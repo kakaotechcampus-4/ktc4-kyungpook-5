@@ -3,19 +3,23 @@
 `ai/README.md`, `be/README.md`, `fe/README.md`에서 **결정된 항목**을 모은 문서입니다.
 세 저장소의 원본 README가 상세 근거를 가지며, 이 문서는 요약본입니다.
 
-작성 기준일: 2026-09-16 / 세 파트 모두 **디렉터리 구조만 정의된 단계**(로직 미구현)입니다.
+작성 기준일: 2026-09-23
 
 ## 전체 구성
 
+AI는 별도 서버가 아니라 BE 프로세스 안의 내부 모듈(`be/app/ai/`)입니다. BE↔AI는 HTTP가 아니라
+함수 호출이며, 내부 API 엔드포인트를 두지 않습니다.
+
 ```text
-FE (React SPA) ──REST──> BE (FastAPI) ──내부 API──> AI (FastAPI)
-                          │                          │
-                          ├─ PostgreSQL              └─ Anthropic LLM
-                          └─ AWS S3
+FE (React SPA) ──REST──> BE (FastAPI)
+                          ├─ PostgreSQL (+ pgvector)
+                          ├─ AWS S3
+                          └─ app/ai/ (내부 모듈, facade·ports) ──ML API──> LLM · 임베딩 게이트웨이
 ```
 
-- FE는 BE만 호출하고, AI 서비스를 직접 호출하지 않습니다.
-- AI는 계산이 필요하면 BE의 계산 API를 tool로 호출합니다 (AI가 직접 계산하지 않음).
+- FE는 BE만 호출하고, AI 모듈을 직접 호출하지 않습니다.
+- BE는 `app.ai`가 공개한 이름(`facade.py`)만 import해서 AI 기능을 호출하고 AI 내부 구현에는 직접 접근하지 않습니다.
+- AI가 BE의 계산·조회 결과가 필요하면 `ports.py`에 정의된 인터페이스(BE가 구현체 주입)를 Tool로 호출합니다. AI가 직접 계산하지 않고 BE 모델·DB·서비스도 직접 import하지 않습니다.
 
 ## 확정된 기술 스택
 
@@ -23,7 +27,7 @@ FE (React SPA) ──REST──> BE (FastAPI) ──내부 API──> AI (FastAP
 
 | 항목 | 선택 |
 | --- | --- |
-| API 프레임워크 | FastAPI (BE, AI 모두) |
+| API 프레임워크 | FastAPI (BE) |
 | Python | 3.12 (BE·AI 통일) |
 | Python 패키지 관리 | uv (`pyproject.toml` + `uv.lock`) |
 | 챗봇 응답 방식 | 동기 — 스트리밍 미사용 (FE·AI 합의) |
@@ -46,6 +50,7 @@ FE (React SPA) ──REST──> BE (FastAPI) ──내부 API──> AI (FastAP
 | 항목 | 선택 |
 | --- | --- |
 | DB | PostgreSQL (금액은 정수 원 단위로만 저장, NF2) |
+| RAG 임베딩 저장 | PostgreSQL pgvector, 청크 벡터 컬럼 `vector(1536)` — Milvus 대신 확정 |
 | ORM | SQLAlchemy 2.0 |
 | 마이그레이션 | Alembic |
 | 파일 저장 | AWS S3 (`infra/s3.py`) — 영수증·기록 원본 |
@@ -57,9 +62,11 @@ FE (React SPA) ──REST──> BE (FastAPI) ──내부 API──> AI (FastAP
 
 | 항목 | 선택 |
 | --- | --- |
-| LLM 제공자 | Anthropic |
+| 실행 위치 | 별도 서버 아님 — BE 내부 모듈 (`be/app/ai/`) |
+| LLM 제공자 | ML API 게이트웨이 (OpenAI 호환), 메인 모델 `gpt-5.6-terra` — Anthropic 아님 |
+| 임베딩 제공자 | 같은 게이트웨이의 `text-embedding-3-small`, 출력 차원 1536 |
 | 실행 흐름 관리 | LangGraph |
-| LLM 연동 구성요소 | LangChain 선택적 사용 (필요한 연동만) |
+| LLM 연동 구성요소 | langchain-openai (Responses API 경로 고정 — tool 호출 지원) |
 | 프롬프트 관리 | 기능별 `prompts/` — 처리 코드와 함께 관리 |
 | 기능 분리 | `features/` (planning · retrieval · operations) + `workflow/` (분기·연결) |
 
@@ -99,6 +106,9 @@ FE (React SPA) ──REST──> BE (FastAPI) ──내부 API──> AI (FastAP
 ### AI
 
 - 기능별 처리는 `features/`, 기능 간 연결·분기는 `workflow/`. 기능끼리 내부 구현을 직접 import 하지 않는다.
+- BE는 `app.ai`가 공개한 이름(`facade.py`)만 import한다. AI 내부 구현에 직접 접근하지 않는다.
+- AI는 BE의 모델·DB·서비스를 직접 import하지 않는다. BE 기능이 필요하면 `ports.py`에 정의된 인터페이스로만 쓰고, BE가 구현체를 주입한다.
+- BE↔AI 사이에 별도 HTTP 통신을 두지 않는다. 내부 API 엔드포인트를 만들지 않는다.
 
 ## 환경변수 (확정된 것)
 
@@ -106,11 +116,13 @@ FE (React SPA) ──REST──> BE (FastAPI) ──내부 API──> AI (FastAP
 | --- | --- | --- |
 | FE | `VITE_API_BASE_URL` | API 서버 주소 |
 | BE | `DATABASE_URL` | PostgreSQL 연결 문자열 |
-| BE | `AI_SERVICE_BASE_URL` | AI 내부 API 주소 |
 | BE | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `S3_BUCKET_NAME` | S3 접근·버킷 |
-| AI | `ANTHROPIC_API_KEY` | LLM 호출 인증 |
-| AI | `ANTHROPIC_MODEL` | 사용할 모델 지정 |
-| AI | `BACKEND_BASE_URL` | AI가 호출할 BE API 주소 |
+| BE (`app/ai`) | `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | ML API 게이트웨이 호출 — 채팅 모델 (`gpt-5.6-terra`) |
+| BE (`app/ai`) | `AI_REQUEST_TIMEOUT_SECONDS` | 단일 요청 응답 대기 상한(초), 비우면 60 |
+| BE (`app/ai`) | `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_MODEL` | 임베딩 전용 설정 — 키를 비우면 `AI_API_KEY` 재사용 |
+
+AI는 별도 서버가 아니라 BE 프로세스 안에서 실행되므로, `ANTHROPIC_*`·`AI_SERVICE_BASE_URL`·`BACKEND_BASE_URL`처럼
+독립 서비스를 전제로 한 변수는 쓰지 않습니다.
 
 세 파트 모두 `.env.example`만 커밋하고 실제 값이 든 `.env`는 커밋하지 않습니다.
 변수명·필수 여부는 각 파트의 설정 코드 작성 시 확정합니다.
@@ -125,17 +137,17 @@ FE (React SPA) ──REST──> BE (FastAPI) ──내부 API──> AI (FastAP
 | 로컬 Docker Compose 범위 | FE · BE · AI | FE·AI를 컨테이너로 포함할지, BE/DB만 묶을지 |
 | 인증 방식 | BE | JWT vs 세션 — `core/security.py`에서 구현, `JWT_SECRET_KEY`/`SESSION_SECRET` 변수도 이에 따라 결정 |
 | RDS 병행 여부 | BE | EC2 + Docker Compose 배포에서 DB를 RDS로 뺄지 |
-| 임베딩 저장 위치 | BE · AI | `records` 임베딩을 PostgreSQL(pgvector)에 둘지 Milvus를 쓸지 (BE는 메타데이터만 보유하는 안 포함) |
 | S3 버킷 구조·접근 권한 | BE | 영수증 등 민감 파일 포함 — NF6(민감정보 최소 수집)과 연결 |
 | 비동기 세션 사용 여부 | BE | SQLAlchemy 2.0 async 사용 여부 |
 | 린트 · 포맷 도구 | BE · AI | 첫 구현에서 도구와 실행 명령 결정 |
-| LLM 모델·버전 | AI | 제공자만 Anthropic으로 확정 |
 | 계획 대화·체크포인트 저장 방식 | AI | 세션 식별자 포함 |
 | 기록 검색·색인 방식 | AI | 자료 정제·색인·저장 방식 |
-| 내부 API 계약 | BE · AI | 엔드포인트명·요청/응답 스키마, FE↔BE 세부 규칙(에러 포맷·페이지네이션 파라미터명·상태 코드별 처리) |
+| BE↔AI 내부 계약 | BE · AI | `app.ai`의 `facade.py`/`ports.py` 함수명과 입출력 필드 (HTTP 엔드포인트 아님). 합의 전 빈 Protocol·가짜 응답은 만들지 않음 |
+| FE↔BE 세부 규칙 | FE · BE | 페이지네이션 파라미터명, 상태 코드별 처리 등 |
 
 ## 포함하지 않기로 한 것
 
 - 챗봇 스트리밍 응답 (SSE/스트림 파싱)
 - AI Trace · evaluation 구성
-- LangChain 전체 패키지 직접 추가 (필요한 연동 패키지만)
+- LangChain 전체 패키지 직접 추가 (필요한 연동 패키지만 — `langchain-openai`)
+- AI를 별도 서버로 두고 BE와 HTTP로 통신하는 구조 — 내부 모듈 호출로 대체

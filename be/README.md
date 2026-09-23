@@ -9,7 +9,7 @@ mock API는 DB 없이 고정 응답만 내려 FE가 화면을 실제 API에 붙�
 | 항목 | 선택 | 결정 이유 / 메모 |
 | --- | --- | --- |
 | 언어 | Python 3.12 | AI와 통일 |
-| API 프레임워크 | FastAPI | FE와 AI가 호출하는 API 서버 |
+| API 프레임워크 | FastAPI | FE가 호출하는 API 서버 |
 | DB | PostgreSQL | 금액은 정수 원 단위로만 저장 (NF2) |
 | ORM | SQLAlchemy 2.0 | 비동기 세션 사용 여부는 구현 시 결정 |
 | 마이그레이션 | Alembic | DB가 아직 없어 리비전을 만들지 않았습니다. 첫 배포 직전에 초기 리비전 하나를 만듭니다 |
@@ -25,9 +25,10 @@ mock API는 DB 없이 고정 응답만 내려 FE가 화면을 실제 API에 붙�
 - FE 명세 반영이 필요한 5건 — [검토안 §4](../docs/week6/be/운영해_BE_스키마_검토안.md)
 - 회의·확인이 필요한 항목 — [검토안 §5](../docs/week6/be/운영해_BE_스키마_검토안.md)
 - `participants` · `transactions` 테이블 — 금액 안건 확정 후 추가
-- FE/AI 내부 API의 엔드포인트명과 요청·응답 스키마
-- RAG 원본·근거 데이터(`records`)를 BE의 PostgreSQL에 메타데이터만 둘지, 임베딩까지 함께 둘지 (Milvus vs pgvector)
+- `app.ai`의 `facade.py`/`ports.py` 함수명과 입출력 필드 — BE↔AI는 HTTP가 아니라 함수 호출이라 "엔드포인트"는 아니지만 계약 자체는 아직 미확정
 - S3 버킷 구조와 접근 권한 — 영수증 등 민감 파일이 포함되어 NF6(민감정보 최소 수집)과 연결됨
+
+RAG 임베딩 저장 위치는 PostgreSQL pgvector(`vector(1536)`)로 확정
 
 ## 반드시 지켜야 할 규칙
 
@@ -75,9 +76,19 @@ be/
 │   │   ├── event_service.py   # 계획/참가자/승인/업무 오케스트레이션
 │   │   ├── event_rules.py     # 참가비·환불·정산 계산 순수함수 (규칙 엔진, NF1)
 │   │   └── record_service.py
-│   └── infra/
-│       ├── s3.py
-│       └── agent_client.py    # AI 서비스 호출 클라이언트
+│   ├── infra/
+│   │   └── s3.py
+│   │   └── agent_client.py
+│   └── ai/                    # AI 모듈. 별도 서버 아님 — BE 프로세스 내부
+│       ├── __init__.py        # BE가 쓰는 단일 공개 진입점 (현재 공개 함수 없음)
+│       ├── facade.py          # BE → AI: 공개 기능 구현 위치
+│       ├── ports.py           # AI → BE: BE가 주입하는 조회·계산 인터페이스
+│       ├── contracts.py       # BE↔AI 공개 요청·응답 데이터 계약
+│       ├── config.py          # AI_* 환경변수 (ML API 게이트웨이 설정)
+│       ├── llm.py             # 채팅 모델 생성
+│       ├── features/          # planning · retrieval · operations
+│       ├── workflow/          # LangGraph 분기·연결
+│       └── tools/             # Agent가 쓰는 도구 (accounting · events · records)
 ├── tests/
 │   ├── unit/                  # event_rules.py 순수함수 테스트
 │   └── integration/           # 라우터 엔드투엔드 테스트
@@ -97,19 +108,22 @@ be/
 | `models` | DB 테이블과 매핑되는 ORM 모델 |
 | `db` | DB 연결과 세션 관리 |
 | `core` | 설정, 인증, 에러 처리 등 공통 모듈 |
-| `infra` | AI 서버, S3 등 외부 연동 |
+| `infra` | S3 등 외부 연동. AI는 별도 연동이 아니라 `app/ai/` 내부 모듈 |
 
 ## 모듈별 담당 범위
 
 | 모듈 | 담당 | 예시 |
 | --- | --- | --- |
 | `services/event_rules.py` | 참가비·환불·정산 등 결정론적 계산 (순수 함수, NF1) | 확정 인원 39명, 최소 인원 40명 → 미달 판정 |
-| `routers/*` | FE·AI가 호출하는 REST 엔드포인트, 요청 검증 | `POST /events/{id}/participants/{id}/cancel` (`routers/events.py`) |
+| `routers/*` | FE가 호출하는 REST 엔드포인트, 요청 검증 | `POST /events/{id}/participants/{id}/cancel` (`routers/events.py`) |
 | `services/event_service.py` | 계산 결과와 모델 변경을 하나의 트랜잭션으로 조합 (오케스트레이션) | 취소 처리 시 환불 판정 + 인원 재계산 + 후속 질문 생성을 함께 커밋 |
-| `infra/agent_client.py` | AI 내부 API 호출 | 취소로 인한 영향 설명·대응안 생성을 AI에 요청 |
+| `app/ai/facade.py` | BE → AI 공개 기능 호출 (HTTP 아님, 함수 호출) | 취소로 인한 영향 설명·대응안 생성을 AI에 요청 |
+| `app/ai/ports.py` | AI → BE 조회·계산 인터페이스 (BE가 구현체 주입) | AI가 최소 인원 미달 판정 결과를 받아 대응안 생성 |
 | `infra/s3.py` | 영수증·기록 원본 파일 업로드·조회 | 지출 등록 시 영수증 이미지를 S3에 올리고 URL을 `expense`에 저장 |
 
-`services/event_rules.py`는 AI(`tools/accounting.py` 등)가 tool로 호출하는 계산이기도 합니다. AI가 임의로 계산하지 않고 이 결과를 그대로 받아 쓰도록, 이 경계는 API 계약으로도 명시합니다.
+`services/event_rules.py`는 AI(`tools/accounting.py` 등)가 Tool로 호출하는 계산이기도 합니다. AI는 직접 계산하지 않고
+`ports.py`로 주입된 이 결과를 그대로 받아 쓰며, 이 경계는 `contracts.py`의 데이터 계약으로도 명시합니다.
+AI는 BE의 모델·DB·서비스를 직접 import하지 않습니다.
 
 ## 데이터가 흐르는 경로 (예: 참가자 취소)
 
@@ -117,7 +131,7 @@ be/
 요청 → routers/events.py (취소 엔드포인트)
         → services/event_rules.py: 환불 규칙·기한 경계 판정, 최소 인원 재계산
         → services/event_service.py: 판정 결과 반영 + 후속 질문 레코드 생성 (하나의 트랜잭션)
-        → infra/agent_client.py: 영향 설명·대응안 생성 필요 시 AI 호출
+        → app/ai/facade.py: 영향 설명·대응안 생성 필요 시 AI 기능 호출 (HTTP 아님)
    ← 환불 판정 + 영향 + 후속 질문을 함께 응답
 ```
 
@@ -125,12 +139,13 @@ be/
 
 ## API 연동
 
-BE는 두 방향에서 호출됩니다.
+BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE 하나뿐이고, BE ↔ AI는 같은 프로세스 안의 함수 호출입니다.
 
-- **FE → BE**: 행사 생성, 질문·답변, 대안 비교, 승인, 수납 대조, 취소·환불, 정산 조회 등 서비스의 주 REST API(`routers/clubs.py`, `routers/events.py`, `routers/records.py`).
-- **AI → BE**: AI의 `tools/`가 호출하는 계산·조회용 내부 API(참가비·환불 계산, 매칭, 행사 상태 조회 등). 엔드포인트와 스키마는 AI 팀과 별도로 확정합니다.
+- **FE → BE (HTTP)**: 행사 생성, 질문·답변, 대안 비교, 승인, 수납 대조, 취소·환불, 정산 조회 등 서비스의 주 REST API(`routers/clubs.py`, `routers/events.py`, `routers/records.py`).
+- **BE → AI (함수 호출)**: BE가 `app/ai/facade.py`의 공개 함수를 호출합니다. 별도 서버·엔드포인트가 없습니다.
+- **AI → BE (함수 호출)**: AI의 `tools/`가 계산·조회가 필요할 때 `app/ai/ports.py`에 정의된 인터페이스를 호출합니다. BE가 구현체를 주입하며 AI는 BE의 라우터·서비스·모델을 직접 import하지 않습니다.
 
-공통 요청·응답 형식은 `app/schemas/`에서 라우터별로 관리하고, 에러 응답 형식(예: `MINIMUM_HEADCOUNT_VIOLATED`, `APPROVAL_REQUIRED`)은 `core/exceptions.py`를 통해 전 엔드포인트에서 동일한 구조를 씁니다.
+함수명·입출력 필드 계약은 아직 미확정입니다. 공통 요청·응답 형식은 `app/schemas/`에서 라우터별로 관리하고, 에러 응답 형식(예: `MINIMUM_HEADCOUNT_VIOLATED`, `APPROVAL_REQUIRED`)은 `core/exceptions.py`를 통해 전 엔드포인트에서 동일한 구조를 씁니다.
 
 ## 데이터 모델
 
@@ -157,7 +172,9 @@ BE는 두 방향에서 호출됩니다.
 | 이름 | 용도 | 상태 |
 | --- | --- | --- |
 | `DATABASE_URL` | PostgreSQL 연결 문자열 | 변수명·값 확정 예정 |
-| `AI_SERVICE_BASE_URL` | `infra/agent_client.py`가 호출할 AI 내부 API 주소 | 변수명·값 확정 예정 |
+| `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | `app/ai/config.py` — ML API 게이트웨이 호출, 채팅 모델(`gpt-5.6-terra`) | 코드 반영됨 (`app/ai/config.py`) |
+| `AI_REQUEST_TIMEOUT_SECONDS` | 단일 요청 응답 대기 상한(초). 비우면 60 | 코드 반영됨 (`app/ai/config.py`) |
+| `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_MODEL` | 임베딩 전용 설정. 키를 비우면 `AI_API_KEY` 재사용 | 값 확정, 공통 설정 연결은 진행 중 |
 | `JWT_SECRET_KEY` / `SESSION_SECRET` | 인증 방식 확정 후 결정 | 미정 |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | `infra/s3.py`의 S3 접근 인증 | 미정 |
 | `S3_BUCKET_NAME` | 영수증·기록 파일을 저장할 버킷 | 미정 |
@@ -174,7 +191,7 @@ uv sync --locked
 cp -n .env.example .env
 ```
 
-`.env`의 DB 연결 정보, AI 서비스 주소, S3 접근 정보를 로컬 환경에 맞게 설정하세요. 기존 `.env`는 덮어쓰지 않습니다.
+`.env`의 DB 연결 정보, `AI_*` ML API 게이트웨이 설정, S3 접근 정보를 로컬 환경에 맞게 설정하세요. 기존 `.env`는 덮어쓰지 않습니다.
 
 로컬 PostgreSQL은 Docker Compose로 띄우는 것을 기본으로 하되, 구체적인 compose 구성은 첫 구현 시 추가합니다.
 아래 mock API는 DB에 접속하지 않으므로 `.env` 설정 없이도 실행됩니다.
