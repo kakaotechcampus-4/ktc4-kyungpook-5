@@ -7,6 +7,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 
 - [기능 요구사항](docs/requirements.md): 제공할 사용자 경험과 확인 기준
 - [아키텍처](docs/architecture.md): 기능별 역할과 AI·BE 책임 경계
+- [BE-AI 데이터 계약](docs/contracts.md): 계약의 목적과 계획 대화 연동 예시
 - [작업 규칙](AGENTS.md): 요구사항 → Issue → 구현 → PR 협업 절차
 - [이전 기록](docs/migration.md): 모듈 이전 내역과 BE 팀 후속 작업
 
