@@ -90,7 +90,7 @@ export default function R1RecordsPage() {
               changeCategory(recordId, target)
             }}
             onDelete={remove}
-            onReplace={(_recordId, file, target) => upload(file, target)}
+            onUploadNew={upload}
             onSubmitColumnMapping={submitColumnMapping}
             onDownloadTemplate={downloadTemplate}
           />

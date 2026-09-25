@@ -68,7 +68,7 @@ export function rejectUploadReason(fileName: string): string | null {
   return fileTypeOf(fileName) ? null : 'xlsx · csv · hwp · pdf · 이미지 파일만 올릴 수 있습니다.'
 }
 
-export type ParseErrorAction = 'COLUMN_MAPPING' | 'TEMPLATE' | 'REPLACE' | 'DELETE'
+export type ParseErrorAction = 'COLUMN_MAPPING' | 'TEMPLATE' | 'UPLOAD_NEW' | 'DELETE'
 
 // 명세: 서버가 만든 문장(`detail`)을 없앴다. FE가 reason 코드를 보고 문구·버튼을 고른다.
 // `debugMessage`는 로그용이라 여기에도, 화면에도 넣지 않는다.
@@ -85,7 +85,7 @@ export const PARSE_ERROR_COPY: Record<
   IMAGE_NOT_READABLE: {
     message: '이미지 파일이라 글자를 읽을 수 없습니다.',
     hint: '캡처 대신 원본 문서를 올리면 내용을 활용할 수 있습니다.',
-    actions: ['REPLACE', 'DELETE'],
+    actions: ['UPLOAD_NEW', 'DELETE'],
   },
   UNSUPPORTED_FORMAT: {
     message: '지원하지 않는 파일 형식입니다.',
