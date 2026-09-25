@@ -24,6 +24,8 @@ export default function M1DashboardPage() {
         onApprove={dashboard.handleApprove}
         onDeny={dashboard.handleDeny}
         onApproveAll={dashboard.handleApproveAll}
+        pendingActionsLoading={dashboard.pendingActionsLoading}
+        pendingActionsError={dashboard.pendingActionsError}
       />
 
       {dashboard.forecast.hasHistory ? (

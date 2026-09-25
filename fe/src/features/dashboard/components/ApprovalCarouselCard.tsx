@@ -15,6 +15,8 @@ interface ApprovalCarouselCardProps {
   onApprove: (actionId: string) => void
   onDeny: (actionId: string) => void
   onApproveAll: (eventId: string) => void
+  pendingActionsLoading?: boolean
+  pendingActionsError?: boolean
 }
 
 export function ApprovalCarouselCard({
@@ -25,6 +27,8 @@ export function ApprovalCarouselCard({
   onApprove,
   onDeny,
   onApproveAll,
+  pendingActionsLoading,
+  pendingActionsError,
 }: ApprovalCarouselCardProps) {
   const event = events[index]
 
@@ -53,7 +57,17 @@ export function ApprovalCarouselCard({
           </Link>
         </div>
 
-        {event.pendingActions.length > 0 ? (
+        {pendingActionsError && (
+          <p className="w-full rounded-[10px] bg-[#fcf2e5] px-[14px] py-[10px] text-[11.5px] text-[#8c6b3a]">
+            승인 대기 목록을 불러오지 못했습니다. 예시 데이터를 보여주고 있습니다.
+          </p>
+        )}
+
+        {pendingActionsLoading ? (
+          <div className="flex w-full items-center justify-center rounded-[16px] border border-dashed border-[#dedede] bg-[#fbfbfb] px-[20px] py-[24px] text-[12.5px] text-[#8c8c8c]">
+            승인 대기 목록을 불러오는 중...
+          </div>
+        ) : event.pendingActions.length > 0 ? (
           <div className="flex w-full flex-col overflow-hidden rounded-[16px] border-[1.5px] border-[#4d4d4d] bg-[#fbfbfb]">
             <div className="flex w-full items-center gap-[10px] bg-white px-[20px] py-[15px]">
               <p className="text-[15px] font-bold text-[#1f1f1f]">승인 대기 {event.pendingActions.length}건</p>
