@@ -1,0 +1,41 @@
+[project]
+name = "unyounghae-be"
+version = "0.1.0"
+description = "운영해 백엔드 — 동아리 행사 보조 에이전트"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "langchain-openai>=1.0",
+    "langgraph>=1.2",
+    "nanoid>=2.0",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "sqlalchemy>=2.0.36",
+    "uvicorn[standard]>=0.32",
+]
+
+# AI 모듈(app/ai)은 OpenAI 호환 ML API 게이트웨이를 사용하므로
+# langchain-anthropic 대신 langchain-openai를 쓴다. openai 클라이언트는 함께 설치된다.
+# app/ai/docs/legacy-dependencies/ 의 원본은 이전 명세 보관용이며 설치 대상이 아니다.
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8.0",
+    # app/ai/scripts/check_ml_api.py 가 be/.env 를 직접 읽는다.
+    # uvicorn[standard] 를 통해 들어와 있었을 뿐 직접 의존성이 아니었다.
+    "python-dotenv>=1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+# app/ai/tests는 AI 모듈이 따로 두고 있어 같이 돈다.
+testpaths = ["tests", "app/ai/tests"]
+pythonpath = ["."]

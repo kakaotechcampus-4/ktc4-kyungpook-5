@@ -29,10 +29,15 @@ Git은 커밋 비교 시 내용 유사성으로 이동을 감지합니다.
 ## BE 팀 후속 작업
 
 - [ ] Python 3.12 기준으로 통합 pyproject.toml을 구성하고 uv.lock을 생성한다.
-- [ ] LangGraph, langchain-anthropic, Pydantic, pydantic-settings의 필요 버전을 검토한다.
+- [ ] LangGraph, langchain-openai, Pydantic, pydantic-settings의 필요 버전을 검토한다.
+      모델 호출이 OpenAI 호환 게이트웨이로 정해져 langchain-anthropic은 사용하지 않는다.
 - [ ] 기존 FastAPI·Uvicorn은 BE 실행 의존성으로 관리한다.
-- [ ] HTTPX는 더 이상 BE↔AI 내부 HTTP 호출용이 아니다. 다른 용도의 직접 의존성 필요 여부를 확인한다.
-- [ ] ANTHROPIC_API_KEY·ANTHROPIC_MODEL을 공통 설정에 연결한다.
+- [ ] HTTPX는 BE↔AI 내부 호출용이 아니다. ML API 호출은 langchain-openai가
+      함께 설치하는 openai 클라이언트를 사용하므로 직접 의존성 필요 여부만 확인한다.
+- [ ] AI_API_BASE_URL·AI_API_KEY·AI_MODEL을 공통 설정에 연결한다.
+      ML API 키를 사용하므로 ANTHROPIC_API_KEY·ANTHROPIC_MODEL은 쓰지 않는다.
+- [ ] AI_EMBEDDING_BASE_URL·AI_EMBEDDING_MODEL도 함께 연결한다. 임베딩은 채팅과
+      다른 게이트웨이 배포라 주소가 다르다. 키가 같으면 AI_EMBEDDING_API_KEY는 비워둔다.
 - [ ] AI_SERVICE_BASE_URL·BACKEND_BASE_URL의 별도 서비스 전제를 제거한다.
 - [ ] BE 조회·계산 구현체를 합의된 AI port에 연결하고 AI 객체를 초기화한다.
 - [ ] BE 서비스는 app.ai에서 공개된 이름만 사용한다.
