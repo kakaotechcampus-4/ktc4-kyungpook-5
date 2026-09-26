@@ -189,6 +189,20 @@ uv run uvicorn app.main:app --reload
 `http://localhost:8000/docs` 에서 스키마와 요청을 확인할 수 있습니다.
 CORS는 Vite 개발 서버(`http://localhost:5173`)만 허용합니다.
 
+## 테스트
+
+```bash
+cd be
+uv run pytest
+```
+
+서버를 띄우지 않고 `TestClient`로 앱을 직접 호출하므로 DB·`.env` 없이 실행됩니다.
+`tests/integration/`은 mock API의 응답 계약(`{data, meta}` 봉투, camelCase 키, enum 문자열,
+에러 봉투)을 고정합니다. 공통 코드(`schemas`의 `CamelModel`, `core/exceptions.py`)를 바꿀 때
+이 테스트가 먼저 깨지도록 두는 것이 목적입니다 (이슈 #33).
+
+AI 모듈 테스트(`app/ai/tests/`)도 같은 명령으로 함께 실행됩니다.
+
 ## mock API
 
 | 엔드포인트 | 상태 |
