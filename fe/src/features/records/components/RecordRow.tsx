@@ -25,7 +25,7 @@ import type {
 export interface RecordRowActions {
   onChangeCategory: (recordId: string, category: RecordCategory) => void
   onDelete: (recordId: string) => void
-  onReplace: (recordId: string, file: File, category: RecordCategory) => void
+  onUploadNew: (file: File, category: RecordCategory) => void
   onSubmitColumnMapping: (recordId: string, mapping: Record<string, string>) => void
   onDownloadTemplate: () => void
 }
@@ -92,13 +92,13 @@ function ColumnMappingForm({
 function ParseReasonBox({
   detail,
   onDelete,
-  onReplace,
+  onUploadNew,
   onSubmitColumnMapping,
   onDownloadTemplate,
 }: {
   detail: RecordDetail
   onDelete: () => void
-  onReplace: (file: File) => void
+  onUploadNew: (file: File) => void
   onSubmitColumnMapping: (mapping: Record<string, string>) => void
   onDownloadTemplate: () => void
 }) {
@@ -139,9 +139,9 @@ function ParseReasonBox({
               양식 받아서 다시 만들기
             </Button>
           )}
-          {copy.actions.includes('REPLACE') && (
+          {copy.actions.includes('UPLOAD_NEW') && (
             <label className="inline-flex cursor-pointer items-center rounded-[10px] border border-[#262626] bg-[#262626] px-[13px] py-[8px] text-[12px] font-medium whitespace-nowrap text-[#fafafa] transition-colors hover:bg-[#1a1a1a]">
-              원본 문서로 교체
+              새 파일 올리기
               <input
                 type="file"
                 accept={UPLOAD_ACCEPT}
@@ -149,7 +149,7 @@ function ParseReasonBox({
                 onChange={(event) => {
                   const file = event.target.files?.[0]
                   event.target.value = ''
-                  if (file) onReplace(file)
+                  if (file) onUploadNew(file)
                 }}
               />
             </label>
@@ -172,7 +172,7 @@ export function RecordRow({
   onTogglePickCategory,
   onChangeCategory,
   onDelete,
-  onReplace,
+  onUploadNew,
   onSubmitColumnMapping,
   onDownloadTemplate,
 }: RecordRowProps) {
@@ -251,7 +251,8 @@ export function RecordRow({
         <ParseReasonBox
           detail={reason}
           onDelete={confirmDelete}
-          onReplace={(file) => onReplace(record.id, file, record.category)}
+          // 교체 API를 두지 않고 같은 분류에 새 파일로 추가한다.
+          onUploadNew={(file) => onUploadNew(file, record.category)}
           onSubmitColumnMapping={(value) => onSubmitColumnMapping(record.id, value)}
           onDownloadTemplate={onDownloadTemplate}
         />

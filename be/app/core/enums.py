@@ -64,6 +64,14 @@ class StepActor(CodeEnum):
     MANUAL = "MANUAL"
 
 
+class StepState(CodeEnum):
+    """Step.completed_at으로부터 서버가 계산하는 진행 상태. DB에 저장하지 않는다."""
+
+    DONE = "DONE"
+    CURRENT = "CURRENT"
+    TODO = "TODO"
+
+
 class ActionType(CodeEnum):
     EXTERNAL_SEND = "EXTERNAL_SEND"
     TRANSFER = "TRANSFER"

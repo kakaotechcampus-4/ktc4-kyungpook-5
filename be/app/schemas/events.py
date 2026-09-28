@@ -7,12 +7,19 @@ enum은 core/enums.py의 StrEnum을 그대로 쓴다. 값이 곧 API 코드라 �
 """
 
 from datetime import UTC, date, datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, PlainSerializer
 from pydantic.alias_generators import to_camel
 
-from app.core.enums import ActionStatus, ActionType, MemberRole
+from app.core.enums import (
+    ActionStatus,
+    ActionType,
+    EventStatus,
+    MemberRole,
+    StepActor,
+    StepState,
+)
 
 
 def _iso_utc(value: datetime) -> str:
@@ -77,3 +84,61 @@ class PageMeta(CamelModel):
 class ActionListResponse(CamelModel):
     data: list[ActionOut]
     meta: PageMeta
+
+
+class StepProgressOut(CamelModel):
+    step_order: int
+    state: StepState
+
+
+class EventOut(CamelModel):
+    id: str
+    title: str
+    status: EventStatus
+    start_date: date | None
+    end_date: date | None
+    dday: int | None
+    current_step_name: str | None
+    step_progress: list[StepProgressOut]
+    pending_approval_count: int
+    # participants·transactions 확정 전이라 항상 null (이슈 #17)
+    payment: Any | None
+    budget: Any | None
+
+
+class EventListResponse(CamelModel):
+    data: list[EventOut]
+    meta: PageMeta
+
+
+class DoneActionOut(CamelModel):
+    id: str
+    title: str
+    status: ActionStatus
+
+
+class RemainingActionOut(CamelModel):
+    id: str
+    title: str
+    status: ActionStatus
+    approve_needed: bool
+
+
+class StepOut(CamelModel):
+    id: str
+    step_order: int
+    name: str
+    actor: StepActor
+    state: StepState
+    started_time: UtcDateTime | None
+    deadline: UtcDateTime | None
+    completed_count: int
+    total_action_count: int
+    completed_at: UtcDateTime | None
+    done_actions: list[DoneActionOut]
+    remaining_actions: list[RemainingActionOut]
+
+
+class StepListResponse(CamelModel):
+    data: list[StepOut]
+    meta: None = None
