@@ -16,13 +16,21 @@ docker compose --env-file .env.next -f compose.yml pull
 docker compose --env-file .env.next -f compose.yml up -d --remove-orphans
 
 site_host="${SITE_ADDRESS:-:80}"
-if [[ "$site_host" == ":80" ]]; then
-  site_host=127.0.0.1
-fi
+check_frontend() {
+  if [[ "$site_host" == ":80" ]]; then
+    curl --silent --fail --max-time 5 http://127.0.0.1/ >/dev/null
+  else
+    curl --silent --fail --max-time 5 \
+      --resolve "$site_host:443:127.0.0.1" "https://$site_host/" >/dev/null \
+      && curl --silent --fail --max-time 5 \
+        --resolve "$site_host:443:127.0.0.1" \
+        "https://$site_host/api/v1/healthz" >/dev/null
+  fi
+}
 
-for attempt in {1..30}; do
+for attempt in {1..60}; do
   if curl --silent --fail http://127.0.0.1:8000/api/v1/healthz >/dev/null \
-    && curl --silent --fail --header "Host: $site_host" http://127.0.0.1/ >/dev/null; then
+    && check_frontend; then
     mv .env.next .env
     exit 0
   fi

@@ -35,8 +35,9 @@ the API is a separate FastAPI container. Caddy sends `/api/*` to the API contain
 Push the deployment files to `develop`. The workflow tests the frontend and
 backend, builds both images in GitHub-hosted runners, pushes them to ECR with the
 commit SHA as tag, then uses SSM Run Command to update the existing instance.
-It checks `http://127.0.0.1:8000/api/v1/healthz` and restores the previous image
-configuration if that check fails. No SSH key or inbound port 22 is needed.
+It checks the local API and, when a domain is configured, validates the public
+HTTPS certificate and API proxy. It restores the previous image configuration
+if health checks fail. No SSH key or inbound port 22 is needed.
 
 After the first run, check the Actions result and on the instance run:
 
@@ -50,8 +51,8 @@ Then browse to `http://<instance-public-ip>/`. Port 80 is HTTP. Do not use
 real credentials or sensitive uploads in this demo until a domain and HTTPS are
 configured. When a domain is available, point it at the current public IP,
 set the GitHub Actions variable `SITE_ADDRESS` to the domain and open inbound
-TCP 443. The public IP can
-change after an EC2 stop/start, so update DNS after one.
+TCP 443. If the instance uses an Elastic IP, keep it associated with that
+instance; otherwise, the public IP can change after a stop/start.
 
 The account's IAM deny on attaching policies to `ktc-ec2-ssm-role` is expected.
 It does not imply that the preconfigured `ktc-github-deploy` OIDC role is broken.
