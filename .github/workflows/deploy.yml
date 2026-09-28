@@ -98,11 +98,14 @@ jobs:
           site_address=${SITE_ADDRESS:-:80}
           [[ "$site_address" =~ ^(:80|[A-Za-z0-9.-]+)$ ]]
           compose_b64=$(base64 -w 0 deploy/compose.yml)
+          bootstrap_b64=$(base64 -w 0 deploy/bootstrap-instance.sh)
           script_b64=$(base64 -w 0 deploy/remote-deploy.sh)
           command_text="set -eu
           install -d /opt/unyounghae
           printf %s '$compose_b64' | base64 -d > /opt/unyounghae/compose.yml
+          printf %s '$bootstrap_b64' | base64 -d > /opt/unyounghae/bootstrap-instance.sh
           printf %s '$script_b64' | base64 -d > /opt/unyounghae/remote-deploy.sh
+          bash /opt/unyounghae/bootstrap-instance.sh
           AWS_REGION=ap-northeast-2 BACKEND_IMAGE='$BACKEND_IMAGE' FRONTEND_IMAGE='$FRONTEND_IMAGE' SITE_ADDRESS='$site_address' bash /opt/unyounghae/remote-deploy.sh"
           jq -n --arg command "$command_text" '{commands: [$command]}' > "$RUNNER_TEMP/ssm-parameters.json"
           command_id=$(aws ssm send-command \
@@ -110,7 +113,7 @@ jobs:
             --document-name AWS-RunShellScript \
             --parameters "file://$RUNNER_TEMP/ssm-parameters.json" \
             --query 'Command.CommandId' --output text)
-          for attempt in {1..60}; do
+          for attempt in {1..180}; do
             status=$(aws ssm get-command-invocation \
               --command-id "$command_id" --instance-id "$INSTANCE_ID" \
               --query Status --output text 2>/dev/null || true)

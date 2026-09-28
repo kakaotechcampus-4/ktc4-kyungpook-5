@@ -13,9 +13,9 @@ the API is a separate FastAPI container. Caddy sends `/api/*` to the API contain
    accounts explicitly deny attaching policies to this managed role; if pull
    access is absent, request it from the infrastructure manager.
 3. Create private ECR repositories `unyounghae-api` and `unyounghae-web` in Seoul.
-4. Install Docker Engine, the Compose plugin, AWS CLI and `curl` on Ubuntu.
-   Use the [official Docker Ubuntu instructions](https://docs.docker.com/engine/install/ubuntu/).
-   Check with `sudo docker compose version` and `aws --version`.
+4. On its first run, the SSM deployment installs Docker Engine, the Compose
+   plugin, AWS CLI and `curl` on Ubuntu if missing. It uses the official Docker
+   apt repository and AWS CLI installer. Later runs reuse the installation.
 5. The team account already has the OIDC deployment role `ktc-github-deploy`.
    Do not create another role or an access key. First set only the GitHub
    repository Actions variable `AWS_ACCOUNT_ID` (the 12-digit team account ID).
