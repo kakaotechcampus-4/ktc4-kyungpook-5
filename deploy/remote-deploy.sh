@@ -37,6 +37,7 @@ for attempt in {1..60}; do
   sleep 2
 done
 
+docker compose --env-file .env.next -f compose.yml logs --tail 100 web >&2 || true
 if [[ -f .env ]]; then
   docker compose --env-file .env -f compose.yml up -d --remove-orphans
 fi
