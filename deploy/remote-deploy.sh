@@ -4,13 +4,14 @@ set -euo pipefail
 : "${AWS_REGION:?set AWS_REGION}"
 : "${BACKEND_IMAGE:?set BACKEND_IMAGE}"
 : "${FRONTEND_IMAGE:?set FRONTEND_IMAGE}"
+: "${ACME_EMAIL:?set ACME_EMAIL}"
 
 cd /opt/unyounghae
 registry="${BACKEND_IMAGE%%/*}"
 aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$registry"
 
-printf 'BACKEND_IMAGE=%s\nFRONTEND_IMAGE=%s\nSITE_ADDRESS=%s\n' \
-  "$BACKEND_IMAGE" "$FRONTEND_IMAGE" "${SITE_ADDRESS:-:80}" > .env.next
+printf 'BACKEND_IMAGE=%s\nFRONTEND_IMAGE=%s\nSITE_ADDRESS=%s\nACME_EMAIL=%s\n' \
+  "$BACKEND_IMAGE" "$FRONTEND_IMAGE" "${SITE_ADDRESS:-:80}" "$ACME_EMAIL" > .env.next
 
 docker compose --env-file .env.next -f compose.yml pull
 docker compose --env-file .env.next -f compose.yml up -d --remove-orphans
