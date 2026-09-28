@@ -166,7 +166,6 @@ POST /api/v1/steps/{stepId}/complete
 | 규칙 경고 `code` 목록 | 초안: `SCHEDULE_GAP`·`BUDGET_EXCEEDED`·`PREP_TIME_SHORT`·`SCHEDULE_CONFLICT`·`MINIMUM_HEADCOUNT_VIOLATED` | BE |
 | 동시 승인 | 임원 둘이 동시에 승인할 때 조건부 `UPDATE`가 필요합니다. AI-OPS-03이 중복 실행 금지를 요구합니다 | BE |
 | 네이밍 | `steps.started_time`만 `_time`이고 과거형인데 값은 예정 시각. `steps.name` vs `actions.title` | 팀 |
-| 임베딩 모델 | RAG 청크의 `vector(N)` 차원이 여기 달립니다. Anthropic은 임베딩 API가 없어 별도 제공자가 필요하고 pgvector 인덱스는 2000차원까지입니다 | 팀 |
 
 ---
 
@@ -176,7 +175,7 @@ POST /api/v1/steps/{stepId}/complete
 | --- | --- |
 | `participants` · `transactions` | 금액 안건 미확정. 없으면 미납자 산출과 `event_rules.py`의 입력이 없습니다 → #15 후속 |
 | 승인 이력 테이블 | `actions.status` 덮어쓰기는 NF4와 어긋나나, append-only 테이블은 나중에 추가해도 기존 컬럼을 건드리지 않습니다. 승인 정책(D-05) 확정 후 |
-| RAG 청크 테이블 | 저장소는 **pgvector 확정**. 임베딩 모델 미정이라 차원을 정할 수 없습니다. `sources[].location` 내부 구조도 여기서 함께 정합니다 |
+| RAG 청크 테이블 | 저장소는 **pgvector**, 임베딩은 `text-embedding-3-small`로 **확정**되어 벡터 컬럼은 `vector(1536)`입니다(#25). 청킹 단위·검색 방식(D-04)이 미정이라 테이블은 아직 설계하지 않습니다. `sources[].location` 내부 구조도 D-04와 함께 정합니다 |
 | `events.planning_conversation_id` | 대화가 여러 개일 때 복원 대상 규칙. 현재는 가장 최근 대화. AI-PLAN-08 구현 시 |
 | `auth` 테이블 재구성 | 신원과 세션이 한 행에 섞여 로그인마다 행이 쌓입니다. 인증 방식(JWT vs 세션) 확정 후 |
 | 파일 원본 조회 API | `storage_key`는 있으나 원본을 보거나 내려받을 엔드포인트가 없습니다 |
