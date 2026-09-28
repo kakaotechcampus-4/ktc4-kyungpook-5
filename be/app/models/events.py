@@ -54,6 +54,9 @@ class Event(IdMixin, TimestampMixin, Base):
     # AI가 단계를 배열하는 근거. 저장하지 않으면 계획을 열 때마다 대화를 재해석해야 한다.
     event_type: Mapped[EventType | None] = mapped_column(enum_column(EventType))
     location: Mapped[str | None] = mapped_column(String(200))
+    # 장소 확정 전 계획 대화에서 모인 후보. "이어서 하기"는 AI 없이 이 값으로 복원한다.
+    # 후보가 없으면 null이며, AI 계약(EventConditions)으로 넘길 때는 빈 튜플로 바꾼다.
+    location_candidates: Mapped[list[str] | None] = mapped_column(JsonB)
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
     expected_headcount: Mapped[int | None] = mapped_column(Integer)
