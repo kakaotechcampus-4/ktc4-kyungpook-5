@@ -11,6 +11,11 @@ from app.routers import events
 
 app = FastAPI(title="운영해 BE", version="0.1.0")
 
+
+@app.get("/api/v1/healthz", include_in_schema=False)
+def healthz() -> dict[str, str]:
+    return {"status": "ok"}
+
 # Vite 개발 서버 기본 포트. 배포 도메인은 배포 구성이 정해질 때 추가한다.
 app.add_middleware(
     CORSMiddleware,
