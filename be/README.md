@@ -1,6 +1,6 @@
 # 운영해 · BE
 
-현재는 **ORM 모델과 mock API 1개까지 구현한 단계**입니다. DB 연결·인증·규칙 엔진은 아직 없습니다.
+현재는 **ORM 모델, DB 연결, 계획 시작·임시 저장 목록 API까지 구현한 단계**입니다. 인증·규칙 엔진은 아직 없고, 나머지 API는 mock입니다.
 mock API는 DB 없이 고정 응답만 내려 FE가 화면을 실제 API에 붙여볼 수 있게 한 것입니다 (이슈 #30).
 모델 확정 내역과 그 근거는 [BE 스키마 검토안](../docs/week6/be/운영해_BE_스키마_검토안.md)에 있습니다.
 
@@ -199,7 +199,7 @@ PostgreSQL만 따로 띄우려면 `docker compose up -d db`를 실행합니다. 
 - 호스트에 PostgreSQL이 이미 5432 포트를 쓰고 있으면 포트가 겹칩니다.
 - `alembic` 의존성이 추가됐으므로 기존 api 이미지는 `docker compose up --build`로 다시 빌드합니다.
 
-아래 mock API는 DB에 접속하지 않으므로 DB 없이도 실행됩니다.
+mock API는 DB에 접속하지 않으므로 DB 없이도 실행됩니다. DB 연동 API(`POST /events`, `GET /events/drafts`)는 DB와 마이그레이션이 필요합니다.
 
 ## 마이그레이션
 
@@ -231,25 +231,33 @@ cd be
 uv run pytest
 ```
 
-서버를 띄우지 않고 `TestClient`로 앱을 직접 호출합니다.
-`db` 마커가 붙은 테스트(세션 연결, 마이그레이션 왕복·`alembic check`, 시드)는 테스트 DB가 필요합니다.
+서버를 띄우지 않고 앱을 직접 호출합니다. mock API는 `TestClient`, DB 연동 API는 같은 이벤트 루프에서 테스트 세션을 쓰기 위해 `httpx.AsyncClient`로 호출합니다.
+`db` 마커가 붙은 테스트(세션 연결, 마이그레이션 왕복·`alembic check`, 시드, DB 연동 API)는 테스트 DB가 필요합니다. DB 연동 API 테스트는 테스트마다 롤백되어 서로 영향을 주지 않습니다.
 기본 주소(`localhost:5432/unyounghae_test`)에 연결할 수 없으면 건너뛰므로, DB 없이도 나머지 테스트는 실행됩니다.
 `TEST_DATABASE_URL`을 주면 그 주소를 쓰고, 이때는 연결에 실패하면 건너뛰지 않고 실패합니다.
-`tests/integration/`은 mock API의 응답 계약(`{data, meta}` 봉투, camelCase 키, enum 문자열,
+`tests/integration/test_actions.py`는 mock API의 응답 계약(`{data, meta}` 봉투, camelCase 키, enum 문자열,
 에러 봉투)을 고정합니다. 공통 코드(`schemas`의 `CamelModel`, `core/exceptions.py`)를 바꿀 때
 이 테스트가 먼저 깨지도록 두는 것이 목적입니다 (이슈 #33).
 
 AI 모듈 테스트(`app/ai/tests/`)도 같은 명령으로 함께 실행됩니다.
 
-## mock API
+## 구현된 API
 
 | 엔드포인트 | 상태 |
 | --- | --- |
-| `GET /api/v1/events/{eventId}/actions` | 구현 완료 |
-| `GET /api/v1/events` | 구현 완료 |
-| `GET /api/v1/events/{eventId}/steps` | 구현 완료 |
+| `POST /api/v1/events` | DB 연동 (이슈 #63) |
+| `GET /api/v1/events/drafts?clubId=` | DB 연동 (이슈 #63) |
+| `GET /api/v1/events/{eventId}/actions` | mock |
+| `GET /api/v1/events` | mock |
+| `GET /api/v1/events/{eventId}/steps` | mock |
 
-**유효한 `eventId`는 `evt_9f2c8a` 하나뿐입니다.** 다른 값은 404 `EVENT_NOT_FOUND`를 반환합니다.
+DB 연동 API의 현재 한계입니다.
+
+- 인증이 없어 모든 요청을 시드 회원(`mbr_3a71c0`)이 보낸 것으로 처리합니다.
+- `saved_at`을 채우는 `PATCH /events`가 아직 없어, 새로 만든 계획은 `drafts`에 나오지 않습니다.
+- 같은 날 제목을 비우고 두 번 만들면 기본 제목이 같습니다(#25-3 미결정).
+
+**mock API에서 유효한 `eventId`는 `evt_9f2c8a` 하나뿐입니다.** 다른 값은 404 `EVENT_NOT_FOUND`를 반환합니다.
 
 ```bash
 # M1 승인 대기 (확인 요청 제외)

@@ -1,6 +1,6 @@
 """FastAPI 앱.
 
-현재 등록된 엔드포인트는 DB 없이 고정 응답을 내는 mock이다 (이슈 #30).
+계획 시작·임시 저장 목록(이슈 #63)은 DB를 쓰고, 나머지 엔드포인트는 DB 없이 고정 응답을 내는 mock이다 (이슈 #30).
 """
 
 from fastapi import FastAPI
