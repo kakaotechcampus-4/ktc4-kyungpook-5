@@ -112,6 +112,7 @@ export function askRecords(
 // 카드 머리의 "8건"은 meta.categoryCounts에서 오고 줄 수와 다르다(시안도 그렇다).
 
 // 시안의 .docx·.md는 RecordFileType에 담을 값이 없어(업로드도 막힌다) 허용 형식으로 바꿨다.
+// 이슈 #60: 업로드에서 이미지를 뺀 김에, 이미지 예시(단톡방 공지 캡처.png) 목업도 함께 뺐다.
 const MOCK_SEEDS: Array<
   [
     fileName: string,
@@ -130,7 +131,6 @@ const MOCK_SEEDS: Array<
   ['2025 하반기 장부.xlsx', 'XLSX', 'LEDGER', 'INDEXED', '2026-02-28T05:00:00Z'],
   ['2025 상반기 장부.xlsx', 'XLSX', 'LEDGER', 'INDEXED', '2026-02-28T05:00:00Z'],
   ['2024 하반기 장부.csv', 'CSV', 'LEDGER', 'NEEDS_REVIEW', '2026-02-28T05:00:00Z'],
-  ['단톡방 공지 캡처.png', 'IMAGE', 'ETC', 'FAILED', '2026-03-02T01:00:00Z'],
   ['미분류 문서.pdf', 'PDF', 'ETC', 'FAILED', '2026-03-02T01:00:00Z'],
 ]
 
@@ -171,8 +171,7 @@ export function getRecordDetailsMock(): Record<string, RecordDetail> {
   })
 
   const ledger = list[8]
-  const capture = list[9]
-  const unclassified = list[10]
+  const unclassified = list[9]
 
   return {
     [ledger.id]: detailOf(ledger, {
@@ -182,11 +181,6 @@ export function getRecordDetailsMock(): Record<string, RecordDetail> {
         actualColumns: ['일자', '내용', '금액', '구분'],
       },
       debugMessage: '열 이름이 표준과 달라 어떤 값이 금액인지 찾지 못했습니다.',
-    }),
-    [capture.id]: detailOf(capture, {
-      reason: 'IMAGE_NOT_READABLE',
-      params: null,
-      debugMessage: 'OCR을 돌리지 않아 이미지에서 글자를 뽑지 못했습니다.',
     }),
     [unclassified.id]: detailOf(unclassified, {
       reason: 'IMAGE_NOT_READABLE',
