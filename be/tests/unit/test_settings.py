@@ -1,5 +1,7 @@
 """DB 없이 도는 BE 설정 테스트."""
 
+from pathlib import Path
+
 import pytest
 
 from app.core.config import Settings, get_settings
@@ -9,6 +11,18 @@ from app.db import session as db_session
 def test_database_url_is_read_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     url = "postgresql+psycopg://u:p@localhost:5432/d"
     monkeypatch.setenv("DATABASE_URL", url)
+
+    assert Settings().require_database_url() == url
+
+
+def test_database_url_is_read_from_dotenv(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # be/.env 에 둔 값을 호스트 실행(uvicorn, alembic)에서 읽어야 한다.
+    url = "postgresql+psycopg://u:p@localhost:5432/from_dotenv"
+    (tmp_path / ".env").write_text(f"DATABASE_URL={url}\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
 
     assert Settings().require_database_url() == url
 

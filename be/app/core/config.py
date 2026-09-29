@@ -15,7 +15,8 @@ from app.ai.config import AISettings
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(extra="ignore")
+    # AISettings와 같이 be/에서 실행하는 걸 전제로 .env를 읽는다. 환경변수가 우선한다.
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # postgresql+psycopg://user:password@host:5432/dbname
     # 비워두면 앱은 뜨고 DB를 쓰는 시점에 실패한다. mock API와, DB가 붙기 전의

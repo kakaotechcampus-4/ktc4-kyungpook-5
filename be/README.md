@@ -207,8 +207,8 @@ PostgreSQL만 따로 띄우려면 `docker compose up -d db`를 실행합니다. 
 # compose 로 띄운 경우
 docker compose exec api uv run --no-sync alembic upgrade head
 
-# 호스트에서 실행하는 경우 (be/ 에서)
-DATABASE_URL=postgresql+psycopg://unyounghae:unyounghae@localhost:5432/unyounghae uv run alembic upgrade head
+# 호스트에서 실행하는 경우 (be/ 에서). be/.env 의 DATABASE_URL 을 읽는다
+uv run alembic upgrade head
 ```
 
 모델을 바꾸면 `uv run alembic revision --autogenerate -m "<설명>"`으로 리비전을 만들고 생성된 파일을 직접 검토합니다.
