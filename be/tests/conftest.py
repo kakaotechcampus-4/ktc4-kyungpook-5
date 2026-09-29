@@ -2,9 +2,12 @@
 
 import asyncio
 import os
+from pathlib import Path
 
 import psycopg
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy.engine import make_url
 
@@ -14,6 +17,7 @@ from app.main import app
 DEFAULT_TEST_DATABASE_URL = (
     "postgresql+psycopg://unyounghae:unyounghae@localhost:5432/unyounghae_test"
 )
+ALEMBIC_INI = Path(__file__).resolve().parents[1] / "alembic.ini"
 
 
 @pytest.fixture
@@ -53,3 +57,17 @@ def db_url() -> str:
             pytest.fail("TEST_DATABASE_URL 에 연결할 수 없습니다")
         pytest.skip("테스트 DB에 연결할 수 없어 건너뜁니다 (docker compose up -d db)")
     return url
+
+
+@pytest.fixture(scope="session")
+def alembic_cfg(db_url: str) -> Config:
+    cfg = Config(str(ALEMBIC_INI))
+    # set_main_option 은 % 를 보간 문자로 해석해 비밀번호에 따라 깨질 수 있다.
+    cfg.attributes["database_url"] = db_url
+    return cfg
+
+
+@pytest.fixture(scope="session")
+def migrated_db_url(db_url: str, alembic_cfg: Config) -> str:
+    command.upgrade(alembic_cfg, "head")
+    return db_url

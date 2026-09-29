@@ -25,6 +25,8 @@ services:
       - "8000:8000"
     volumes:
       - ./be/app:/app/app
+      - ./be/alembic:/app/alembic
+      - ./be/alembic.ini:/app/alembic.ini
     environment:
       WATCHFILES_FORCE_POLLING: "true"
       DATABASE_URL: postgresql+psycopg://unyounghae:unyounghae@db:5432/unyounghae
