@@ -26,7 +26,7 @@ be/app/ai/
 │   ├── planning/        # 조건 확인·질문·계획 생성 및 수정
 │   ├── retrieval/       # 기록 검색·근거 구성
 │   └── operations/      # 변경 영향 설명·대응안
-├── workflow/            # 기능 연결·분기·실행 상태
+├── workflow/            # 행사 Agent 실행 흐름·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
 ├── tests/               # AI 테스트 위치 (config, llm)
 ├── docs/
@@ -47,6 +47,7 @@ be/app/ai/
 - BE는 `app.ai`에 공개된 기능과 타입만 사용합니다.
 - AI는 `ports.py`를 통해 주입받은 BE 기능을 사용하며, BE 서비스·ORM·DB를 직접 참조하지 않습니다.
 - AI는 계획과 대응안을 제안합니다. 권한·승인 검증·저장·확정 실행은 BE가 담당합니다.
+- 행사마다 행사 Agent 하나가 상시 동작합니다. BE는 행사 변화를 해당 행사 Agent에 신호로 전달합니다.
 - BE와 AI는 같은 프로세스에서 함수로 호출합니다. 별도 AI 서버는 두지 않습니다.
 
 
