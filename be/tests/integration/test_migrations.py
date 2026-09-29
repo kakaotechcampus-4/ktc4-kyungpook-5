@@ -3,7 +3,7 @@
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 
 pytestmark = pytest.mark.db
 
@@ -19,6 +19,10 @@ EXPECTED_TABLES = {
     "messages",
     "records",
 }
+
+# 인증 도입 전까지 현재 사용자로 쓰는 시드 (FE CURRENT_CLUB_ID와 같은 값).
+CURRENT_CLUB_ID = "clb_3a71c0"
+CURRENT_MEMBER_ID = "mbr_3a71c0"
 
 
 def _table_names(url: str) -> set[str]:
@@ -45,3 +49,21 @@ def test_models_have_no_unmigrated_changes(
 ) -> None:
     # 모델을 바꾸고 리비전을 만들지 않으면 여기서 실패한다.
     command.check(alembic_cfg)
+
+
+def test_seed_creates_current_club_and_owner(migrated_db_url: str) -> None:
+    engine = create_engine(migrated_db_url)
+    try:
+        with engine.connect() as conn:
+            club_name = conn.execute(
+                text("select name from clubs where id = :id"), {"id": CURRENT_CLUB_ID}
+            ).scalar_one()
+            role = conn.execute(
+                text("select role from members where id = :id and club_id = :club"),
+                {"id": CURRENT_MEMBER_ID, "club": CURRENT_CLUB_ID},
+            ).scalar_one()
+    finally:
+        engine.dispose()
+
+    assert club_name == "컴퓨터학부 학술동아리 ○○"
+    assert role == "OWNER"
