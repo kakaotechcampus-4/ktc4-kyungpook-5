@@ -11,8 +11,8 @@ mock API는 DB 없이 고정 응답만 내려 FE가 화면을 실제 API에 붙�
 | 언어 | Python 3.12 | AI와 통일 |
 | API 프레임워크 | FastAPI | FE가 호출하는 API 서버 |
 | DB | PostgreSQL | 금액은 정수 원 단위로만 저장 (NF2) |
-| ORM | SQLAlchemy 2.0 | 비동기 세션 사용 여부는 구현 시 결정 |
-| 마이그레이션 | Alembic | DB가 아직 없어 리비전을 만들지 않았습니다. 첫 배포 직전에 초기 리비전 하나를 만듭니다 |
+| ORM | SQLAlchemy 2.0 | 비동기 세션(`AsyncSession`) + psycopg 3. AI 호출이 async라 DB도 async로 맞춤 (#52, #63) |
+| 마이그레이션 | Alembic | `alembic/`. 초기 스키마 리비전과 현재 사용자 시드 리비전이 있습니다 (#63) |
 | 파일 저장 | AWS S3 (`infra/s3.py`) | 영수증·기록 원본 업로드 |
 | 패키지 관리 | uv | AI와 동일하게 `pyproject.toml` 기반 |
 | 인증 | 미정 | JWT vs 세션 등 방식 확정 전, `core/security.py`에서 구현 |
@@ -170,7 +170,7 @@ BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE �
 
 | 이름 | 용도 | 상태 |
 | --- | --- | --- |
-| `DATABASE_URL` | PostgreSQL 연결 문자열 | 변수명·값 확정 예정 |
+| `DATABASE_URL` | PostgreSQL 연결 문자열 (`postgresql+psycopg://...`) | 코드 반영됨 (`app/core/config.py`). 비어 있어도 앱은 뜨고 DB를 쓰는 시점에 실패 |
 | `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | `app/ai/config.py` — ML API 게이트웨이 호출, 채팅 모델(`gpt-5.6-terra`) | 코드 반영됨 (`app/ai/config.py`) |
 | `AI_REQUEST_TIMEOUT_SECONDS` | 단일 요청 응답 대기 상한(초). 비우면 60 | 코드 반영됨 (`app/ai/config.py`) |
 | `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_MODEL` | 임베딩 전용 설정. 키를 비우면 `AI_API_KEY` 재사용 | 코드 반영됨 (`app/ai/config.py`) |
@@ -192,9 +192,27 @@ cp -n .env.example .env
 
 `.env`의 DB 연결 정보, `AI_*` ML API 게이트웨이 설정, S3 접근 정보를 로컬 환경에 맞게 설정하세요. 기존 `.env`는 덮어쓰지 않습니다.
 
-저장소 루트의 `compose.yml`로 `docker compose up` 한 번이면 FE(Vite)와 BE(FastAPI mock)를 함께 띄울 수 있습니다 (이슈 #35).
-PostgreSQL은 아직 포함하지 않았습니다 — 지금 BE는 mock이라 DB에 접속하지 않으며, DB 연결 작업 시점에 compose에 추가할 예정입니다.
-아래 mock API는 DB에 접속하지 않으므로 `.env` 설정 없이도 실행됩니다.
+저장소 루트의 `compose.yml`로 `docker compose up` 한 번이면 FE(Vite)·BE(FastAPI)·PostgreSQL을 함께 띄울 수 있습니다 (이슈 #35, #63).
+PostgreSQL만 따로 띄우려면 `docker compose up -d db`를 실행합니다. `localhost:5432`에 개발 DB `unyounghae`와 테스트 DB `unyounghae_test`가 만들어집니다(계정 `unyounghae`/`unyounghae`).
+
+- 테스트 DB는 볼륨이 비어 있을 때만 만들어집니다. 없으면 `docker compose down -v`로 볼륨을 지운 뒤 다시 띄웁니다(로컬 DB 데이터도 지워집니다).
+- 호스트에 PostgreSQL이 이미 5432 포트를 쓰고 있으면 포트가 겹칩니다.
+- `alembic` 의존성이 추가됐으므로 기존 api 이미지는 `docker compose up --build`로 다시 빌드합니다.
+
+아래 mock API는 DB에 접속하지 않으므로 DB 없이도 실행됩니다.
+
+## 마이그레이션
+
+```bash
+# compose 로 띄운 경우
+docker compose exec api uv run --no-sync alembic upgrade head
+
+# 호스트에서 실행하는 경우 (be/ 에서)
+DATABASE_URL=postgresql+psycopg://unyounghae:unyounghae@localhost:5432/unyounghae uv run alembic upgrade head
+```
+
+모델을 바꾸면 `uv run alembic revision --autogenerate -m "<설명>"`으로 리비전을 만들고 생성된 파일을 직접 검토합니다.
+리비전을 만들지 않고 모델만 바꾸면 테스트(`alembic check`)가 실패합니다.
 
 ## 서버 실행
 
@@ -213,7 +231,10 @@ cd be
 uv run pytest
 ```
 
-서버를 띄우지 않고 `TestClient`로 앱을 직접 호출하므로 DB·`.env` 없이 실행됩니다.
+서버를 띄우지 않고 `TestClient`로 앱을 직접 호출합니다.
+`db` 마커가 붙은 테스트(세션 연결, 마이그레이션 왕복·`alembic check`, 시드)는 테스트 DB가 필요합니다.
+기본 주소(`localhost:5432/unyounghae_test`)에 연결할 수 없으면 건너뛰므로, DB 없이도 나머지 테스트는 실행됩니다.
+`TEST_DATABASE_URL`을 주면 그 주소를 쓰고, 이때는 연결에 실패하면 건너뛰지 않고 실패합니다.
 `tests/integration/`은 mock API의 응답 계약(`{data, meta}` 봉투, camelCase 키, enum 문자열,
 에러 봉투)을 고정합니다. 공통 코드(`schemas`의 `CamelModel`, `core/exceptions.py`)를 바꿀 때
 이 테스트가 먼저 깨지도록 두는 것이 목적입니다 (이슈 #33).
