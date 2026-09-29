@@ -2,7 +2,8 @@
 
 import pytest
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
+from app.db import session as db_session
 
 
 def test_database_url_is_read_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -21,3 +22,26 @@ def test_blank_database_url_fails_only_when_required(
 
     with pytest.raises(RuntimeError, match="DATABASE_URL"):
         settings.require_database_url()
+
+
+def _clear_db_caches() -> None:
+    get_settings.cache_clear()
+    db_session.get_engine.cache_clear()
+    db_session.get_sessionmaker.cache_clear()
+
+
+def test_engine_is_not_created_without_database_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "")
+    _clear_db_caches()
+    try:
+        with pytest.raises(RuntimeError, match="DATABASE_URL"):
+            db_session.get_engine()
+    finally:
+        _clear_db_caches()
+
+
+def test_sessions_keep_loaded_values_after_commit() -> None:
+    # 조회 후 세션을 닫고 AI를 호출하는 흐름에서 읽어 둔 값이 만료되면 안 된다.
+    assert db_session.SESSION_OPTIONS["expire_on_commit"] is False

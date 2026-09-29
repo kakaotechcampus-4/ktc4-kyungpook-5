@@ -39,3 +39,6 @@ packages = ["app"]
 # app/ai/tests는 AI 모듈이 따로 두고 있어 같이 돈다.
 testpaths = ["tests", "app/ai/tests"]
 pythonpath = ["."]
+markers = [
+    "db: PostgreSQL 테스트 DB가 필요한 테스트. 연결할 수 없으면 건너뛴다",
+]
