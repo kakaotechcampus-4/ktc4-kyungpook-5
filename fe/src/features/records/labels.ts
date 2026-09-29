@@ -38,18 +38,16 @@ export function needsParseReason(status: string): boolean {
   return status === 'NEEDS_REVIEW' || status === 'FAILED'
 }
 
-// 올릴 수 있는 형식. BE RecordFileType이 다섯 가지뿐이라 그 밖의 파일은 서버가
-// 받아도 분류할 코드가 없다. 그래서 확장자를 형식으로 바꿔보고, 안 되면 올리지 않는다.
+// 올릴 수 있는 형식. 멘토 리뷰(PR #53)에서 MVP는 PDF/CSV/XLSX만 지원해도
+// 된다는 의견을 받아 단순화했다. 이미지도 HWP와 같은 이유로 함께 뺐다
+// (멘토 코멘트가 PDF/CSV/XLSX만 콕 집었고, 이미지는 PDF로 대체 가능).
+// HWP·이미지로 이미 올라온 기존 기록은 그대로 보여준다.
+// 이미지를 뺀 결과 PARSE_ERROR_COPY의 IMAGE_NOT_READABLE은 새 업로드로는
+// 도달할 수 없지만, 기존 이미지 기록을 위해 남겨둔다.
 const FILE_TYPE_BY_EXTENSION: Record<string, RecordFileType> = {
   xlsx: 'XLSX',
   csv: 'CSV',
-  hwp: 'HWP',
   pdf: 'PDF',
-  png: 'IMAGE',
-  jpg: 'IMAGE',
-  jpeg: 'IMAGE',
-  gif: 'IMAGE',
-  webp: 'IMAGE',
 }
 
 // <input type="file" accept>에 그대로 넣는다. 파일 선택창이 1차로 걸러 준다.
@@ -65,7 +63,7 @@ export function fileTypeOf(fileName: string): RecordFileType | null {
 // accept는 선택창 필터일 뿐이라 "모든 파일"로 바꾸거나 끌어다 놓으면 뚫린다.
 // 보내기 직전에 한 번 더 본다.
 export function rejectUploadReason(fileName: string): string | null {
-  return fileTypeOf(fileName) ? null : 'xlsx · csv · hwp · pdf · 이미지 파일만 올릴 수 있습니다.'
+  return fileTypeOf(fileName) ? null : 'xlsx · csv · pdf 파일만 올릴 수 있습니다.'
 }
 
 export type ParseErrorAction = 'COLUMN_MAPPING' | 'TEMPLATE' | 'UPLOAD_NEW' | 'DELETE'
