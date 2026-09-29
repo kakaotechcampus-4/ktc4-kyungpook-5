@@ -77,8 +77,8 @@ be/
 │   │   ├── event_rules.py     # 참가비·환불·정산 계산 순수함수 (규칙 엔진, NF1)
 │   │   └── record_service.py
 │   ├── infra/
-│   │   └── s3.py
-│   │   └── agent_client.py
+│   │   ├── s3.py
+│   │   └── agent_client.py    # 빈 placeholder. app/ai/facade.py 체계로 정리되면 제거 예정 (이슈 #40)
 │   └── ai/                    # AI 모듈. 별도 서버 아님 — BE 프로세스 내부
 │       ├── __init__.py        # BE가 쓰는 단일 공개 진입점 (현재 공개 함수 없음)
 │       ├── facade.py          # BE → AI: 공개 기능 구현 위치
@@ -193,7 +193,8 @@ cp -n .env.example .env
 
 `.env`의 DB 연결 정보, `AI_*` ML API 게이트웨이 설정, S3 접근 정보를 로컬 환경에 맞게 설정하세요. 기존 `.env`는 덮어쓰지 않습니다.
 
-로컬 PostgreSQL은 Docker Compose로 띄우는 것을 기본으로 하되, 구체적인 compose 구성은 첫 구현 시 추가합니다.
+저장소 루트의 `compose.yml`로 `docker compose up` 한 번이면 FE(Vite)와 BE(FastAPI mock)를 함께 띄울 수 있습니다 (이슈 #35).
+PostgreSQL은 아직 포함하지 않았습니다 — 지금 BE는 mock이라 DB에 접속하지 않으며, DB 연결 작업 시점에 compose에 추가할 예정입니다.
 아래 mock API는 DB에 접속하지 않으므로 `.env` 설정 없이도 실행됩니다.
 
 ## 서버 실행
@@ -211,8 +212,8 @@ CORS는 Vite 개발 서버(`http://localhost:5173`)만 허용합니다.
 | 엔드포인트 | 상태 |
 | --- | --- |
 | `GET /api/v1/events/{eventId}/actions` | 구현 완료 |
-| `GET /api/v1/events` | 미구현 |
-| `GET /api/v1/events/{eventId}/steps` | 미구현 |
+| `GET /api/v1/events` | 구현 완료 |
+| `GET /api/v1/events/{eventId}/steps` | 구현 완료 |
 
 **유효한 `eventId`는 `evt_9f2c8a` 하나뿐입니다.** 다른 값은 404 `EVENT_NOT_FOUND`를 반환합니다.
 

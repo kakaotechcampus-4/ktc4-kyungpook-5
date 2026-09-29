@@ -1,7 +1,7 @@
 # 운영해 — 기술 스택 정리
 
-`ai/README.md`, `be/README.md`, `fe/README.md`에서 **결정된 항목**을 모은 문서입니다.
-세 저장소의 원본 README가 상세 근거를 가지며, 이 문서는 요약본입니다.
+`be/README.md`, `fe/README.md`, `be/app/ai/README.md`에서 **결정된 항목**을 모은 문서입니다.
+각 파트 원본 문서가 상세 근거를 가지며, 이 문서는 요약본입니다.
 
 작성 기준일: 2026-09-23
 
@@ -31,6 +31,7 @@ FE (React SPA) ──REST──> BE (FastAPI)
 | Python | 3.12 (BE·AI 통일) |
 | Python 패키지 관리 | uv (`pyproject.toml` + `uv.lock`) |
 | 챗봇 응답 방식 | 동기 — 스트리밍 미사용 (FE·AI 합의) |
+| 로컬 개발 환경 | Docker Compose (`compose.yml`) — `docker compose up`으로 FE(Vite)+BE(FastAPI mock) 실행. PostgreSQL은 미포함이며 DB 연결 작업 시점에 추가 예정 |
 
 ### FE
 
@@ -134,7 +135,6 @@ AI는 별도 서버가 아니라 BE 프로세스 안에서 실행되므로, `ANT
 | 서버 상태 관리 라이브러리 | FE | TanStack Query 유력, 미확정 |
 | 테스트 도입 시점 | FE | 회비·예산 계산 유틸이 생기면 Vitest 도입 |
 | FE 배포 위치 | FE | Docker 기반 방향만 확정, 서버·환경 미정 |
-| 로컬 Docker Compose 범위 | FE · BE · AI | FE·AI를 컨테이너로 포함할지, BE/DB만 묶을지 |
 | 인증 방식 | BE | JWT vs 세션 — `core/security.py`에서 구현, `JWT_SECRET_KEY`/`SESSION_SECRET` 변수도 이에 따라 결정 |
 | RDS 병행 여부 | BE | EC2 + Docker Compose 배포에서 DB를 RDS로 뺄지 |
 | S3 버킷 구조·접근 권한 | BE | 영수증 등 민감 파일 포함 — NF6(민감정보 최소 수집)과 연결 |
