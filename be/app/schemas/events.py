@@ -9,7 +9,7 @@ enum은 core/enums.py의 StrEnum을 그대로 쓴다. 값이 곧 API 코드라 �
 from datetime import UTC, date, datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 from pydantic.alias_generators import to_camel
 
 from app.core.enums import (
@@ -17,6 +17,7 @@ from app.core.enums import (
     ActionType,
     EventStatus,
     MemberRole,
+    MessageRole,
     StepActor,
     StepState,
 )
@@ -142,3 +143,29 @@ class StepOut(CamelModel):
 class StepListResponse(CamelModel):
     data: list[StepOut]
     meta: None = None
+
+
+class EventCreateIn(CamelModel):
+    club_id: str
+    # 비우면 서버가 기본값을 넣는다. 길이는 events.title 컬럼과 같다.
+    title: str | None = Field(default=None, max_length=100)
+
+
+class MessageOut(CamelModel):
+    id: str
+    role: MessageRole
+    content: str
+    created_at: UtcDateTime
+
+
+class EventCreatedOut(CamelModel):
+    id: str
+    title: str
+    status: EventStatus
+    conversation_id: str
+    messages: list[MessageOut]
+
+
+class EventCreatedResponse(CamelModel):
+    data: EventCreatedOut
+    meta: None

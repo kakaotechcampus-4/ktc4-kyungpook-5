@@ -3,19 +3,25 @@
 현재는 mock 단계다 (이슈 #30). DB가 없어 고정 fixture를 반환하며, 키는 실제
 컬럼명(snake_case)에 맞춰 두었다. DB 연결 후에는 조회 함수 본문만 쿼리로
 교체하면 라우터와 스키마는 그대로 쓴다.
+
+계획 시작·임시 저장 목록(이슈 #63)은 DB를 쓴다. 나머지 조회는 아직 fixture다.
 """
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta, timezone
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import (
     ActionStatus,
     ActionType,
     EventStatus,
     MemberRole,
+    MessageRole,
     StepActor,
     StepState,
 )
-from app.core.exceptions import EventNotFound
+from app.core.exceptions import EventNotFound, ValidationFailed
+from app.models import Club, Conversation, Event, Message
 
 # fixture가 응답하는 유일한 행사. 다른 id는 EVENT_NOT_FOUND다.
 MOCK_EVENT_ID = "evt_9f2c8a"
@@ -369,3 +375,51 @@ def list_steps(event_id: str) -> list[dict]:
             }
         )
     return result
+
+
+# 한국은 서머타임이 없어 고정 오프셋으로 충분하다.
+# Windows 에는 IANA 시간대 DB가 없어 ZoneInfo("Asia/Seoul") 가 tzdata 없이 동작하지 않는다.
+KST = timezone(timedelta(hours=9))
+
+# 첫 화면 인사. AI를 호출하지 않고 서버가 붙인다(명세 POST /events).
+FIRST_GREETING = "어떤 행사를 준비하시나요?"
+
+
+def default_title(now: datetime) -> str:
+    """제목을 비웠을 때의 기본값. 날짜는 사용자가 보는 한국 날짜다."""
+    today = now.astimezone(KST)
+    return f"새 행사 · {today.month}월 {today.day}일"
+
+
+async def create_event(
+    session: AsyncSession, *, club_id: str, title: str | None, member_id: str
+) -> dict:
+    """Event·Conversation·첫 인사 Message를 한 트랜잭션으로 만든다."""
+    if await session.get(Club, club_id) is None:
+        raise ValidationFailed({"clubId": "존재하지 않는 동아리입니다."})
+
+    event = Event(
+        club_id=club_id,
+        title=(title or "").strip() or default_title(datetime.now(UTC)),
+        status=EventStatus.PLANNING,
+    )
+    conversation = Conversation(event=event, member_id=member_id)
+    greeting = Message(
+        conversation=conversation,
+        seq=1,
+        role=MessageRole.ASSISTANT,
+        content=FIRST_GREETING,
+    )
+    session.add_all([event, conversation, greeting])
+    await session.flush()
+    # created_at 은 DB가 채운다. async 세션은 속성 접근으로 다시 읽을 수 없어 명시적으로 읽는다.
+    await session.refresh(greeting, ["created_at"])
+    await session.commit()
+
+    return {
+        "id": event.id,
+        "title": event.title,
+        "status": event.status,
+        "conversation_id": conversation.id,
+        "messages": [greeting],
+    }

@@ -1,10 +1,19 @@
 """행사 관련 엔드포인트."""
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.deps import get_current_member_id
 from app.core.enums import ActionStatus, ActionType, EventStatus
 from app.core.exceptions import ValidationFailed
-from app.schemas.events import ActionListResponse, EventListResponse, StepListResponse
+from app.db.session import get_session
+from app.schemas.events import (
+    ActionListResponse,
+    EventCreatedResponse,
+    EventCreateIn,
+    EventListResponse,
+    StepListResponse,
+)
 from app.services import event_service
 
 router = APIRouter(prefix="/api/v1/events", tags=["events"])
@@ -23,6 +32,18 @@ def list_events(
     return EventListResponse.model_validate(
         {"data": rows, "meta": {"page": page, "size": size, "total_count": total_count}}
     )
+
+
+@router.post("", response_model=EventCreatedResponse, status_code=201)
+async def create_event(
+    body: EventCreateIn,
+    session: AsyncSession = Depends(get_session),
+    member_id: str = Depends(get_current_member_id),
+) -> EventCreatedResponse:
+    created = await event_service.create_event(
+        session, club_id=body.club_id, title=body.title, member_id=member_id
+    )
+    return EventCreatedResponse.model_validate({"data": created, "meta": None})
 
 
 def _parse_statuses(raw: str | None) -> list[ActionStatus] | None:
