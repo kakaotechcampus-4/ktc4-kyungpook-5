@@ -72,6 +72,13 @@ class StepState(CodeEnum):
     TODO = "TODO"
 
 
+class DraftStage(CodeEnum):
+    """임시 저장한 계획이 멈춘 단계. Step 개수로 서버가 계산하며 DB에 저장하지 않는다."""
+
+    CHAT = "CHAT"
+    FLOW = "FLOW"
+
+
 class ActionType(CodeEnum):
     EXTERNAL_SEND = "EXTERNAL_SEND"
     TRANSFER = "TRANSFER"

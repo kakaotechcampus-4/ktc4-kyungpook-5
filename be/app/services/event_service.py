@@ -9,11 +9,13 @@
 
 from datetime import UTC, date, datetime, timedelta, timezone
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import (
     ActionStatus,
     ActionType,
+    DraftStage,
     EventStatus,
     MemberRole,
     MessageRole,
@@ -21,7 +23,7 @@ from app.core.enums import (
     StepState,
 )
 from app.core.exceptions import EventNotFound, ValidationFailed
-from app.models import Club, Conversation, Event, Message
+from app.models import Club, Conversation, Event, Message, Step
 
 # fixture가 응답하는 유일한 행사. 다른 id는 EVENT_NOT_FOUND다.
 MOCK_EVENT_ID = "evt_9f2c8a"
@@ -423,3 +425,49 @@ async def create_event(
         "conversation_id": conversation.id,
         "messages": [greeting],
     }
+
+
+async def list_drafts(session: AsyncSession, club_id: str) -> list[dict]:
+    """임시 저장한 계획 목록. 최근 저장한 것부터."""
+    step_count = (
+        select(func.count(Step.id))
+        .where(Step.event_id == Event.id)
+        .correlate(Event)
+        .scalar_subquery()
+    )
+    # Event:Conversation 이 1:N 이라 가장 최근 대화를 이어서 하기 대상으로 쓴다(명세).
+    latest_conversation = (
+        select(Conversation.id)
+        .where(Conversation.event_id == Event.id)
+        .order_by(Conversation.created_at.desc(), Conversation.id.desc())
+        .limit(1)
+        .correlate(Event)
+        .scalar_subquery()
+    )
+    rows = await session.execute(
+        select(
+            Event.id,
+            Event.title,
+            Event.saved_at,
+            step_count.label("step_count"),
+            latest_conversation.label("conversation_id"),
+        )
+        .where(
+            Event.club_id == club_id,
+            Event.status == EventStatus.PLANNING,
+            Event.saved_at.is_not(None),
+            # 대화가 없으면 이어서 할 대상이 없다. 한 행 때문에 목록 전체가 실패하지 않게 뺀다.
+            select(Conversation.id).where(Conversation.event_id == Event.id).exists(),
+        )
+        .order_by(Event.saved_at.desc())
+    )
+    return [
+        {
+            "id": row.id,
+            "title": row.title,
+            "stage": DraftStage.FLOW if row.step_count else DraftStage.CHAT,
+            "saved_at": row.saved_at,
+            "conversation_id": row.conversation_id,
+        }
+        for row in rows
+    ]

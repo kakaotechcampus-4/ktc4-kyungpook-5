@@ -15,6 +15,7 @@ from pydantic.alias_generators import to_camel
 from app.core.enums import (
     ActionStatus,
     ActionType,
+    DraftStage,
     EventStatus,
     MemberRole,
     MessageRole,
@@ -168,4 +169,18 @@ class EventCreatedOut(CamelModel):
 
 class EventCreatedResponse(CamelModel):
     data: EventCreatedOut
+    meta: None
+
+
+class DraftOut(CamelModel):
+    id: str
+    title: str
+    stage: DraftStage
+    saved_at: UtcDateTime
+    # POST /events 가 대화를 함께 만들어 계획 중인 행사에는 항상 있다.
+    conversation_id: str
+
+
+class DraftListResponse(CamelModel):
+    data: list[DraftOut]
     meta: None

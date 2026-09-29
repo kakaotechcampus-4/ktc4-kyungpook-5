@@ -9,6 +9,7 @@ from app.core.exceptions import ValidationFailed
 from app.db.session import get_session
 from app.schemas.events import (
     ActionListResponse,
+    DraftListResponse,
     EventCreatedResponse,
     EventCreateIn,
     EventListResponse,
@@ -17,6 +18,16 @@ from app.schemas.events import (
 from app.services import event_service
 
 router = APIRouter(prefix="/api/v1/events", tags=["events"])
+
+
+# /{event_id} 계열보다 먼저 등록한다. 뒤에 두면 drafts 가 event_id 로 해석된다(명세).
+@router.get("/drafts", response_model=DraftListResponse)
+async def list_drafts(
+    club_id: str = Query(alias="clubId"),
+    session: AsyncSession = Depends(get_session),
+) -> DraftListResponse:
+    rows = await event_service.list_drafts(session, club_id)
+    return DraftListResponse.model_validate({"data": rows, "meta": None})
 
 
 @router.get("", response_model=EventListResponse)
