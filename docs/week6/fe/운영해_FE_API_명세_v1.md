@@ -309,18 +309,15 @@ GET /api/v1/conversations/cnv_88ae01/messages
       "eventType": "MT",
       "startDate": "2026-03-21",
       "endDate": "2026-03-22",
-      "headcount": 32,          // 🔸 events.expected_headcount 추가 필요
-      "budgetTotal": 2000000,   // 🔸 events.budget_total 추가 필요
-      "locationCandidates": ["가평", "양평"]  // 🔸 저장 위치 미정
+      "headcount": 32,
+      "budgetTotal": 2000000,
+      "locationCandidates": ["가평", "양평"]
     },
     "readyToGenerate": true
   },
   "meta": null
 }
 ```
-
-> 🔸 `collected`의 값 중 `headcount` / `budgetTotal` / `locationCandidates`를 담을 컬럼이 아직 없습니다.
-> 임시로 응답에만 포함하고 DB에는 저장하지 않거나, `events`에 컬럼을 추가해야 합니다.
 
 ---
 
