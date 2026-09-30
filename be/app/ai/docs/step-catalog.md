@@ -31,40 +31,49 @@ Action은 AI가 준비하고, 운영진이 실행하고, 실행 기록을 남기
 
 ## 단계 목록
 
-담당은 Action으로 정합니다. 승인이 필요한 Action이 있으면 `APPROVAL_REQUIRED`, 없으면 `MANUAL`입니다. Action이 없는 단계는 운영진이 완료로 표시합니다.
+담당은 단계를 처리하는 방식입니다. 계획 화면의 범례와 같습니다.
+
+| 담당 | 뜻 |
+| --- | --- |
+| `AI` AI 실행 | AI가 대조·계산·정리를 맡고 운영진은 결과를 확인합니다. 승인이 필요한 Action이 함께 있을 수 있습니다 |
+| `APPROVAL_REQUIRED` 승인 필요 | AI가 준비한 Action을 운영진이 승인하고 실행합니다 |
+| `MANUAL` 직접 수행 | 운영진이 직접 처리합니다. AI는 필요한 정보를 묻습니다 |
+
+어느 담당이든 단계의 완료는 AI가 정하지 않습니다. Action의 기록 또는 운영진의 완료 표시로 정합니다.
 
 ### 사전 준비 (`PREPARATION`)
 
 | 코드 | 단계 | 담당 | Action | 하는 일 |
 | --- | --- | --- | --- | --- |
-| `ASSIGN_ROLES` | 담당 인원 배치 | 직접 | `CONFIRMATION` | 분야별 담당자를 정하고 미배정 인원을 확인합니다 |
-| `RESEARCH_VENUE` | 장소·교통 알아보기 | 직접 | `CONFIRMATION` | 장소·차량의 가능 여부와 견적을 문의합니다 |
-| `DEMAND_SURVEY` | 사전 수요 조사 | 승인 | `NOTICE` | 수요조사 폼을 단톡방에 공지합니다 |
+| `ASSIGN_ROLES` | 담당 인원 배치 | 직접 수행 | `CONFIRMATION` | 분야별 담당자를 정하고 미배정 인원을 확인합니다 |
+| `RESEARCH_VENUE` | 장소·교통 알아보기 | 직접 수행 | `CONFIRMATION` | 장소·차량의 가능 여부와 견적을 문의합니다 |
+| `DEMAND_SURVEY` | 사전 수요 조사 | 승인 필요 | `NOTICE` | 수요조사 폼을 단톡방에 공지합니다 |
 
 ### 모집·확정 (`RECRUITING`)
 
 | 코드 | 단계 | 담당 | Action | 하는 일 |
 | --- | --- | --- | --- | --- |
-| `RECRUIT_NOTICE` | 모집 공지 | 승인 | `NOTICE` | 참가 신청을 공지합니다 |
-| `CHECK_RESPONSES` | 응답 확인 | 승인 | `NOTICE` | 마감 전 미응답 회원에게 안내합니다 |
-| `CONFIRM_DETAILS` | 인원·일정 확정 | 직접 | — | 응답을 반영해 최종 인원과 날짜를 확정합니다 |
-| `BOOK_VENUE` | 숙소·차량 예약 | 승인 | `CONTRACT`, `TRANSFER` | 확정 인원으로 계약하고 계약금을 이체합니다 |
-| `COLLECT_FEES` | 참가비 수금 | 승인 | `NOTICE`, `EXTERNAL_SEND` | 납부를 안내하고 미납자에게 개별 연락합니다 |
+| `RECRUIT_NOTICE` | 모집 공지 | 승인 필요 | `NOTICE` | 참가 신청을 공지합니다 |
+| `CHECK_RESPONSES` | 응답 확인 | 승인 필요 | `NOTICE` | 마감 전 미응답 회원에게 안내합니다 |
+| `CONFIRM_DETAILS` | 인원·일정 확정 | AI 실행 | `CONFIRMATION` | 응답을 반영한 인원·예산 계산 결과를 정리하고 운영진의 확정을 받습니다 |
+| `BOOK_VENUE` | 숙소·차량 예약 | 승인 필요 | `CONTRACT`, `TRANSFER` | 확정 인원으로 계약하고 계약금을 이체합니다 |
+| `COLLECT_FEES` | 참가비 수금 | AI 실행 | `NOTICE`, `EXTERNAL_SEND` | 입금 대조 결과로 미납자를 정리하고 납부 안내·개별 연락을 준비합니다 |
 
 ### 행사 진행·마무리 (`EXECUTION`)
 
 | 코드 | 단계 | 담당 | Action | 하는 일 |
 | --- | --- | --- | --- | --- |
-| `PRE_EVENT_NOTICE` | 사전 안내 | 승인 | `NOTICE` | 준비물·집결 장소를 공지합니다 |
-| `EVENT_DAY` | 행사 당일 | 직접 | — | 출발 체크와 인원 확인을 합니다 |
-| `SETTLE_EXPENSES` | 지출 정산 | 승인 | `EXPENSE` | 영수증을 정리하고 지출을 승인받습니다 |
-| `REFUND_FEES` | 참가비 환급 | 승인 | `TRANSFER` | 불참·잔액에 따른 환급을 이체합니다 |
+| `PRE_EVENT_NOTICE` | 사전 안내 | 승인 필요 | `NOTICE` | 준비물·집결 장소를 공지합니다 |
+| `EVENT_DAY` | 행사 당일 | 직접 수행 | — | 출발 체크와 인원 확인을 합니다 |
+| `SETTLE_EXPENSES` | 지출 정산 | 승인 필요 | `EXPENSE` | 영수증을 정리하고 지출을 승인받습니다 |
+| `REFUND_FEES` | 참가비 환급 | 승인 필요 | `TRANSFER` | 불참·잔액에 따른 환급을 이체합니다 |
+| `RECORD_FEEDBACK` | 피드백 기록 | AI 실행 | `CONFIRMATION` | 행사 결과와 회고를 정리하고, 운영진이 확인하면 다음 행사용 자료로 남깁니다 |
 
-목록의 순서가 기본 진행 순서입니다.
+목록의 순서가 기본 진행 순서입니다. 계산·대조 결과는 BE가 만들고, AI는 그 결과를 정리해 설명합니다.
 
 ## 목록에 두지 않는 일
 
-- AI가 혼자 처리하는 일: 과거 기록 참고, 인원·예산 재계산처럼 운영진이 실행하거나 기록할 것이 없는 일입니다. 계획 대화와 운영 대응 안에서 처리합니다.
+- 계획 대화에서 끝나는 일: 과거 기록 참고는 계획을 만들기 전에 대화 안에서 처리합니다.
 - 운영진이 추적할 기록이 없는 일: 발표 자료 준비, 리허설처럼 앱이 도울 Action이 없는 일입니다. 필요하면 목록에 추가하는 방식으로 다룹니다.
 
 ## 계획안에서 AI가 채우는 값
@@ -90,11 +99,12 @@ Action은 AI가 준비하고, 운영진이 실행하고, 실행 기록을 남기
 | --- | --- |
 | 보류 상태 | Figma v6에는 결정 보류가 있으나 `ActionStatus`에 보류 값이 없습니다 |
 | 초안 문구 저장 | 승인한 문구와 버전을 담을 Action 필드가 없습니다. `payload`는 확인 요청 전용입니다 |
-| `StepActor.AI` | 목록에서 쓰지 않습니다. enum 값은 재사용하지 않으므로 남겨 둡니다 |
+| 중간 점검 단계 | 계획 화면의 일정 공백 경고에 "중간 점검 단계 넣기"가 있으나 목록에 해당 단계가 없습니다 |
 | Step 코드 저장 | `steps`에 단계 코드 컬럼이 필요합니다. 초기 마이그레이션(#63) 전에 정하면 추가 리비전이 없습니다 |
 
 ## 관련 문서
 
 - [AI 기능 요구사항](requirements.md): AI-PLAN-05, AI-PLAN-07
 - [BE-AI 데이터 계약](contracts.md)
-- [Figma v6](https://www.figma.com/design/DAIeI2ETmdQ5vjrPSZJ196?node-id=417-2): P12-D, P16, P17
+- [Figma v5](https://www.figma.com/design/DAIeI2ETmdQ5vjrPSZJ196?node-id=237-258): P2 흐름 만들기, 담당 범례
+- [Figma v6](https://www.figma.com/design/DAIeI2ETmdQ5vjrPSZJ196?node-id=417-2): P16 결정 상세, P17 게시 대기
