@@ -130,7 +130,7 @@ class StepOut(CamelModel):
     name: str
     actor: StepActor
     state: StepState
-    started_time: UtcDateTime | None
+    starts_at: UtcDateTime | None
     deadline: UtcDateTime | None
     completed_count: int
     total_action_count: int

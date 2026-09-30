@@ -193,7 +193,7 @@ function insertCheckpoint(plan: EventPlan, warningIndex: number): EventPlan {
     phase: 'RECRUITING',
     name: '중간 점검',
     actor: 'MANUAL',
-    startedTime: '2026-03-16T00:00:00Z',
+    startsAt: '2026-03-16T00:00:00Z',
     deadline: null,
     actions: [],
   }

@@ -175,13 +175,13 @@ class PlannedStep(ContractModel):
 
     # Step 시작 시각과 마감 시각.
     # 아직 정해지지 않았다면 None으로 둔다.
-    started_time: datetime | None = None
+    starts_at: datetime | None = None
     deadline: datetime | None = None
 
     # 행동이 없는 단계도 있다. 비었다고 완료로 보지 않는다
     actions: tuple[PlannedAction, ...] = ()
 
-    @field_validator("started_time", "deadline")
+    @field_validator("starts_at", "deadline")
     @classmethod
     def _require_timezone(cls, value: datetime | None) -> datetime | None:
         """시각에는 반드시 시간대 정보를 포함하도록 한다.

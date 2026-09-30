@@ -88,7 +88,7 @@ export interface EventStep {
   name: string
   actor: StepActor
   state: StepState
-  startedTime: string | null
+  startsAt: string | null
   deadline: string | null
   doneActions: StepAction[]
   remainingActions: StepAction[]

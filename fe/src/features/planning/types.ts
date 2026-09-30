@@ -91,7 +91,7 @@ export interface PlanStep {
   phase: StepPhase
   name: string
   actor: StepActor
-  startedTime: string | null
+  startsAt: string | null
   deadline: string | null
   actions: PlanAction[]
 }
@@ -140,6 +140,6 @@ export interface EventPlan {
 // PATCH /events/{eventId}/steps/{stepId} 로 보내는 값
 export interface StepPatch {
   name?: string
-  startedTime?: string | null
+  startsAt?: string | null
   deadline?: string | null
 }

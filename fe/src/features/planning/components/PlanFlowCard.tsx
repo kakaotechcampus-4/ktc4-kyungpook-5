@@ -11,8 +11,8 @@ import type { PlanPhaseGroup, PlanStep, StepActor, StepPatch } from '@/features/
 
 // "3/5" · "3/10–3/12". 시작이 없으면 아직 날짜를 안 잡은 단계다.
 function stepDateLabel(step: PlanStep): string {
-  if (!step.startedTime) return '미정'
-  const start = formatMonthDay(step.startedTime)
+  if (!step.startsAt) return '미정'
+  const start = formatMonthDay(step.startsAt)
   if (!step.deadline) return start
   const end = formatMonthDay(step.deadline)
   return start === end ? start : `${start}–${end}`
@@ -20,9 +20,9 @@ function stepDateLabel(step: PlanStep): string {
 
 // 묶음 머리 오른쪽의 "3/5 → 3/7"
 function phaseRange(steps: PlanStep[]): string | null {
-  const first = steps.find((step) => step.startedTime)?.startedTime
-  const lastStep = [...steps].reverse().find((step) => step.deadline ?? step.startedTime)
-  const last = lastStep?.deadline ?? lastStep?.startedTime
+  const first = steps.find((step) => step.startsAt)?.startsAt
+  const lastStep = [...steps].reverse().find((step) => step.deadline ?? step.startsAt)
+  const last = lastStep?.deadline ?? lastStep?.startsAt
   return first && last ? `${formatMonthDay(first)} → ${formatMonthDay(last)}` : null
 }
 
@@ -46,7 +46,7 @@ function StepEditor({
   onCancel: () => void
 }) {
   const [name, setName] = useState(step.name)
-  const [startedTime, setStartedTime] = useState(toDateInput(step.startedTime))
+  const [startsAt, setStartsAt] = useState(toDateInput(step.startsAt))
   const [deadline, setDeadline] = useState(toDateInput(step.deadline))
 
   return (
@@ -56,8 +56,8 @@ function StepEditor({
         <Input
           label="시작"
           type="date"
-          value={startedTime}
-          onChange={(event) => setStartedTime(event.target.value)}
+          value={startsAt}
+          onChange={(event) => setStartsAt(event.target.value)}
         />
         <Input
           label="마감"
@@ -73,7 +73,7 @@ function StepEditor({
           onClick={() =>
             onSubmit({
               name: name.trim(),
-              startedTime: toIso(startedTime, step.startedTime),
+              startsAt: toIso(startsAt, step.startsAt),
               deadline: toIso(deadline, step.deadline),
             })
           }

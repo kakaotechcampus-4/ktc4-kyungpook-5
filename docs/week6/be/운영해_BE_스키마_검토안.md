@@ -155,6 +155,8 @@ POST /api/v1/steps/{stepId}/complete
 | **enum 문자열 저장** | `Integer(매크로 변수)` → `VARCHAR(32)` 코드 문자열. 변환 계층이 사라져 코드가 줄고 **API 응답은 그대로**입니다 |
 | **날짜 타입** | 회의록은 전부 `datetime`이었으나 명세를 따라 `start_date`·`end_date`·`due_date`를 `DATE`로. `deadline`은 `TIMESTAMPTZ`("3/12 14:59") |
 | **`conversation.user_id`** | `users` 테이블이 없어 FK 대상이 없었습니다. `member_id`로 개명 |
+| **단계 시각 이름** | `steps.started_time` → `steps.starts_at`(API `startsAt`, AI `PlannedStep.starts_at`). 예정 시각은 `~s_at`(`expires_at`), 실제 시각은 `~ed_at` 규칙. `deadline`은 화면 문구("마감")와 이어져 예외로 유지 (#25-6) |
+| **`name` / `title`** | 유지. `name`은 분류·묶음 라벨(`clubs`, `members`, phase, `steps`), `title`은 `subtitle`과 짝인 내용 제목(`events`, `conversations`, `actions`) (#25-6) |
 
 ### 아직 정해지지 않은 것
 
@@ -165,7 +167,6 @@ POST /api/v1/steps/{stepId}/complete
 | `title` 기본값 | `새 행사 · 3월 2일`이면 같은 날 두 개를 만들 때 구분이 안 됩니다. `NOT NULL`로 바꾼 목적이 무너집니다 | FE·BE |
 | 규칙 경고 `code` 목록 | 초안: `SCHEDULE_GAP`·`BUDGET_EXCEEDED`·`PREP_TIME_SHORT`·`SCHEDULE_CONFLICT`·`MINIMUM_HEADCOUNT_VIOLATED` | BE |
 | 동시 승인 | 임원 둘이 동시에 승인할 때 조건부 `UPDATE`가 필요합니다. AI-OPS-03이 중복 실행 금지를 요구합니다 | BE |
-| 네이밍 | `steps.started_time`만 `_time`이고 과거형인데 값은 예정 시각. `steps.name` vs `actions.title` | 팀 |
 
 ---
 
