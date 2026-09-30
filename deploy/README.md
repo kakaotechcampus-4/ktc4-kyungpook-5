@@ -21,7 +21,7 @@ the API is a separate FastAPI container. Caddy sends `/api/*` to the API contain
    repository Actions variable `AWS_ACCOUNT_ID` (the 12-digit team account ID).
    The ECR publish job can run now; the EC2 deployment job stays skipped while
    `EC2_INSTANCE_ID` is unset.
-6. Run the `OIDC connection test` workflow manually on `develop`. Confirm that
+6. Run the `OIDC connection test` workflow manually on `MVP`. Confirm that
    `aws sts get-caller-identity` reports `assumed-role/ktc-github-deploy`.
    The account guide confirms the role exists, but does not list its ECR push
    or SSM Run Command permissions. The first publish run checks ECR access in
@@ -32,9 +32,11 @@ the API is a separate FastAPI container. Caddy sends `/api/*` to the API contain
 
 ## Initial deployment
 
-Push the deployment files to `develop`. The workflow tests the frontend and
+Push the deployment files to `MVP`. The workflow tests the frontend and
 backend, builds both images in GitHub-hosted runners, pushes them to ECR with the
 commit SHA as tag, then uses SSM Run Command to update the existing instance.
+Pull requests targeting `MVP` run verification only. Manual workflow runs also
+run verification only; only a push to `MVP` can publish images or deploy.
 It checks the local API and, when a domain is configured, validates the public
 HTTPS certificate and API proxy. It restores the previous image configuration
 if health checks fail. No SSH key or inbound port 22 is needed.

@@ -2,7 +2,9 @@ name: Build and deploy
 
 on:
   push:
-    branches: [develop]
+    branches: [MVP]
+  pull_request:
+    branches: [MVP]
   workflow_dispatch:
 
 permissions:
@@ -38,7 +40,7 @@ jobs:
 
   publish:
     needs: verify
-    if: github.ref == 'refs/heads/develop' && vars.AWS_ACCOUNT_ID != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/MVP' && vars.AWS_ACCOUNT_ID != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
