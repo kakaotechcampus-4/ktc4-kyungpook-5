@@ -19,8 +19,8 @@ const STATE_LABEL: Record<EventStep['state'], string> = {
 }
 
 function periodOf(step: EventStep): string | null {
-  if (!step.startedTime) return null
-  const started = formatMonthDay(step.startedTime)
+  if (!step.startsAt) return null
+  const started = formatMonthDay(step.startsAt)
   return step.deadline ? `${started} – ${formatMonthDay(step.deadline)}` : started
 }
 

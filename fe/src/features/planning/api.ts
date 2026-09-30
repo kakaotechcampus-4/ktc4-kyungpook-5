@@ -205,7 +205,7 @@ export function getPlanMock(): EventPlan {
             phase: 'PREPARATION',
             name: '사전 수요 조사',
             actor: 'APPROVAL_REQUIRED',
-            startedTime: '2026-03-05T00:00:00Z',
+            startsAt: '2026-03-05T00:00:00Z',
             deadline: null,
             actions: [
               {
@@ -226,7 +226,7 @@ export function getPlanMock(): EventPlan {
             phase: 'PREPARATION',
             name: '세부사항 조정',
             actor: 'AI',
-            startedTime: '2026-03-07T00:00:00Z',
+            startsAt: '2026-03-07T00:00:00Z',
             deadline: null,
             actions: [
               {
@@ -253,7 +253,7 @@ export function getPlanMock(): EventPlan {
             phase: 'RECRUITING',
             name: '장소 · 차량 확보',
             actor: 'MANUAL',
-            startedTime: '2026-03-08T00:00:00Z',
+            startsAt: '2026-03-08T00:00:00Z',
             deadline: '2026-03-09T09:00:00Z',
             actions: [],
           },
@@ -263,7 +263,7 @@ export function getPlanMock(): EventPlan {
             phase: 'RECRUITING',
             name: '최종 모집 공지',
             actor: 'APPROVAL_REQUIRED',
-            startedTime: '2026-03-10T00:00:00Z',
+            startsAt: '2026-03-10T00:00:00Z',
             deadline: null,
             actions: [
               {
@@ -283,7 +283,7 @@ export function getPlanMock(): EventPlan {
             phase: 'RECRUITING',
             name: '입금 내역 확인',
             actor: 'AI',
-            startedTime: '2026-03-10T00:00:00Z',
+            startsAt: '2026-03-10T00:00:00Z',
             deadline: '2026-03-12T14:59:00Z',
             actions: [
               {
@@ -311,7 +311,7 @@ export function getPlanMock(): EventPlan {
             phase: 'EXECUTION',
             name: '영수 처리',
             actor: 'APPROVAL_REQUIRED',
-            startedTime: '2026-03-23T00:00:00Z',
+            startsAt: '2026-03-23T00:00:00Z',
             deadline: null,
             actions: [
               {
@@ -331,7 +331,7 @@ export function getPlanMock(): EventPlan {
             phase: 'EXECUTION',
             name: '피드백 기록',
             actor: 'AI',
-            startedTime: '2026-03-25T00:00:00Z',
+            startsAt: '2026-03-25T00:00:00Z',
             deadline: null,
             actions: [
               {

@@ -129,7 +129,7 @@ export function getEventSteps(): EventStep[] {
     name,
     actor,
     state,
-    startedTime: state === 'CURRENT' ? '2026-03-10T00:00:00Z' : null,
+    startsAt: state === 'CURRENT' ? '2026-03-10T00:00:00Z' : null,
     deadline: state === 'CURRENT' ? '2026-03-12T14:59:00Z' : null,
     doneActions:
       state === 'CURRENT'
