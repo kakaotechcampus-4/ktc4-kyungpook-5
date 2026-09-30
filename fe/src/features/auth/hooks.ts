@@ -2,10 +2,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as authApi from '@/features/auth/api'
+import { useAuthStore } from '@/shared/auth/store'
 import type { ClubSearchResult, JoinMode, SignupPayload } from '@/features/auth/types'
 
 export function useLoginForm() {
   const navigate = useNavigate()
+  const setUser = useAuthStore((state) => state.setUser)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [keepSignedIn, setKeepSignedIn] = useState(false)
@@ -16,7 +18,8 @@ export function useLoginForm() {
     setSubmitting(true)
     setError(null)
     try {
-      await authApi.login({ email, password, keepSignedIn })
+      const user = await authApi.login({ email, password, keepSignedIn })
+      setUser(user)
       navigate('/')
     } catch {
       setError('이메일 또는 비밀번호를 확인해 주세요.')

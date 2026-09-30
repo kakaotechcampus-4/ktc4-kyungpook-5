@@ -27,6 +27,18 @@ export async function getPendingActionsFromApi(eventId: string): Promise<Pending
   }))
 }
 
+// TODO: 목데이터다. POST /actions/{actionId}/approve · /deny가 BE에 아직 없어
+// 성공한 것처럼 흉내만 낸다. 엔드포인트가 생기면 apiPost 호출로 교체한다.
+export async function approveAction(actionId: string): Promise<void> {
+  console.debug('[mock] approve action', actionId)
+  await new Promise((resolve) => setTimeout(resolve, 200))
+}
+
+export async function denyAction(actionId: string): Promise<void> {
+  console.debug('[mock] deny action', actionId)
+  await new Promise((resolve) => setTimeout(resolve, 200))
+}
+
 export function getEventSummaries(): EventSummary[] {
   return [
     {
