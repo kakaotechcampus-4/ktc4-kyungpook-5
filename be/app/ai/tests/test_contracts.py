@@ -26,7 +26,7 @@ STEP = PlannedStep(
     phase=StepPhase.PREPARATION,
     name="장소 후보 조사",
     actor=StepActor.MANUAL,
-    started_time=datetime(2026, 3, 1, tzinfo=UTC),
+    starts_at=datetime(2026, 3, 1, tzinfo=UTC),
 )
 
 
