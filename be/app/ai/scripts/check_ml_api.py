@@ -7,6 +7,8 @@
 AI_* 는 be/.env 에서 읽는다. 출력은 모두 scrub()을 거쳐 키가 남지 않는다.
 """
 
+import asyncio
+from datetime import date
 from math import sqrt
 from pathlib import Path
 
@@ -18,7 +20,12 @@ load_dotenv(Path(".env").resolve(), override=True)
 
 from app.ai.config import AISettings  # noqa: E402
 from app.ai.errors import AIConfigError  # noqa: E402
-from app.ai.llm import EMBEDDING_DIMENSIONS, build_chat_model, build_embeddings  # noqa: E402
+from app.ai.llm import (  # noqa: E402
+    EMBEDDING_DIMENSIONS,
+    ainvoke_structured,
+    build_chat_model,
+    build_embeddings,
+)
 
 SECRETS: list[str] = []
 failed = 0
@@ -48,6 +55,17 @@ class EventDraft(BaseModel):
     행사종류: str | None = Field(None, description="MT, 환영회 등. 없으면 null")
     예상인원: int | None = Field(None, description="말하지 않았으면 null")
     미정항목: list[str] = Field(default_factory=list, description="정해지지 않은 항목")
+
+
+class StepSketch(BaseModel):
+    이름: str
+    마감일: date | None = Field(None, description="날짜를 모르면 null")
+
+
+class PlanSketch(BaseModel):
+    """공통 구조화 호출 확인용. 계획안처럼 목록 안에 모델이 있는 형태를 본다."""
+
+    단계: list[StepSketch]
 
 
 @tool
@@ -130,6 +148,36 @@ def check_embeddings(settings: AISettings) -> None:
         report("dimensions 파라미터 지원", False, f"{type(e).__name__}: {e}")
 
 
+async def check_structured(settings: AISettings) -> None:
+    """기능 코드가 쓰는 공통 구조화 호출을 본다.
+
+    langchain-openai가 async HTTP 클라이언트를 프로세스에서 공유하므로
+    asyncio.run을 여러 번 부르면 닫힌 루프의 연결을 다시 써서 실패한다. 한 루프에서 모두 돌린다.
+    """
+    try:
+        plan = await ainvoke_structured(
+            "MT 준비 단계를 세 개만 정해줘. 모집 마감은 2026-03-10이야.",
+            PlanSketch,
+            model=build_chat_model(settings),
+        )
+        report("공통 구조화 호출(ainvoke_structured)", bool(plan.단계), plan)
+    except Exception as e:
+        report("공통 구조화 호출(ainvoke_structured)", False, f"{type(e).__name__}: {e}")
+
+    # 게이트웨이는 모델명 오류를 400으로 돌려준다. 문구가 바뀌면 여기서 실패한다
+    try:
+        await ainvoke_structured(
+            "안녕",
+            PlanSketch,
+            model=build_chat_model(settings, model="no-such-model", max_retries=0),
+        )
+        report("잘못된 모델명 → AIConfigError", False, "오류 없이 응답함")
+    except AIConfigError as e:
+        report("잘못된 모델명 → AIConfigError", True, e)
+    except Exception as e:
+        report("잘못된 모델명 → AIConfigError", False, f"{type(e).__name__}: {e}")
+
+
 def main() -> int:
     try:
         settings = AISettings()
@@ -167,6 +215,8 @@ def main() -> int:
         report("말하지 않은 값을 채우지 않음", out.예상인원 is None, f"예상인원={out.예상인원}")
     except Exception as e:
         report("구조화 출력(json_schema)", False, f"{type(e).__name__}: {e}")
+
+    asyncio.run(check_structured(settings))
 
     # Tool 왕복. chat/completions 에서는 여기서 400 이 난다
     try:
