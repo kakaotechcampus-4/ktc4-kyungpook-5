@@ -1,0 +1,16 @@
+{
+    acme_ca https://acme.zerossl.com/v2/DV90
+    email {$ACME_EMAIL}
+}
+
+{$SITE_ADDRESS}
+
+handle /api/* {
+    reverse_proxy api:8000
+}
+
+handle {
+    root * /srv
+    try_files {path} /index.html
+    file_server
+}

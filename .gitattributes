@@ -21,3 +21,8 @@
 # 셸 스크립트·git hook 은 CRLF 면 실행이 실패하니 LF 로 고정하는 게 좋습니다:
 #   *.sh        text eol=lf
 #   .githooks/* text eol=lf
+
+# Docker 관련 파일 — 리눅스 컨테이너 안에서 해석되므로 LF 로 고정합니다.
+# CRLF 로 커밋되면 compose 의 `command: sh -c ...` 가 `$'\r': command not found` 로 깨집니다.
+Dockerfile   text eol=lf
+compose.yml  text eol=lf
