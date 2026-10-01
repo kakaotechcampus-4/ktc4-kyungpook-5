@@ -63,6 +63,20 @@ be/app/ai/
 모델은 `llm.py`에서만 만듭니다. 기본 구성은 `get_chat_model()`,
 기능별 조정이 필요하면 `build_chat_model()`을 사용합니다.
 임베딩은 `get_embeddings()`와 `build_embeddings()`를 사용합니다.
+
+구조화 출력은 `await ainvoke_structured(messages, Schema)`로 호출합니다.
+응답을 `Schema`로 검증해 돌려주고, 모델 호출 실패는 AI 오류 타입으로 바꿉니다.
+기능 코드는 openai 예외를 직접 다루지 않습니다.
+
+| 실패 | 오류 |
+| --- | --- |
+| 응답 시간 초과 | `AITimeoutError` |
+| 연결 실패·429·5xx | `AIRetryableError` |
+| 401·403·404 (주소·키·모델명) | `AIConfigError` |
+| 응답 형식 불일치·거절·빈 응답 | `AIInvalidResponseError` |
+| 그 밖 (400 등) | 감싸지 않고 그대로 |
+
+일시적 오류는 `DEFAULT_MAX_RETRIES`만큼 재시도한 뒤에 변환합니다.
 `gpt-5` 계열은 `temperature=1` 외의 값을 받지 않으므로 답변을 일정하게
 유지할 때는 온도 대신 프롬프트와 구조화 출력을 사용합니다.
 

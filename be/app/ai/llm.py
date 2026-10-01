@@ -1,14 +1,25 @@
 """공통 LLM 생성과 호출 설정을 관리한다.
 
 채팅 모델과 임베딩 모델을 여기서만 만든다.
+구조화 출력 호출과 모델 오류 변환도 여기서 한다. 기능 코드는 AI 오류 타입만 받는다.
 """
 
 from functools import lru_cache
 from typing import Any
 
+import openai
+from langchain_core.language_models import LanguageModelInput
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from pydantic import BaseModel, ValidationError
 
 from .config import AISettings, get_settings
+from .errors import (
+    AIConfigError,
+    AIError,
+    AIInvalidResponseError,
+    AIRetryableError,
+    AITimeoutError,
+)
 
 # 일시적 오류에만 쓰는 재시도 횟수. 승인·발송 같은 실행은 BE가 담당하므로
 # 여기서 재시도해도 같은 행동이 중복 실행되지 않는다.
@@ -106,3 +117,72 @@ def get_embeddings() -> OpenAIEmbeddings:
     색인과 검색이 같은 모델·차원을 써야 하므로 기능별로 따로 만들지 않는다.
     """
     return build_embeddings()
+
+
+async def ainvoke_structured[T: BaseModel](
+    messages: LanguageModelInput,
+    schema: type[T],
+    *,
+    model: ChatOpenAI | None = None,
+) -> T:
+    """모델을 호출해 `schema`로 검증한 객체를 돌려준다.
+
+    모델 호출 실패는 AI 오류 타입으로 바꿔 올리고, 분류 밖의 예외는 그대로 올린다.
+    일시적 오류는 모델의 max_retries만큼 먼저 재시도한 뒤에 변환한다.
+    `model`을 주지 않으면 공용 모델을 쓴다. 추론 깊이 등을 바꾸려면
+    `build_chat_model()`로 만들어 넘긴다.
+    """
+    model = model or get_chat_model()
+    # include_raw=True면 거절·빈 응답 같은 파싱 실패가 예외 대신 parsing_error로 온다.
+    structured = model.with_structured_output(
+        schema, method="json_schema", include_raw=True
+    )
+    try:
+        output = await structured.ainvoke(messages)
+    except (openai.APIConnectionError, openai.APIStatusError) as error:
+        converted = _convert_api_error(error)
+        if converted is None:
+            raise
+        raise converted from error
+    except ValidationError as error:
+        # SDK가 응답을 schema로 바로 파싱하므로 형식이 다르면 호출 단계에서 실패한다.
+        # 다른 모델의 검증 실패는 예상하지 못한 오류라 감싸지 않는다.
+        if error.title != schema.__name__:
+            raise
+        raise _invalid_response(schema) from error
+
+    parsed = output["parsed"]
+    if output["parsing_error"] is not None or parsed is None:
+        raise _invalid_response(schema) from output["parsing_error"]
+    return parsed
+
+
+def _convert_api_error(
+    error: openai.APIConnectionError | openai.APIStatusError,
+) -> AIError | None:
+    """openai 호출 예외를 AI 오류로 바꾼다. 분류 밖이면 None을 돌려 그대로 올리게 한다.
+
+    원인 예외의 문구는 메시지에 넣지 않는다. 응답 본문에 요청 원문이 섞일 수 있어
+    원인은 `__cause__`로만 남긴다.
+    """
+    # APITimeoutError는 APIConnectionError의 하위 타입이라 먼저 본다.
+    if isinstance(error, openai.APITimeoutError):
+        return AITimeoutError("모델 응답이 제한 시간 안에 오지 않았습니다")
+    if isinstance(error, openai.APIConnectionError):
+        return AIRetryableError("모델 API에 연결하지 못했습니다")
+
+    status = error.status_code
+    if isinstance(error, openai.RateLimitError) or status >= 500:
+        return AIRetryableError(f"모델 API가 요청을 처리하지 못했습니다 (HTTP {status})")
+    if isinstance(
+        error,
+        (openai.AuthenticationError, openai.PermissionDeniedError, openai.NotFoundError),
+    ):
+        return AIConfigError(
+            f"모델 API의 주소·키·모델명을 확인해야 합니다 (HTTP {status})"
+        )
+    return None
+
+
+def _invalid_response(schema: type[BaseModel]) -> AIInvalidResponseError:
+    return AIInvalidResponseError(f"모델 응답이 {schema.__name__} 형식과 맞지 않습니다")
