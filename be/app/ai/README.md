@@ -72,9 +72,11 @@ be/app/ai/
 | --- | --- |
 | 응답 시간 초과 | `AITimeoutError` |
 | 연결 실패·429·5xx | `AIRetryableError` |
-| 401·403·404 (주소·키·모델명) | `AIConfigError` |
+| 401·403·404 (주소·키·모델명), 모델명 오류 400 | `AIConfigError` |
 | 응답 형식 불일치·거절·빈 응답 | `AIInvalidResponseError` |
-| 그 밖 (400 등) | 감싸지 않고 그대로 |
+| 그 밖 (모델명 외 400 등) | 감싸지 않고 그대로 |
+
+게이트웨이는 허용하지 않은 모델명에 400으로 답해 문구(`MODEL_NOT_ALLOWED`)로 구분합니다.
 
 일시적 오류는 `DEFAULT_MAX_RETRIES`만큼 재시도한 뒤에 변환합니다.
 `gpt-5` 계열은 `temperature=1` 외의 값을 받지 않으므로 답변을 일정하게

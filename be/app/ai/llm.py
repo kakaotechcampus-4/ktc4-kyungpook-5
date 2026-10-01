@@ -4,6 +4,7 @@
 구조화 출력 호출과 모델 오류 변환도 여기서 한다. 기능 코드는 AI 오류 타입만 받는다.
 """
 
+import re
 from functools import lru_cache
 from typing import Any
 
@@ -39,6 +40,10 @@ EMBEDDING_DIMENSIONS = 1536
 # tiktoken 으로 토큰 배열을 만들어 보내므로 문자열을 그대로 보내도록 끈다.
 # 길이 초과는 자동으로 잘리지 않고 오류로 드러난다. 청킹은 retrieval 에서 한다.
 CHECK_EMBEDDING_CTX_LENGTH = False
+
+# 게이트웨이는 허용하지 않은 모델명에 404가 아니라 400과 이 문구로 답한다.
+# 예: "Model 'no-such-model' is not allowed. Allowed: [...]"
+MODEL_NOT_ALLOWED = re.compile(r"Model '.+' is not allowed")
 
 
 def build_chat_model(
@@ -177,11 +182,23 @@ def _convert_api_error(
     if isinstance(
         error,
         (openai.AuthenticationError, openai.PermissionDeniedError, openai.NotFoundError),
-    ):
+    ) or _is_model_not_allowed(error):
         return AIConfigError(
             f"모델 API의 주소·키·모델명을 확인해야 합니다 (HTTP {status})"
         )
     return None
+
+
+def _is_model_not_allowed(error: openai.APIStatusError) -> bool:
+    """게이트웨이가 모델명 오류를 400으로 돌려준 경우인지 본다.
+
+    본문의 type·code로는 다른 요청 형식 오류와 구분되지 않아 문구로 판별한다.
+    문구가 바뀌면 분류 밖의 오류로 그대로 올라가고 check_ml_api.py가 실패로 알린다.
+    """
+    if not isinstance(error, openai.BadRequestError) or not isinstance(error.body, dict):
+        return False
+    message = error.body.get("message")
+    return isinstance(message, str) and bool(MODEL_NOT_ALLOWED.match(message))
 
 
 def _invalid_response(schema: type[BaseModel]) -> AIInvalidResponseError:

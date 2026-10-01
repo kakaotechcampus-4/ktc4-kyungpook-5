@@ -164,6 +164,24 @@ def test_인증_권한_모델명_오류는_AIConfigError(code):
         _call(lambda request: _status(code))
 
 
+def test_게이트웨이의_모델명_오류_400은_AIConfigError():
+    """게이트웨이가 허용하지 않은 모델명에 404 대신 400으로 답한다."""
+    not_allowed = httpx.Response(
+        400,
+        json={
+            "error": {
+                "message": "Model 'no-such-model' is not allowed. Allowed: ['gpt-5.6-luna']",
+                "type": "invalid_request_error",
+                "param": None,
+                "code": "400",
+            }
+        },
+    )
+
+    with pytest.raises(AIConfigError):
+        _call(lambda request: not_allowed)
+
+
 def test_분류_밖의_오류는_감싸지_않는다():
     """요청 형식 오류(400)는 AI 코드 문제라 서버 오류로 드러나야 한다."""
     with pytest.raises(openai.BadRequestError) as error:
