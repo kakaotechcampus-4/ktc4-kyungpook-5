@@ -13,6 +13,7 @@ HTTP 상태 코드나 API 응답 코드로 변환하는 책임은 BE에 있다.
         ├── AITimeoutError
         └── AIInvalidResponseError
 
+모델 호출 예외는 `llm.ainvoke_structured`가 이 타입으로 바꾼다(기준: docs/errors.md).
 예상하지 못한 예외는 AIError로 변환X
 -> 이런 예외는 그대로 BE에 전달해 서버 오류로 처리한다.
 """

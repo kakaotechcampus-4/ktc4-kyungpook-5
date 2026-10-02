@@ -8,6 +8,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 - [기능 요구사항](docs/requirements.md): 제공할 사용자 경험과 확인 기준
 - [아키텍처](docs/architecture.md): 기능별 역할과 AI·BE 책임 경계
 - [BE-AI 데이터 계약](docs/contracts.md): 계약의 목적과 계획 대화 연동 예시
+- [AI 오류 타입](docs/errors.md): 오류 분류와 모델 호출 오류 변환 기준
 - [작업 규칙](AGENTS.md): 요구사항 → Issue → 구현 → PR 협업 절차
 - [이전 기록](docs/migration.md): 모듈 이전 내역과 BE 팀 후속 작업
 
@@ -31,6 +32,7 @@ be/app/ai/
 ├── tests/               # AI 테스트 위치 (config, llm)
 ├── docs/
 │   ├── architecture.md
+│   ├── errors.md        # AI 오류 타입과 변환 기준
 │   ├── requirements.md  # 사용자 경험 중심 AI 기능 요구사항 초안
 │   ├── migration.md     # 파일 대응표·BE 팀 후속 작업
 │   └── legacy-dependencies/ # 이전 서비스 의존성 원본, 설치 대상 아님
@@ -65,6 +67,9 @@ be/app/ai/
 임베딩은 `get_embeddings()`와 `build_embeddings()`를 사용합니다.
 `gpt-5` 계열은 `temperature=1` 외의 값을 받지 않으므로 답변을 일정하게
 유지할 때는 온도 대신 프롬프트와 구조화 출력을 사용합니다.
+
+구조화 출력은 `await ainvoke_structured(messages, Schema)`로 호출합니다.
+실패하면 AI 오류 타입으로 올라오며, 변환 기준은 [AI 오류 타입](docs/errors.md)을 따릅니다.
 
 호출 경로는 Responses API(`/v1/responses`)로 고정합니다.
 `gpt-5.6-terra`는 `/v1/chat/completions`에서 function tools를 거부하므로
