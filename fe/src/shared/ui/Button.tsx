@@ -2,8 +2,10 @@
 import type { ButtonHTMLAttributes } from 'react'
 import { cn } from '@/shared/lib/cn'
 
-type Variant = 'primary' | 'secondary' | 'ghost'
-type Size = 'md' | 'sm' | 'pill'
+// danger: 되돌릴 수 없는 일(행사 취소 등)에만 쓴다.
+// soft: primary 옆에 두는 보조 강조(예: 다른 동아리 찾기)
+type Variant = 'primary' | 'soft' | 'secondary' | 'danger' | 'ghost'
+type Size = 'lg' | 'md' | 'sm'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
@@ -11,22 +13,31 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASS: Record<Variant, string> = {
-  primary: 'bg-[#262626] text-[#fafafa] border border-[#262626] hover:bg-[#1a1a1a]',
-  secondary: 'bg-white text-[#525252] border border-[#dbdbdb] hover:bg-[#f7f7f7]',
-  ghost: 'bg-transparent text-[#525252] border border-transparent hover:bg-[#f5f5f5]',
+  primary: 'bg-blue-600 font-bold text-white hover:bg-blue-700',
+  soft: 'bg-blue-100 font-bold text-blue-700 hover:bg-blue-200',
+  secondary: 'border border-soft bg-card font-medium text-ink2 hover:bg-bg',
+  danger: 'bg-failed-bg font-bold text-failed hover:brightness-95',
+  ghost: 'font-medium text-ink2 hover:bg-bg',
 }
 
 const SIZE_CLASS: Record<Size, string> = {
-  md: 'px-[14px] py-[13px] text-[13px] rounded-[10px]',
-  sm: 'px-[13px] py-[8px] text-[12px] rounded-[10px]',
-  pill: 'px-[13px] py-[7px] text-[11.5px] rounded-[18px]',
+  lg: 'px-[17px] py-[11px] text-[12.5px] rounded-[10px]',
+  md: 'px-[16px] py-[10px] text-[12.5px] rounded-[10px]',
+  sm: 'px-[12px] py-[7px] text-[12px] rounded-[8px]',
 }
 
-export function Button({ variant = 'primary', size = 'md', className, ...props }: ButtonProps) {
+export function Button({
+  variant = 'primary',
+  size = 'md',
+  type = 'button',
+  className,
+  ...props
+}: ButtonProps) {
   return (
     <button
+      type={type}
       className={cn(
-        'inline-flex items-center justify-center gap-[8px] font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex items-center justify-center gap-[6px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50',
         VARIANT_CLASS[variant],
         SIZE_CLASS[size],
         className,
