@@ -8,6 +8,7 @@ import PlanningPage from '@/pages/PlanningPage'
 import EventListPage from '@/pages/EventListPage'
 import EventDetailPage from '@/pages/EventDetailPage'
 import MyPage from '@/pages/MyPage'
+import DevUiPage from '@/pages/DevUiPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { path: 'events', element: <EventListPage /> },
       { path: 'events/:eventId', element: <EventDetailPage /> },
       { path: 'mypage', element: <MyPage /> },
+      { path: 'dev/ui', element: <DevUiPage /> },
     ],
   },
 ])
