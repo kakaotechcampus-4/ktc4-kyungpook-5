@@ -1,10 +1,12 @@
 // M1 메인(AI 비서): 진행 중인 행사에서 결정이 필요한 일만 모아 보여준다.
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ApprovalList } from '@/features/dashboard/components/ApprovalList'
 import { EventSummaryCard } from '@/features/dashboard/components/EventSummaryCard'
 import { ToriJudgementCard } from '@/features/dashboard/components/ToriJudgementCard'
+import { DEMO_JUDGEMENTS } from '@/features/dashboard/mock'
 import type { ToriJudgement } from '@/features/dashboard/types'
+import { DEMO_ACTIONS, DEMO_EVENTS, DEMO_STEPS } from '@/features/events/mock'
 import type { EventAction, EventStep, EventSummary } from '@/features/events/types'
 import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/Button'
@@ -20,10 +22,12 @@ export default function MainPage() {
   // TODO: API 연동 전까지는 비어 있다.
   // GET /events?status=ON_GOING · GET /events/{id}/steps
   // GET /events/{id}/actions?status=PENDING&excludeType=CONFIRMATION · 토리의 판단(명세 없음)
-  const events: EventSummary[] = []
-  const stepsByEvent: Record<string, EventStep[]> = {}
-  const actionsByEvent: Record<string, EventAction[]> = {}
-  const judgementByEvent: Record<string, ToriJudgement> = {}
+  // 주소에 ?demo를 붙이면 시연용 예시를 보인다.
+  const demo = useSearchParams()[0].has('demo')
+  const events: EventSummary[] = demo ? DEMO_EVENTS.filter((e) => e.status === 'ON_GOING') : []
+  const stepsByEvent: Record<string, EventStep[]> = demo ? DEMO_STEPS : {}
+  const actionsByEvent: Record<string, EventAction[]> = demo ? DEMO_ACTIONS : {}
+  const judgementByEvent: Record<string, ToriJudgement> = demo ? DEMO_JUDGEMENTS : {}
 
   // 고른 행사가 없으면 첫 번째 행사를 보여준다
   const selected = events.find((e) => e.id === selectedId) ?? events[0]

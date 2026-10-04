@@ -1,7 +1,8 @@
 // L1 행사 목록: 계획 중 · 진행 중 · 끝난 행사를 모두 본다.
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { EventCard } from '@/features/events/components/EventCard'
+import { DEMO_EVENTS } from '@/features/events/mock'
 import type { EventStatus, EventSummary } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
@@ -21,8 +22,9 @@ export default function EventListPage() {
   const startPlanning = () => navigate('/planning')
   const [filter, setFilter] = useState<Filter>('ALL')
 
-  // TODO: GET /events 연동 전까지는 빈 목록이다.
-  const events: EventSummary[] = []
+  // TODO: GET /events 연동 전까지는 빈 목록이다. 주소에 ?demo를 붙이면 시연용 예시를 보인다.
+  const demo = useSearchParams()[0].has('demo')
+  const events: EventSummary[] = demo ? DEMO_EVENTS : []
 
   const countOf = (value: Filter) =>
     value === 'ALL' ? events.length : events.filter((e) => e.status === value).length
