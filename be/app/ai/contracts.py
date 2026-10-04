@@ -5,7 +5,7 @@ BE와 AI 모듈 사이에서 주고받는 요청·응답 데이터 구조를 정
 BE는 이 파일에 정의된 Request 객체로 AI를 호출하고,
 AI는 정의된 Result/Draft 객체로 결과를 반환한다.
 
-현재: 행사 계획(Planning)기능에 필요한 계약만 정의 
+현재: 행사 계획(Planning)과 기록 색인(Retrieval)에 필요한 계약을 정의
 
 주요 원칙:
 - BE와 AI는 같은 프로세스 안에서 함수로 호출되므로 필드명은 snake_case를 사용한다.
@@ -20,16 +20,20 @@ AI는 정의된 Result/Draft 객체로 결과를 반환한다.
 """
 
 from datetime import date, datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 from app.core.enums import (
     ActionType,
     EventType,
     MessageRole,
+    RecordFileType,
     StepActor,
     StepPhase,
 )
+
+from .llm import EMBEDDING_DIMENSIONS
 
 
 class ContractModel(BaseModel):
@@ -231,3 +235,78 @@ class PlanDraft(ContractModel):
     # AI가 짚은 문장 경고
     warnings: tuple[str, ...] = ()
     excluded_steps: tuple[ExcludedStep, ...] = ()
+
+
+# --- 기록 색인 (Retrieval) ---------------------------------------------------
+
+
+def _require_text(value: str) -> str:
+    if not value.strip():
+        raise ValueError("내용이 있어야 합니다")
+    return value
+
+
+# 공백만 있는 문자열은 빈 값과 같아 막는다
+NonBlankStr = Annotated[str, AfterValidator(_require_text)]
+
+
+class SourceLocation(ContractModel):
+    """원문 위치. FE 명세 `sources[].location`과 같다
+
+    나중에 page·sheet 같은 필드를 더할 수 있게 객체로 둔다
+    """
+
+    # 화면에 보이는 위치. 예: "예산 항목", "회비 수납 시트"
+    label: NonBlankStr
+
+
+class RecordBlock(ContractModel):
+    """BE가 파싱한 텍스트 블록 하나 (parse_result의 항목)"""
+
+    text: NonBlankStr
+    location: SourceLocation
+
+
+class IndexRecordRequest(ContractModel):
+    """기록 색인의 입력
+
+    club_id·event_id·category는 받지 않는다. 청크에 붙여 저장하는 일은 BE가 한다
+    """
+
+    # 오류, 로그에서 기록을 가리키는 용도
+    record_id: str
+    # 임베딩할 때 청크 앞에 붙여 연도, 행사명으로도 찾게 한다
+    file_name: str = Field(max_length=255)
+    # None이면 파일 없는 텍스트 기록이며 문서로 처리한다
+    file_type: RecordFileType | None
+    # 순서가 블록 번호(0부터)다. 비어 있으면 index_record가 읽을 내용 없음 오류를 올린다
+    blocks: tuple[RecordBlock, ...]
+
+
+class IndexedChunk(ContractModel):
+    """검색 단위인 청크 하나. 메타데이터는 BE가 저장할 때 붙인다"""
+
+    # 원문. 문서명은 임베딩할 때만 붙인다
+    text: NonBlankStr
+    location: SourceLocation
+    # 이 청크가 나온 원본 블록 번호. 위치로 원문을 다시 찾기 위해 둔다
+    block_indexes: tuple[Annotated[int, Field(ge=0)], ...] = Field(min_length=1)
+    # 차원이 다르면 DB 컬럼 vector(1536)에 저장할 수 없다
+    embedding: tuple[float, ...] = Field(
+        min_length=EMBEDDING_DIMENSIONS, max_length=EMBEDDING_DIMENSIONS
+    )
+
+
+class IndexRecordResult(ContractModel):
+    """기록 색인의 결과"""
+
+    # 빈 결과를 성공으로 돌려주지 않는다
+    chunks: tuple[IndexedChunk, ...] = Field(min_length=1)
+
+
+class RecordSource(ContractModel):
+    """답변·근거의 출처. FE 명세 `sources[]`와 1:1"""
+
+    record_id: str
+    file_name: str
+    location: SourceLocation
