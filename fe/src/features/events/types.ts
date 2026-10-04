@@ -30,3 +30,15 @@ export interface EventStep {
   state: StepState
   deadline: string | null
 }
+
+export type ActionType =
+  'EXTERNAL_SEND' | 'TRANSFER' | 'EXPENSE' | 'CONTRACT' | 'NOTICE' | 'CONFIRMATION'
+
+// GET /events/{id}/actions 한 줄 (승인 대기 행에 쓰는 필드만)
+export interface EventAction {
+  id: string
+  type: ActionType
+  title: string
+  subtitle: string | null
+  dueDate: string | null
+}
