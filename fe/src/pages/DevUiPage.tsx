@@ -1,5 +1,7 @@
 // 공통 컴포넌트 확인용 페이지(/dev/ui). 화면이 없어 띄울 곳 없는 모달·토스트·상태 화면을 여기서 본다.
 import { useState, type ReactNode } from 'react'
+import { SegmentBar } from '@/features/events/components/SegmentBar'
+import { StepStepper } from '@/features/events/components/StepStepper'
 import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
@@ -197,6 +199,25 @@ export default function DevUiPage() {
           action={<Button>할 일 버튼</Button>}
           className="w-[420px]"
         />
+      </Section>
+
+      <Section title="단계 스테퍼 · 세그먼트 진행 바">
+        <Card className="p-[27px]">
+          <StepStepper
+            steps={[
+              { name: '담당 배치', date: '3/2', state: 'DONE' },
+              { name: '수요 조사', date: '3/5', state: 'DONE' },
+              { name: '입금 확인', date: '3/12', state: 'CURRENT' },
+              { name: '사전 안내', date: '3/19', state: 'TODO' },
+              { name: '정산·기록', date: '3/25', state: 'TODO' },
+            ]}
+          />
+        </Card>
+        <div className="flex flex-col gap-[14px]">
+          <SegmentBar states={['DONE', 'DONE', 'CURRENT', 'TODO', 'TODO', 'TODO']} />
+          <SegmentBar states={['CURRENT', 'TODO', 'TODO', 'TODO']} />
+          <SegmentBar states={['DONE', 'DONE', 'DONE', 'DONE', 'DONE', 'DONE']} muted />
+        </div>
       </Section>
 
       <Section title="상태 화면">
