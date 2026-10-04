@@ -16,7 +16,17 @@ export interface EventSummary {
   currentStepName: string | null
   stepProgress: Array<{ stepOrder: number; state: StepState }>
   pendingApprovalCount: number
-  // TODO: 아래 둘은 GET /events 응답에 아직 없다. 카드에 필요해 BE에 추가를 요청한다.
+  // TODO: 아래 둘은 GET /events 응답에 아직 없다. DB에는 location · expected_headcount로 있으니
+  // 응답에 실어 달라고 BE에 요청하거나, 결정에 따라 카드에서 뺀다.
   location: string | null
   headcount: number | null
+}
+
+// GET /events/{id}/steps 한 줄 (M1 스테퍼에 쓰는 필드만)
+export interface EventStep {
+  id: string
+  stepOrder: number
+  name: string
+  state: StepState
+  deadline: string | null
 }

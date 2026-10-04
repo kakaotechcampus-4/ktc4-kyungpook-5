@@ -51,3 +51,17 @@ const DOT_DATE = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', date
 export function formatDotDate(iso: string): string {
   return DOT_DATE.format(new Date(iso))
 }
+
+// 한국 날짜 기준 남은 날수. 오늘 마감이면 0, 지났으면 음수.
+const KST_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' })
+
+export function daysUntil(iso: string, now = new Date()): number {
+  const day = (d: Date) => Date.parse(KST_DATE.format(d))
+  return Math.round((day(new Date(iso)) - day(now)) / 86_400_000)
+}
+
+// 11 → "D-11", 0 → "D-day", -2 → "D+2"
+export function formatDday(days: number): string {
+  if (days === 0) return 'D-day'
+  return days > 0 ? `D-${days}` : `D+${-days}`
+}
