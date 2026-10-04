@@ -190,7 +190,11 @@ export default function DevUiPage() {
         <EmptyState
           title="비어 있을 때 한 줄"
           desc="무엇을 하면 채워지는지 안내합니다."
-          action={<Button size="lg" className="text-[13px]">할 일 버튼</Button>}
+          action={
+            <Button size="lg" className="text-[13px]">
+              할 일 버튼
+            </Button>
+          }
         />
         <EmptyState
           variant="inline"
