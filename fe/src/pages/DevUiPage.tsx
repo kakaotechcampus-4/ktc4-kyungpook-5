@@ -4,6 +4,7 @@ import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
+import { EmptyState } from '@/shared/ui/EmptyState'
 import { Input, Textarea } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
 import { JoinPendingScreen, PlanGeneratingScreen, ServerErrorScreen } from '@/shared/ui/StateScreen'
@@ -181,6 +182,21 @@ export default function DevUiPage() {
             처리 중 → 승인 완료 띄우기
           </Button>
         </div>
+      </Section>
+
+      <Section title="빈 상태 블록">
+        <EmptyState
+          title="비어 있을 때 한 줄"
+          desc="무엇을 하면 채워지는지 안내합니다."
+          action={<Button size="lg" className="text-[13px]">할 일 버튼</Button>}
+        />
+        <EmptyState
+          variant="inline"
+          title="비어 있을 때 한 줄"
+          desc="무엇을 하면 채워지는지 안내합니다."
+          action={<Button>할 일 버튼</Button>}
+          className="w-[420px]"
+        />
       </Section>
 
       <Section title="상태 화면">
