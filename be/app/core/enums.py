@@ -120,6 +120,15 @@ class RecordParseStatus(CodeEnum):
     FAILED = "FAILED"
 
 
+class RecordParseErrorReason(CodeEnum):
+    """파싱 실패 사유. 화면 문구는 FE가 이 코드로 고르고, 모르는 값은 UNKNOWN으로 본다."""
+
+    COLUMN_MISMATCH = "COLUMN_MISMATCH"
+    IMAGE_NOT_READABLE = "IMAGE_NOT_READABLE"
+    UNSUPPORTED_FORMAT = "UNSUPPORTED_FORMAT"
+    UNKNOWN = "UNKNOWN"
+
+
 # --- agent --------------------------------------------------------------
 
 
