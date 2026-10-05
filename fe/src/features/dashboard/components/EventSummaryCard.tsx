@@ -3,7 +3,7 @@ import { StepStepper } from '@/features/events/components/StepStepper'
 import type { EventStep, EventSummary } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
 import { daysUntil, formatDateRange, formatDday, formatMonthDay } from '@/shared/lib/format'
-import { EVENT_STATUS_LABEL } from '@/shared/lib/labels'
+import { EVENT_STATUS_LABEL, EVENT_STATUS_TONE } from '@/shared/lib/labels'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 
@@ -47,7 +47,7 @@ export function EventSummaryCard({ events, selected, onSelect, steps }: EventSum
             ▾
           </span>
         </div>
-        <Chip tone="done">{EVENT_STATUS_LABEL[selected.status]}</Chip>
+        <Chip tone={EVENT_STATUS_TONE[selected.status]}>{EVENT_STATUS_LABEL[selected.status]}</Chip>
       </div>
 
       <dl className="flex gap-[36px]">

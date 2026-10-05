@@ -1,17 +1,11 @@
 // 행사 카드(L1): 이름 · 상태 칩 / 일정 · 참가 · 단계 · 상태 / 세그먼트 진행 바. 누르면 L2 상세로 간다.
 import { Link } from 'react-router-dom'
 import { SegmentBar } from '@/features/events/components/SegmentBar'
-import type { EventStatus, EventSummary } from '@/features/events/types'
+import type { EventSummary } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
 import { formatDateRange } from '@/shared/lib/format'
-import { EVENT_STATUS_LABEL } from '@/shared/lib/labels'
+import { EVENT_STATUS_LABEL, EVENT_STATUS_TONE } from '@/shared/lib/labels'
 import { Chip } from '@/shared/ui/Chip'
-
-const STATUS_TONE = {
-  ON_GOING: 'done',
-  PLANNING: 'approved',
-  COMPLETE: 'neutral',
-} as const satisfies Record<EventStatus, string>
 
 // 상태 칸 문구: 진행 중이면 승인 대기 건수, 계획 중이면 몇 단계째인지, 끝났으면 정산 완료
 function statusText(event: EventSummary, current: number): string {
@@ -50,7 +44,7 @@ export function EventCard({ event }: { event: EventSummary }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-[10px]">
           <h2 className="text-[19px] font-bold">{event.title}</h2>
-          <Chip tone={STATUS_TONE[event.status]}>{EVENT_STATUS_LABEL[event.status]}</Chip>
+          <Chip tone={EVENT_STATUS_TONE[event.status]}>{EVENT_STATUS_LABEL[event.status]}</Chip>
           {event.status === 'ON_GOING' && event.pendingApprovalCount > 0 && (
             <Chip tone="pending">승인 대기 {event.pendingApprovalCount}건</Chip>
           )}

@@ -20,3 +20,10 @@ export const EVENT_STATUS_LABEL: Record<string, string> = {
   ON_GOING: '진행 중',
   COMPLETE: '완료',
 }
+
+// 행사 상태 칩 색. L1 행사 카드와 M1 요약 카드가 같이 쓴다.
+export const EVENT_STATUS_TONE = {
+  ON_GOING: 'done',
+  PLANNING: 'approved',
+  COMPLETE: 'neutral',
+} as const

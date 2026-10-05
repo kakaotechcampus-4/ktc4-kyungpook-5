@@ -73,9 +73,16 @@ export default function EventListPage() {
               </button>
             ))}
           </div>
-          {shown.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
+          {shown.length === 0 ? (
+            <EmptyState
+              variant="inline"
+              toriSize={72}
+              title="이 상태인 행사가 없어요"
+              desc="다른 상태를 골라 보세요."
+            />
+          ) : (
+            shown.map((event) => <EventCard key={event.id} event={event} />)
+          )}
         </>
       )}
     </div>
