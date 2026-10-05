@@ -43,7 +43,9 @@ export function Modal({
   return (
     <dialog
       ref={ref}
-      onClose={onClose}
+      // open이 이미 false면 부모가 닫은 것이라 다시 부르지 않음
+      // Esc처럼 브라우저가 직접 닫았을 때만 onClose를 부름
+      onClose={() => open && onClose()}
       // 배경(= dialog 자신)을 누르면 닫는다. 안쪽 클릭은 target이 자식이라 걸리지 않는다.
       onClick={(e) => e.target === e.currentTarget && onClose()}
       style={{ width }}
