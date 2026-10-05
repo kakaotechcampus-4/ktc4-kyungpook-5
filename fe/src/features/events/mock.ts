@@ -8,6 +8,7 @@ import type {
   EventSummary,
   StepState,
 } from '@/features/events/types'
+import { formatMonthDay } from '@/shared/lib/format'
 
 // 오늘에서 n일 뒤의 "YYYY-MM-DD"
 function day(n: number): string {
@@ -99,13 +100,20 @@ export const DEMO_EVENTS: EventSummary[] = [
   },
 ]
 
-function steps(names: string[], offsets: number[], done: number): EventStep[] {
+// current는 진행 중인 단계에만 덧붙인다(L2 현재 단계 카드)
+function steps(
+  names: string[],
+  offsets: number[],
+  done: number,
+  current?: Partial<EventStep>,
+): EventStep[] {
   return names.map((name, i) => ({
     id: `stp_${i}`,
     stepOrder: (i + 1) * 10,
     name,
     state: i < done ? 'DONE' : i === done ? 'CURRENT' : 'TODO',
     deadline: deadline(offsets[i]),
+    ...(i === done ? current : undefined),
   }))
 }
 
@@ -123,11 +131,48 @@ export const DEMO_STEPS: Record<string, EventStep[]> = {
     ],
     [-8, -5, -3, -1, 2, 9, 11, 15],
     4,
+    {
+      actor: 'AI',
+      startedTime: at(-1, '00:00'),
+      doneActions: [
+        { id: 'act_11', title: '입금 12건을 참가자 명단과 대조했어요.', status: 'DONE' },
+        { id: 'act_12', title: '입금자명이 다른 2건을 확인 요청으로 올렸어요.', status: 'DONE' },
+        { id: 'act_13', title: '미납자 목록을 5명 → 4명으로 갱신했어요.', status: 'DONE' },
+      ],
+      remainingActions: [
+        {
+          id: 'act_21',
+          title: '미납자 4명에게 2차 안내 발송',
+          status: 'PENDING',
+          approveNeeded: true,
+        },
+        {
+          id: 'act_14',
+          title: `마감 ${formatMonthDay(deadline(2))} 23:59 이후 미납자 자동 정리`,
+          status: 'PENDING',
+          approveNeeded: false,
+        },
+      ],
+    },
   ),
   evt_c41d07: steps(
     ['담당 배치', '주제 선정', '장소 대관', '참가 모집', '멘토 섭외', '해커톤 당일', '시상·정산'],
     [-6, -2, 3, 12, 22, 24, 28],
     2,
+    // 토리가 한 일 없이 승인할 일만 남은 단계. L2에서 토리 박스가 숨는 경우를 보여 준다.
+    {
+      actor: 'APPROVAL_REQUIRED',
+      startedTime: at(-2, '00:00'),
+      doneActions: [],
+      remainingActions: [
+        {
+          id: 'act_31',
+          title: '공대 7호관 세미나실 1박 2일 대관 신청서 제출',
+          status: 'PENDING',
+          approveNeeded: true,
+        },
+      ],
+    },
   ),
 }
 

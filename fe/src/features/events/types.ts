@@ -37,13 +37,27 @@ export interface EventDetail {
   manager: string | null
 }
 
-// GET /events/{id}/steps 한 줄 (M1 스테퍼에 쓰는 필드만)
+// 단계를 누가 진행하는지
+export type StepActor = 'AI' | 'APPROVAL_REQUIRED' | 'MANUAL'
+
+// GET /events/{id}/steps 한 줄
+// 선택(?) 필드는 응답에는 늘 오지만, 예시 데이터는 진행 중인 단계에만 채운다.
 export interface EventStep {
   id: string
   stepOrder: number
   name: string
   state: StepState
   deadline: string | null
+  actor?: StepActor
+  startedTime?: string | null
+  // L2 현재 단계 카드의 "이 단계에서 한 일" · "남은 일"
+  doneActions?: Array<{ id: string; title: string; status: ActionStatus }>
+  remainingActions?: Array<{
+    id: string
+    title: string
+    status: ActionStatus
+    approveNeeded: boolean
+  }>
 }
 
 export type ActionType =

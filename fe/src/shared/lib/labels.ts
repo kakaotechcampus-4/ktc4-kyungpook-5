@@ -9,6 +9,13 @@ export const ACTION_TYPE_LABEL: Record<string, string> = {
   CONFIRMATION: '확인 요청',
 }
 
+// 단계를 누가 진행하는지. L2 현재 단계 카드 · Step 모달의 한 줄 요약에 쓴다.
+export const STEP_ACTOR_LABEL: Record<string, string> = {
+  AI: 'AI 실행',
+  APPROVAL_REQUIRED: '승인 필요',
+  MANUAL: '직접 수행',
+}
+
 export const MEMBER_ROLE_LABEL: Record<string, string> = {
   OWNER: '회장',
   MANAGER: '총무',

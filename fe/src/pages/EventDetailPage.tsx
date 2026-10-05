@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ConfirmationList } from '@/features/events/components/ConfirmationList'
+import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
 import {
@@ -28,6 +29,7 @@ export default function EventDetailPage() {
   // 행사가 없으면(초기 화면) 나머지는 부르지 않는다
   const shownId = event ? eventId : undefined
   const steps = useEventSteps(shownId).data ?? []
+  const currentIndex = steps.findIndex((s) => s.state === 'CURRENT')
   const resolved = useResolvedActions(shownId).data
 
   // 처리한 확인 요청. 서버 연동 전이라 화면에서만 빼 둔다.
@@ -81,6 +83,14 @@ export default function EventDetailPage() {
                 totalCount={resolved?.totalCount ?? 0}
               />
             </div>
+            {/* 진행 중인 단계가 없으면(계획 중 · 끝난 행사) 오른쪽 칸 없이 왼쪽이 넓어진다 */}
+            {currentIndex >= 0 && (
+              <CurrentStepCard
+                className="w-[400px] shrink-0"
+                step={steps[currentIndex]}
+                position={currentIndex + 1}
+              />
+            )}
           </div>
         </>
       ) : (
