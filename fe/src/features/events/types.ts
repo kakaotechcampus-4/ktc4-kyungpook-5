@@ -49,11 +49,28 @@ export interface EventStep {
 export type ActionType =
   'EXTERNAL_SEND' | 'TRANSFER' | 'EXPENSE' | 'CONTRACT' | 'NOTICE' | 'CONFIRMATION'
 
-// GET /events/{id}/actions 한 줄 (승인 대기 행에 쓰는 필드만)
+export type ActionStatus = 'PENDING' | 'APPROVED' | 'DENIED' | 'DONE' | 'FAILED'
+
+export type MemberRole = 'OWNER' | 'MANAGER' | 'MEMBER'
+
+// GET /events/{id}/actions 한 줄
+// 선택(?) 필드는 응답에는 늘 오지만, 예시 데이터는 그 화면에서 쓰는 것만 채운다.
 export interface EventAction {
   id: string
   type: ActionType
   title: string
   subtitle: string | null
   dueDate: string | null
+  status?: ActionStatus
+  resolvedAt?: string | null
+  resolvedBy?: { id: string; name: string; role: MemberRole } | null
+  // 확인 요청(CONFIRMATION) 전용. 버튼 하나가 선택지 하나다.
+  options?: Array<{ key: string; label: string }> | null
+  allowManual?: boolean | null
+}
+
+// 목록 일부와 전체 개수("12건"). 처리된 승인처럼 최근 몇 건만 보일 때 쓴다.
+export interface ActionPage {
+  items: EventAction[]
+  totalCount: number
 }

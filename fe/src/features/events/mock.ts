@@ -1,6 +1,7 @@
 // 시연용 예시 데이터. 주소에 ?demo를 붙였을 때만 화면에 쓴다(실제 화면은 빈 목록에서 시작).
 // 모양은 API 응답과 같게 두고, 날짜는 오늘 기준으로 잡아 D-day가 늘 시안처럼 보이게 한다.
 import type {
+  ActionPage,
   EventAction,
   EventDetail,
   EventStep,
@@ -17,6 +18,9 @@ function day(n: number): string {
 
 // 한국 시각 그날 23:59 마감
 const deadline = (n: number) => `${day(n)}T14:59:00Z`
+
+// 오늘에서 n일 뒤 한국 시각 "hh:mm"
+const at = (n: number, time: string) => new Date(`${day(n)}T${time}:00+09:00`).toISOString()
 
 // M1 스테퍼(DEMO_STEPS)와 단계 수를 맞춘다.
 // 앞에서 done개는 완료, 그다음 하나는 진행 중, 나머지는 예정
@@ -188,4 +192,93 @@ export const DEMO_ACTIONS: Record<string, EventAction[]> = {
       dueDate: day(3),
     },
   ],
+}
+
+// L2 확인 요청. 가을 해커톤은 비워 두어 빈 상태를 볼 수 있게 한다.
+export const DEMO_CONFIRMATIONS: Record<string, EventAction[]> = {
+  evt_9f2c8a: [
+    {
+      id: 'act_31',
+      type: 'CONFIRMATION',
+      title: '입금자명이 명단과 다릅니다',
+      subtitle: '"박지영 母" 45,000원 — 박지영 님 회비로 처리할까요?',
+      dueDate: null,
+      status: 'PENDING',
+      options: [
+        { key: 'MATCH', label: '맞아요' },
+        { key: 'NOT_MATCH', label: '아니에요' },
+      ],
+      allowManual: true,
+    },
+    {
+      id: 'act_32',
+      type: 'CONFIRMATION',
+      title: '어느 행사인지 모르겠습니다',
+      subtitle: '학생회 지원금 500,000원 — 봄 MT에 넣을까요, 공동 회계로 둘까요?',
+      dueDate: null,
+      status: 'PENDING',
+      options: [
+        { key: 'ASSIGN_EVENT', label: '봄 MT에 넣기' },
+        { key: 'ASSIGN_CLUB', label: '공동 회계로' },
+      ],
+      allowManual: true,
+    },
+  ],
+}
+
+const PARK = { id: 'mbr_01', name: '박수겸', role: 'MANAGER' } as const
+const KIM = { id: 'mbr_02', name: '김지훈', role: 'OWNER' } as const
+
+// L2 처리된 승인. 최근 몇 건과 전체 개수.
+export const DEMO_RESOLVED: Record<string, ActionPage> = {
+  evt_9f2c8a: {
+    totalCount: 12,
+    items: [
+      {
+        id: 'act_41',
+        type: 'CONTRACT',
+        title: '장소 후보를 펜션 A로 확정',
+        subtitle: null,
+        dueDate: null,
+        status: 'DONE',
+        resolvedAt: at(0, '11:40'),
+        resolvedBy: PARK,
+      },
+      {
+        id: 'act_42',
+        type: 'EXTERNAL_SEND',
+        title: '모집 공고를 단톡방에 발송',
+        subtitle: null,
+        dueDate: null,
+        status: 'DONE',
+        resolvedAt: at(-1, '15:30'),
+        resolvedBy: KIM,
+      },
+      {
+        id: 'act_09',
+        type: 'TRANSFER',
+        title: '버스 대절 업체 B와 계약',
+        subtitle: null,
+        dueDate: null,
+        status: 'DENIED',
+        resolvedAt: at(-2, '17:02'),
+        resolvedBy: PARK,
+      },
+    ],
+  },
+  evt_c41d07: {
+    totalCount: 1,
+    items: [
+      {
+        id: 'act_51',
+        type: 'NOTICE',
+        title: '해커톤 주제 후보 3개를 단톡방에 공지',
+        subtitle: null,
+        dueDate: null,
+        status: 'APPROVED',
+        resolvedAt: at(-1, '20:10'),
+        resolvedBy: KIM,
+      },
+    ],
+  },
 }

@@ -1,6 +1,7 @@
 // 행사 서버 호출. 화면은 이 파일을 직접 쓰지 않고 hooks.ts를 거친다.
-import { apiGet } from '@/shared/api/client'
+import { apiGet, apiGetPage } from '@/shared/api/client'
 import type {
+  ActionPage,
   EventAction,
   EventDetail,
   EventStatus,
@@ -24,4 +25,10 @@ export function getEventSteps(eventId: string) {
 // query 예: 'status=PENDING&excludeType=CONFIRMATION'
 export function getEventActions(eventId: string, query: string) {
   return apiGet<EventAction[]>(`/events/${eventId}/actions?${query}`)
+}
+
+// 목록과 전체 개수를 함께 받는다. 예: 'status=APPROVED,DONE,DENIED&size=3'
+export async function getEventActionPage(eventId: string, query: string): Promise<ActionPage> {
+  const res = await apiGetPage<EventAction>(`/events/${eventId}/actions?${query}`)
+  return { items: res.data, totalCount: res.meta?.totalCount ?? res.data.length }
 }

@@ -3,8 +3,16 @@
 // TODO(연동): 각 queryFn을 주석에 적힌 eventsApi 호출로 바꾼다. 화면은 고치지 않아도 된다.
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { DEMO_ACTIONS, DEMO_EVENT_DETAILS, DEMO_EVENTS, DEMO_STEPS } from '@/features/events/mock'
+import {
+  DEMO_ACTIONS,
+  DEMO_CONFIRMATIONS,
+  DEMO_EVENT_DETAILS,
+  DEMO_EVENTS,
+  DEMO_RESOLVED,
+  DEMO_STEPS,
+} from '@/features/events/mock'
 import type {
+  ActionPage,
   EventAction,
   EventDetail,
   EventStatus,
@@ -55,6 +63,31 @@ export function usePendingApprovals(eventId: string | undefined) {
   return useQuery({
     queryKey: ['events', eventId, 'actions', 'pendingApprovals', demo],
     queryFn: async (): Promise<EventAction[]> => (demo ? (DEMO_ACTIONS[eventId!] ?? []) : []),
+    enabled: !!eventId,
+  })
+}
+
+// L2 확인 요청: 토리가 혼자 정하기 어려워 묻는 일
+// TODO(연동): eventsApi.getEventActions(eventId, 'status=PENDING&type=CONFIRMATION')
+export function useConfirmations(eventId: string | undefined) {
+  const demo = useDemo()
+  return useQuery({
+    queryKey: ['events', eventId, 'actions', 'confirmations', demo],
+    queryFn: async (): Promise<EventAction[]> => (demo ? (DEMO_CONFIRMATIONS[eventId!] ?? []) : []),
+    enabled: !!eventId,
+  })
+}
+
+const NO_ACTIONS: ActionPage = { items: [], totalCount: 0 }
+
+// L2 처리된 승인: 최근 몇 건만 보이고 개수는 전체를 센다
+// TODO(연동): eventsApi.getEventActionPage(eventId, 'status=APPROVED,DONE,DENIED&size=3')
+export function useResolvedActions(eventId: string | undefined) {
+  const demo = useDemo()
+  return useQuery({
+    queryKey: ['events', eventId, 'actions', 'resolved', demo],
+    queryFn: async (): Promise<ActionPage> =>
+      demo ? (DEMO_RESOLVED[eventId!] ?? NO_ACTIONS) : NO_ACTIONS,
     enabled: !!eventId,
   })
 }

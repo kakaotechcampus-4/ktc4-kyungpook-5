@@ -1,7 +1,17 @@
 // L2 행사 상세: 한 행사의 단계 진행과 확인 요청 · 처리된 승인을 본다.
+import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { ConfirmationList } from '@/features/events/components/ConfirmationList'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
-import { useEventDetail, useEventSteps } from '@/features/events/hooks'
+import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
+import {
+  useConfirmations,
+  useEventDetail,
+  useEventSteps,
+  useResolvedActions,
+} from '@/features/events/hooks'
+import type { EventAction } from '@/features/events/types'
+import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { ServerErrorScreen } from '@/shared/ui/StateScreen'
@@ -15,7 +25,26 @@ export default function EventDetailPage() {
 
   const detailQuery = useEventDetail(eventId)
   const event = detailQuery.data
-  const steps = useEventSteps(event ? eventId : undefined).data ?? []
+  // 행사가 없으면(초기 화면) 나머지는 부르지 않는다
+  const shownId = event ? eventId : undefined
+  const steps = useEventSteps(shownId).data ?? []
+  const resolved = useResolvedActions(shownId).data
+
+  // 처리한 확인 요청. 서버 연동 전이라 화면에서만 빼 둔다.
+  const [answeredIds, setAnsweredIds] = useState<string[]>([])
+  const confirmations = (useConfirmations(shownId).data ?? []).filter(
+    (a) => !answeredIds.includes(a.id),
+  )
+
+  // TODO(연동): POST /actions/{id}/resolve 에 { choice } 로 보낸다
+  const resolveConfirmation = (action: EventAction, choice: string) => {
+    setAnsweredIds((ids) => [...ids, action.id])
+    toast.show({
+      kind: 'done',
+      title: choice === 'MANUAL' ? '직접 처리로 넘겼어요' : '처리했어요',
+      desc: action.title,
+    })
+  }
 
   if (detailQuery.isPending) return null
   if (detailQuery.isError) {
@@ -42,7 +71,18 @@ export default function EventDetailPage() {
       </nav>
 
       {event ? (
-        <EventHeaderCard event={event} steps={steps} />
+        <>
+          <EventHeaderCard event={event} steps={steps} />
+          <div className="flex items-start gap-[20px]">
+            <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
+              <ConfirmationList actions={confirmations} onResolve={resolveConfirmation} />
+              <ResolvedActionList
+                actions={resolved?.items ?? []}
+                totalCount={resolved?.totalCount ?? 0}
+              />
+            </div>
+          </div>
+        </>
       ) : (
         <EmptyState
           title="아직 등록된 행사가 없어요"

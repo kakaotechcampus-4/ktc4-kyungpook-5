@@ -63,7 +63,7 @@ export function EventHeaderCard({ event, steps }: EventHeaderCardProps) {
               />
             </div>
             <div className="flex shrink-0 flex-col items-center gap-[1px] rounded-[14px] bg-blue-100 px-[22px] py-[15px]">
-              <span className="text-display text-blue-700">
+              <span className="text-[28px] font-bold text-blue-700">
                 {reached} / {steps.length}
               </span>
               <span className="text-label text-blue-600">단계 진행</span>
