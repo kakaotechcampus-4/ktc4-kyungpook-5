@@ -8,9 +8,11 @@ dependencies = [
     "langchain-openai>=1.0",
     "langgraph>=1.2",
     "nanoid>=2.0",
+    "openpyxl>=3.1.5",
     "psycopg[binary]>=3.2",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
+    "pypdf>=6.19.0",
     "sqlalchemy>=2.0.36",
     "uvicorn[standard]>=0.32",
 ]
