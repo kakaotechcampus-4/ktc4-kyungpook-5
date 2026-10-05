@@ -14,3 +14,16 @@ export const MEMBER_ROLE_LABEL: Record<string, string> = {
   MANAGER: '총무',
   MEMBER: '회원',
 }
+
+export const EVENT_STATUS_LABEL: Record<string, string> = {
+  PLANNING: '계획 중',
+  ON_GOING: '진행 중',
+  COMPLETE: '완료',
+}
+
+// 행사 상태 칩 색. L1 행사 카드와 M1 요약 카드가 같이 쓴다.
+export const EVENT_STATUS_TONE = {
+  ON_GOING: 'done',
+  PLANNING: 'approved',
+  COMPLETE: 'neutral',
+} as const

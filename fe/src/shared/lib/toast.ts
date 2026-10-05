@@ -15,6 +15,9 @@ export interface ToastItem {
 
 const DURATION_MS = 4000
 
+// 토스트 id는 화면 안에서만 구분되면 된다. crypto.randomUUID는 HTTP에서 없어서 쓰지 않는다.
+let seq = 0
+
 interface ToastStore {
   items: ToastItem[]
   show: (item: Omit<ToastItem, 'id'> & { id?: string }) => string
@@ -24,8 +27,12 @@ interface ToastStore {
 export const useToastStore = create<ToastStore>((set, get) => ({
   items: [],
   // 같은 id로 다시 부르면 바꿔 끼운다. "보내는 중" → "승인했어요"처럼 이어 쓸 때.
-  show: ({ id = crypto.randomUUID(), ...rest }) => {
-    set((s) => ({ items: [...s.items.filter((t) => t.id !== id), { id, ...rest }] }))
+  show: ({ id = `t${++seq}`, ...rest }) => {
+    set((s) => ({
+      items: s.items.some((t) => t.id === id)
+        ? s.items.map((t) => (t.id === id ? { id, ...rest } : t))
+        : [...s.items, { id, ...rest }],
+    }))
     if (rest.kind !== 'progress') {
       setTimeout(() => {
         if (get().items.find((t) => t.id === id)?.kind !== 'progress') get().dismiss(id)
