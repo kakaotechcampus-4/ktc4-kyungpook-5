@@ -1,6 +1,6 @@
 // M1 메인(AI 비서): 진행 중인 행사에서 결정이 필요한 일만 모아 보여준다.
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ApprovalList } from '@/features/dashboard/components/ApprovalList'
 import { EventSummaryCard } from '@/features/dashboard/components/EventSummaryCard'
 import { ToriJudgementCard } from '@/features/dashboard/components/ToriJudgementCard'
@@ -14,6 +14,8 @@ import { ServerErrorScreen } from '@/shared/ui/StateScreen'
 
 export default function MainPage() {
   const navigate = useNavigate()
+  // ?demo 같은 주소 뒤쪽을 상세로 이어 붙인다
+  const { search } = useLocation()
   const [selectedId, setSelectedId] = useState<string>()
 
   // 승인·거절한 Action. 서버 연동 전이라 화면에서만 빼 둔다.
@@ -54,7 +56,7 @@ export default function MainPage() {
           <p className="text-mute">결정이 필요한 일만 올려요. 승인한 일은 직접 진행해 주세요.</p>
         </div>
         {selected && (
-          <Button variant="secondary" onClick={() => navigate(`/events/${selected.id}`)}>
+          <Button variant="secondary" onClick={() => navigate(`/events/${selected.id}${search}`)}>
             행사 상세 보기
           </Button>
         )}

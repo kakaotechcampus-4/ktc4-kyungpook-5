@@ -22,6 +22,21 @@ export interface EventSummary {
   headcount: number | null
 }
 
+// GET /events/{id} — L2 상단 카드
+export interface EventDetail {
+  id: string
+  title: string
+  status: EventStatus
+  startDate: string | null
+  endDate: string | null
+  dday: number | null
+  location: string | null
+  headcount: number | null
+  currentStep: { id: string; stepOrder: number; name: string } | null
+  // TODO: 명세에 없다. 담당자("박수겸 · 총무")를 응답에 실어 달라고 BE에 요청하거나, 결정에 따라 뺀다.
+  manager: string | null
+}
+
 // GET /events/{id}/steps 한 줄 (M1 스테퍼에 쓰는 필드만)
 export interface EventStep {
   id: string

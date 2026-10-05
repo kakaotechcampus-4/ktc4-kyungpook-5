@@ -3,8 +3,14 @@
 // TODO(연동): 각 queryFn을 주석에 적힌 eventsApi 호출로 바꾼다. 화면은 고치지 않아도 된다.
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { DEMO_ACTIONS, DEMO_EVENTS, DEMO_STEPS } from '@/features/events/mock'
-import type { EventAction, EventStatus, EventStep, EventSummary } from '@/features/events/types'
+import { DEMO_ACTIONS, DEMO_EVENT_DETAILS, DEMO_EVENTS, DEMO_STEPS } from '@/features/events/mock'
+import type {
+  EventAction,
+  EventDetail,
+  EventStatus,
+  EventStep,
+  EventSummary,
+} from '@/features/events/types'
 
 export function useDemo() {
   return useSearchParams()[0].has('demo')
@@ -17,6 +23,18 @@ export function useEvents(status?: EventStatus) {
     queryKey: ['events', status, demo],
     queryFn: async (): Promise<EventSummary[]> =>
       demo ? DEMO_EVENTS.filter((e) => !status || e.status === status) : [],
+  })
+}
+
+// L2 상단 카드. 없는 행사면 null(초기 화면).
+// TODO(연동): eventsApi.getEventDetail(eventId)
+export function useEventDetail(eventId: string | undefined) {
+  const demo = useDemo()
+  return useQuery({
+    queryKey: ['events', eventId, 'detail', demo],
+    queryFn: async (): Promise<EventDetail | null> =>
+      demo ? (DEMO_EVENT_DETAILS[eventId!] ?? null) : null,
+    enabled: !!eventId,
   })
 }
 

@@ -1,6 +1,12 @@
 // 시연용 예시 데이터. 주소에 ?demo를 붙였을 때만 화면에 쓴다(실제 화면은 빈 목록에서 시작).
 // 모양은 API 응답과 같게 두고, 날짜는 오늘 기준으로 잡아 D-day가 늘 시안처럼 보이게 한다.
-import type { EventAction, EventStep, EventSummary, StepState } from '@/features/events/types'
+import type {
+  EventAction,
+  EventDetail,
+  EventStep,
+  EventSummary,
+  StepState,
+} from '@/features/events/types'
 
 // 오늘에서 n일 뒤의 "YYYY-MM-DD"
 function day(n: number): string {
@@ -120,6 +126,34 @@ export const DEMO_STEPS: Record<string, EventStep[]> = {
     2,
   ),
 }
+
+// 담당은 명세에 없어 시연용으로만 적는다(types.ts TODO 참고)
+const DEMO_MANAGERS: Record<string, string> = {
+  evt_9f2c8a: '박수겸 · 총무',
+  evt_c41d07: '김지훈 · 회장',
+}
+
+// L2 상단 카드. 목록 한 줄에 현재 단계·담당을 붙인다.
+export const DEMO_EVENT_DETAILS: Record<string, EventDetail> = Object.fromEntries(
+  DEMO_EVENTS.map((e) => {
+    const current = DEMO_STEPS[e.id]?.find((s) => s.state === 'CURRENT')
+    const detail: EventDetail = {
+      id: e.id,
+      title: e.title,
+      status: e.status,
+      startDate: e.startDate,
+      endDate: e.endDate,
+      dday: e.dday,
+      location: e.location,
+      headcount: e.headcount,
+      currentStep: current
+        ? { id: current.id, stepOrder: current.stepOrder, name: current.name }
+        : null,
+      manager: DEMO_MANAGERS[e.id] ?? null,
+    }
+    return [e.id, detail]
+  }),
+)
 
 export const DEMO_ACTIONS: Record<string, EventAction[]> = {
   evt_9f2c8a: [
