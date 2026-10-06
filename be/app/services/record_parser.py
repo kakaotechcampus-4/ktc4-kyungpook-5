@@ -5,16 +5,19 @@ parse_result는 Record.parse_result에 저장하고 AI 색인 입력(IndexRecord
 
     {"blocks": [{"text": "...", "location": {"label": "..."}}]}
 
-[합의 필요] 위치 라벨은 #71·#72 담당과 확인 중인 제안이다.
-PDF "N쪽" / XLSX "{시트 이름} · N행" / CSV "N행". N은 원본의 실제 쪽·행 번호다.
+위치 라벨은 원본의 물리적 위치만 적는다. PDF "N쪽" / XLSX "{시트 이름} · N행" / CSV "N행"이며
+N은 원본의 실제 쪽·행 번호다. 제목·조항·행 범위 같은 논리적 위치는 청킹(#71)이 청크 라벨에 붙인다
+(PR #90 리뷰 합의).
 """
 
 import csv
 import io
+import re
 import zipfile
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable
 from datetime import date, datetime, time
 from typing import Any
+from xml.etree.ElementTree import ParseError as XMLParseError
 
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
@@ -67,11 +70,12 @@ def _parse_pdf(content: bytes) -> list[dict[str, Any]]:
         reader = PdfReader(io.BytesIO(content))
         # 편집만 막은 PDF는 빈 비밀번호로 풀린다. 열람 암호가 있으면 풀리지 않는다.
         if reader.is_encrypted and not reader.decrypt(""):
-            # [합의 필요] 화면 문구가 "지원하지 않는 형식"이라 별도 사유 추가를 FE와 협의한다.
+            # [합의 필요] 화면 문구가 "지원하지 않는 형식"이라 업로드 시 거절(#42)할지
+            # 별도 사유를 둘지 FE와 협의 중이다(PR #90).
             raise RecordParseError(
                 RecordParseErrorReason.UNSUPPORTED_FORMAT, "열람 암호가 걸린 PDF입니다"
             )
-        pages = [page.extract_text() or "" for page in reader.pages]
+        pages = [_clean(page.extract_text() or "") for page in reader.pages]
     except (PdfReadError, DependencyError) as error:
         # DependencyError: AES 암호 해제에 cryptography가 필요하다. 의존성을 늘리지 않기로 해 지원하지 않는다.
         raise RecordParseError(
@@ -80,9 +84,7 @@ def _parse_pdf(content: bytes) -> list[dict[str, Any]]:
         ) from error
 
     blocks = [
-        _block(text.strip(), f"{number}쪽")
-        for number, text in enumerate(pages, start=1)
-        if text.strip()
+        _block(text, f"{number}쪽") for number, text in enumerate(pages, start=1) if text
     ]
     if not blocks:
         raise RecordParseError(
@@ -108,11 +110,21 @@ def _parse_xlsx(content: bytes) -> list[dict[str, Any]]:
             # 잘못 적으면 행·열이 오류 없이 빠지므로 저장된 크기를 버리고 끝까지 읽는다.
             sheet.reset_dimensions()
             # 읽기 전용 모드의 iter_rows는 min_row와 상관없이 1행부터 준다. 1부터 세야 실제 행 번호다.
-            rows = enumerate(sheet.iter_rows(min_row=1, values_only=True), start=1)
+            # 표시 형식(number_format)을 보려고 값이 아니라 셀로 읽는다.
+            rows = (
+                (number, [_cell_text(cell.value, cell.number_format) for cell in row])
+                for number, row in enumerate(sheet.iter_rows(min_row=1), start=1)
+            )
             blocks.extend(
                 _table_blocks(rows, lambda number, title=sheet.title: f"{title} · {number}행")
             )
         return blocks
+    except (XMLParseError, zipfile.BadZipFile) as error:
+        # 파일은 열렸지만 시트를 읽는 도중 깨진 경우(시트 XML 손상, 압축 데이터 손상).
+        raise RecordParseError(
+            RecordParseErrorReason.UNSUPPORTED_FORMAT,
+            f"XLSX 시트를 읽을 수 없습니다: {type(error).__name__}",
+        ) from error
     finally:
         workbook.close()
 
@@ -134,12 +146,22 @@ def _parse_csv(content: bytes) -> list[dict[str, Any]]:
             "CSV 인코딩을 읽을 수 없습니다 (UTF-8·CP949 아님)",
         )
     # 레코드 순번을 행 번호로 쓴다. 따옴표 안 줄바꿈이 있으면 실제 줄 번호와 다를 수 있다.
-    rows = enumerate(csv.reader(io.StringIO(text)), start=1)
-    return _table_blocks(rows, lambda number: f"{number}행")
+    rows = (
+        (number, [_cell_text(cell) for cell in row])
+        for number, row in enumerate(csv.reader(io.StringIO(text)), start=1)
+    )
+    try:
+        return _table_blocks(rows, lambda number: f"{number}행")
+    except csv.Error as error:
+        # CR만 쓰는 줄바꿈, 필드 길이 초과처럼 읽는 도중 csv 모듈이 거부한 경우.
+        raise RecordParseError(
+            RecordParseErrorReason.UNSUPPORTED_FORMAT,
+            f"CSV 형식을 읽을 수 없습니다: {type(error).__name__}",
+        ) from error
 
 
 def _table_blocks(
-    rows: Iterable[tuple[int, Sequence[object]]], label: Callable[[int], str]
+    rows: Iterable[tuple[int, list[str]]], label: Callable[[int], str]
 ) -> list[dict[str, Any]]:
     """처음으로 비어 있지 않은 행을 열 이름으로, 이후 행을 하나씩 블록으로 만든다.
 
@@ -147,8 +169,7 @@ def _table_blocks(
     """
     header: list[str] | None = None
     blocks: list[dict[str, Any]] = []
-    for number, cells in rows:
-        values = [_cell_text(cell) for cell in cells]
+    for number, values in rows:
         if not any(values):
             continue
         if header is None:
@@ -174,10 +195,15 @@ def _row_text(header: list[str], values: list[str]) -> str:
     return ", ".join(pairs)
 
 
-def _cell_text(value: object) -> str:
-    """셀 값을 원래 값 그대로 적는다. 쉼표 등 셀 표시 형식은 따르지 않는다.
+# "#,##0", "#,##0.00", '"₩"#,##0'처럼 천 단위 쉼표가 있는 표시 형식. 소수 자릿수는 뒤의 0 개수다.
+_THOUSANDS_FORMAT = re.compile(r"#,##0(?:\.(0+))?")
 
-    [합의 필요] 표시 형식(45,000)을 따를지는 #72 평가 결과를 보고 정한다.
+
+def _cell_text(value: object, number_format: str | None = None) -> str:
+    """셀 값을 엑셀 화면에 보이는 대로 적는다(PR #90 리뷰 합의).
+
+    천 단위 쉼표 형식만 따르고, 일반 형식 숫자는 원래 값으로 둔다. 연도·번호 열이
+    2,025가 되지 않게 하기 위해서다. 같은 장부의 XLSX와 엑셀이 저장한 CSV가 같은 값이 된다.
     """
     if value is None:
         return ""
@@ -190,9 +216,21 @@ def _cell_text(value: object) -> str:
         return value.isoformat()
     if isinstance(value, time):
         return value.strftime("%H:%M")
-    if isinstance(value, float) and value.is_integer():
-        return str(int(value))
-    return str(value).strip()
+    # bool은 int의 하위 타입이라 숫자 표기에서 뺀다.
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        thousands = _THOUSANDS_FORMAT.search(number_format or "")
+        if thousands:
+            return f"{value:,.{len(thousands.group(1) or '')}f}"
+        if isinstance(value, float):
+            # 일반 형식의 계산값은 부동소수점 오차만 정리한다(49500.00000000001 → 49500).
+            return f"{value:.15g}"
+        return str(value)
+    return _clean(str(value))
+
+
+def _clean(text: str) -> str:
+    """앞뒤 공백과 NUL 문자를 지운다. PostgreSQL JSONB는 \\u0000이 든 값을 저장하지 못한다(#42)."""
+    return text.replace("\x00", "").strip()
 
 
 _PARSERS: dict[RecordFileType, Callable[[bytes], list[dict[str, Any]]]] = {
