@@ -106,6 +106,10 @@ def _parse_xlsx(content: bytes) -> list[dict[str, Any]]:
     try:
         blocks: list[dict[str, Any]] = []
         for sheet in workbook.worksheets:
+            # 엑셀 화면에 보이는 시트만 읽는다. 숨김 시트는 대개 드롭다운 목록·양식이라 검색에
+            # 잡음이 되고, 출처로 나가면 사용자가 원본에서 찾기 어렵다(AI-RET-02).
+            if sheet.sheet_state != "visible":
+                continue
             # 읽기 전용 모드는 파일에 적힌 시트 크기만큼만 읽는다. 엑셀이 아닌 도구가 크기를
             # 잘못 적으면 행·열이 오류 없이 빠지므로 저장된 크기를 버리고 끝까지 읽는다.
             sheet.reset_dimensions()

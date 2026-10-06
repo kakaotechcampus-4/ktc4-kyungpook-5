@@ -188,6 +188,25 @@ def test_XLSX_시트_순서대로_읽는다():
     assert _labels(content, XLSX) == ["회비 수납 · 2행", "지출 · 2행"]
 
 
+@pytest.mark.parametrize("state", ["hidden", "veryHidden"])
+def test_XLSX_숨김_시트는_읽지_않는다(state):
+    """엑셀 화면에 보이는 것만 색인한다. 숨김 시트는 대개 드롭다운 목록·양식이고,
+    출처로 나가면 사용자가 원본에서 찾기 어렵다(AI-RET-02)."""
+    workbook = Workbook()
+    visible = workbook.active
+    visible.title = "회비 수납"
+    visible.append(["이름", "금액"])
+    visible.append(["참가자01", 45000])
+    hidden = workbook.create_sheet("회원 명단")
+    hidden.append(["이름", "연락처"])
+    hidden.append(["참가자01", "010-0000-0000"])
+    hidden.sheet_state = state
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+
+    assert _labels(buffer.getvalue(), XLSX) == ["회비 수납 · 2행"]
+
+
 def test_XLSX_위쪽_빈_행이_있어도_실제_행_번호를_쓴다():
     content = _xlsx({"장부": [[], [], ["날짜", "금액"], ["2025-03-03", 45000]]})
 
