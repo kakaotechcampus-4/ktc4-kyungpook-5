@@ -114,6 +114,29 @@ def test_CSV_앞뒤_공백을_지운다():
     assert _texts(content, CSV) == ["날짜: 2025-03-03, 금액: 45000"]
 
 
+@pytest.mark.parametrize(
+    "content",
+    [
+        ('날짜,메모\n2025-03-03,"' + "x" * 140_000 + "\n").encode(),
+        "날짜,금액\r2025-03-03,45000\r".encode(),
+    ],
+    ids=["필드_길이_초과", "CR만_쓰는_줄바꿈"],
+)
+def test_CSV_형식이_깨지면_UNSUPPORTED_FORMAT(content):
+    """읽는 도중 csv 모듈이 거부하는 파일. 서버 오류가 아니라 사유로 알린다."""
+    error = _error(content, CSV)
+
+    assert error.reason is RecordParseErrorReason.UNSUPPORTED_FORMAT
+    assert "CSV" in error.debug_message
+
+
+def test_CSV_셀의_NUL_문자를_지운다():
+    """PostgreSQL JSONB는 \\u0000이 든 값을 저장하지 못한다(#42 parse_result 저장)."""
+    content = "날짜,메모\n2025-03-03,봄\x00 MT\n,\x00\n".encode()
+
+    assert _texts(content, CSV) == ["날짜: 2025-03-03, 메모: 봄 MT"]
+
+
 def test_CSV_열_이름만_있으면_블록이_없다():
     """빈 기록은 #71 index_record가 '읽을 내용 없음'으로 처리한다."""
     assert _blocks("날짜,금액\n".encode(), CSV) == []
@@ -262,15 +285,66 @@ def test_XLSX_열_수_없으면_UNSUPPORTED_FORMAT(content):
         (45000, "45000"),
         (45000.0, "45000"),
         (0.15, "0.15"),
+        (49500.00000000001, "49500"),
         (datetime(2025, 3, 3), "2025-03-03"),
         (datetime(2025, 3, 3, 14, 30), "2025-03-03 14:30"),
         (date(2025, 3, 3), "2025-03-03"),
         (time(9, 5), "09:05"),
     ],
 )
-def test_셀_값은_원래_값_그대로_적는다(value, text):
-    """쉼표 등 셀 표시 형식은 따르지 않는다. 연도·번호 열이 2,025가 되지 않게 하기 위해서다."""
+def test_표시_형식이_없는_셀은_원래_값으로_적는다(value, text):
+    """일반 형식 셀. 연도·번호 열이 2,025가 되지 않고, 계산 오차만 정리한다."""
     assert _cell_text(value) == text
+
+
+def _xlsx_formatted(cells: list[tuple[object, str]]) -> bytes:
+    """(값, 셀 표시 형식) 목록을 열 이름 아래 한 행에 쓴 XLSX."""
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "장부"
+    sheet.append([f"열{index}" for index in range(1, len(cells) + 1)])
+    for column, (value, number_format) in enumerate(cells, start=1):
+        cell = sheet.cell(row=2, column=column, value=value)
+        cell.number_format = number_format
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize(
+    ("value", "number_format", "text"),
+    [
+        (45000, "#,##0", "45,000"),
+        (2025, "General", "2025"),
+        # 엑셀이 저장해 둔 계산값(0.1*3*165000)
+        (49500.00000000001, "#,##0", "49,500"),
+        (49500.00000000001, "General", "49500"),
+        (1234.5, "#,##0.00", "1,234.50"),
+        (45000, '"₩"#,##0', "45,000"),
+    ],
+)
+def test_XLSX_셀_표시_형식의_쉼표와_소수_자릿수를_따른다(value, number_format, text):
+    """엑셀 화면에 보이는 값과 같아야 같은 장부의 XLSX·CSV 결과가 같아진다."""
+    [row] = _texts(_xlsx_formatted([(value, number_format)]), XLSX)
+
+    assert row == f"열1: {text}"
+
+
+def test_XLSX_시트_XML이_손상되면_UNSUPPORTED_FORMAT():
+    """파일은 열리지만 행을 읽는 도중 깨진 경우."""
+    source = zipfile.ZipFile(io.BytesIO(_xlsx({"장부": [["이름"], ["참가자01"]]})))
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as target:
+        for item in source.infolist():
+            data = source.read(item.filename)
+            if item.filename == "xl/worksheets/sheet1.xml":
+                data = data.replace(b"</sheetData>", b'<row r="9"><c r="A9"><v>1</v></c>')
+            target.writestr(item, data)
+
+    error = _error(buffer.getvalue(), XLSX)
+
+    assert error.reason is RecordParseErrorReason.UNSUPPORTED_FORMAT
+    assert "XLSX" in error.debug_message
 
 
 PDF = RecordFileType.PDF
