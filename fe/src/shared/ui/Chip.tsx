@@ -1,28 +1,35 @@
-// 승인 필요 / 읽음 같은 배지
+// 상태 칩. 색은 0·기준 「상태」 한 쌍(배경 + 글자)을 그대로 쓴다.
 import type { HTMLAttributes } from 'react'
 import { cn } from '@/shared/lib/cn'
 
-type Variant = 'dark' | 'outline' | 'subtle' | 'attention' | 'notice'
+type Tone = 'neutral' | 'done' | 'pending' | 'approved' | 'failed' | 'blush'
 
 interface ChipProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: Variant
+  tone?: Tone
+  size?: 'md' | 'sm'
 }
 
-const VARIANT_CLASS: Record<Variant, string> = {
-  dark: 'bg-[#333] text-[#fafafa] border border-[#e3e3e3]',
-  outline: 'bg-white text-[#808080] border border-[#e3e3e3]',
-  subtle: 'bg-[#f9f9f9] text-[#6b6b6b] border border-[#e3e3e3]',
-  attention: 'bg-[#fcf2e5] text-[#4d4d4d] border border-[#e2c59b]',
-  // subtle보다 한 톤 진하다. "읽는 중" / "형식 확인 필요"처럼 손이 가야 하는 상태에 쓴다.
-  notice: 'bg-[#ededed] text-[#262626] border border-[#e3e3e3]',
+const TONE_CLASS: Record<Tone, string> = {
+  neutral: 'bg-chip text-ink2',
+  done: 'bg-done-bg text-done',
+  pending: 'bg-pending-bg text-pending',
+  approved: 'bg-approved-bg text-approved',
+  failed: 'bg-failed-bg text-failed',
+  blush: 'bg-blush-bg text-blush',
 }
 
-export function Chip({ variant = 'dark', className, ...props }: ChipProps) {
+const SIZE_CLASS = {
+  md: 'px-[11px] py-[6px] text-[11.5px]',
+  sm: 'px-[10px] py-[5px] text-[10.5px]',
+}
+
+export function Chip({ tone = 'neutral', size = 'md', className, ...props }: ChipProps) {
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded-[6px] px-[8px] py-[4px] text-[10.5px] font-medium whitespace-nowrap',
-        VARIANT_CLASS[variant],
+        'inline-flex shrink-0 items-center rounded-[8px] font-bold whitespace-nowrap',
+        TONE_CLASS[tone],
+        SIZE_CLASS[size],
         className,
       )}
       {...props}

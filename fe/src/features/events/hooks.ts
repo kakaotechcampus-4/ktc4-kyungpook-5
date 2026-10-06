@@ -1,50 +1,107 @@
-// useEvents... 커스텀 훅. 컴포넌트는 반드시 이 훅을 거쳐 서버 상태에 접근한다.
-import { useEffect, useState } from 'react'
-import * as eventsApi from '@/features/events/api'
+// 행사 서버 상태 훅. 화면은 반드시 이 훅을 거쳐 서버 데이터에 접근한다.
+// 지금은 서버 연동 전이라 주소에 ?demo가 있으면 시연용 예시(mock.ts)를, 없으면 빈 값을 준다.
+// TODO(연동): 각 queryFn을 주석에 적힌 eventsApi 호출로 바꾼다. 화면은 고치지 않아도 된다.
+import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
+import {
+  DEMO_ACTIONS,
+  DEMO_CONFIRMATIONS,
+  DEMO_EVENT_DETAILS,
+  DEMO_EVENTS,
+  DEMO_RESOLVED,
+  DEMO_STEP_ACTIONS,
+  DEMO_STEPS,
+} from '@/features/events/mock'
+import type {
+  ActionPage,
+  EventAction,
+  EventDetail,
+  EventStatus,
+  EventStep,
+  EventSummary,
+} from '@/features/events/types'
 
-// 아직 목업이라 동기로 끝난다. `GET /events`가 생기면 로딩·에러 상태가 여기에 붙는다.
-export function useEventList() {
-  return eventsApi.getEventList()
+export function useDemo() {
+  return useSearchParams()[0].has('demo')
 }
 
-// L2 행사 상세. 확인 요청·처리된 승인만 API에서 오고 나머지는 아직 목업이다.
-export function useEventDetail(eventId: string) {
-  const [actions, setActions] = useState(eventsApi.getEventActions)
+// TODO(연동): eventsApi.getEvents(status)
+export function useEvents(status?: EventStatus) {
+  const demo = useDemo()
+  return useQuery({
+    queryKey: ['events', status, demo],
+    queryFn: async (): Promise<EventSummary[]> =>
+      demo ? DEMO_EVENTS.filter((e) => !status || e.status === status) : [],
+  })
+}
 
-  useEffect(() => {
-    let cancelled = false
+// 없는 행사면 null(초기 화면)
+// TODO(연동): eventsApi.getEventDetail(eventId)
+export function useEventDetail(eventId: string | undefined) {
+  const demo = useDemo()
+  return useQuery({
+    queryKey: ['events', eventId, 'detail', demo],
+    queryFn: async (): Promise<EventDetail | null> =>
+      demo ? (DEMO_EVENT_DETAILS[eventId!] ?? null) : null,
+    enabled: !!eventId,
+  })
+}
 
-    eventsApi
-      .getEventActionsFromApi(eventId)
-      .then((result) => {
-        if (!cancelled) setActions(result)
-      })
-      .catch((error: unknown) => {
-        // mock API가 아직 안 떠 있을 수 있다. 이때는 기존 목업 데이터를 그대로 보여준다.
-        console.warn('[events] 승인 목록을 API에서 불러오지 못해 목업 데이터를 유지합니다.', error)
-      })
+// TODO(연동): eventsApi.getEventSteps(eventId)
+export function useEventSteps(eventId: string | undefined) {
+  const demo = useDemo()
+  return useQuery({
+    queryKey: ['events', eventId, 'steps', demo],
+    queryFn: async (): Promise<EventStep[]> => (demo ? (DEMO_STEPS[eventId!] ?? []) : []),
+    enabled: !!eventId,
+  })
+}
 
-    return () => {
-      cancelled = true
-    }
-  }, [eventId])
+// M1 승인 대기. 확인 요청은 L2에서 따로 보인다.
+// TODO(연동): eventsApi.getEventActions(eventId, 'status=PENDING&excludeType=CONFIRMATION')
+export function usePendingApprovals(eventId: string | undefined) {
+  const demo = useDemo()
+  return useQuery({
+    queryKey: ['events', eventId, 'actions', 'pendingApprovals', demo],
+    queryFn: async (): Promise<EventAction[]> => (demo ? (DEMO_ACTIONS[eventId!] ?? []) : []),
+    enabled: !!eventId,
+  })
+}
 
-  // TODO: POST /actions/{actionId}/resolve 에 { choice } 로 보낸다. 엔드포인트가 아직 없어
-  // 지금은 화면에서만 지운다.
-  function resolveConfirmation(actionId: string, choice: string) {
-    console.info('[events] 확인 요청 처리', actionId, choice)
-    setActions((prev) => ({
-      ...prev,
-      confirmations: prev.confirmations.filter((action) => action.id !== actionId),
-    }))
-  }
+// L2 확인 요청
+// TODO(연동): eventsApi.getEventActions(eventId, 'status=PENDING&type=CONFIRMATION')
+export function useConfirmations(eventId: string | undefined) {
+  const demo = useDemo()
+  return useQuery({
+    queryKey: ['events', eventId, 'actions', 'confirmations', demo],
+    queryFn: async (): Promise<EventAction[]> => (demo ? (DEMO_CONFIRMATIONS[eventId!] ?? []) : []),
+    enabled: !!eventId,
+  })
+}
 
-  return {
-    event: eventsApi.getEventDetail(),
-    steps: eventsApi.getEventSteps(),
-    budgetNote: eventsApi.getBudgetNote(),
-    paymentIssues: eventsApi.getPaymentIssues(),
-    ...actions,
-    resolveConfirmation,
-  }
+const NO_ACTIONS: ActionPage = { items: [], totalCount: 0 }
+
+// L2 처리된 승인: 최근 몇 건 + 전체 개수
+// TODO(연동): eventsApi.getEventActionPage(eventId, 'status=APPROVED,DONE,DENIED&size=3')
+export function useResolvedActions(eventId: string | undefined) {
+  const demo = useDemo()
+  return useQuery({
+    queryKey: ['events', eventId, 'actions', 'resolved', demo],
+    queryFn: async (): Promise<ActionPage> =>
+      demo ? (DEMO_RESOLVED[eventId!] ?? NO_ACTIONS) : NO_ACTIONS,
+    enabled: !!eventId,
+  })
+}
+
+// Step 모달: 한 단계의 Action 전부
+// TODO(연동): 단계 조건이 명세에 없어 eventsApi.getEventActions(eventId, 'size=100')로 받아 stepId로 거른다.
+// 기본은 20건이라 size를 붙인다(최대 100). 넘는 행사가 생기면 BE에 stepId 조건을 요청한다.
+export function useStepActions(eventId: string | undefined, stepId: string | undefined) {
+  const demo = useDemo()
+  return useQuery({
+    queryKey: ['events', eventId, 'actions', 'step', stepId, demo],
+    queryFn: async (): Promise<EventAction[]> =>
+      demo ? (DEMO_STEP_ACTIONS[eventId!]?.[stepId!] ?? []) : [],
+    enabled: !!eventId && !!stepId,
+  })
 }
