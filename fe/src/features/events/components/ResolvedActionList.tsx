@@ -2,7 +2,7 @@
 import type { EventAction } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
 import { formatDateTime } from '@/shared/lib/format'
-import { ACTION_TYPE_LABEL, MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
+import { ACTION_TYPE_LABEL, formatResolver } from '@/shared/lib/labels'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -56,16 +56,17 @@ export function ResolvedActionList({ actions, totalCount, className }: ResolvedA
                   <span className="truncate text-[13.5px] font-semibold">{action.title}</span>
                   <Chip size="sm">{ACTION_TYPE_LABEL[action.type] ?? action.type}</Chip>
                 </div>
-                {action.resolvedBy && action.resolvedAt && (
-                  <div className="flex shrink-0 flex-col items-end gap-[2px]">
-                    <span className="text-caption font-semibold text-ink2">
-                      {action.resolvedBy.name} · {MEMBER_ROLE_LABEL[action.resolvedBy.role]}
-                    </span>
+                {/* 처리한 사람은 늘 남기고, 시각은 있을 때만 보인다 */}
+                <div className="flex shrink-0 flex-col items-end gap-[2px]">
+                  <span className="text-caption font-semibold text-ink2">
+                    {formatResolver(action.resolvedBy)}
+                  </span>
+                  {action.resolvedAt && (
                     <span className="text-[10.5px] text-mute">
                       {formatDateTime(action.resolvedAt)}
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
               </li>
             )
           })}

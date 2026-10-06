@@ -22,6 +22,11 @@ export const MEMBER_ROLE_LABEL: Record<string, string> = {
   MEMBER: '회원',
 }
 
+// 처리한 사람 "김지훈 · 회장". 기록이 비어 있으면 숨기지 않고 알 수 없음으로 드러낸다.
+export function formatResolver(by: { name: string; role: string } | null | undefined): string {
+  return by ? `${by.name} · ${MEMBER_ROLE_LABEL[by.role]}` : '처리한 사람 알 수 없음'
+}
+
 export const EVENT_STATUS_LABEL: Record<string, string> = {
   PLANNING: '계획 중',
   ON_GOING: '진행 중',
