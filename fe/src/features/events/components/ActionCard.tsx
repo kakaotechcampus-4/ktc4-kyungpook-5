@@ -132,19 +132,20 @@ export function ActionCard({ action, onComplete }: ActionCardProps) {
     )
   } else if (status === 'APPROVED' && type !== 'CONFIRMATION') {
     const step = APPROVED_STEP[type]
+    const content = action.content
     body = (
       <>
-        <Box label="승인된 내용" hint={step.hint}>
-          {action.content}
+        {/* 내용이 없으면 안내 한 줄만 남기고, 복사할 게 없으니 복사 버튼도 숨긴다 */}
+        <Box label={content ? '승인된 내용' : undefined} hint={step.hint}>
+          {content}
         </Box>
         <div className="flex gap-[8px]">
           {/* TODO: 조건 보기 · 항목 보기는 결정 검토 모달(#82)이 생기면 연다 */}
-          <Button
-            variant="secondary"
-            onClick={step.copy && action.content ? () => copy(action.content!) : undefined}
-          >
-            {step.secondary}
-          </Button>
+          {(content || !step.copy) && (
+            <Button variant="secondary" onClick={content ? () => copy(content) : undefined}>
+              {step.secondary}
+            </Button>
+          )}
           <Button onClick={() => onComplete?.(action)}>{step.primary}</Button>
         </div>
       </>
@@ -152,9 +153,14 @@ export function ActionCard({ action, onComplete }: ActionCardProps) {
   } else if (status === 'DONE') {
     body =
       type === 'CONFIRMATION' ? (
-        <Box label={`답변 · ${by}`} hint="토리가 계획에 반영했어요">
-          {action.answer}
-        </Box>
+        // 답이 안 오면 다른 완료 카드처럼 한 줄만 남긴다
+        action.answer ? (
+          <Box label={`답변 · ${by}`} hint="토리가 계획에 반영했어요">
+            {action.answer}
+          </Box>
+        ) : (
+          <Box>답변함 · {by}</Box>
+        )
       ) : (
         <Box>
           {DONE_LABEL[type]} · {by}
