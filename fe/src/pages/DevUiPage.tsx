@@ -1,7 +1,9 @@
 // 공통 컴포넌트 확인용 페이지(/dev/ui). 화면이 없어 띄울 곳 없는 모달·토스트·상태 화면을 여기서 본다.
 import { useState, type ReactNode } from 'react'
+import { ActionCard } from '@/features/events/components/ActionCard'
 import { SegmentBar } from '@/features/events/components/SegmentBar'
 import { StepStepper } from '@/features/events/components/StepStepper'
+import type { EventAction } from '@/features/events/types'
 import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
@@ -15,6 +17,105 @@ import { ToastView } from '@/shared/ui/Toast'
 import { ToriNote } from '@/shared/ui/ToriNote'
 
 const noop = () => {}
+
+// Action 카드 견본: 상태마다 한 장씩. 실행 대기는 유형마다 버튼이 달라 다섯 장.
+const KIM = { id: 'mbr_02', name: '김지훈', role: 'OWNER' } as const
+const PARK = { id: 'mbr_01', name: '박수겸', role: 'MANAGER' } as const
+const NOTICE = {
+  type: 'NOTICE',
+  title: '미응답 회원 9명에게 신청 마감 안내',
+  subtitle: '대상 9명 · 비용 0원 · 마감 D-2',
+  dueDate: '2026-03-12',
+} as const
+const QUESTION = {
+  type: 'CONFIRMATION',
+  title: '숙소의 최소 예약 인원을 확인해 주세요',
+  subtitle: '작년 계약서는 40명 · 올해 자료 없음',
+  dueDate: '2026-03-08',
+} as const
+const ACTION_SAMPLES: EventAction[] = [
+  {
+    id: 'a1',
+    ...NOTICE,
+    status: 'PENDING',
+    content: '안녕하세요. 봄 MT 참가 신청이 3월 12일에 마감됩니다.',
+  },
+  {
+    id: 'a2',
+    ...QUESTION,
+    status: 'PENDING',
+    content: '올해 숙소 계약 조건에 최소 인원이 있나요?',
+  },
+  {
+    id: 'a3',
+    ...NOTICE,
+    status: 'APPROVED',
+    content: '안녕하세요. 봄 MT 참가 신청이 3월 12일에 마감됩니다.',
+  },
+  {
+    id: 'a4',
+    type: 'EXTERNAL_SEND',
+    title: '미납자 4명에게 2차 납부 안내 문자 보내기',
+    subtitle: '대상 4명 · 비용 0원 · 마감 D-2',
+    dueDate: '2026-03-12',
+    status: 'APPROVED',
+    content: '○○○님, 봄 MT 참가비 45,000원이 아직 확인되지 않았습니다.',
+  },
+  {
+    id: 'a5',
+    type: 'CONTRACT',
+    title: '가평 ○○펜션과 숙소 계약 확정',
+    subtitle: '32명 기준 · 계약금 100,000원',
+    dueDate: '2026-03-12',
+    status: 'APPROVED',
+    content: '취소 수수료 7일 전 50% · 3일 전 100%. 3/16부터 환불 불가.',
+  },
+  {
+    id: 'a6',
+    type: 'TRANSFER',
+    title: '펜션 계약금 100,000원 이체하고 예약 확정',
+    subtitle: '받는 곳 ○○펜션 · 잔고 2,412,000원',
+    dueDate: '2026-03-12',
+    status: 'APPROVED',
+    content: '농협 352-○○○○-○○○○ ○○펜션 / 100,000원',
+  },
+  {
+    id: 'a7',
+    type: 'EXPENSE',
+    title: '장보기·버스 잔금 등 지출 4건 묶음 승인',
+    subtitle: '합계 182,000원 · 영수증 4건 확인됨',
+    dueDate: '2026-03-12',
+    status: 'APPROVED',
+    content: '장보기 84,000 · 버스 잔금 62,000 · 현장비 36,000',
+  },
+  {
+    id: 'a8',
+    ...NOTICE,
+    status: 'DONE',
+    resolvedAt: '2026-03-09T06:30:00Z',
+    resolvedBy: KIM,
+  },
+  {
+    id: 'a9',
+    ...QUESTION,
+    status: 'DONE',
+    resolvedAt: '2026-03-08T08:02:00Z',
+    resolvedBy: PARK,
+    answer: '올해도 최소 40명입니다. 계약서 2조에 있어요.',
+  },
+  {
+    id: 'a10',
+    ...NOTICE,
+    status: 'DENIED',
+    denyReason: '견적이 작년보다 40% 높아 다른 업체를 더 받아보기로 했어요.',
+  },
+  {
+    id: 'a11',
+    ...NOTICE,
+    status: 'FAILED',
+    failReason: '입금자명이 명단과 달라 대조하지 못했어요.',
+  },
+]
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -221,6 +322,20 @@ export default function DevUiPage() {
           <SegmentBar states={['DONE', 'DONE', 'CURRENT', 'TODO', 'TODO', 'TODO']} />
           <SegmentBar states={['CURRENT', 'TODO', 'TODO', 'TODO']} />
           <SegmentBar states={['DONE', 'DONE', 'DONE', 'DONE', 'DONE', 'DONE']} muted />
+        </div>
+      </Section>
+
+      <Section title="Action 카드 (Step 모달 안)">
+        <div className="grid grid-cols-2 items-start gap-[12px]">
+          {ACTION_SAMPLES.map((action) => (
+            <ActionCard
+              key={action.id}
+              action={action}
+              onComplete={(a) =>
+                toast.show({ kind: 'done', title: '완료로 표시했어요', desc: a.title })
+              }
+            />
+          ))}
         </div>
       </Section>
 

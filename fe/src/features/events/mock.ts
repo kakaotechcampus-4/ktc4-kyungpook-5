@@ -212,6 +212,7 @@ export const DEMO_ACTIONS: Record<string, EventAction[]> = {
       title: '미납자 4명에게 2차 납부 안내 문자 보내기',
       subtitle: '대상 4명 · 비용 0원',
       dueDate: day(2),
+      status: 'PENDING',
     },
     {
       id: 'act_22',
@@ -219,6 +220,7 @@ export const DEMO_ACTIONS: Record<string, EventAction[]> = {
       title: '펜션 계약금 100,000원 이체하고 예약 확정',
       subtitle: '마감 다음 날부터 환불 불가 · 잔고 2,412,000원',
       dueDate: day(4),
+      status: 'PENDING',
     },
     {
       id: 'act_23',
@@ -226,6 +228,7 @@ export const DEMO_ACTIONS: Record<string, EventAction[]> = {
       title: '장보기·버스 잔금 등 지출 4건 묶음 승인',
       subtitle: '합계 182,000원 · 영수증 4건 확인됨',
       dueDate: day(13),
+      status: 'PENDING',
     },
   ],
   evt_c41d07: [
@@ -235,6 +238,7 @@ export const DEMO_ACTIONS: Record<string, EventAction[]> = {
       title: '공대 7호관 세미나실 1박 2일 대관 신청서 제출',
       subtitle: '학과 사무실 승인 필요 · 야간 사용 신청 포함',
       dueDate: day(3),
+      status: 'PENDING',
     },
   ],
 }

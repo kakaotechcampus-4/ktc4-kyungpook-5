@@ -75,12 +75,21 @@ export interface EventAction {
   title: string
   subtitle: string | null
   dueDate: string | null
-  status?: ActionStatus
+  status: ActionStatus
   resolvedAt?: string | null
   resolvedBy?: { id: string; name: string; role: MemberRole } | null
+  denyReason?: string | null
   // 확인 요청(CONFIRMATION) 전용. 버튼 하나가 선택지 하나다.
   options?: Array<{ key: string; label: string }> | null
   allowManual?: boolean | null
+  // TODO: 아래 셋은 명세에 없다. Step 모달 Action 카드에서만 쓴다.
+  // content: 카드 회색 박스 본문. 승인 전엔 토리가 준비한 초안, 승인 뒤엔 확정 문구, 확인 요청은 질문.
+  // (결정 검토 시안에도 "BE 미정 — 승인된 문구를 담을 Action 필드가 아직 없습니다"라고 적혀 있다)
+  content?: string | null
+  // 확인 요청에 운영진이 남긴 답
+  answer?: string | null
+  // 실행하지 못한 이유
+  failReason?: string | null
 }
 
 // 목록 일부와 전체 개수("12건"). 처리된 승인처럼 최근 몇 건만 보일 때 쓴다.
