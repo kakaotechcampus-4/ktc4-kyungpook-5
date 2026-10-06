@@ -1,4 +1,6 @@
 // 글자를 클립보드에 복사한다. 성공하면 true.
+import { topModalOrBody } from '@/shared/lib/dialog'
+
 export async function copyText(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text)
@@ -10,9 +12,7 @@ export async function copyText(text: string): Promise<boolean> {
     el.value = text
     el.style.position = 'fixed'
     el.style.opacity = '0'
-    // 모달(<dialog>)이 열려 있으면 그 바깥은 고를 수 없어서 모달 안에 붙인다
-    const host = document.querySelector('dialog[open]') ?? document.body
-    host.append(el)
+    topModalOrBody().append(el)
     el.select()
     const ok = document.execCommand('copy')
     el.remove()
