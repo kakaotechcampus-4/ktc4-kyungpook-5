@@ -25,7 +25,11 @@ def _text(value: str | SecretStr) -> str:
 class AISettings(BaseSettings):
     """ML API 호출에 필요한 AI 모듈 설정"""
 
-    model_config = SettingsConfigDict(env_prefix="AI_", extra="ignore")
+    # env_file 없이는 .env가 안 읽히고 실제 프로세스 환경변수만 본다.
+    # be/에서 실행하는 걸 전제로 상대경로를 쓴다(check_ml_api.py와 동일한 전제).
+    model_config = SettingsConfigDict(
+        env_prefix="AI_", env_file=".env", extra="ignore"
+    )
 
     # ML API 엔드포인트
     api_base_url: str = ""
