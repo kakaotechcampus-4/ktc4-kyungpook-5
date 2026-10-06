@@ -35,33 +35,50 @@ const MONTH_DAY_TIME = new Intl.DateTimeFormat('en-US', {
   hour12: false,
 })
 
+// 서버가 날짜를 잘못 주면 Intl이 에러를 던져 화면 전체가 멈춘다. 그때는 받은 글자를 그대로 보인다.
+function formatSafe(format: Intl.DateTimeFormat, iso: string): string {
+  const date = new Date(iso)
+  return Number.isNaN(date.getTime()) ? iso : format.format(date)
+}
+
 // "2026-03-12T14:59:00Z" → "3/12"
 export function formatMonthDay(iso: string): string {
-  return MONTH_DAY.format(new Date(iso))
+  return formatSafe(MONTH_DAY, iso)
+}
+
+// 단계 기간 "3/10 – 3/12". 빠진 쪽은 건너뛴다.
+export function formatPeriod(start?: string | null, end?: string | null): string {
+  return [start, end]
+    .filter((iso): iso is string => !!iso)
+    .map(formatMonthDay)
+    .join(' – ')
 }
 
 // "2026-03-08T08:02:00Z" → "3/8 17:02"
 export function formatDateTime(iso: string): string {
-  return MONTH_DAY_TIME.format(new Date(iso)).replace(',', '')
+  return formatSafe(MONTH_DAY_TIME, iso).replace(',', '')
 }
 
 // "2026-03-01T02:00:00Z" → "2026. 3. 1." (ko-KR medium이 정확히 이 모양이다)
 const DOT_DATE = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', dateStyle: 'medium' })
 
 export function formatDotDate(iso: string): string {
-  return DOT_DATE.format(new Date(iso))
+  return formatSafe(DOT_DATE, iso)
 }
 
-// 한국 날짜 기준 남은 날수. 오늘 마감이면 0, 지났으면 음수.
+// 한국 날짜 기준 남은 날수. 오늘 마감이면 0, 지났으면 음수. 날짜를 못 읽으면 NaN.
 const KST_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' })
 
 export function daysUntil(iso: string, now = new Date()): number {
+  const target = new Date(iso)
+  if (Number.isNaN(target.getTime())) return NaN
   const day = (d: Date) => Date.parse(KST_DATE.format(d))
-  return Math.round((day(new Date(iso)) - day(now)) / 86_400_000)
+  return Math.round((day(target) - day(now)) / 86_400_000)
 }
 
-// 11 → "D-11", 0 → "D-day", -2 → "D+2"
+// 11 → "D-11", 0 → "D-day", -2 → "D+2", 못 읽은 날짜(NaN) → "—"
 export function formatDday(days: number): string {
+  if (Number.isNaN(days)) return '—'
   if (days === 0) return 'D-day'
   return days > 0 ? `D-${days}` : `D+${-days}`
 }
