@@ -64,7 +64,7 @@ export function StepModal({
       // "AI 실행 · 3/10 – 3/12"
       subtitle={[
         step.actor && STEP_ACTOR_LABEL[step.actor],
-        formatPeriod(step.startedTime, step.deadline),
+        formatPeriod(step.startsAt, step.deadline),
       ]
         .filter(Boolean)
         .join(' · ')}

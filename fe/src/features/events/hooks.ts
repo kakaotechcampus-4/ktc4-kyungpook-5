@@ -35,7 +35,7 @@ export function useEvents(status?: EventStatus) {
   })
 }
 
-// L2 상단 카드. 없는 행사면 null(초기 화면).
+// 없는 행사면 null(초기 화면)
 // TODO(연동): eventsApi.getEventDetail(eventId)
 export function useEventDetail(eventId: string | undefined) {
   const demo = useDemo()
@@ -57,7 +57,7 @@ export function useEventSteps(eventId: string | undefined) {
   })
 }
 
-// M1 승인 대기: 결정이 필요한 Action만. 확인 요청(CONFIRMATION)은 L2에서 따로 보인다.
+// M1 승인 대기. 확인 요청은 L2에서 따로 보인다.
 // TODO(연동): eventsApi.getEventActions(eventId, 'status=PENDING&excludeType=CONFIRMATION')
 export function usePendingApprovals(eventId: string | undefined) {
   const demo = useDemo()
@@ -68,7 +68,7 @@ export function usePendingApprovals(eventId: string | undefined) {
   })
 }
 
-// L2 확인 요청: 토리가 혼자 정하기 어려워 묻는 일
+// L2 확인 요청
 // TODO(연동): eventsApi.getEventActions(eventId, 'status=PENDING&type=CONFIRMATION')
 export function useConfirmations(eventId: string | undefined) {
   const demo = useDemo()
@@ -81,7 +81,7 @@ export function useConfirmations(eventId: string | undefined) {
 
 const NO_ACTIONS: ActionPage = { items: [], totalCount: 0 }
 
-// L2 처리된 승인: 최근 몇 건만 보이고 개수는 전체를 센다
+// L2 처리된 승인: 최근 몇 건 + 전체 개수
 // TODO(연동): eventsApi.getEventActionPage(eventId, 'status=APPROVED,DONE,DENIED&size=3')
 export function useResolvedActions(eventId: string | undefined) {
   const demo = useDemo()
@@ -93,8 +93,9 @@ export function useResolvedActions(eventId: string | undefined) {
   })
 }
 
-// Step 모달: 한 단계의 Action 전부(할 일 · 처리된 일)
-// TODO(연동): 명세에 단계로 거르는 조건이 없다. eventsApi.getEventActions(eventId, '')로 받아 stepId로 거른다.
+// Step 모달: 한 단계의 Action 전부
+// TODO(연동): 단계 조건이 명세에 없어 eventsApi.getEventActions(eventId, 'size=100')로 받아 stepId로 거른다.
+// 기본은 20건이라 size를 붙인다(최대 100). 넘는 행사가 생기면 BE에 stepId 조건을 요청한다.
 export function useStepActions(eventId: string | undefined, stepId: string | undefined) {
   const demo = useDemo()
   return useQuery({

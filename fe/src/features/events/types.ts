@@ -1,6 +1,6 @@
 // 행사 도메인 타입. 이름·값은 FE API 명세(docs/week6/fe/운영해_FE_API_명세_v1.md)를 따른다.
 
-// 단계 상태. DB 컬럼이 아니라 서버가 계산해 내려준다.
+// DB 컬럼이 아니라 서버가 계산해 내려준다.
 export type StepState = 'DONE' | 'CURRENT' | 'TODO'
 
 export type EventStatus = 'PLANNING' | 'ON_GOING' | 'COMPLETE'
@@ -16,8 +16,7 @@ export interface EventSummary {
   currentStepName: string | null
   stepProgress: Array<{ stepOrder: number; state: StepState }>
   pendingApprovalCount: number
-  // TODO: 아래 둘은 GET /events 응답에 아직 없다. DB에는 location · expected_headcount로 있으니
-  // 응답에 실어 달라고 BE에 요청하거나, 결정에 따라 카드에서 뺀다.
+  // TODO: 아래 둘은 GET /events 응답에 아직 없다(DB에는 있음). BE에 요청하거나 카드에서 뺀다.
   location: string | null
   headcount: number | null
 }
@@ -33,11 +32,10 @@ export interface EventDetail {
   location: string | null
   headcount: number | null
   currentStep: { id: string; stepOrder: number; name: string } | null
-  // TODO: 명세에 없다. 담당자("박수겸 · 총무")를 응답에 실어 달라고 BE에 요청하거나, 결정에 따라 뺀다.
+  // TODO: 명세에 없다. BE에 요청하거나 뺀다.
   manager: string | null
 }
 
-// 단계를 누가 진행하는지
 export type StepActor = 'AI' | 'APPROVAL_REQUIRED' | 'MANUAL'
 
 // GET /events/{id}/steps 한 줄
@@ -49,8 +47,7 @@ export interface EventStep {
   state: StepState
   deadline: string | null
   actor?: StepActor
-  startedTime?: string | null
-  // L2 현재 단계 카드의 "이 단계에서 한 일" · "남은 일"
+  startsAt?: string | null
   doneActions?: Array<{ id: string; title: string; status: ActionStatus }>
   remainingActions?: Array<{
     id: string
@@ -76,23 +73,22 @@ export interface EventAction {
   subtitle: string | null
   dueDate: string | null
   status: ActionStatus
+  // 단계에 안 묶인 확인 요청은 null
+  stepId?: string | null
   resolvedAt?: string | null
   resolvedBy?: { id: string; name: string; role: MemberRole } | null
   denyReason?: string | null
-  // 확인 요청(CONFIRMATION) 전용. 버튼 하나가 선택지 하나다.
+  // 확인 요청(CONFIRMATION) 전용
   options?: Array<{ key: string; label: string }> | null
   allowManual?: boolean | null
   // TODO: 아래 셋은 명세에 없다. Step 모달 Action 카드에서만 쓴다.
-  // content: 카드 회색 박스 본문. 승인 전엔 토리가 준비한 초안, 승인 뒤엔 확정 문구, 확인 요청은 질문.
-  // (결정 검토 시안에도 "BE 미정 — 승인된 문구를 담을 Action 필드가 아직 없습니다"라고 적혀 있다)
+  // content: 승인 전엔 토리가 준비한 초안, 승인 뒤엔 확정 문구, 확인 요청은 질문
   content?: string | null
-  // 확인 요청에 운영진이 남긴 답
   answer?: string | null
-  // 실행하지 못한 이유
   failReason?: string | null
 }
 
-// 목록 일부와 전체 개수("12건"). 처리된 승인처럼 최근 몇 건만 보일 때 쓴다.
+// 목록 일부와 전체 개수("12건")
 export interface ActionPage {
   items: EventAction[]
   totalCount: number

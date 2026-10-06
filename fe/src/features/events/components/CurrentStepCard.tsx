@@ -20,7 +20,7 @@ interface CurrentStepCardProps {
 export function CurrentStepCard({ step, position, onOpen, className }: CurrentStepCardProps) {
   // "3/10 – 3/12 · AI 실행". 빠진 값은 건너뛴다.
   const summary = [
-    formatPeriod(step.startedTime, step.deadline),
+    formatPeriod(step.startsAt, step.deadline),
     step.actor && STEP_ACTOR_LABEL[step.actor],
   ]
     .filter(Boolean)

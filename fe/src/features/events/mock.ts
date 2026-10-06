@@ -132,7 +132,7 @@ export const DEMO_STEPS: Record<string, EventStep[]> = {
     4,
     {
       actor: 'AI',
-      startedTime: at(-1, '00:00'),
+      startsAt: at(-1, '00:00'),
       doneActions: [
         { id: 'act_11', title: '입금 12건을 참가자 명단과 대조했어요.', status: 'DONE' },
         { id: 'act_12', title: '입금자명이 다른 2건을 확인 요청으로 올렸어요.', status: 'DONE' },
@@ -161,7 +161,7 @@ export const DEMO_STEPS: Record<string, EventStep[]> = {
     // 토리가 한 일 없이 승인할 일만 남은 단계. L2에서 토리 박스가 숨는 경우를 보여 준다.
     {
       actor: 'APPROVAL_REQUIRED',
-      startedTime: at(-2, '00:00'),
+      startsAt: at(-2, '00:00'),
       doneActions: [],
       remainingActions: [
         {
