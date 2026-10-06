@@ -1,7 +1,7 @@
 // 현재 단계 카드(L2): 진행 중인 단계에서 토리가 한 일과 남은 일. 자세한 내용은 Step 모달에서 본다.
 import type { EventStep } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
-import { formatMonthDay } from '@/shared/lib/format'
+import { formatPeriod } from '@/shared/lib/format'
 import { STEP_ACTOR_LABEL } from '@/shared/lib/labels'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
@@ -12,16 +12,19 @@ interface CurrentStepCardProps {
   step: EventStep
   // 스테퍼에서 몇 번째 단계인지(1부터)
   position: number
+  // [단계 자세히 보기] → Step 모달
+  onOpen: () => void
   className?: string
 }
 
-export function CurrentStepCard({ step, position, className }: CurrentStepCardProps) {
+export function CurrentStepCard({ step, position, onOpen, className }: CurrentStepCardProps) {
   // "3/10 – 3/12 · AI 실행". 빠진 값은 건너뛴다.
-  const period = [step.startedTime, step.deadline]
-    .filter((iso): iso is string => !!iso)
-    .map(formatMonthDay)
-    .join(' – ')
-  const summary = [period, step.actor && STEP_ACTOR_LABEL[step.actor]].filter(Boolean).join(' · ')
+  const summary = [
+    formatPeriod(step.startedTime, step.deadline),
+    step.actor && STEP_ACTOR_LABEL[step.actor],
+  ]
+    .filter(Boolean)
+    .join(' · ')
   const done = step.doneActions ?? []
   const remaining = step.remainingActions ?? []
 
@@ -54,8 +57,7 @@ export function CurrentStepCard({ step, position, className }: CurrentStepCardPr
         </div>
       )}
 
-      {/* TODO: Step 모달이 생기면 연다 */}
-      <Button variant="soft" className="w-full">
+      <Button variant="soft" className="w-full" onClick={onOpen}>
         단계 자세히 보기
       </Button>
     </Card>

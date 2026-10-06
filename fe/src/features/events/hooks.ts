@@ -9,6 +9,7 @@ import {
   DEMO_EVENT_DETAILS,
   DEMO_EVENTS,
   DEMO_RESOLVED,
+  DEMO_STEP_ACTIONS,
   DEMO_STEPS,
 } from '@/features/events/mock'
 import type {
@@ -89,5 +90,17 @@ export function useResolvedActions(eventId: string | undefined) {
     queryFn: async (): Promise<ActionPage> =>
       demo ? (DEMO_RESOLVED[eventId!] ?? NO_ACTIONS) : NO_ACTIONS,
     enabled: !!eventId,
+  })
+}
+
+// Step 모달: 한 단계의 Action 전부(할 일 · 처리된 일)
+// TODO(연동): 명세에 단계로 거르는 조건이 없다. eventsApi.getEventActions(eventId, '')로 받아 stepId로 거른다.
+export function useStepActions(eventId: string | undefined, stepId: string | undefined) {
+  const demo = useDemo()
+  return useQuery({
+    queryKey: ['events', eventId, 'actions', 'step', stepId, demo],
+    queryFn: async (): Promise<EventAction[]> =>
+      demo ? (DEMO_STEP_ACTIONS[eventId!]?.[stepId!] ?? []) : [],
+    enabled: !!eventId && !!stepId,
   })
 }

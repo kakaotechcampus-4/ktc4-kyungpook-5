@@ -5,13 +5,15 @@ import { ConfirmationList } from '@/features/events/components/ConfirmationList'
 import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
+import { StepModal } from '@/features/events/components/StepModal'
 import {
   useConfirmations,
   useEventDetail,
   useEventSteps,
   useResolvedActions,
+  useStepActions,
 } from '@/features/events/hooks'
-import type { EventAction } from '@/features/events/types'
+import type { EventAction, EventStep } from '@/features/events/types'
 import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -32,6 +34,15 @@ export default function EventDetailPage() {
   const currentIndex = steps.findIndex((s) => s.state === 'CURRENT')
   const resolved = useResolvedActions(shownId).data
 
+  // 열린 Step 모달의 단계. 단계를 다시 불러오면 순서가 바뀔 수 있어 id로 기억한다. null이면 닫혀 있다.
+  const [openStepId, setOpenStepId] = useState<string | null>(null)
+  const openIndex = steps.findIndex((s) => s.id === openStepId)
+  const openStep = openIndex >= 0 ? steps[openIndex] : undefined
+  // 실행을 마쳤다고 표시한 Action. 서버 연동 전이라 화면에서만 빼 둔다.
+  const [finishedIds, setFinishedIds] = useState<string[]>([])
+  const stepActionsQuery = useStepActions(shownId, openStep?.id)
+  const stepActions = stepActionsQuery.data?.filter((a) => !finishedIds.includes(a.id))
+
   // 처리한 확인 요청. 서버 연동 전이라 화면에서만 빼 둔다.
   const [answeredIds, setAnsweredIds] = useState<string[]>([])
   const confirmations = (useConfirmations(shownId).data ?? []).filter(
@@ -46,6 +57,18 @@ export default function EventDetailPage() {
       title: choice === 'MANUAL' ? '직접 처리로 넘겼어요' : '처리했어요',
       desc: action.title,
     })
+  }
+
+  // TODO(연동): 실행을 마쳤다는 기록 API가 명세에 없다
+  const finishAction = (action: EventAction) => {
+    setFinishedIds((ids) => [...ids, action.id])
+    toast.show({ kind: 'done', title: '완료로 표시했어요', desc: action.title })
+  }
+
+  // TODO(연동): POST /steps/{stepId}/complete. 미처리 Action이 남아 있으면 먼저 확인을 받는다(명세).
+  const completeStep = (step: EventStep) => {
+    setOpenStepId(null)
+    toast.show({ kind: 'done', title: '단계를 완료로 표시했어요', desc: step.name })
   }
 
   if (detailQuery.isPending) return null
@@ -74,7 +97,11 @@ export default function EventDetailPage() {
 
       {event ? (
         <>
-          <EventHeaderCard event={event} steps={steps} />
+          <EventHeaderCard
+            event={event}
+            steps={steps}
+            onSelectStep={(step) => setOpenStepId(step.id)}
+          />
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
               <ConfirmationList actions={confirmations} onResolve={resolveConfirmation} />
@@ -89,9 +116,22 @@ export default function EventDetailPage() {
                 className="w-[400px] shrink-0"
                 step={steps[currentIndex]}
                 position={currentIndex + 1}
+                onOpen={() => setOpenStepId(steps[currentIndex].id)}
               />
             )}
           </div>
+          {openStep && (
+            <StepModal
+              step={openStep}
+              position={openIndex + 1}
+              actions={stepActions}
+              actionsFailed={stepActionsQuery.isError}
+              onRetryActions={() => stepActionsQuery.refetch()}
+              onClose={() => setOpenStepId(null)}
+              onCompleteAction={finishAction}
+              onCompleteStep={completeStep}
+            />
+          )}
         </>
       ) : (
         <EmptyState

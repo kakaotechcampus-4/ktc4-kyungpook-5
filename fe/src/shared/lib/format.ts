@@ -46,6 +46,14 @@ export function formatMonthDay(iso: string): string {
   return formatSafe(MONTH_DAY, iso)
 }
 
+// 단계 기간 "3/10 – 3/12". 빠진 쪽은 건너뛴다.
+export function formatPeriod(start?: string | null, end?: string | null): string {
+  return [start, end]
+    .filter((iso): iso is string => !!iso)
+    .map(formatMonthDay)
+    .join(' – ')
+}
+
 // "2026-03-08T08:02:00Z" → "3/8 17:02"
 export function formatDateTime(iso: string): string {
   return formatSafe(MONTH_DAY_TIME, iso).replace(',', '')

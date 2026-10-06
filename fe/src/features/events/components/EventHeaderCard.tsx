@@ -11,9 +11,11 @@ import { Chip } from '@/shared/ui/Chip'
 interface EventHeaderCardProps {
   event: EventDetail
   steps: EventStep[]
+  // 스테퍼에서 단계를 누르면(Step 모달)
+  onSelectStep: (step: EventStep) => void
 }
 
-export function EventHeaderCard({ event, steps }: EventHeaderCardProps) {
+export function EventHeaderCard({ event, steps, onSelectStep }: EventHeaderCardProps) {
   // 진행 중인 단계까지 센다(완료 + 진행 중)
   const reached = steps.filter((s) => s.state !== 'TODO').length
 
@@ -60,6 +62,7 @@ export function EventHeaderCard({ event, steps }: EventHeaderCardProps) {
                   date: s.deadline ? formatMonthDay(s.deadline) : undefined,
                   state: s.state,
                 }))}
+                onSelect={(i) => onSelectStep(steps[i])}
               />
             </div>
             <div className="flex shrink-0 flex-col items-center gap-[1px] rounded-[14px] bg-blue-100 px-[22px] py-[15px]">

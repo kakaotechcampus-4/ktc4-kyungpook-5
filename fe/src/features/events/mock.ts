@@ -8,7 +8,6 @@ import type {
   EventSummary,
   StepState,
 } from '@/features/events/types'
-import { formatMonthDay } from '@/shared/lib/format'
 
 // 오늘에서 n일 뒤의 "YYYY-MM-DD"
 function day(n: number): string {
@@ -147,10 +146,10 @@ export const DEMO_STEPS: Record<string, EventStep[]> = {
           approveNeeded: true,
         },
         {
-          id: 'act_14',
-          title: `마감 ${formatMonthDay(deadline(2))} 23:59 이후 미납자 자동 정리`,
-          status: 'PENDING',
-          approveNeeded: false,
+          id: 'act_25',
+          title: '미응답 회원 9명에게 신청 마감 안내',
+          status: 'APPROVED',
+          approveNeeded: true,
         },
       ],
     },
@@ -327,6 +326,73 @@ export const DEMO_RESOLVED: Record<string, ActionPage> = {
         status: 'APPROVED',
         resolvedAt: at(-1, '20:10'),
         resolvedBy: KIM,
+      },
+    ],
+  },
+}
+
+// Step 모달의 할 일 · 처리된 일. 행사 → 단계 id → Action. 같은 건은 M1 · L2와 id를 맞춘다.
+export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = {
+  evt_9f2c8a: {
+    // 4. 모집 공지(완료): L2 처리된 승인의 "모집 공고를 단톡방에 발송"과 같은 건
+    stp_3: [
+      {
+        id: 'act_42',
+        type: 'EXTERNAL_SEND',
+        title: '모집 공고를 단톡방에 발송',
+        subtitle: '대상 전체 회원 32명',
+        dueDate: day(-1),
+        status: 'DONE',
+        resolvedAt: at(-1, '15:30'),
+        resolvedBy: KIM,
+      },
+    ],
+    // 5. 입금 확인(진행 중): 승인 대기는 M1의 act_21과 같은 건
+    stp_4: [
+      {
+        id: 'act_21',
+        type: 'EXTERNAL_SEND',
+        title: '미납자 4명에게 2차 납부 안내 문자 보내기',
+        subtitle: '대상 4명 · 비용 0원',
+        dueDate: day(2),
+        status: 'PENDING',
+        content: '○○○님, 봄 MT 참가비 45,000원이 아직 확인되지 않았습니다.',
+      },
+      {
+        id: 'act_25',
+        type: 'NOTICE',
+        title: '미응답 회원 9명에게 신청 마감 안내',
+        subtitle: '대상 9명 · 비용 0원',
+        dueDate: day(2),
+        status: 'APPROVED',
+        resolvedAt: at(0, '09:20'),
+        resolvedBy: PARK,
+        content:
+          '안녕하세요. 봄 MT 참가 신청이 곧 마감됩니다. 아직 응답하지 않은 분은 신청 여부를 알려주세요.',
+      },
+      {
+        id: 'act_26',
+        type: 'EXTERNAL_SEND',
+        title: '미납자 5명에게 1차 납부 안내 문자 보내기',
+        subtitle: '대상 5명 · 비용 0원',
+        dueDate: day(-1),
+        status: 'DONE',
+        resolvedAt: at(-1, '10:15'),
+        resolvedBy: PARK,
+      },
+    ],
+  },
+  evt_c41d07: {
+    // 3. 장소 대관(진행 중): M1의 act_31과 같은 건
+    stp_2: [
+      {
+        id: 'act_31',
+        type: 'CONTRACT',
+        title: '공대 7호관 세미나실 1박 2일 대관 신청서 제출',
+        subtitle: '학과 사무실 승인 필요 · 야간 사용 신청 포함',
+        dueDate: day(3),
+        status: 'PENDING',
+        content: '해커톤 당일부터 다음 날까지 세미나실 1박 2일 대관. 야간 사용 신청 포함.',
       },
     ],
   },
