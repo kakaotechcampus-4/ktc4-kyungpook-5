@@ -44,7 +44,7 @@ be/
 ├── app/
 │   ├── main.py
 │   ├── core/
-│   │   ├── config.py
+│   │   ├── config.py           # BE 설정. AI_* 는 app/ai/config.py의 AISettings를 재사용
 │   │   ├── security.py
 │   │   ├── exceptions.py
 │   │   ├── enums.py           # 도메인 enum (DB·API 모두 문자열 코드)
@@ -77,8 +77,7 @@ be/
 │   │   ├── event_rules.py     # 참가비·환불·정산 계산 순수함수 (규칙 엔진, NF1)
 │   │   └── record_service.py
 │   ├── infra/
-│   │   ├── s3.py
-│   │   └── agent_client.py    # 빈 placeholder. app/ai/facade.py 체계로 정리되면 제거 예정 (이슈 #40)
+│   │   └── s3.py
 │   └── ai/                    # AI 모듈. 별도 서버 아님 — BE 프로세스 내부
 │       ├── __init__.py        # BE가 쓰는 단일 공개 진입점 (현재 공개 함수 없음)
 │       ├── facade.py          # BE → AI: 공개 기능 구현 위치
@@ -174,7 +173,7 @@ BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE �
 | `DATABASE_URL` | PostgreSQL 연결 문자열 | 변수명·값 확정 예정 |
 | `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | `app/ai/config.py` — ML API 게이트웨이 호출, 채팅 모델(`gpt-5.6-terra`) | 코드 반영됨 (`app/ai/config.py`) |
 | `AI_REQUEST_TIMEOUT_SECONDS` | 단일 요청 응답 대기 상한(초). 비우면 60 | 코드 반영됨 (`app/ai/config.py`) |
-| `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_MODEL` | 임베딩 전용 설정. 키를 비우면 `AI_API_KEY` 재사용 | 값 확정, 공통 설정 연결은 진행 중 |
+| `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_MODEL` | 임베딩 전용 설정. 키를 비우면 `AI_API_KEY` 재사용 | 코드 반영됨 (`app/ai/config.py`) |
 | `JWT_SECRET_KEY` / `SESSION_SECRET` | 인증 방식 확정 후 결정 | 미정 |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | `infra/s3.py`의 S3 접근 인증 | 미정 |
 | `S3_BUCKET_NAME` | 영수증·기록 파일을 저장할 버킷 | 미정 |

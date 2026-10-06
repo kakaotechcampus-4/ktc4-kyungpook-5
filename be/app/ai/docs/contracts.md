@@ -6,8 +6,8 @@
 요청·결과의 형식을 정의한다. DB 모델이나 FE 공개 API 스키마가 아니라,
 `app.ai` 경계를 위한 내부 계약이다.
 
-현재는 행사 조건 수집과 계획안 생성에 필요한 타입만 정의되어 있으며,
-실제 공개 호출 함수는 BE와 합의한 뒤 `app.ai`에서 제공한다.
+행사 계획(조건 수집·계획안 생성)과 기록 색인에 필요한 타입을 정의한다.
+기록 색인은 `app.ai.index_record`로 호출하고, 계획 공개 함수는 BE와 합의한 뒤 제공한다.
 
 ## 왜 필요한가
 
@@ -45,3 +45,33 @@ result = app.ai.plan_chat(request)
 save_assistant_message(event.id, result.reply)
 update_event_conditions(event, result.collected)
 ```
+
+## 기록 색인 흐름 예시
+
+파일 파싱이 끝난 기록 하나는 다음 순서로 색인한다.
+
+```text
+BE가 Record와 parse_result 조회
+  → IndexRecordRequest로 변환 (record_id·file_name·file_type·blocks)
+  → AI가 청킹·임베딩해 IndexRecordResult 반환 (청크: 텍스트·위치·임베딩)
+  → BE가 청크에 기록 메타데이터를 붙여 저장하고 parseStatus를 INDEXED로 변경
+```
+
+AI는 청크 내용만 만든다. `club_id`·`event_id`·`category` 같은 기록 메타데이터는
+AI에 넘기지 않고, BE가 저장할 때 청크에 붙인다.
+
+```python
+request = IndexRecordRequest(
+    record_id=record.id,
+    file_name=record.file_name,
+    file_type=record.file_type,  # 파일 없는 텍스트 기록이면 None
+    blocks=record.parse_result["blocks"],
+)
+
+result = await app.ai.index_record(request)
+
+save_chunks(record, result.chunks)  # 메타데이터를 붙여 저장, INDEXED로 변경
+```
+
+`parse_result` 형식은 [예시 기록](../tests/fixtures/records/README.md)을 기준으로 한다.
+블록마다 본문과 원문 위치(`location.label`)를 두며, 이 위치가 답변의 출처로 그대로 쓰인다.

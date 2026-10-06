@@ -384,7 +384,7 @@ GET /api/v1/events/evt_9f2c8a/plan
 | `phase` | enum | 🔸 `PREPARATION` / `RECRUITING` / `EXECUTION` |
 | `name` | string | "사전 수요 조사" |
 | `actor` | enum | 블록 색 결정 (`AI`/`APPROVAL_REQUIRED`/`MANUAL`) |
-| `startedTime` | datetime \| null | 예정 시작 |
+| `startsAt` | datetime \| null | 예정 시작 |
 | `deadline` | datetime \| null | 예정 마감 |
 | `actions` | array | 이 단계의 행동 |
 
@@ -439,7 +439,7 @@ GET /api/v1/events/evt_9f2c8a/plan
           {
             "id": "stp_01", "stepOrder": 10, "phase": "PREPARATION", "name": "사전 수요 조사",
             "actor": "APPROVAL_REQUIRED",
-            "startedTime": "2026-03-05T00:00:00Z", "deadline": null,
+            "startsAt": "2026-03-05T00:00:00Z", "deadline": null,
             "actions": [
               {
                 "id": "act_01", "type": "NOTICE",
@@ -500,7 +500,7 @@ GET /api/v1/events/evt_9f2c8a/plan
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
 | `name` | string | |
-| `startedTime` | datetime \| null | |
+| `startsAt` | datetime \| null | |
 | `deadline` | datetime \| null | |
 
 ```jsonc
@@ -510,7 +510,7 @@ GET /api/v1/events/evt_9f2c8a/plan
 // 요청 — 이름과 일정을 함께
 {
   "name": "입금 내역 확인 및 미납 정리",
-  "startedTime": "2026-03-10T00:00:00Z",
+  "startsAt": "2026-03-10T00:00:00Z",
   "deadline": "2026-03-14T14:59:00Z"
 }
 ```
@@ -522,7 +522,7 @@ GET /api/v1/events/evt_9f2c8a/plan
     "id": "stp_03", "stepOrder": 30,
     "name": "입금 내역 확인 및 미납 정리",
     "actor": "AI",
-    "startedTime": "2026-03-10T00:00:00Z",
+    "startsAt": "2026-03-10T00:00:00Z",
     "deadline": "2026-03-14T14:59:00Z"
   },
   "meta": null
@@ -783,7 +783,7 @@ GET /api/v1/events/evt_9f2c8a/steps
 | `id` / `stepOrder` / `name` | | |
 | `actor` | enum | 막대 색 |
 | `state` | enum | `DONE` / `CURRENT` / `TODO` (서버 계산) |
-| `startedTime` / `deadline` | datetime \| null | "3/10 – 3/12" |
+| `startsAt` / `deadline` | datetime \| null | "3/10 – 3/12" |
 | `completedCount` / `totalActionCount` | int | 이 단계 Action 중 `DONE` 개수 / 전체 개수 (진행률 계산용, `completedAt`과는 별개) |
 | `completedAt` | datetime \| null | 완료 판정 시각. v1에서 신설 |
 | `doneActions` | array | 펼쳤을 때 "이 단계에서 한 일" |
@@ -795,7 +795,7 @@ GET /api/v1/events/evt_9f2c8a/steps
     {
       "id": "stp_03", "stepOrder": 30, "name": "입금 내역 확인",
       "actor": "AI", "state": "CURRENT",
-      "startedTime": "2026-03-10T00:00:00Z", "deadline": "2026-03-12T14:59:00Z",
+      "startsAt": "2026-03-10T00:00:00Z", "deadline": "2026-03-12T14:59:00Z",
       "completedCount": 3, "totalActionCount": 4,
       "completedAt": null,
       "doneActions": [

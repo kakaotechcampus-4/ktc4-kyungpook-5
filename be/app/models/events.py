@@ -106,7 +106,7 @@ class Step(IdMixin, TimestampMixin, Base):
     phase: Mapped[StepPhase] = mapped_column(enum_column(StepPhase), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     actor: Mapped[StepActor] = mapped_column(enum_column(StepActor), nullable=False)
-    started_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_by: Mapped[str | None] = mapped_column(

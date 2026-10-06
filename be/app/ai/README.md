@@ -8,6 +8,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 - [기능 요구사항](docs/requirements.md): 제공할 사용자 경험과 확인 기준
 - [아키텍처](docs/architecture.md): 기능별 역할과 AI·BE 책임 경계
 - [BE-AI 데이터 계약](docs/contracts.md): 계약의 목적과 계획 대화 연동 예시
+- [AI 오류 타입](docs/errors.md): 오류 분류와 모델 호출 오류 변환 기준
 - [작업 규칙](AGENTS.md): 요구사항 → Issue → 구현 → PR 협업 절차
 - [이전 기록](docs/migration.md): 모듈 이전 내역과 BE 팀 후속 작업
 
@@ -17,20 +18,21 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 be/app/ai/
 ├── __init__.py          # BE가 import하는 단일 공개 경계: app.ai
 ├── facade.py            # BE가 호출할 AI 기능의 구현 위치
-├── contracts.py         # 합의 후 정의할 공개 요청·응답 데이터
-├── ports.py             # AI가 사용할 BE 조회·계산 인터페이스
+├── contracts.py         # BE와 주고받는 요청·응답 데이터
+├── ports.py             # AI가 사용할 BE 조회·계산·기록 검색 인터페이스
 ├── config.py            # AI 전용 설정
 ├── errors.py            # AI 내부 오류 타입
 ├── llm.py               # 공통 채팅·임베딩 모델 생성
 ├── features/
 │   ├── planning/        # 조건 확인·질문·계획 생성 및 수정
-│   ├── retrieval/       # 기록 검색·근거 구성
+│   ├── retrieval/       # 기록 색인·검색·근거 구성 (memory_port: 개발용 검색 구현)
 │   └── operations/      # 변경 영향 설명·대응안
 ├── workflow/            # 행사 Agent 실행 흐름·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
-├── tests/               # AI 테스트 위치 (config, llm)
+├── tests/               # AI 테스트 (fixtures/records: 예시 기록)
 ├── docs/
 │   ├── architecture.md
+│   ├── errors.md        # AI 오류 타입과 변환 기준
 │   ├── requirements.md  # 사용자 경험 중심 AI 기능 요구사항 초안
 │   ├── migration.md     # 파일 대응표·BE 팀 후속 작업
 │   └── legacy-dependencies/ # 이전 서비스 의존성 원본, 설치 대상 아님
@@ -65,6 +67,9 @@ be/app/ai/
 임베딩은 `get_embeddings()`와 `build_embeddings()`를 사용합니다.
 `gpt-5` 계열은 `temperature=1` 외의 값을 받지 않으므로 답변을 일정하게
 유지할 때는 온도 대신 프롬프트와 구조화 출력을 사용합니다.
+
+구조화 출력은 `await ainvoke_structured(messages, Schema)`로 호출합니다.
+실패하면 AI 오류 타입으로 올라오며, 변환 기준은 [AI 오류 타입](docs/errors.md)을 따릅니다.
 
 호출 경로는 Responses API(`/v1/responses`)로 고정합니다.
 `gpt-5.6-terra`는 `/v1/chat/completions`에서 function tools를 거부하므로
