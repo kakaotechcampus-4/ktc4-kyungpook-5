@@ -238,6 +238,32 @@ def test_거꾸로_간_목록_뒤에_다음_번호가_오면_다시_소제목으
     assert _labels(chunks) == ["1쪽 · 2. 예산", "1쪽", "1쪽 · 3. 정산"]
 
 
+def test_조_제목은_띄어쓰기_전각_괄호_대괄호도_알아본다():
+    text = "제10조 (참가비 환불) 전액 환불한다.\n제11조（벌칙） 경고한다.\n제12조[지출] 총무가 승인한다."
+
+    chunks = chunk_document(_page(text, "2쪽"))
+
+    assert _labels(chunks) == ["2쪽 · 제10조 (참가비 환불)", "2쪽 · 제11조（벌칙）", "2쪽 · 제12조[지출]"]
+
+
+def test_가지_조항도_따로_나눈다():
+    text = "제10조(참가비 환불) 전액 환불한다.\n제10조의2(환불 신청) 총무에게 신청한다."
+
+    chunks = chunk_document(_page(text, "2쪽"))
+
+    assert _labels(chunks) == ["2쪽 · 제10조(참가비 환불)", "2쪽 · 제10조의2(환불 신청)"]
+
+
+def test_괄호_제목이_붙은_장도_다음_조_앞에_붙는다():
+    blocks = _pages("제1조(명칭) 큰나무라 한다.", "제2장(회비)\n제8조(학기 회비) 매 학기 낸다.")
+
+    chunks = chunk_document(blocks)
+
+    assert [(chunk.location.label, chunk.text) for chunk in chunks][1:] == [
+        ("2쪽 · 제8조(학기 회비)", "제2장(회비)\n제8조(학기 회비) 매 학기 낸다."),
+    ]
+
+
 def _pages(*texts: str, first: int = 1) -> list[RecordBlock]:
     return [
         RecordBlock(text=text, location=SourceLocation(label=f"{number}쪽"))

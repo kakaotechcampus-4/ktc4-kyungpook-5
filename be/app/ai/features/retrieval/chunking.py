@@ -23,8 +23,11 @@ CHUNK_OVERLAP_CHARS = 150
 _ROW_LABEL = re.compile(r"^(?:(?P<sheet>.+) · )?(?P<row>\d+)행$")
 
 # 문서 제목 줄
-_CHAPTER = re.compile(r"^제\s*\d+\s*장(?=\s|$)")  # 제3장 회비 (줄 전체가 제목)
-_ARTICLE = re.compile(r"^제\s*\d+\s*조(?:\([^)]*\))?(?=\s|$)")  # 제10조(참가비 환불) 본문...
+# 조·장 뒤 제목을 감싸는 괄호. 한글 입력기의 전각 괄호와 대괄호도 쓴다
+_BRACKETED = r"[(（\[][^)）\]]*[)）\]]"
+_CHAPTER = re.compile(rf"^제\s*\d+\s*장(?=\s|$|{_BRACKETED})")  # 제3장 회비, 제1장(총칙) (줄 전체가 제목)
+# 제10조(참가비 환불) 본문..., 제10조 (참가비 환불), 제11조（벌칙）, 제10조의2(환불 신청)
+_ARTICLE = re.compile(rf"^제\s*\d+\s*조(?:의\s*\d+)?(?:\s*{_BRACKETED})?(?=\s|$)")
 _NUMBERED = re.compile(r"^(\d+)\.\s+\S")  # 1. 행사 개요 (줄 전체가 제목)
 # 제목으로 볼 수 있는 최대 길이. 번호 소제목과 문서 맨 앞 제목 줄에 쓴다
 _TITLE_MAX_CHARS = 30
