@@ -27,7 +27,9 @@ _ROW_LABEL = re.compile(r"^(?:(?P<sheet>.+) · )?(?P<row>\d+)행$")
 _BRACKETED = r"[(（\[][^)）\]]*[)）\]]"
 _CHAPTER = re.compile(rf"^제\s*\d+\s*장(?=\s|$|{_BRACKETED})")  # 제3장 회비, 제1장(총칙) (줄 전체가 제목)
 # 제10조(참가비 환불) 본문..., 제10조 (참가비 환불), 제11조（벌칙）, 제10조의2(환불 신청)
-_ARTICLE = re.compile(rf"^제\s*\d+\s*조(?:의\s*\d+)?(?:\s*{_BRACKETED})?(?=\s|$)")
+_ARTICLE = re.compile(rf"^제\s*\d+\s*조(?:의\s*\d+)?(?P<title>\s*{_BRACKETED})?(?=\s|$)")
+# 괄호 제목 없는 "제9조" 뒤에 이 말이 오면 본문 속 조문 참조다 (제9조 제2항에 따라, 제7조 및 제8조)
+_ARTICLE_REFERENCE = re.compile(r"\s*(?:제\s*\d+\s*[항호]|및|또는|내지|부터|~)")
 _NUMBERED = re.compile(r"^(\d+)\.\s+\S")  # 1. 행사 개요 (줄 전체가 제목)
 # 제목으로 볼 수 있는 최대 길이. 번호 소제목과 문서 맨 앞 제목 줄에 쓴다
 _TITLE_MAX_CHARS = 30
@@ -170,7 +172,7 @@ def _sections(text: str, reading: _Reading, *, first_page: bool) -> list[_Sectio
             reading.in_article = False
             reading.last_number = None  # 장이 바뀌면 번호를 새로 매긴다
             sections.append(_Section(stripped, [line], has_body=False))
-        elif article := _ARTICLE.match(stripped):
+        elif (article := _ARTICLE.match(stripped)) and not _is_reference(stripped, article):
             # 조는 제목 뒤에 본문이 같은 줄로 이어진다. 라벨에는 제목 부분만 쓴다
             reading.in_article = True
             sections.append(_Section(article.group(), [line], stripped != article.group()))
@@ -198,6 +200,14 @@ def _sections(text: str, reading: _Reading, *, first_page: bool) -> list[_Sectio
     if first_page and first and first.title is None and len(first.lines) == 1:
         first.has_body = len(first.lines[0].strip()) > _TITLE_MAX_CHARS
     return sections
+
+
+def _is_reference(line: str, article: re.Match[str]) -> bool:
+    """PDF는 화면 폭에서 줄을 바꿔 본문의 "제9조 제2항에 따라"가 줄 맨 앞에 올 수 있다.
+
+    괄호 제목이 붙은 줄은 조 제목으로 확실하므로 참조로 보지 않는다.
+    """
+    return article["title"] is None and _ARTICLE_REFERENCE.match(line, article.end()) is not None
 
 
 def _is_numbered_title(line: str) -> bool:
