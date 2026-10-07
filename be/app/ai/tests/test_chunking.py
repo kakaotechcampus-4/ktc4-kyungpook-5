@@ -219,6 +219,44 @@ def test_줄_앞의_조_인용은_제목이_아니다():
     assert _labels(chunks) == ["1쪽 · 제5조(회의)"]
 
 
+def _pages(*texts: str, first: int = 1) -> list[RecordBlock]:
+    return [
+        RecordBlock(text=text, location=SourceLocation(label=f"{number}쪽"))
+        for number, text in enumerate(texts, start=first)
+    ]
+
+
+def test_쪽을_넘어_이어지는_조의_문장은_다음_조_라벨을_받지_않는다():
+    blocks = _pages(
+        "제10조(참가비 환불) 행사 시작 7일 전까지 취소하면 참가비를 전액",
+        "환불하지 않는다.\n제11조(벌칙) 회칙을 어긴 회원은 경고한다.",
+        first=2,
+    )
+
+    chunks = chunk_document(blocks)
+
+    assert [(chunk.location.label, chunk.text) for chunk in chunks] == [
+        ("2쪽 · 제10조(참가비 환불)", "제10조(참가비 환불) 행사 시작 7일 전까지 취소하면 참가비를 전액"),
+        ("3쪽", "환불하지 않는다."),
+        ("3쪽 · 제11조(벌칙)", "제11조(벌칙) 회칙을 어긴 회원은 경고한다."),
+    ]
+
+
+def test_쪽을_넘어_이어지는_조의_번호_줄은_소제목이_아니다():
+    blocks = _pages(
+        "제10조(참가비 환불) 다음과 같이 환불한다.\n1. 7일 전까지 전액",
+        "2. 3일 전까지 절반 환불\n3. 당일 환불 불가\n제11조(벌칙) 경고한다.",
+        first=2,
+    )
+
+    chunks = chunk_document(blocks)
+
+    assert [(chunk.location.label, chunk.text) for chunk in chunks][1:] == [
+        ("3쪽", "2. 3일 전까지 절반 환불\n3. 당일 환불 불가"),
+        ("3쪽 · 제11조(벌칙)", "제11조(벌칙) 경고한다."),
+    ]
+
+
 def test_쪽_끝에_제목만_남아도_버리지_않는다():
     chunks = chunk_document(_page("제1조(명칭) 큰나무라 한다.\n제2장 회원"))
 

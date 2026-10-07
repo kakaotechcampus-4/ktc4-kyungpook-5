@@ -130,9 +130,11 @@ def chunk_document(blocks: Sequence[RecordBlock]) -> list[TextChunk]:
     라벨은 "2쪽 · 제10조(참가비 환불)"처럼 쪽 + 제목 원문이다. 제목이 없으면 쪽만 쓴다.
     """
     chunks: list[TextChunk] = []
+    in_article = False  # 조가 쪽을 넘어 이어지면 다음 쪽의 "2. ..."도 그 조의 항목이다
     for index, block in enumerate(blocks):
         page = block.location.label
-        for title, lines in _attach_titles(_sections(block.text)):
+        sections, in_article = _sections(block.text, in_article, first_page=index == 0)
+        for title, lines in _attach_titles(sections):
             location = SourceLocation(label=page if title is None else f"{page} · {title}")
             chunks += [
                 TextChunk(text="\n".join(window), location=location, block_indexes=(index,))
@@ -141,12 +143,15 @@ def chunk_document(blocks: Sequence[RecordBlock]) -> list[TextChunk]:
     return chunks
 
 
-def _sections(text: str) -> list[_Section]:
-    """제목 줄이 나올 때마다 새 섹션을 연다. 빈 줄은 버린다"""
+def _sections(text: str, in_article: bool, *, first_page: bool) -> tuple[list[_Section], bool]:
+    """제목 줄이 나올 때마다 새 섹션을 연다. 빈 줄은 버린다.
+
+    in_article: 앞 쪽이 조 안에서 끝났는지. 조 안의 "1. ..." 줄은 제목이 아니라 그 조의 항목이다.
+    쪽 끝에서의 값을 함께 돌려줘 다음 쪽이 이어받는다.
+    """
     # 줄마다 제목인지를 판별, 섹션으로 나눈다.
 
     sections: list[_Section] = []
-    in_article = False  # 조 안의 "1. ..." 줄은 제목이 아니라 그 조의 항목이다
 
     for line in text.splitlines():
         stripped = line.strip()
@@ -167,11 +172,12 @@ def _sections(text: str) -> list[_Section]:
         else:
             sections.append(_Section(None, [line], has_body=True))
 
-    # 쪽 맨 앞의 짧은 한 줄은 문서 제목으로 본다 (예: "2025 봄 MT 결과보고")
+    # 첫 쪽 맨 앞의 짧은 한 줄은 문서 제목으로 본다 (예: "2025 봄 MT 결과보고").
+    # 다른 쪽의 맨 앞 줄은 앞 쪽에서 이어지는 문장일 수 있어 제목으로 보지 않는다
     first = sections[0] if sections else None
-    if first and first.title is None and len(first.lines) == 1:
+    if first_page and first and first.title is None and len(first.lines) == 1:
         first.has_body = len(first.lines[0].strip()) > _TITLE_MAX_CHARS
-    return sections
+    return sections, in_article
 
 
 def _is_numbered_title(line: str) -> bool:
