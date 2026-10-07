@@ -149,6 +149,10 @@ export interface components {
             endDate: string | null;
             /** Dday */
             dday: number | null;
+            /** Location */
+            location: string | null;
+            /** Headcount */
+            headcount: number | null;
             /** Currentstepname */
             currentStepName: string | null;
             /** Stepprogress */
