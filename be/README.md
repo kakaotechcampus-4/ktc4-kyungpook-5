@@ -14,6 +14,7 @@ mock API는 DB 없이 고정 응답만 내려 FE가 화면을 실제 API에 붙�
 | ORM | SQLAlchemy 2.0 | 비동기 세션 사용 여부는 구현 시 결정 |
 | 마이그레이션 | Alembic | DB가 아직 없어 리비전을 만들지 않았습니다. 첫 배포 직전에 초기 리비전 하나를 만듭니다 |
 | 파일 저장 | AWS S3 (`infra/s3.py`) | 영수증·기록 원본 업로드 |
+| 기록 파일 파싱 | pypdf · openpyxl | PDF·XLSX를 `parse_result`로 변환 (`services/record_parser.py`). CSV는 표준 `csv` |
 | 패키지 관리 | uv | AI와 동일하게 `pyproject.toml` 기반 |
 | 인증 | 미정 | JWT vs 세션 등 방식 확정 전, `core/security.py`에서 구현 |
 | 배포 환경 | AWS EC2 + Docker Compose | RDS 병행 여부 미정 |
@@ -75,7 +76,8 @@ be/
 │   │   ├── club_service.py
 │   │   ├── event_service.py   # 계획/참가자/승인/업무 오케스트레이션
 │   │   ├── event_rules.py     # 참가비·환불·정산 계산 순수함수 (규칙 엔진, NF1)
-│   │   └── record_service.py
+│   │   ├── record_service.py
+│   │   └── record_parser.py   # 기록 원본(PDF·CSV·XLSX) → parse_result
 │   ├── infra/
 │   │   └── s3.py
 │   └── ai/                    # AI 모듈. 별도 서버 아님 — BE 프로세스 내부
@@ -118,6 +120,7 @@ be/
 | `services/event_service.py` | 계산 결과와 모델 변경을 하나의 트랜잭션으로 조합 (오케스트레이션) | 취소 처리 시 환불 판정 + 인원 재계산 + 후속 질문 생성을 함께 커밋 |
 | `app/ai/facade.py` | BE → AI 공개 기능 호출 (HTTP 아님, 함수 호출) | 취소로 인한 영향 설명·대응안 생성을 AI에 요청 |
 | `app/ai/ports.py` | AI → BE 조회·계산 인터페이스 (BE가 구현체 주입) | AI가 최소 인원 미달 판정 결과를 받아 대응안 생성 |
+| `services/record_parser.py` | 기록 원본을 AI 색인 입력과 같은 `parse_result`로 변환 (순수 함수) | `2025 상반기 장부.xlsx`의 각 행 → `"날짜: 2025-03-03, 금액: 45000"` 블록 |
 | `infra/s3.py` | 영수증·기록 원본 파일 업로드·조회 | 지출 등록 시 영수증 이미지를 S3에 올리고 URL을 `expense`에 저장 |
 
 `services/event_rules.py`는 AI(`tools/accounting.py` 등)가 Tool로 호출하는 계산이기도 합니다. AI는 직접 계산하지 않고
