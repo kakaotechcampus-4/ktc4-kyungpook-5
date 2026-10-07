@@ -4,7 +4,12 @@ import json
 from pathlib import Path
 
 from app.ai.contracts import RecordBlock, SourceLocation
-from app.ai.features.retrieval.chunking import CHUNK_MAX_CHARS, chunk_ledger
+from app.ai.features.retrieval.chunking import (
+    CHUNK_MAX_CHARS,
+    CHUNK_OVERLAP_CHARS,
+    chunk_document,
+    chunk_ledger,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "records"
 
@@ -125,3 +130,121 @@ def test_라벨_형식이_다른_블록은_묶지_않고_라벨_그대로_둔다
         "회비 수납 시트 · 5행",
     ]
     assert [chunk.block_indexes for chunk in chunks] == [(0, 1), (2,), (3,)]
+
+
+# --- 문서 -------------------------------------------------------------------
+
+
+def _page(text: str, label: str = "1쪽") -> list[RecordBlock]:
+    return [RecordBlock(text=text, location=SourceLocation(label=label))]
+
+
+def test_회칙은_조_단위로_나뉘고_라벨에_쪽과_조_제목이_붙는다():
+    chunks = chunk_document(_fixture_blocks("rules_2024"))
+
+    assert _labels(chunks) == [
+        "1쪽 · 제1조(명칭)",
+        "1쪽 · 제2조(목적)",
+        "2쪽 · 제8조(학기 회비)",
+        "2쪽 · 제9조(행사 참가비)",
+        "2쪽 · 제10조(참가비 환불)",
+        "3쪽 · 제11조(예비비)",
+        "3쪽 · 제12조(지출 승인)",
+    ]
+    assert [chunk.block_indexes for chunk in chunks] == [(0,), (0,), (1,), (1,), (1,), (2,), (2,)]
+
+
+def test_조_안의_번호_줄은_제목이_아니라_그_조의_항목으로_남는다():
+    chunks = chunk_document(_fixture_blocks("rules_2024"))
+
+    refund = chunks[4]
+    assert refund.text.splitlines()[1:] == [
+        "1. 행사 시작 7일 전까지: 전액",
+        "2. 행사 시작 3일 전까지: 50%",
+        "3. 그 이후: 환불하지 않는다.",
+    ]
+
+
+def test_제목만_있는_줄은_다음_섹션_앞에_붙는다():
+    chunks = chunk_document(_fixture_blocks("rules_2024"))
+
+    assert chunks[2].text.startswith("제3장 회비\n제8조(학기 회비)")
+
+
+def test_결과보고는_번호_소제목으로_나뉘고_표는_한_청크에_남는다():
+    chunks = chunk_document(_fixture_blocks("mt_2025_spring_report"))
+
+    assert _labels(chunks) == ["1쪽 · 1. 행사 개요", "2쪽 · 2. 예산", "2쪽 · 3. 정산", "3쪽 · 4. 회고"]
+    assert chunks[0].text.startswith("2025 봄 MT 결과보고\n1. 행사 개요")
+    assert chunks[1].text.splitlines()[1:] == [
+        "항목 예산 실제",
+        "숙소 550,000 550,000",
+        "식비 400,000 412,000",
+        "물품 180,000 168,000",
+        "예비비 130,000 172,000",
+        "합계 1,260,000 1,302,000",
+    ]
+
+
+def test_문서의_모든_줄이_청크_어딘가에_들어간다():
+    for name in ("rules_2024", "mt_2025_spring_report"):
+        blocks = _fixture_blocks(name)
+
+        chunks = chunk_document(blocks)
+
+        lines = [line for block in blocks for line in block.text.splitlines()]
+        chunked = [line for chunk in chunks for line in chunk.text.splitlines()]
+        assert chunked == lines, name
+
+
+def test_제목이_없는_쪽은_쪽_번호만_라벨로_쓴다():
+    chunks = chunk_document(_page("모임 장소는 학생회관 3층이다.\n시간은 저녁 7시다.", "4쪽"))
+
+    assert _labels(chunks) == ["4쪽"]
+
+
+def test_콜론이_있거나_문장인_번호_줄은_제목이_아니다():
+    text = "1. 준비물\n1. 집결: 정문 앞\n2. 회비를 미리 낸다."
+
+    chunks = chunk_document(_page(text))
+
+    assert _labels(chunks) == ["1쪽 · 1. 준비물"]
+
+
+def test_줄_앞의_조_인용은_제목이_아니다():
+    text = "제5조(회의) 회의는 매달 연다.\n제10조에 따라 환불한다."
+
+    chunks = chunk_document(_page(text))
+
+    assert _labels(chunks) == ["1쪽 · 제5조(회의)"]
+
+
+def test_쪽_끝에_제목만_남아도_버리지_않는다():
+    chunks = chunk_document(_page("제1조(명칭) 큰나무라 한다.\n제2장 회원"))
+
+    assert [chunk.text for chunk in chunks] == ["제1조(명칭) 큰나무라 한다.", "제2장 회원"]
+
+
+def test_긴_섹션은_줄_경계에서_겹치게_잘린다():
+    lines = [f"{number:02d}번째 줄: " + "가" * 50 for number in range(40)]
+
+    chunks = chunk_document(_page("\n".join(lines)))
+
+    assert len(chunks) > 1
+    assert all(len(chunk.text) <= CHUNK_MAX_CHARS for chunk in chunks)
+    assert _labels(chunks) == ["1쪽"] * len(chunks)
+    for before, after in zip(chunks, chunks[1:]):
+        shared = after.text.splitlines()[0]
+        assert shared in before.text.splitlines()  # 앞 조각의 끝 줄로 시작한다
+        assert len(shared) <= CHUNK_OVERLAP_CHARS
+
+
+def test_최대_글자_수보다_긴_한_줄은_문장_단위로_나눈다():
+    sentence = "가" * 99 + "."
+    line = " ".join([sentence] * 25)  # 줄바꿈 없는 2,524자 문단
+
+    chunks = chunk_document(_page(line))
+
+    assert len(chunks) > 1
+    assert all(len(chunk.text) <= CHUNK_MAX_CHARS for chunk in chunks)
+    assert all(chunk.text.endswith(".") for chunk in chunks)
