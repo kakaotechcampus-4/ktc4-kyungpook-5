@@ -219,6 +219,25 @@ def test_줄_앞의_조_인용은_제목이_아니다():
     assert _labels(chunks) == ["1쪽 · 제5조(회의)"]
 
 
+def test_번호가_거꾸로_가는_목록은_소제목이_아니라_쪽_라벨로_둔다():
+    text = "1. 행사 개요\n일시: 4월\n2. 예산\n총 30만원\n1. 숙소비 20만원\n2. 식비 10만원"
+
+    chunks = chunk_document(_page(text))
+
+    assert [(chunk.location.label, chunk.text) for chunk in chunks][1:] == [
+        ("1쪽 · 2. 예산", "2. 예산\n총 30만원"),
+        ("1쪽", "1. 숙소비 20만원\n2. 식비 10만원"),
+    ]
+
+
+def test_거꾸로_간_목록_뒤에_다음_번호가_오면_다시_소제목으로_본다():
+    text = "2. 예산\n총 30만원\n1. 숙소비 20만원\n2. 식비 10만원\n3. 정산\n4만원 초과"
+
+    chunks = chunk_document(_page(text))
+
+    assert _labels(chunks) == ["1쪽 · 2. 예산", "1쪽", "1쪽 · 3. 정산"]
+
+
 def _pages(*texts: str, first: int = 1) -> list[RecordBlock]:
     return [
         RecordBlock(text=text, location=SourceLocation(label=f"{number}쪽"))

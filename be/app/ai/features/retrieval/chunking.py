@@ -25,7 +25,7 @@ _ROW_LABEL = re.compile(r"^(?:(?P<sheet>.+) · )?(?P<row>\d+)행$")
 # 문서 제목 줄
 _CHAPTER = re.compile(r"^제\s*\d+\s*장(?=\s|$)")  # 제3장 회비 (줄 전체가 제목)
 _ARTICLE = re.compile(r"^제\s*\d+\s*조(?:\([^)]*\))?(?=\s|$)")  # 제10조(참가비 환불) 본문...
-_NUMBERED = re.compile(r"^\d+\.\s+\S")  # 1. 행사 개요 (줄 전체가 제목)
+_NUMBERED = re.compile(r"^(\d+)\.\s+\S")  # 1. 행사 개요 (줄 전체가 제목)
 # 제목으로 볼 수 있는 최대 길이. 번호 소제목과 문서 맨 앞 제목 줄에 쓴다
 _TITLE_MAX_CHARS = 30
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
@@ -124,17 +124,24 @@ class _Section:
     has_body: bool  # 제목 말고 내용이 있는지
 
 
+@dataclass
+class _Reading:
+    """쪽을 넘어 이어지는 읽기 상태. 다음 쪽이 앞 쪽의 문맥을 이어받는다"""
+
+    in_article: bool = False  # 조 안의 "1. ..." 줄은 제목이 아니라 그 조의 항목이다
+    last_number: int | None = None  # 마지막 번호 소제목의 번호
+
+
 def chunk_document(blocks: Sequence[RecordBlock]) -> list[TextChunk]:
     """쪽(블록)마다 제목으로 나눠 청크로 만든다. 쪽을 넘어 묶지 않는다.
 
     라벨은 "2쪽 · 제10조(참가비 환불)"처럼 쪽 + 제목 원문이다. 제목이 없으면 쪽만 쓴다.
     """
     chunks: list[TextChunk] = []
-    in_article = False  # 조가 쪽을 넘어 이어지면 다음 쪽의 "2. ..."도 그 조의 항목이다
+    reading = _Reading()
     for index, block in enumerate(blocks):
         page = block.location.label
-        sections, in_article = _sections(block.text, in_article, first_page=index == 0)
-        for title, lines in _attach_titles(sections):
+        for title, lines in _attach_titles(_sections(block.text, reading, first_page=index == 0)):
             location = SourceLocation(label=page if title is None else f"{page} · {title}")
             chunks += [
                 TextChunk(text="\n".join(window), location=location, block_indexes=(index,))
@@ -143,11 +150,10 @@ def chunk_document(blocks: Sequence[RecordBlock]) -> list[TextChunk]:
     return chunks
 
 
-def _sections(text: str, in_article: bool, *, first_page: bool) -> tuple[list[_Section], bool]:
+def _sections(text: str, reading: _Reading, *, first_page: bool) -> list[_Section]:
     """제목 줄이 나올 때마다 새 섹션을 연다. 빈 줄은 버린다.
 
-    in_article: 앞 쪽이 조 안에서 끝났는지. 조 안의 "1. ..." 줄은 제목이 아니라 그 조의 항목이다.
-    쪽 끝에서의 값을 함께 돌려줘 다음 쪽이 이어받는다.
+    reading은 이 쪽을 읽으며 갱신하고, 다음 쪽이 그대로 이어받는다.
     """
     # 줄마다 제목인지를 판별, 섹션으로 나눈다.
 
@@ -158,14 +164,25 @@ def _sections(text: str, in_article: bool, *, first_page: bool) -> tuple[list[_S
         if not stripped:
             continue
         if _CHAPTER.match(stripped):
-            in_article = False
+            reading.in_article = False
+            reading.last_number = None  # 장이 바뀌면 번호를 새로 매긴다
             sections.append(_Section(stripped, [line], has_body=False))
         elif article := _ARTICLE.match(stripped):
             # 조는 제목 뒤에 본문이 같은 줄로 이어진다. 라벨에는 제목 부분만 쓴다
-            in_article = True
+            reading.in_article = True
             sections.append(_Section(article.group(), [line], stripped != article.group()))
-        elif not in_article and _is_numbered_title(stripped):
-            sections.append(_Section(stripped, [line], has_body=False))
+        elif not reading.in_article and _is_numbered_title(stripped):
+            number = int(_NUMBERED.match(stripped)[1])
+            if reading.last_number is None or number > reading.last_number:
+                reading.last_number = number
+                sections.append(_Section(stripped, [line], has_body=False))
+            elif sections and sections[-1].title is None:
+                sections[-1].lines.append(line)
+                sections[-1].has_body = True
+            else:
+                # 번호가 거꾸로 가면("2. 예산" 다음 "1. 숙소비") 앞 제목의 하위 목록인지
+                # 따로 시작한 목록인지 알 수 없다. 제목을 붙이지 않고 쪽 라벨로 둔다
+                sections.append(_Section(None, [line], has_body=True))
         elif sections:
             sections[-1].lines.append(line)
             sections[-1].has_body = True
@@ -177,7 +194,7 @@ def _sections(text: str, in_article: bool, *, first_page: bool) -> tuple[list[_S
     first = sections[0] if sections else None
     if first_page and first and first.title is None and len(first.lines) == 1:
         first.has_body = len(first.lines[0].strip()) > _TITLE_MAX_CHARS
-    return sections, in_article
+    return sections
 
 
 def _is_numbered_title(line: str) -> bool:
