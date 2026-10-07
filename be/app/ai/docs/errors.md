@@ -33,7 +33,7 @@ BE는 이 타입들을 `app.ai`에서 가져온다.
 
 ## 모델 호출 오류 변환
 
-모델 호출 예외는 `llm.ainvoke_structured`가 위 타입으로 바꾼다. 기능 코드는 openai 예외를 직접 다루지 않는다.
+모델 호출 예외는 `llm.ainvoke_structured`(구조화 출력)와 `llm.aembed_texts`(임베딩)가 위 타입으로 바꾼다. 기능 코드는 openai 예외를 직접 다루지 않는다.
 
 | 실패 | 오류 |
 | --- | --- |
@@ -41,6 +41,7 @@ BE는 이 타입들을 `app.ai`에서 가져온다.
 | 연결 실패·429·5xx | `AIRetryableError` |
 | 401·403·404 (주소·키·모델명), 모델명 오류 400 | `AIConfigError` |
 | 응답 형식 불일치·거절·빈 응답 | `AIInvalidResponseError` |
+| 임베딩 벡터 개수·차원이 요청과 다름 | `AIInvalidResponseError` |
 | 그 밖 (모델명 외 400 등) | 감싸지 않고 그대로 |
 
 - 일시적 오류는 `DEFAULT_MAX_RETRIES`만큼 재시도한 뒤에 변환한다.
@@ -49,7 +50,7 @@ BE는 이 타입들을 `app.ai`에서 가져온다.
 
 ## 호출할 때
 
-`ainvoke_structured`는 실행 중인 이벤트 루프에서 `await`로 호출한다.
+`ainvoke_structured`와 `aembed_texts`는 실행 중인 이벤트 루프에서 `await`로 호출한다.
 langchain-openai가 async HTTP 클라이언트를 프로세스에서 공유하므로, 호출마다 `asyncio.run()`을 쓰면
 닫힌 루프의 연결을 다시 써서 실패한다. 이 오류는 분류 밖이라 그대로 올라간다.
 
