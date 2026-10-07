@@ -14,6 +14,7 @@ HTTP 상태와 FE 에러 코드로 바꾸는 일은 BE가 맡는다.
 ```text
 AIError
 ├── AIConfigError
+├── AIEmptyRecordError
 └── AIRetryableError
     ├── AITimeoutError
     └── AIInvalidResponseError
@@ -22,11 +23,13 @@ AIError
 | 타입 | 뜻 | BE 처리 |
 | --- | --- | --- |
 | `AIConfigError` | API 주소·키·모델명 등 설정 문제 | 재시도를 권하지 않는다. 설정을 고쳐야 한다 |
+| `AIEmptyRecordError` | 색인할 내용이 없는 기록 (예: 데이터 행이 없는 장부) | 재시도하지 않고 기록을 `FAILED`("읽지 못함")로 바꾼다 |
 | `AIRetryableError` | 다시 시도하면 성공할 수 있는 오류 | 이 타입 하나로 재시도 안내 대상을 모두 잡는다 |
 | `AITimeoutError` | 제한 시간 안에 응답을 받지 못함 | 모델 쪽 처리가 끝났을 수 있어 실행되지 않았다고 단정하지 않는다 |
 | `AIInvalidResponseError` | 응답이 기대한 형식·계약 검증을 통과하지 못함 | 다시 생성하면 정상 응답이 나올 수 있다 |
 
 예상하지 못한 예외는 `AIError`로 감싸지 않는다. 그대로 올려 BE가 서버 오류로 처리한다.
+BE는 이 타입들을 `app.ai`에서 가져온다.
 
 ## 모델 호출 오류 변환
 

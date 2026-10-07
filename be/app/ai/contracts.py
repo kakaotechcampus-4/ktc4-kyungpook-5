@@ -279,7 +279,7 @@ class IndexRecordRequest(ContractModel):
     file_name: str = Field(max_length=255)
     # None이면 파일 없는 텍스트 기록이며 문서로 처리한다
     file_type: RecordFileType | None
-    # 순서가 블록 번호(0부터)다. 비어 있으면 index_record가 읽을 내용 없음 오류를 올린다
+    # 순서가 블록 번호(0부터)다. 비어 있으면 index_record가 AIEmptyRecordError를 올린다
     blocks: tuple[RecordBlock, ...]
 
 

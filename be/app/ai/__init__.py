@@ -1,6 +1,6 @@
 """BE 내부 AI 모듈의 단일 공개 진입점.
 
-공개 기능은 facade, 데이터는 contracts, 주입 계약은 ports에 정의한 뒤
+공개 기능은 facade, 데이터는 contracts, 주입 계약은 ports, 오류는 errors에 정의한 뒤
 여기서 명시적으로 재공개한다. BE는 여기 있는 이름만 사용한다.
 enum은 재공개하지 않는다. `app.core.enums`에서 가져온다.
 """
@@ -12,6 +12,14 @@ from .contracts import (
     RecordBlock,
     RecordSource,
     SourceLocation,
+)
+from .errors import (
+    AIConfigError,
+    AIEmptyRecordError,
+    AIError,
+    AIInvalidResponseError,
+    AIRetryableError,
+    AITimeoutError,
 )
 from .facade import index_record
 from .llm import EMBEDDING_DIMENSIONS
@@ -32,4 +40,11 @@ __all__ = (
     "RecordSource",
     # 청크 벡터 컬럼 차원
     "EMBEDDING_DIMENSIONS",
+    # 오류. BE가 타입으로 재시도 안내·FAILED 처리를 정한다 (docs/errors.md)
+    "AIError",
+    "AIConfigError",
+    "AIEmptyRecordError",
+    "AIRetryableError",
+    "AITimeoutError",
+    "AIInvalidResponseError",
 )
