@@ -98,6 +98,8 @@ class EventOut(CamelModel):
     start_date: date | None
     end_date: date | None
     dday: int | None
+    location: str | None
+    headcount: int | None
     current_step_name: str | None
     step_progress: list[StepProgressOut]
     pending_approval_count: int
