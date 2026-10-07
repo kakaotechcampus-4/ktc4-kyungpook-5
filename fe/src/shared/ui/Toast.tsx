@@ -1,4 +1,7 @@
 // 토스트: 승인·저장 직후 화면 아래에 잠깐 떴다 사라진다. 띄우는 쪽은 shared/lib/toast.
+import { useLayoutEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { topModalOrBody } from '@/shared/lib/dialog'
 import { useToastStore, type ToastItem, type ToastKind } from '@/shared/lib/toast'
 
 const ICON: Record<ToastKind, { bg: string; mark: string }> = {
@@ -40,13 +43,22 @@ export function ToastView({ kind, title, desc, action }: Omit<ToastItem, 'id'>) 
 
 export function Toaster() {
   const items = useToastStore((s) => s.items)
-  return (
+  // 토스트가 바뀔 때 열린 모달이 있으면 그 안에 그린다. 그릴 곳은 화면에 반영된 뒤에 고른다.
+  // ponytail: 토스트가 떠 있는 동안 모달을 닫으면 그 토스트도 같이 사라진다
+  const [host, setHost] = useState<Element | null>(null)
+  useLayoutEffect(() => {
+    setHost(topModalOrBody())
+  }, [items])
+  if (!host) return null
+
+  return createPortal(
     <div className="pointer-events-none fixed inset-x-0 bottom-[24px] z-50 flex flex-col items-center gap-[8px] px-[16px]">
       {items.map(({ id, ...item }) => (
         <div key={id} className="pointer-events-auto max-w-full">
           <ToastView {...item} />
         </div>
       ))}
-    </div>
+    </div>,
+    host,
   )
 }

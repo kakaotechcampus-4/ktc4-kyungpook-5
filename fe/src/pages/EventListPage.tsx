@@ -1,12 +1,13 @@
 // L1 행사 목록: 계획 중 · 진행 중 · 끝난 행사를 모두 본다.
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { EventCard } from '@/features/events/components/EventCard'
-import { DEMO_EVENTS } from '@/features/events/mock'
-import type { EventStatus, EventSummary } from '@/features/events/types'
+import { useEvents } from '@/features/events/hooks'
+import type { EventStatus } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { ServerErrorScreen } from '@/shared/ui/StateScreen'
 
 type Filter = 'ALL' | EventStatus
 
@@ -22,13 +23,18 @@ export default function EventListPage() {
   const startPlanning = () => navigate('/planning')
   const [filter, setFilter] = useState<Filter>('ALL')
 
-  // TODO: GET /events 연동 전까지는 빈 목록이다. 주소에 ?demo를 붙이면 시연용 예시를 보인다.
-  const demo = useSearchParams()[0].has('demo')
-  const events: EventSummary[] = demo ? DEMO_EVENTS : []
+  const eventsQuery = useEvents()
+  const events = eventsQuery.data ?? []
 
   const countOf = (value: Filter) =>
     value === 'ALL' ? events.length : events.filter((e) => e.status === value).length
   const shown = filter === 'ALL' ? events : events.filter((e) => e.status === filter)
+
+  // 목록을 받기 전에 빈 상태를 그리면 "아직 만든 행사가 없어요"가 잠깐 깜빡인다
+  if (eventsQuery.isPending) return null
+  if (eventsQuery.isError) {
+    return <ServerErrorScreen onRetry={() => eventsQuery.refetch()} onHome={() => navigate('/')} />
+  }
 
   return (
     <div className="flex flex-col gap-[20px]">

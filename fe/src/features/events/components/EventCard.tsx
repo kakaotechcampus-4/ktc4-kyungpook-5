@@ -1,5 +1,5 @@
 // 행사 카드(L1): 이름 · 상태 칩 / 일정 · 참가 · 단계 · 상태 / 세그먼트 진행 바. 누르면 L2 상세로 간다.
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { SegmentBar } from '@/features/events/components/SegmentBar'
 import type { EventSummary } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
@@ -16,6 +16,8 @@ function statusText(event: EventSummary, current: number): string {
 }
 
 export function EventCard({ event }: { event: EventSummary }) {
+  // ?demo 같은 주소 뒤쪽을 상세로 이어 붙인다
+  const { search } = useLocation()
   const states = event.stepProgress.map((s) => s.state)
   // 진행 중인 단계까지 센다(완료 + 진행 중)
   const current = states.filter((s) => s !== 'TODO').length
@@ -32,7 +34,7 @@ export function EventCard({ event }: { event: EventSummary }) {
 
   return (
     <Link
-      to={`/events/${event.id}`}
+      to={`/events/${event.id}${search}`}
       className={cn(
         'flex flex-col gap-[14px] rounded-[18px] bg-card px-[26px] pt-[24px] pb-[26px] transition-colors',
         // 진행 중인 행사는 파란 테두리로 눈에 띄게

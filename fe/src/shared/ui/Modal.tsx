@@ -1,6 +1,6 @@
 // 모달 공통 틀: 헤더(제목·칩·부제·✕) / 본문 / 하단(안내 문구 + 버튼).
 // 브라우저 <dialog>를 써서 Esc 닫기·포커스 가두기·배경 막기는 브라우저에 맡긴다.
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useId, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { cn } from '@/shared/lib/cn'
 
 interface ModalProps {
@@ -32,20 +32,27 @@ export function Modal({
   className,
 }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = ref.current
     if (!dialog) return
     if (open && !dialog.open) dialog.showModal()
     if (!open && dialog.open) dialog.close()
   }, [open])
 
+  // 화면에서 빠지기 전에 닫아야 포커스가 누른 버튼으로 돌아간다
+  useLayoutEffect(() => {
+    const dialog = ref.current
+    return () => dialog?.close()
+  }, [])
+
   return (
     <dialog
       ref={ref}
-      // open이 이미 false면 부모가 닫은 것이라 다시 부르지 않음
+      aria-labelledby={titleId}
       // Esc처럼 브라우저가 직접 닫았을 때만 onClose를 부름
-      onClose={() => open && onClose()}
+      onClose={() => open && !ref.current?.open && onClose()}
       // 배경(= dialog 자신)을 누르면 닫는다. 안쪽 클릭은 target이 자식이라 걸리지 않는다.
       onClick={(e) => e.target === e.currentTarget && onClose()}
       style={{ width }}
@@ -57,7 +64,9 @@ export function Modal({
       <header className="flex flex-col gap-[7px] border-b border-line pt-[26px] pr-[22px] pb-[18px] pl-[28px]">
         <div className="flex items-center justify-between gap-[12px]">
           <div className="flex min-w-0 items-center gap-[10px]">
-            <h2 className="text-[20px] font-bold">{title}</h2>
+            <h2 id={titleId} className="text-[20px] font-bold">
+              {title}
+            </h2>
             {chip}
           </div>
           <button
