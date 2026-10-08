@@ -70,10 +70,9 @@ fe/
 │   │   ├── api/
 │   │   │   ├── client.ts         실제 fetch를 호출하는 유일한 곳
 │   │   │   └── types.ts          공통 응답·에러 타입
-│   │   ├── lib/                  format.ts, cn.ts
-│   │   └── hooks/                useDisclosure.ts 등
+│   │   └── lib/                  format.ts, cn.ts
 │   └── styles/
-│       └── index.css             @import "tailwindcss" + 전역 스타일
+│       └── index.css             디자인 토큰(@theme) + 전역 스타일
 ├── .env.example
 ├── .gitignore
 ├── .prettierrc                  Prettier 서식 규칙
@@ -81,7 +80,6 @@ fe/
 ├── eslint.config.js             ESLint 규칙
 ├── index.html
 ├── package.json
-├── tailwind.config.ts           디자인 토큰 (index.css의 @config로 연결)
 ├── tsconfig.json                아래 두 개를 참조만 함
 ├── tsconfig.app.json            src/ 용. @/ 별칭도 여기
 ├── tsconfig.node.json           설정 파일(vite.config.ts 등) 용

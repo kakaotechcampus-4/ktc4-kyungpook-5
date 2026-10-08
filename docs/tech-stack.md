@@ -55,6 +55,7 @@ FE (React SPA) ──REST──> BE (FastAPI)
 | ORM | SQLAlchemy 2.0 — 비동기 세션(`AsyncSession`) + psycopg 3 (#52, #63) |
 | 마이그레이션 | Alembic |
 | 파일 저장 | AWS S3 (`infra/s3.py`) — 영수증·기록 원본 |
+| 기록 파일 파싱 | pypdf(PDF) · openpyxl(XLSX) · 표준 `csv`. AES 암호 PDF는 지원하지 않음(`cryptography` 미설치) |
 | 배포 환경 | AWS EC2 + Docker Compose |
 | 테스트 | pytest (`tests/unit`: 순수 함수 / `tests/integration`: 라우터 E2E) |
 | 아키텍처 | 레이어드 (routers / schemas / services / models / db / core / infra) |

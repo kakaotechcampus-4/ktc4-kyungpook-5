@@ -1,69 +1,69 @@
-import { Link } from 'react-router-dom'
-import { Card } from '@/shared/ui/Card'
-import { Chip } from '@/shared/ui/Chip'
+// 행사 카드(L1): 이름 · 상태 칩 / 일정 · 참가 · 단계 · 상태 / 세그먼트 진행 바. 누르면 L2 상세로 간다.
+import { Link, useLocation } from 'react-router-dom'
+import { SegmentBar } from '@/features/events/components/SegmentBar'
+import type { EventSummary } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
-import { formatCurrency, formatDateRange } from '@/shared/lib/format'
-import type { EventListItem, StepState } from '@/features/events/types'
+import { formatDateRange } from '@/shared/lib/format'
+import { EVENT_STATUS_LABEL, EVENT_STATUS_TONE } from '@/shared/lib/labels'
+import { Chip } from '@/shared/ui/Chip'
 
-const STEP_BAR_CLASS: Record<StepState, string> = {
-  DONE: 'bg-[#333]',
-  CURRENT: 'bg-[#737373]',
-  TODO: 'bg-[#e6e6e6]',
+// 상태 칸 문구: 진행 중이면 승인 대기 건수, 계획 중이면 몇 단계째인지, 끝났으면 정산 완료
+function statusText(event: EventSummary, current: number): string {
+  if (event.status === 'COMPLETE') return '정산 완료'
+  if (event.status === 'PLANNING') return `계획 ${current}단계 진행 중`
+  if (event.pendingApprovalCount > 0) return `승인 대기 ${event.pendingApprovalCount}건`
+  return event.currentStepName ?? '진행 중'
 }
 
-function metricsOf(event: EventListItem): string[] {
-  // 참석 신청·설문 응답 수는 구글폼에 있어 BE가 모른다. 납부(transactions)만 표시한다.
-  const payment = event.payment
-    ? `${event.payment.totalCount}명 중 ${event.payment.paidCount}명 납부`
-    : null
-  const budget = event.budget
-    ? `${formatCurrency(event.budget.planned)} 중 ${formatCurrency(event.budget.spent)} 집행`
-    : null
-  return [payment, budget].filter((text): text is string => Boolean(text))
-}
+export function EventCard({ event }: { event: EventSummary }) {
+  // ?demo 같은 주소 뒤쪽을 상세로 이어 붙인다
+  const { search } = useLocation()
+  const states = event.stepProgress.map((s) => s.state)
+  // 진행 중인 단계까지 센다(완료 + 진행 중)
+  const current = states.filter((s) => s !== 'TODO').length
+  const schedule = [formatDateRange(event.startDate, event.endDate), event.location]
+    .filter(Boolean)
+    .join(' · ')
 
-export function EventCard({ event }: { event: EventListItem }) {
-  const metrics = metricsOf(event)
+  const meta = [
+    { label: '일정', value: schedule },
+    { label: '참가', value: event.headcount ? `${event.headcount}명` : '미정' },
+    { label: '단계', value: `${current} / ${states.length}` },
+    { label: '상태', value: statusText(event, current) },
+  ]
 
   return (
-    <Link to={`/events/${event.id}`} className="w-full">
-      <Card className="flex w-full flex-col gap-[14px] p-[22px] transition-colors hover:border-[#d9d9d9]">
-        <div className="flex w-full items-center gap-[10px]">
-          <p className="text-[17px] font-bold whitespace-nowrap text-[#212121]">{event.title}</p>
-          {event.currentStepName && <Chip>{event.currentStepName} 단계</Chip>}
-          {event.pendingApprovalCount > 0 && (
-            <Chip variant="attention">승인 대기 {event.pendingApprovalCount}건</Chip>
+    <Link
+      to={`/events/${event.id}${search}`}
+      className={cn(
+        'flex flex-col gap-[14px] rounded-[18px] bg-card px-[26px] pt-[24px] pb-[26px] transition-colors',
+        // 진행 중인 행사는 파란 테두리로 눈에 띄게
+        event.status === 'ON_GOING'
+          ? 'border-[1.5px] border-blue-200 hover:border-blue-300'
+          : 'border border-line hover:border-soft',
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-[10px]">
+          <h2 className="text-[19px] font-bold">{event.title}</h2>
+          <Chip tone={EVENT_STATUS_TONE[event.status]}>{EVENT_STATUS_LABEL[event.status]}</Chip>
+          {event.status === 'ON_GOING' && event.pendingApprovalCount > 0 && (
+            <Chip tone="pending">승인 대기 {event.pendingApprovalCount}건</Chip>
           )}
-          <div className="h-px flex-1" />
-          <p className="text-[12px] whitespace-nowrap text-[#6b6b6b]">
-            {formatDateRange(event.startDate, event.endDate)}
-          </p>
-          {event.dday !== null && <Chip variant="subtle">D-{event.dday}</Chip>}
-          <span className="text-[15px] font-medium text-[#808080]">›</span>
         </div>
+        <span className="text-[12px] font-semibold text-blue-700">자세히 ›</span>
+      </div>
 
-        <div className="flex w-full items-start gap-[4px]">
-          {event.stepProgress.map((step) => (
-            <div
-              key={step.stepOrder}
-              className={cn('h-[6px] min-w-px flex-1 rounded-[3px]', STEP_BAR_CLASS[step.state])}
-            />
-          ))}
-        </div>
+      <dl className="flex gap-[34px]">
+        {meta.map(({ label, value }) => (
+          <div key={label} className="flex flex-col gap-[5px]">
+            <dt className="text-label text-mute">{label}</dt>
+            <dd className="text-body-strong">{value}</dd>
+          </div>
+        ))}
+      </dl>
 
-        <div className="flex w-full items-center gap-[20px]">
-          {metrics.map((text, i) => (
-            <div key={text} className="flex items-center gap-[20px]">
-              {i > 0 && <div className="h-[12px] w-px bg-[#e0e0e0]" />}
-              <p className="text-[12px] whitespace-nowrap text-[#595959]">{text}</p>
-            </div>
-          ))}
-          <div className="h-px flex-1" />
-          <p className="text-[11.5px] font-medium whitespace-nowrap text-[#6b6b6b]">
-            상세 진행 상황 보기
-          </p>
-        </div>
-      </Card>
+      <SegmentBar states={states} muted={event.status === 'COMPLETE'} />
     </Link>
   )
 }
