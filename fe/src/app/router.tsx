@@ -8,6 +8,7 @@ import PlanningPage from '@/pages/PlanningPage'
 import PlanStepsPage from '@/pages/PlanStepsPage'
 import EventListPage from '@/pages/EventListPage'
 import EventDetailPage from '@/pages/EventDetailPage'
+import EventCancelPage from '@/pages/EventCancelPage'
 import MyPage from '@/pages/MyPage'
 import DevUiPage from '@/pages/DevUiPage'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: 'planning/steps', element: <PlanStepsPage /> },
       { path: 'events', element: <EventListPage /> },
       { path: 'events/:eventId', element: <EventDetailPage /> },
+      { path: 'events/:eventId/cancel', element: <EventCancelPage /> },
       { path: 'mypage', element: <MyPage /> },
       { path: 'dev/ui', element: <DevUiPage /> },
       { path: '*', element: <NotFoundPage /> },
