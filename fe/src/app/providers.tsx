@@ -1,6 +1,7 @@
 // QueryClient, 인증 컨텍스트 등 전역 래퍼
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from '@/shared/ui/Toast'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -11,5 +12,10 @@ const queryClient = new QueryClient({
 })
 
 export function AppProviders({ children }: { children: ReactNode }) {
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <Toaster />
+    </QueryClientProvider>
+  )
 }
