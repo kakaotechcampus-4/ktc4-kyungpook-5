@@ -22,6 +22,8 @@ EXPECTED_TABLES = {
 }
 
 # 인증 도입 전까지 현재 사용자로 쓰는 시드 (FE 동아리 찾기 데모 목업과 같은 id).
+# 리비전 파일은 import 하지 않으므로 값을 따로 적는다. 시드 값을 바꾸는
+# 리비전을 추가하면 여기도 같이 고친다 (alembic/versions/730ba45f4965_seed_current_club.py).
 CURRENT_CLUB_ID = "clb_3a71c0"
 CURRENT_MEMBER_ID = "mbr_3a71c0"
 
@@ -35,14 +37,15 @@ def _table_names(url: str) -> set[str]:
 
 
 def test_upgrade_and_downgrade_round_trip(alembic_cfg: Config, db_url: str) -> None:
-    command.upgrade(alembic_cfg, "head")
-    assert EXPECTED_TABLES <= _table_names(db_url)
+    try:
+        command.upgrade(alembic_cfg, "head")
+        assert EXPECTED_TABLES <= _table_names(db_url)
 
-    command.downgrade(alembic_cfg, "base")
-    assert not EXPECTED_TABLES & _table_names(db_url)
-
-    # 다른 DB 테스트가 기대하는 상태로 되돌린다.
-    command.upgrade(alembic_cfg, "head")
+        command.downgrade(alembic_cfg, "base")
+        assert not EXPECTED_TABLES & _table_names(db_url)
+    finally:
+        # 중간에 실패해도 다른 DB 테스트가 기대하는 상태로 되돌린다.
+        command.upgrade(alembic_cfg, "head")
 
 
 def test_models_have_no_unmigrated_changes(

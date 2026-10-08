@@ -27,9 +27,10 @@ class Settings(BaseSettings):
 
     def require_database_url(self) -> str:
         """DB 연결 직전에 주소를 확인한다."""
-        if not self.database_url.strip():
+        url = self.database_url.strip()
+        if not url:
             raise RuntimeError("DATABASE_URL 이 비어 있습니다")
-        return self.database_url
+        return url
 
 
 @lru_cache(maxsize=1)

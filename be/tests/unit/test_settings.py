@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from app.core.config import Settings, get_settings
+from app.core.config import Settings
 from app.db import session as db_session
 
 
@@ -38,22 +38,22 @@ def test_blank_database_url_fails_only_when_required(
         settings.require_database_url()
 
 
-def _clear_db_caches() -> None:
-    get_settings.cache_clear()
-    db_session.get_engine.cache_clear()
-    db_session.get_sessionmaker.cache_clear()
+def test_database_url_is_returned_without_surrounding_whitespace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    url = "postgresql+psycopg://u:p@localhost:5432/d"
+    monkeypatch.setenv("DATABASE_URL", f"  {url}\n")
+
+    assert Settings().require_database_url() == url
 
 
 def test_engine_is_not_created_without_database_url(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, clear_db_caches: None
 ) -> None:
     monkeypatch.setenv("DATABASE_URL", "")
-    _clear_db_caches()
-    try:
-        with pytest.raises(RuntimeError, match="DATABASE_URL"):
-            db_session.get_engine()
-    finally:
-        _clear_db_caches()
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        db_session.get_engine()
 
 
 def test_sessions_keep_loaded_values_after_commit() -> None:

@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from collections.abc import Iterator
 from pathlib import Path
 
 import psycopg
@@ -11,6 +12,8 @@ from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy.engine import make_url
 
+from app.core.config import get_settings
+from app.db import session as db_session
 from app.main import app
 
 # compose.yml 의 db 서비스가 만드는 테스트 전용 DB.
@@ -49,13 +52,19 @@ def db_url() -> str:
 
     TEST_DATABASE_URL 을 직접 준 경우(CI)에는 건너뛰지 않고 실패시킨다.
     DB 테스트가 조용히 빠진 채 통과하지 않게 하기 위해서다.
+    빈 값도 준 것으로 본다. 등록되지 않은 CI secret 은 빈 문자열로 들어온다.
     """
     explicit = os.environ.get("TEST_DATABASE_URL")
-    url = explicit or DEFAULT_TEST_DATABASE_URL
+    if explicit is None:
+        if not _reachable(DEFAULT_TEST_DATABASE_URL):
+            pytest.skip("테스트 DB에 연결할 수 없어 건너뜁니다 (docker compose up -d db)")
+        return DEFAULT_TEST_DATABASE_URL
+
+    url = explicit.strip()
+    if not url:
+        pytest.fail("TEST_DATABASE_URL 이 비어 있습니다")
     if not _reachable(url):
-        if explicit:
-            pytest.fail("TEST_DATABASE_URL 에 연결할 수 없습니다")
-        pytest.skip("테스트 DB에 연결할 수 없어 건너뜁니다 (docker compose up -d db)")
+        pytest.fail("TEST_DATABASE_URL 에 연결할 수 없습니다")
     return url
 
 
@@ -71,3 +80,17 @@ def alembic_cfg(db_url: str) -> Config:
 def migrated_db_url(db_url: str, alembic_cfg: Config) -> str:
     command.upgrade(alembic_cfg, "head")
     return db_url
+
+
+@pytest.fixture
+def clear_db_caches() -> Iterator[None]:
+    """DATABASE_URL 을 바꾸는 테스트 전후로 설정·엔진 캐시를 비운다."""
+
+    def clear() -> None:
+        get_settings.cache_clear()
+        db_session.get_engine.cache_clear()
+        db_session.get_sessionmaker.cache_clear()
+
+    clear()
+    yield
+    clear()

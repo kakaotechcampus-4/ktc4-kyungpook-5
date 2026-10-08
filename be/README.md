@@ -240,7 +240,7 @@ uv run pytest
 서버를 띄우지 않고 `TestClient`로 앱을 직접 호출합니다.
 `db` 마커가 붙은 테스트(세션 연결, 마이그레이션 왕복·`alembic check`, 시드)는 테스트 DB가 필요합니다.
 기본 주소(`localhost:5432/unyounghae_test`)에 연결할 수 없으면 건너뛰므로, DB 없이도 나머지 테스트는 실행됩니다.
-`TEST_DATABASE_URL`을 주면 그 주소를 쓰고, 이때는 연결에 실패하면 건너뛰지 않고 실패합니다.
+`TEST_DATABASE_URL`을 주면 그 주소를 쓰고, 이때는 연결에 실패하면 건너뛰지 않고 실패합니다. 빈 값도 준 것으로 보고 실패합니다.
 `tests/integration/`은 mock API의 응답 계약(`{data, meta}` 봉투, camelCase 키, enum 문자열,
 에러 봉투)을 고정합니다. 공통 코드(`schemas`의 `CamelModel`, `core/exceptions.py`)를 바꿀 때
 이 테스트가 먼저 깨지도록 두는 것이 목적입니다 (이슈 #33).
