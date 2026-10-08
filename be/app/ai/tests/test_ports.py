@@ -40,6 +40,6 @@ def test_유사도_범위를_벗어나면_거부한다(score):
         RetrievedChunk(
             text="1인 회비 45,000원",
             source=SOURCE,
-            category=RecordCategory.PLAN,
+            category=RecordCategory.ETC,
             score=score,
         )

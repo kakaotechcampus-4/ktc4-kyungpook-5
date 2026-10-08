@@ -43,18 +43,32 @@ class Conversation(IdMixin, TimestampMixin, Base):
 
 
 class Message(IdMixin, TimestampMixin, Base):
+    """USER/ASSISTANT: 계획 대화 한 턴 (conversation_id·seq 필수).
+
+    SYSTEM: 에이전트가 왜 그 방향을 골랐는지 조회하는 로그 — 쌩로그가 아니라
+    "AI가 한 일 + 출처 근거"를 정리한 텍스트다. step_id/action_id로 바로 찾으며,
+    운영 중(ON_GOING) 생기는 CONFIRMATION 판단처럼 대화 자체가 없는 경우를 위해
+    conversation_id는 없을 수 있다. 출처를 구조화된 필드로 분리할지는 기록 검색
+    계약(#70)이 정해진 뒤 재검토한다.
+    """
+
     __tablename__ = "messages"
     __id_prefix__ = "msg"
     __table_args__ = (
         # created_at만으로 정렬하면 같은 시각에 들어온 메시지 순서가 흔들린다.
+        # conversation_id가 둘 다 NULL인 SYSTEM 로그끼리는 PostgreSQL이 서로
+        # 다른 값으로 보므로 이 제약에 걸리지 않는다.
         UniqueConstraint("conversation_id", "seq", name="uq_messages_conversation_seq"),
     )
 
-    conversation_id: Mapped[str] = mapped_column(
-        String(ID_LENGTH), fk("conversations.id"), nullable=False
+    conversation_id: Mapped[str | None] = mapped_column(
+        String(ID_LENGTH), fk("conversations.id")
     )
-    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    step_id: Mapped[str | None] = mapped_column(String(ID_LENGTH), fk("steps.id"))
+    action_id: Mapped[str | None] = mapped_column(String(ID_LENGTH), fk("actions.id"))
+    # 대화 턴 순서. SYSTEM 로그는 대화가 아니라 쓰지 않는다.
+    seq: Mapped[int | None] = mapped_column(Integer)
     role: Mapped[MessageRole] = mapped_column(enum_column(MessageRole), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
-    conversation: Mapped["Conversation"] = relationship(back_populates="messages")
+    conversation: Mapped["Conversation | None"] = relationship(back_populates="messages")

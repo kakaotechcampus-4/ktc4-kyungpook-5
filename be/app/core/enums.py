@@ -34,6 +34,21 @@ class MemberRole(CodeEnum):
     MEMBER = "MEMBER"
 
 
+class MemberStatus(CodeEnum):
+    """가입 승인 상태. 로그인 세션 유효 여부는 Auth.revoked_at이 따로 본다."""
+
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+
+
+class ClubCategory(CodeEnum):
+    ACADEMIC = "ACADEMIC"
+    SPORTS = "SPORTS"
+    VOLUNTEER = "VOLUNTEER"
+    HOBBY = "HOBBY"
+    ETC = "ETC"
+
+
 # --- events -------------------------------------------------------------
 
 
@@ -41,6 +56,8 @@ class EventStatus(CodeEnum):
     PLANNING = "PLANNING"
     ON_GOING = "ON_GOING"
     COMPLETE = "COMPLETE"
+    CANCELLING = "CANCELLING"
+    CANCELLED = "CANCELLED"
 
 
 class EventType(CodeEnum):
@@ -56,6 +73,36 @@ class StepPhase(CodeEnum):
     PREPARATION = "PREPARATION"
     RECRUITING = "RECRUITING"
     EXECUTION = "EXECUTION"
+    CANCELLATION = "CANCELLATION"
+
+
+class StepCode(CodeEnum):
+    """고정 단계 카탈로그(#69 step-catalog.md). AI는 이 중에서 고르고 새로 만들지 않는다.
+
+    순서는 각 phase 안에서의 기본 진행 순서와 같다.
+    """
+
+    # PREPARATION
+    ASSIGN_ROLES = "ASSIGN_ROLES"
+    RESEARCH_VENUE = "RESEARCH_VENUE"
+    DEMAND_SURVEY = "DEMAND_SURVEY"
+    # RECRUITING
+    RECRUIT_NOTICE = "RECRUIT_NOTICE"
+    CHECK_RESPONSES = "CHECK_RESPONSES"
+    CONFIRM_DETAILS = "CONFIRM_DETAILS"
+    BOOK_VENUE = "BOOK_VENUE"
+    COLLECT_FEES = "COLLECT_FEES"
+    # EXECUTION
+    PRE_EVENT_NOTICE = "PRE_EVENT_NOTICE"
+    EVENT_DAY = "EVENT_DAY"
+    SETTLE_EXPENSES = "SETTLE_EXPENSES"
+    REFUND_FEES = "REFUND_FEES"
+    RECORD_FEEDBACK = "RECORD_FEEDBACK"
+    # CANCELLATION (#73)
+    CANCEL_NOTIFY_PARTICIPANTS = "CANCEL_NOTIFY_PARTICIPANTS"
+    CANCEL_VENUE = "CANCEL_VENUE"
+    CANCEL_REFUND = "CANCEL_REFUND"
+    CANCEL_RECORD = "CANCEL_RECORD"
 
 
 class StepActor(CodeEnum):
@@ -99,9 +146,9 @@ class ActionStatus(CodeEnum):
 
 class RecordCategory(CodeEnum):
     LEDGER = "LEDGER"
-    PLAN = "PLAN"
-    NOTICE = "NOTICE"
     ETC = "ETC"
+    RULES = "RULES"
+    EVENT_HISTORY = "EVENT_HISTORY"
 
 
 class RecordFileType(CodeEnum):
@@ -113,6 +160,7 @@ class RecordFileType(CodeEnum):
 
 
 class RecordParseStatus(CodeEnum):
+    QUEUED = "QUEUED"
     PARSING = "PARSING"
     NEEDS_REVIEW = "NEEDS_REVIEW"
     COMPLETED = "COMPLETED"
