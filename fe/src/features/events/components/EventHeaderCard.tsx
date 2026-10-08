@@ -41,9 +41,9 @@ export function EventHeaderCard({
           <Chip tone={EVENT_STATUS_TONE[event.status]}>{EVENT_STATUS_LABEL[event.status]}</Chip>
         </div>
         <div className="flex gap-[8px]">
-          {/* 운영 중인 행사의 계획 수정은 MVP에서 뺐다(#105). 어디까지 고칠 수 있는지(단계
-              자체인지 세부 내용만인지)와 끝난 단계를 어떻게 막을지를 BE 스키마와 함께
-              정해야 한다. 계획 중(PLANNING)의 단계 수정은 P2-b에 있다. */}
+          {/* 운영 중인 행사는 세부 사항만, 끝나지 않은 것만 고칠 수 있다(#105).
+              아직 못 켜는 건 세부 수정 모달이 Action 스키마를 기다리고 있어서다(#106).
+              계획 중(PLANNING)의 단계 수정은 P2-b에 있다. */}
           <Button variant="secondary" disabled>
             계획 수정
           </Button>
