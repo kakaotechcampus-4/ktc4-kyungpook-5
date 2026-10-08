@@ -44,3 +44,19 @@ export interface JoinRequest {
   role: string
   requestedAt: string
 }
+
+// 동아리 자료. 과거 행사 문서·장부·공지 등을 분류해 올려 둔다.
+export type RecordCategory = 'PLAN' | 'NOTICE' | 'LEDGER' | 'ETC'
+// 올린 파일을 읽어 들이는 상태. 읽지 못한 건 손이 가야 한다.
+export type ParseStatus = 'INDEXED' | 'PARSING' | 'NEEDS_REVIEW' | 'FAILED'
+
+export interface ClubRecord {
+  id: string
+  fileName: string
+  // 이슈 #60에서 PDF · CSV · XLSX만 올릴 수 있게 줄였다.
+  fileType: 'PDF' | 'CSV' | 'XLSX'
+  category: RecordCategory
+  size: string
+  uploadedAt: string
+  parseStatus: ParseStatus
+}

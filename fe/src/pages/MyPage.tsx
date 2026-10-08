@@ -4,12 +4,14 @@ import { useSearchParams } from 'react-router-dom'
 import { AddMemberModal } from '@/features/mypage/components/AddMemberModal'
 import { MembersTab } from '@/features/mypage/components/MembersTab'
 import { MyInfoTab } from '@/features/mypage/components/MyInfoTab'
+import { RecordsTab } from '@/features/mypage/components/RecordsTab'
 import {
   DEMO_CLUB,
   DEMO_JOIN_REQUESTS,
   DEMO_MEMBERS,
   DEMO_MEMBER_TOTAL,
   DEMO_PROFILE,
+  DEMO_RECORDS,
   EMPTY_CLUB,
 } from '@/features/mypage/mock'
 import type { JoinRequest, Member } from '@/features/mypage/types'
@@ -75,6 +77,8 @@ export default function MyPage() {
           onResolveRequest={(id) => setRequests((list) => list.filter((r) => r.id !== id))}
         />
       )}
+
+      {tab === '동아리 자료' && <RecordsTab records={demo ? DEMO_RECORDS : []} />}
 
       <AddMemberModal
         open={addOpen}
