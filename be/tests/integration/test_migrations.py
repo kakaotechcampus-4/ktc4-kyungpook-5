@@ -17,10 +17,11 @@ EXPECTED_TABLES = {
     "actions",
     "conversations",
     "messages",
+    "participants",
     "records",
 }
 
-# 인증 도입 전까지 현재 사용자로 쓰는 시드 (FE CURRENT_CLUB_ID와 같은 값).
+# 인증 도입 전까지 현재 사용자로 쓰는 시드 (FE 동아리 찾기 데모 목업과 같은 id).
 CURRENT_CLUB_ID = "clb_3a71c0"
 CURRENT_MEMBER_ID = "mbr_3a71c0"
 
