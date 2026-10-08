@@ -97,7 +97,7 @@ export default function PlanningPage() {
           <PlanSummaryPanel
             summary={demo ? DEMO_SUMMARY : EMPTY_SUMMARY}
             warning={demo ? DEMO_WARNING : undefined}
-            onFixSteps={() => {}}
+            onFixSteps={() => navigate(`/planning/steps${demo ? '?demo' : ''}`)}
             // TODO(연동): POST /events. 지금은 행사 목록으로만 보낸다.
             onStart={() => navigate('/events')}
           />
