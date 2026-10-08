@@ -11,6 +11,8 @@ export function PlanStepper({ current }: { current: 1 | 2 }) {
     <div className="flex gap-[16px]">
       {STEPS.map((step) => {
         const active = step.no === current
+        // 지나온 단계는 번호 대신 ✓를 보인다.
+        const done = step.no < current
         return (
           <div
             key={step.no}
@@ -23,10 +25,12 @@ export function PlanStepper({ current }: { current: 1 | 2 }) {
             <span
               className={cn(
                 'flex size-[22px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold',
-                active ? 'bg-white text-blue-700' : 'bg-track text-mute',
+                active && 'bg-white text-blue-700',
+                done && 'bg-blue-600 text-white',
+                !active && !done && 'bg-track text-mute',
               )}
             >
-              {step.no}
+              {done ? '✓' : step.no}
             </span>
             <span className="flex flex-col gap-[3px]">
               <span className={cn('text-[13.5px] font-bold', active ? 'text-white' : 'text-ink')}>
