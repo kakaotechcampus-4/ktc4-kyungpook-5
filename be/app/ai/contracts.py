@@ -74,7 +74,6 @@ class EventConditions(ContractModel):
     budget_total: int | None = Field(default=None, ge=0)
     fee_per_person: int | None = Field(default=None, ge=0)
     location: str | None = Field(default=None, max_length=200)
-    location_candidates: tuple[str, ...] = ()
 
 
 class PlanChatRequest(ContractModel):

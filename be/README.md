@@ -25,7 +25,7 @@ mock API는 DB 없이 고정 응답만 내려 FE가 화면을 실제 API에 붙�
 
 - FE 명세 반영이 필요한 5건 — [검토안 §4](../docs/week6/be/운영해_BE_스키마_검토안.md)
 - 회의·확인이 필요한 항목 — [검토안 §5](../docs/week6/be/운영해_BE_스키마_검토안.md)
-- `participants` · `transactions` 테이블 — 금액 안건 확정 후 추가
+- `transactions`(개별 입금 내역) 테이블 — 금액 안건 확정 후 추가. `participants`(행사별 참가 신청)는 #107로 추가됨
 - `app.ai`의 `facade.py`/`ports.py` 함수명과 입출력 필드 — BE↔AI는 HTTP가 아니라 함수 호출이라 "엔드포인트"는 아니지만 계약 자체는 아직 미확정
 - S3 버킷 구조와 접근 권한 — 영수증 등 민감 파일이 포함되어 NF6(민감정보 최소 수집)과 연결됨
 
@@ -67,7 +67,7 @@ be/
 │   │   ├── __init__.py        # 전 모델 등록 (Base.metadata)
 │   │   ├── auth.py            # Auth
 │   │   ├── clubs.py           # Club · Member
-│   │   ├── events.py          # Event · Step · Action
+│   │   ├── events.py          # Event · Step · Action · Participant
 │   │   ├── records.py         # Record
 │   │   ├── agent.py           # AgentLog
 │   │   └── chat.py            # Conversation · Message
@@ -151,16 +151,19 @@ BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE �
 
 ## 데이터 모델
 
-테이블 10개를 여섯 파일로 나눕니다.
+테이블 11개를 여섯 파일로 나눕니다.
 
 | 파일 | 테이블 |
 | --- | --- |
 | `models/clubs.py` | `clubs` · `members` |
 | `models/auth.py` | `auth` |
-| `models/events.py` | `events` · `steps` · `actions` |
+| `models/events.py` | `events` · `steps` · `actions` · `participants` |
 | `models/records.py` | `records` |
 | `models/agent.py` | `agent_log` |
 | `models/chat.py` | `conversations` · `messages` |
+
+`participants`는 동아리 전체 명단(`members`)과 별개로 "이 행사에 신청했는지"를 행사별로 추적합니다
+(이슈 #107). 미응답·응답 인원 집계가 이 테이블을 기준으로 계산됩니다.
 
 공통 컬럼과 공유 컬럼 타입은 `db/base.py`에 있습니다. 모든 테이블이 `id`(접두어가 붙은 26자 문자열 PK)와
 `created_at` · `modified_at`을 가집니다.
