@@ -93,3 +93,21 @@ export interface ActionPage {
   items: EventAction[]
   totalCount: number
 }
+
+// ── 행사 취소 정리 ──
+// 네 가지로 고정이다. 앱이 대신 취소해주지 않고, 운영진이 직접 처리한 뒤 완료로 표시한다.
+export type CancelTaskState = 'DONE' | 'CURRENT' | 'TODO'
+
+export interface CancelTask {
+  id: string
+  name: string
+  // 무엇을 하면 되는지 한 줄. 끝난 뒤에는 누가 언제 했는지로 바뀐다.
+  desc: string
+  state: CancelTaskState
+  date?: string
+  // 연락 문구가 필요한 일(참가자 안내 · 업체 연락)에만 있다.
+  message?: string
+  // 진행 중인 일의 남은 할 일. 토리가 짚어준다.
+  todos?: string[]
+  note?: string
+}

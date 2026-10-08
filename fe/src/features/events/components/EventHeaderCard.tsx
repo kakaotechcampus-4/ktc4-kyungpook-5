@@ -13,9 +13,17 @@ interface EventHeaderCardProps {
   steps: EventStep[]
   // 스테퍼에서 단계를 누르면(Step 모달)
   onSelectStep: (step: EventStep) => void
+  onEditPlan: () => void
+  onCancelEvent: () => void
 }
 
-export function EventHeaderCard({ event, steps, onSelectStep }: EventHeaderCardProps) {
+export function EventHeaderCard({
+  event,
+  steps,
+  onSelectStep,
+  onEditPlan,
+  onCancelEvent,
+}: EventHeaderCardProps) {
   // 진행 중인 단계까지 센다(완료 + 진행 중)
   const reached = steps.filter((s) => s.state !== 'TODO').length
 
@@ -34,10 +42,13 @@ export function EventHeaderCard({ event, steps, onSelectStep }: EventHeaderCardP
           <h1 className="text-[26px] font-bold">{event.title}</h1>
           <Chip tone={EVENT_STATUS_TONE[event.status]}>{EVENT_STATUS_LABEL[event.status]}</Chip>
         </div>
-        {/* TODO: 계획 수정 화면 · 행사 취소 API가 생기면 연결한다 */}
         <div className="flex gap-[8px]">
-          <Button variant="secondary">계획 수정</Button>
-          <Button variant="secondary">행사 취소</Button>
+          <Button variant="secondary" onClick={onEditPlan}>
+            계획 수정
+          </Button>
+          <Button variant="secondary" onClick={onCancelEvent}>
+            행사 취소
+          </Button>
         </div>
       </div>
 

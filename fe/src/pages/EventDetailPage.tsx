@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AnswerModal } from '@/features/events/components/AnswerModal'
+import { CancelConfirmModal } from '@/features/events/components/CancelConfirmModal'
 import { ConfirmationList } from '@/features/events/components/ConfirmationList'
 import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
@@ -67,6 +68,9 @@ export default function EventDetailPage() {
     toast.show({ kind: 'done', title: '완료로 표시했어요', desc: action.title })
   }
 
+  // 행사 취소 확인 모달. 확인하면 취소 정리 화면으로 간다.
+  const [cancelOpen, setCancelOpen] = useState(false)
+
   // 검토·답변 모달에 띄울 Action. 유형에 따라 둘 중 하나가 열린다.
   const [reviewing, setReviewing] = useState<EventAction>()
   const answering = reviewing?.type === 'CONFIRMATION' ? reviewing : undefined
@@ -126,6 +130,8 @@ export default function EventDetailPage() {
             event={event}
             steps={steps}
             onSelectStep={(step) => setOpenStepId(step.id)}
+            onEditPlan={() => navigate(`/planning/steps${search}`)}
+            onCancelEvent={() => setCancelOpen(true)}
           />
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
@@ -163,6 +169,13 @@ export default function EventDetailPage() {
             onClose={() => setReviewing(undefined)}
             onApprove={approveAction}
             onDeny={denyAction}
+          />
+          <CancelConfirmModal
+            open={cancelOpen}
+            event={event}
+            onClose={() => setCancelOpen(false)}
+            // TODO(연동): POST /events/{id}/cancel. 취소 Action은 아직 정의 전이다(#73).
+            onConfirm={() => navigate(`/events/${eventId}/cancel${search}`)}
           />
           <AnswerModal
             action={answering}
