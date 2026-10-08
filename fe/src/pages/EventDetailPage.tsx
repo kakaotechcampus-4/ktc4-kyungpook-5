@@ -130,7 +130,6 @@ export default function EventDetailPage() {
             event={event}
             steps={steps}
             onSelectStep={(step) => setOpenStepId(step.id)}
-            onEditPlan={() => navigate(`/planning/steps${search}`)}
             onCancelEvent={() => setCancelOpen(true)}
           />
           <div className="flex items-start gap-[20px]">

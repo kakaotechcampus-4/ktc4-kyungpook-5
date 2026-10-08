@@ -13,7 +13,6 @@ interface EventHeaderCardProps {
   steps: EventStep[]
   // 스테퍼에서 단계를 누르면(Step 모달)
   onSelectStep: (step: EventStep) => void
-  onEditPlan: () => void
   onCancelEvent: () => void
 }
 
@@ -21,7 +20,6 @@ export function EventHeaderCard({
   event,
   steps,
   onSelectStep,
-  onEditPlan,
   onCancelEvent,
 }: EventHeaderCardProps) {
   // 진행 중인 단계까지 센다(완료 + 진행 중)
@@ -43,7 +41,10 @@ export function EventHeaderCard({
           <Chip tone={EVENT_STATUS_TONE[event.status]}>{EVENT_STATUS_LABEL[event.status]}</Chip>
         </div>
         <div className="flex gap-[8px]">
-          <Button variant="secondary" onClick={onEditPlan}>
+          {/* 운영 중인 행사의 계획 수정은 MVP에서 뺐다(#105). 어디까지 고칠 수 있는지(단계
+              자체인지 세부 내용만인지)와 끝난 단계를 어떻게 막을지를 BE 스키마와 함께
+              정해야 한다. 계획 중(PLANNING)의 단계 수정은 P2-b에 있다. */}
+          <Button variant="secondary" disabled>
             계획 수정
           </Button>
           <Button variant="secondary" onClick={onCancelEvent}>
