@@ -1,15 +1,38 @@
 # 로컬 개발용. Python·uv·Node 설치 없이 FE·BE 를 함께 띄운다 (이슈 #35).
-# PostgreSQL 은 넣지 않는다. mock API 는 DB 에 접속하지 않는다.
+# PostgreSQL 은 db 서비스로 함께 띄운다 (이슈 #63).
 
 services:
+  db:
+    image: pgvector/pgvector:pg17
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: unyounghae
+      POSTGRES_PASSWORD: unyounghae
+      POSTGRES_DB: unyounghae
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./be/docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unyounghae -d unyounghae"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     build: ./be
     ports:
       - "8000:8000"
     volumes:
       - ./be/app:/app/app
+      - ./be/alembic:/app/alembic
+      - ./be/alembic.ini:/app/alembic.ini
     environment:
       WATCHFILES_FORCE_POLLING: "true"
+      DATABASE_URL: postgresql+psycopg://unyounghae:unyounghae@db:5432/unyounghae
+    depends_on:
+      db:
+        condition: service_healthy
 
   web:
     # Tailwind 4 의 네이티브 의존성이 alpine(musl)에서 문제를 일으켜 일반 리눅스 이미지를 쓴다.
@@ -32,4 +55,5 @@ services:
       - api
 
 volumes:
+  db_data:
   fe_node_modules:

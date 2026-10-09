@@ -52,7 +52,7 @@ FE (React SPA) ──REST──> BE (FastAPI)
 | --- | --- |
 | DB | PostgreSQL (금액은 정수 원 단위로만 저장, NF2) |
 | RAG 임베딩 저장 | PostgreSQL pgvector, 청크 벡터 컬럼 `vector(1536)` — Milvus 대신 확정 |
-| ORM | SQLAlchemy 2.0 |
+| ORM | SQLAlchemy 2.0 — 비동기 세션(`AsyncSession`) + psycopg 3 (#52, #63) |
 | 마이그레이션 | Alembic |
 | 파일 저장 | AWS S3 (`infra/s3.py`) — 영수증·기록 원본 |
 | 기록 파일 파싱 | pypdf(PDF) · openpyxl(XLSX) · 표준 `csv`. AES 암호 PDF는 지원하지 않음(`cryptography` 미설치) |
@@ -139,7 +139,6 @@ AI는 별도 서버가 아니라 BE 프로세스 안에서 실행되므로, `ANT
 | 인증 방식 | BE | JWT vs 세션 — `core/security.py`에서 구현, `JWT_SECRET_KEY`/`SESSION_SECRET` 변수도 이에 따라 결정 |
 | RDS 병행 여부 | BE | EC2 + Docker Compose 배포에서 DB를 RDS로 뺄지 |
 | S3 버킷 구조·접근 권한 | BE | 영수증 등 민감 파일 포함 — NF6(민감정보 최소 수집)과 연결 |
-| 비동기 세션 사용 여부 | BE | SQLAlchemy 2.0 async 사용 여부 |
 | 린트 · 포맷 도구 | BE · AI | 첫 구현에서 도구와 실행 명령 결정 |
 | 계획 대화·체크포인트 저장 방식 | AI | 세션 식별자 포함 |
 | 기록 검색·색인 방식 | AI | 자료 정제·색인·저장 방식 |
