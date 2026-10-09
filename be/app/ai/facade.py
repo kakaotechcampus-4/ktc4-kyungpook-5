@@ -2,5 +2,16 @@
 
 함수와 입력·출력은 BE와 계약 합의 후 정의하고 __init__.py에서 재공개한다.
 내부 HTTP 라우터를 만들지 않으며 기능 연결은 workflow에 위임한다.
-현재 호출 가능한 업무 함수는 없다.
 """
+
+from .contracts import IndexRecordRequest, IndexRecordResult
+
+
+async def index_record(request: IndexRecordRequest) -> IndexRecordResult:
+    """기록을 청크로 나누고 임베딩한다.
+
+    BE는 결과에 기록 메타데이터를 붙여 저장하고 parseStatus를 INDEXED로 바꾼다.
+    """
+    
+    # 가짜 청크를 돌려주면 BE가 저장하고 INDEXED로 현재 막아둠
+    raise NotImplementedError("index_record는 #71에서 구현한다")

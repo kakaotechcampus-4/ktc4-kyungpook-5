@@ -177,6 +177,8 @@ _EVENTS: list[dict] = [
         "status": EventStatus.ON_GOING,
         "start_date": date(2026, 3, 21),
         "end_date": date(2026, 3, 22),
+        "location": "가평 ○○펜션",
+        "expected_headcount": 32,
     },
 ]
 
@@ -330,6 +332,9 @@ def list_events(
             "start_date": row["start_date"],
             "end_date": row["end_date"],
             "dday": (row["start_date"] - _TODAY).days if row["start_date"] else None,
+            "location": row["location"],
+            # FE 명세 v1이 인원 필드명을 headcount로 통일해 컬럼명과 다르다.
+            "headcount": row["expected_headcount"],
             "current_step_name": current_step["name"] if current_step else None,
             "step_progress": step_progress,
             "pending_approval_count": _pending_approval_count(row["id"]),

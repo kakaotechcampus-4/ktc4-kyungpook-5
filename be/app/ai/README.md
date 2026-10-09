@@ -18,18 +18,18 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 be/app/ai/
 ├── __init__.py          # BE가 import하는 단일 공개 경계: app.ai
 ├── facade.py            # BE가 호출할 AI 기능의 구현 위치
-├── contracts.py         # 합의 후 정의할 공개 요청·응답 데이터
-├── ports.py             # AI가 사용할 BE 조회·계산 인터페이스
+├── contracts.py         # BE와 주고받는 요청·응답 데이터
+├── ports.py             # AI가 사용할 BE 조회·계산·기록 검색 인터페이스
 ├── config.py            # AI 전용 설정
 ├── errors.py            # AI 내부 오류 타입
 ├── llm.py               # 공통 채팅·임베딩 모델 생성
 ├── features/
 │   ├── planning/        # 조건 확인·질문·계획 생성 및 수정
-│   ├── retrieval/       # 기록 검색·근거 구성
+│   ├── retrieval/       # 기록 색인·검색·근거 구성 (memory_port: 개발용 검색 구현)
 │   └── operations/      # 변경 영향 설명·대응안
 ├── workflow/            # 행사 Agent 실행 흐름·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
-├── tests/               # AI 테스트 위치 (config, llm)
+├── tests/               # AI 테스트 (fixtures/records: 예시 기록)
 ├── docs/
 │   ├── architecture.md
 │   ├── errors.md        # AI 오류 타입과 변환 기준

@@ -16,13 +16,13 @@ export function Switch({ checked, onChange, label }: SwitchProps) {
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative h-[21px] w-[38px] shrink-0 rounded-full transition-colors',
-        checked ? 'bg-[#262626]' : 'bg-[#e0e0e0]',
+        'relative h-[23px] w-[40px] shrink-0 rounded-full transition-colors',
+        checked ? 'bg-blue-600' : 'bg-soft',
       )}
     >
       <span
         className={cn(
-          'absolute top-[2px] size-[17px] rounded-full bg-white shadow-sm transition-transform',
+          'absolute top-[2px] left-0 size-[19px] rounded-full bg-white shadow-sm transition-transform',
           checked ? 'translate-x-[19px]' : 'translate-x-[2px]',
         )}
       />
