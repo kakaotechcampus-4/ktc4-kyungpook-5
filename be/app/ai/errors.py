@@ -9,6 +9,7 @@ HTTP 상태 코드나 API 응답 코드로 변환하는 책임은 BE에 있다.
 
     AIError
     ├── AIConfigError       설정 오류 - 다시 시도해도 같은 문제가 발생한다
+    ├── AIEmptyRecordError  읽을 내용이 없는 기록 - 다시 시도해도 같다
     └── AIRetryableError    같은 요청을 다시 시도하면 성공할 수 있다
         ├── AITimeoutError
         └── AIInvalidResponseError
@@ -33,6 +34,15 @@ class AIConfigError(AIError):
 
     설정을 수정하기 전에는 같은 요청을 다시 보내도 실패하므로
     사용자에게 재시도를 권하지 않는다
+    """
+
+
+class AIEmptyRecordError(AIError):
+    """색인할 내용이 없는 기록인 경우.
+
+    예: 데이터 행이 없는 장부. 파서는 빈 blocks로 성공 처리하므로 색인에서 알린다.
+    빈 결과를 돌려주면 읽지 못한 자료가 "읽음"이 된다(AI-RET-04).
+    파일이 그대로면 다시 해도 같으므로 BE는 재시도 없이 FAILED("읽지 못함")로 바꾼다.
     """
 
 

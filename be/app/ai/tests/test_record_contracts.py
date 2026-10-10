@@ -38,7 +38,7 @@ def test_위치_이름이_비면_거부한다():
 
 
 def test_블록이_없는_기록도_계약은_통과한다():
-    """빈 기록은 index_record가 읽을 내용 없음 오류로 알린다."""
+    """빈 기록은 계약이 막지 않고 index_record가 AIEmptyRecordError로 알린다."""
     request = IndexRecordRequest(
         record_id="rec_test",
         file_name="미분류 문서.pdf",

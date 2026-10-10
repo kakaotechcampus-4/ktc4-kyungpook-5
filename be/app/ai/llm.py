@@ -1,10 +1,11 @@
 """공통 LLM 생성과 호출 설정을 관리한다.
 
 채팅 모델과 임베딩 모델을 여기서만 만든다.
-구조화 출력 호출과 모델 오류 변환도 여기서 한다. 기능 코드는 AI 오류 타입만 받는다.
+구조화 출력·임베딩 호출과 모델 오류 변환도 여기서 한다. 기능 코드는 AI 오류 타입만 받는다.
 """
 
 import re
+from collections.abc import Sequence
 from functools import lru_cache
 from typing import Any
 
@@ -35,6 +36,10 @@ USE_RESPONSES_API = True
 # text-embedding-3-small 의 기본 출력 차원. 저장소(pgvector) 컬럼 차원이 이 값에
 # 묶이므로 상수로 둔다. 모델이나 dimensions 값을 바꾸면 저장된 벡터를 다시 만들어야 한다.
 EMBEDDING_DIMENSIONS = 1536
+
+# 임베딩 요청 하나에 담는 글 수. 기본값(1000)이면 큰 기록에서 요청 하나가 API 한도를 넘어
+# 색인 전체가 실패할 수 있다. 100개 × 청크 최대 약 1,100자라 한도 안에 든다.
+EMBEDDING_BATCH_SIZE = 100
 
 # 게이트웨이는 input 으로 문자열과 문자열 배열만 문서화하고 있다. 기본값(True)은
 # tiktoken 으로 토큰 배열을 만들어 보내므로 문자열을 그대로 보내도록 끈다.
@@ -99,6 +104,7 @@ def build_embeddings(
         "timeout": settings.request_timeout_seconds,
         "max_retries": max_retries,
         "check_embedding_ctx_length": CHECK_EMBEDDING_CTX_LENGTH,
+        "chunk_size": EMBEDDING_BATCH_SIZE,
     }
     params.update(overrides)
 
@@ -160,6 +166,32 @@ async def ainvoke_structured[T: BaseModel](
     if output["parsing_error"] is not None or parsed is None:
         raise _invalid_response(schema) from output["parsing_error"]
     return parsed
+
+
+async def aembed_texts(
+    texts: Sequence[str],
+    *,
+    model: OpenAIEmbeddings | None = None,
+) -> list[tuple[float, ...]]:
+    """글마다 임베딩 벡터를 같은 순서로 돌려준다. 색인(청크)과 검색(질문)이 함께 쓴다.
+
+    호출 실패는 `ainvoke_structured`와 같은 기준으로 AI 오류 타입으로 바꾼다.
+    벡터 개수·차원이 맞지 않으면 청크에 엉뚱한 벡터가 붙으므로 AIInvalidResponseError로 올린다.
+    """
+    model = model or get_embeddings()
+    try:
+        vectors = await model.aembed_documents(list(texts))
+    except (openai.APIConnectionError, openai.APIStatusError) as error:
+        converted = _convert_api_error(error)
+        if converted is None:
+            raise
+        raise converted from error
+
+    if len(vectors) != len(texts) or any(
+        len(vector) != EMBEDDING_DIMENSIONS for vector in vectors
+    ):
+        raise AIInvalidResponseError("임베딩 응답의 개수나 차원이 요청과 맞지 않습니다")
+    return [tuple(vector) for vector in vectors]
 
 
 def _convert_api_error(
