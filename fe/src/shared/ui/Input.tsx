@@ -7,15 +7,32 @@ const FIELD_CLASS =
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
+  // 무엇이 잘못됐는지 한 줄. 넣으면 라벨·테두리가 빨개지고 아래에 줄이 붙는다.
+  error?: string
 }
 
-export function Input({ label, className, ...props }: InputProps) {
-  const input = <input className={cn(FIELD_CLASS, className)} {...props} />
-  if (!label) return input
+export function Input({ label, error, className, ...props }: InputProps) {
+  const input = (
+    <input
+      className={cn(FIELD_CLASS, error && 'border-failed bg-failed-bg/30', className)}
+      {...props}
+    />
+  )
+  if (!label && !error) return input
   return (
     <label className="flex w-full flex-col gap-[7px]">
-      <span className="text-[11.5px] font-bold text-ink2">{label}</span>
+      {label && (
+        <span className={cn('text-[11.5px] font-bold', error ? 'text-failed' : 'text-ink2')}>
+          {label}
+        </span>
+      )}
       {input}
+      {error && (
+        <span className="flex items-center gap-[6px] text-[11px] font-medium text-failed">
+          <span aria-hidden>!</span>
+          {error}
+        </span>
+      )}
     </label>
   )
 }
