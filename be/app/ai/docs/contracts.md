@@ -126,7 +126,7 @@ class JudgeUtteranceRequest(ContractModel):
 class JudgeUtteranceResult(ContractModel):
     utterance_id: str
     kind: Literal["NO_LOOKUP", "ANSWER", "NOT_FOUND"]
-    # 무엇에 대한 답인지. 판단 단계에서 만든 검색어다. NO_LOOKUP이면 None
+    # 무엇에 대한 답인지. 검색어 구성 단계가 만든 검색어다. NO_LOOKUP이면 None
     question: str | None = None
     answer: str | None = None                # ANSWER일 때만
     sources: tuple[RecordSource, ...] = ()   # ANSWER일 때 하나 이상
@@ -145,9 +145,10 @@ async def judge_utterance(
 
 화면에는 `question`과 원래 발화의 시각을 답과 함께 띄운다.
 대화가 넘어간 뒤에 떠도, 질문을 고쳐 답이 두 개 떠도 어느 답이 어느 질문에 대한 것인지 구분된다(AI-MEET-06).
-`question`은 판단 호출이 조회 필요 여부와 함께 내놓는 검색어를 그대로 쓴다. 오인식 보정 사전으로 후보를 넓히기 전의 값이다.
-판단 호출이 앞 발화로 "그때" 같은 지시어를 풀어 만든 값이라, 따로 호출하지 않아도 Whisper 원문보다 무엇을 물었는지 잘 드러난다.
-검색어에 오인식이 남거나 화면에 띄우기 어색하면, 판단 출력에 필드를 더하지 않고 답을 만들 때 다시 쓴다. 판단 출력의 필드가 늘면 판단 지연이 바로 늘기 때문이다([측정 기록](meeting-evaluation.md)).
+`question`은 검색어 구성 단계가 만든 검색어를 그대로 쓴다. 오인식 보정 사전으로 후보를 넓히기 전의 값이다.
+앞 발화로 "그때" 같은 지시어를 풀어 만든 값이라, 따로 호출하지 않아도 Whisper 원문보다 무엇을 물었는지 잘 드러난다.
+`question`은 판단이 아니라 검색어에 묶여 있다. 판단을 Laya 같은 판단 전용 모델로 바꿔도 검색어는 LLM이 만들어야 하므로([판단 모델](architecture.md#판단-모델)), 그 단계가 만든 검색어를 그대로 쓰면 된다. 지금은 판단과 검색어를 한 호출에서 받는다.
+검색어에 오인식이 남거나 화면에 띄우기 어색하면, 검색어 출력에 필드를 더하지 않고 답을 만들 때 다시 쓴다. 출력 필드가 늘면 지연이 바로 늘기 때문이다([측정 기록](meeting-evaluation.md)).
 
 ```text
 ┌ 2025 회비 금액 · 12초 전
