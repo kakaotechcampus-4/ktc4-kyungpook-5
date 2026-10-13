@@ -99,9 +99,11 @@ interface ActionCardProps {
   action: EventAction
   // 실행 대기에서 "게시했습니다"처럼 밖에서 직접 끝냈다고 알릴 때
   onComplete?: (action: EventAction) => void
+  // 승인 대기에서 [검토하기] · [답변하기]를 눌렀을 때. 모달은 화면 쪽에서 띄운다.
+  onReview?: (action: EventAction) => void
 }
 
-export function ActionCard({ action, onComplete }: ActionCardProps) {
+export function ActionCard({ action, onComplete, onReview }: ActionCardProps) {
   const status = action.status
   const type = action.type
   const question = type === 'CONFIRMATION'
@@ -121,9 +123,8 @@ export function ActionCard({ action, onComplete }: ActionCardProps) {
         {action.content && (
           <Box label={question ? '토리가 모르는 것' : '토리가 준비한 초안'}>{action.content}</Box>
         )}
-        {/* TODO: 결정 검토 모달 · 답변 입력 모달(#82)이 생기면 연다 */}
         <div className="flex items-center gap-[8px]">
-          <Button>{question ? '답변하기' : '검토하기'}</Button>
+          <Button onClick={() => onReview?.(action)}>{question ? '답변하기' : '검토하기'}</Button>
           <span className="text-[11px] text-mute">
             {question ? '답변하면 바로 완료로 가요' : '승인 전에는 실행하지 않아요'}
           </span>
@@ -140,9 +141,11 @@ export function ActionCard({ action, onComplete }: ActionCardProps) {
           {content}
         </Box>
         <div className="flex gap-[8px]">
-          {/* TODO: 조건 보기 · 항목 보기는 결정 검토 모달(#82)이 생기면 연다 */}
           {(content || !step.copy) && (
-            <Button variant="secondary" onClick={content ? () => copy(content) : undefined}>
+            <Button
+              variant="secondary"
+              onClick={content ? () => copy(content) : () => onReview?.(action)}
+            >
               {step.secondary}
             </Button>
           )}

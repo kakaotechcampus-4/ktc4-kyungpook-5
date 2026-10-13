@@ -5,6 +5,7 @@ import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import MainPage from '@/pages/MainPage'
 import PlanningPage from '@/pages/PlanningPage'
+import PlanStepsPage from '@/pages/PlanStepsPage'
 import EventListPage from '@/pages/EventListPage'
 import EventDetailPage from '@/pages/EventDetailPage'
 import MyPage from '@/pages/MyPage'
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <MainPage /> },
       { path: 'planning', element: <PlanningPage /> },
+      { path: 'planning/steps', element: <PlanStepsPage /> },
       { path: 'events', element: <EventListPage /> },
       { path: 'events/:eventId', element: <EventDetailPage /> },
       { path: 'mypage', element: <MyPage /> },
