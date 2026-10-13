@@ -4,13 +4,16 @@ version = "0.1.0"
 description = "운영해 백엔드 — 동아리 행사 보조 에이전트"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.14",
     "fastapi>=0.115",
     "langchain-openai>=1.0",
     "langgraph>=1.2",
     "nanoid>=2.0",
+    "openpyxl>=3.1.5",
     "psycopg[binary]>=3.2",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
+    "pypdf>=6.19.0",
     "sqlalchemy>=2.0.36",
     "uvicorn[standard]>=0.32",
 ]
@@ -39,3 +42,6 @@ packages = ["app"]
 # app/ai/tests는 AI 모듈이 따로 두고 있어 같이 돈다.
 testpaths = ["tests", "app/ai/tests"]
 pythonpath = ["."]
+markers = [
+    "db: PostgreSQL 테스트 DB가 필요한 테스트. 연결할 수 없으면 건너뛴다",
+]

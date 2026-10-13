@@ -9,8 +9,33 @@ export const ACTION_TYPE_LABEL: Record<string, string> = {
   CONFIRMATION: '확인 요청',
 }
 
+// 단계를 누가 진행하는지. L2 현재 단계 카드 · Step 모달의 한 줄 요약에 쓴다.
+export const STEP_ACTOR_LABEL: Record<string, string> = {
+  AI: 'AI 실행',
+  APPROVAL_REQUIRED: '승인 필요',
+  MANUAL: '직접 수행',
+}
+
 export const MEMBER_ROLE_LABEL: Record<string, string> = {
   OWNER: '회장',
   MANAGER: '총무',
   MEMBER: '회원',
 }
+
+// 처리한 사람 "김지훈 · 회장". 기록이 비어 있으면 숨기지 않고 알 수 없음으로 드러낸다.
+export function formatResolver(by: { name: string; role: string } | null | undefined): string {
+  return by ? `${by.name} · ${MEMBER_ROLE_LABEL[by.role]}` : '처리한 사람 알 수 없음'
+}
+
+export const EVENT_STATUS_LABEL: Record<string, string> = {
+  PLANNING: '계획 중',
+  ON_GOING: '진행 중',
+  COMPLETE: '완료',
+}
+
+// 행사 상태 칩 색. L1 행사 카드와 M1 요약 카드가 같이 쓴다.
+export const EVENT_STATUS_TONE = {
+  ON_GOING: 'done',
+  PLANNING: 'approved',
+  COMPLETE: 'neutral',
+} as const

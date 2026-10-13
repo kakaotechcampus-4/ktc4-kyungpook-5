@@ -10,5 +10,5 @@
     "isolatedModules": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "tailwind.config.ts", "eslint.config.js"]
+  "include": ["vite.config.ts", "eslint.config.js"]
 }

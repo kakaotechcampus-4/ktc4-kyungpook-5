@@ -1,27 +1,12 @@
-// 도메인 타입 정의 — FE API 명세 §2 `GET /events` 응답 모양을 그대로 따른다.
-export type EventStatus = 'PLANNING' | 'ON_GOING' | 'COMPLETE'
+// 행사 도메인 타입. 이름·값은 FE API 명세(docs/week6/fe/운영해_FE_API_명세_v1.md)를 따른다.
 
+// DB 컬럼이 아니라 서버가 계산해 내려준다.
 export type StepState = 'DONE' | 'CURRENT' | 'TODO'
 
-export interface StepProgress {
-  stepOrder: number
-  state: StepState
-}
+export type EventStatus = 'PLANNING' | 'ON_GOING' | 'COMPLETE'
 
-// 🔸 명세에서 스키마 확정 대기 중인 필드. `GET /events`와 `GET /events/{id}`가 같은 모양으로 준다.
-export interface PaymentSummary {
-  paidCount: number
-  totalCount: number
-  collected: number
-  target: number
-}
-
-export interface BudgetSummary {
-  spent: number
-  planned: number
-}
-
-export interface EventListItem {
+// GET /events 목록 한 줄
+export interface EventSummary {
   id: string
   title: string
   status: EventStatus
@@ -29,27 +14,48 @@ export interface EventListItem {
   endDate: string | null
   dday: number | null
   currentStepName: string | null
-  stepProgress: StepProgress[]
+  stepProgress: Array<{ stepOrder: number; state: StepState }>
   pendingApprovalCount: number
-  payment: PaymentSummary | null
-  budget: BudgetSummary | null
+  // TODO: 아래 둘은 GET /events 응답에 아직 없다(DB에는 있음). BE에 요청하거나 카드에서 뺀다.
+  location: string | null
+  headcount: number | null
 }
 
-// GET /events/drafts — L1 "계획 중" 카드에 필요한 것만 추린 모양.
-export interface EventDraft {
+// GET /events/{id} — L2 상단 카드
+export interface EventDetail {
   id: string
   title: string
-  stageLabel: string
+  status: EventStatus
+  startDate: string | null
+  endDate: string | null
+  dday: number | null
+  location: string | null
+  headcount: number | null
+  currentStep: { id: string; stepOrder: number; name: string } | null
+  // TODO: 명세에 없다. BE에 요청하거나 뺀다.
+  manager: string | null
 }
 
-export interface EventListView {
-  ongoing: EventListItem[]
-  drafts: EventDraft[]
-  completedCount: number
-}
-
-// ── L2 행사 상세 ── FE API 명세 §3 응답 모양을 그대로 따른다.
 export type StepActor = 'AI' | 'APPROVAL_REQUIRED' | 'MANUAL'
+
+// GET /events/{id}/steps 한 줄
+// 선택(?) 필드는 응답에는 늘 오지만, 예시 데이터는 진행 중인 단계에만 채운다.
+export interface EventStep {
+  id: string
+  stepOrder: number
+  name: string
+  state: StepState
+  deadline: string | null
+  actor?: StepActor
+  startsAt?: string | null
+  doneActions?: Array<{ id: string; title: string; status: ActionStatus }>
+  remainingActions?: Array<{
+    id: string
+    title: string
+    status: ActionStatus
+    approveNeeded: boolean
+  }>
+}
 
 export type ActionType =
   'EXTERNAL_SEND' | 'TRANSFER' | 'EXPENSE' | 'CONTRACT' | 'NOTICE' | 'CONFIRMATION'
@@ -58,75 +64,32 @@ export type ActionStatus = 'PENDING' | 'APPROVED' | 'DENIED' | 'DONE' | 'FAILED'
 
 export type MemberRole = 'OWNER' | 'MANAGER' | 'MEMBER'
 
-// GET /events/{eventId}
-export interface EventDetail {
-  id: string
-  title: string
-  status: EventStatus
-  startDate: string | null
-  endDate: string | null
-  dday: number | null
-  // 🔸 location·headcount는 명세에서 저장 위치가 미정인 필드다.
-  location: string | null
-  headcount: number | null
-  currentStep: { id: string; stepOrder: number; name: string } | null
-  payment: PaymentSummary | null
-  budget: BudgetSummary | null
-}
-
-// GET /events/{eventId}/steps
-export interface StepAction {
-  id: string
-  title: string
-  status: ActionStatus
-  approveNeeded: boolean
-}
-
-export interface EventStep {
-  id: string
-  stepOrder: number
-  name: string
-  actor: StepActor
-  state: StepState
-  startsAt: string | null
-  deadline: string | null
-  doneActions: StepAction[]
-  remainingActions: StepAction[]
-}
-
-// GET /events/{eventId}/actions
-export interface ActionMember {
-  id: string
-  name: string
-  role: MemberRole
-}
-
-export interface ActionOption {
-  key: string
-  label: string
-}
-
+// GET /events/{id}/actions 한 줄
+// 선택(?) 필드는 응답에는 늘 오지만, 예시 데이터는 그 화면에서 쓰는 것만 채운다.
 export interface EventAction {
   id: string
   type: ActionType
   title: string
   subtitle: string | null
-  status: ActionStatus
   dueDate: string | null
-  resolvedAt: string | null
-  resolvedBy: ActionMember | null
-  denyReason: string | null
-  // CONFIRMATION 전용. 다른 타입은 항상 null이다.
-  options: ActionOption[] | null
-  allowManual: boolean | null
+  status: ActionStatus
+  // 단계에 안 묶인 확인 요청은 null
+  stepId?: string | null
+  resolvedAt?: string | null
+  resolvedBy?: { id: string; name: string; role: MemberRole } | null
+  denyReason?: string | null
+  // 확인 요청(CONFIRMATION) 전용
+  options?: Array<{ key: string; label: string }> | null
+  allowManual?: boolean | null
+  // TODO: 아래 셋은 명세에 없다. Step 모달 Action 카드에서만 쓴다.
+  // content: 승인 전엔 토리가 준비한 초안, 승인 뒤엔 확정 문구, 확인 요청은 질문
+  content?: string | null
+  answer?: string | null
+  failReason?: string | null
 }
 
-// 🔸 GET /events/{id}/budget · /payments 는 명세에서 아직 ⏸ 보류다. 합계(spent·collected 등)는
-// GET /events/{id} 의 budget·payment 에 있고, 여기서는 그 위에 덧붙는 것만 온다.
-export interface PaymentIssue {
-  id: string
-  kind: 'UNPAID' | 'REFUND'
-  name: string
-  note: string
-  statusLabel: string
+// 목록 일부와 전체 개수("12건")
+export interface ActionPage {
+  items: EventAction[]
+  totalCount: number
 }

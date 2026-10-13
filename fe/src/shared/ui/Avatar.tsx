@@ -1,30 +1,22 @@
-// 이니셜 원형 아바타
+// 원형 아바타. 이름이 있으면 첫 글자를 넣는다.
 import { cn } from '@/shared/lib/cn'
 
 interface AvatarProps {
-  name: string
-  size?: 'sm' | 'md' | 'lg'
-  emphasis?: boolean
+  name?: string
+  size?: number
   className?: string
 }
 
-const SIZE_CLASS = {
-  sm: 'size-[24px] text-[10px]',
-  md: 'size-[26px] text-[11px]',
-  lg: 'size-[72px] text-[24px]',
-}
-
-export function Avatar({ name, size = 'md', emphasis, className }: AvatarProps) {
+export function Avatar({ name, size = 28, className }: AvatarProps) {
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-full font-bold',
-        emphasis ? 'bg-[#404040] text-[#fafafa]' : 'bg-[#dbdbdb] text-[#595959]',
-        SIZE_CLASS[size],
+        'inline-flex shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700',
         className,
       )}
+      style={{ width: size, height: size, fontSize: size * 0.4 }}
     >
-      {name.slice(0, 1)}
+      {name?.slice(0, 1)}
     </span>
   )
 }

@@ -1,7 +1,68 @@
 @import 'tailwindcss';
-@config '../../tailwind.config.ts';
 
-/* 브라우저 다크모드에서 배경이 검게 나오지 않도록 명시한다. 다크모드 지원은 팀 논의 후. */
+/* v11 와이어프레임 「0·기준」 팔레트·타이포 스케일. 색 이름은 Figma 라벨 그대로 쓴다. */
+@theme {
+  --font-sans:
+    'Inter', 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+
+  /* 토리 블루 — 버튼 · 현재 단계 · AI 블록 */
+  --color-blue-50: #f2f5fb;
+  --color-blue-100: #e3eaf7;
+  --color-blue-200: #c9d7ef;
+  --color-blue-300: #a3bce2;
+  --color-blue-400: #7b9bd4;
+  --color-blue-600: #4a6bae;
+  --color-blue-700: #3a5489;
+  --color-blue-900: #2b3e63;
+
+  /* 크림 중립 — 배경 · 카드 · 글자 */
+  --color-bg: #f8f7f4;
+  --color-cream: #faf8f4;
+  --color-card: #ffffff;
+  --color-line: #edebe6;
+  --color-soft: #dfddd7;
+  --color-mute: #98958f;
+  --color-ink2: #57544f;
+  --color-ink: #2a2824;
+
+  /* 상태 — 칩 배경(-bg) + 글자색 한 쌍 */
+  --color-done-bg: #e6f0e9;
+  --color-done: #4a7358;
+  --color-pending-bg: #faf0df;
+  --color-pending: #8a6a3a;
+  --color-approved-bg: #e3eaf7;
+  --color-approved: #3a5489;
+  --color-failed-bg: #f7e4e3;
+  --color-failed: #90514a;
+  --color-blush-bg: #f3c9ce;
+  --color-blush: #8e4f58;
+
+  /* 시안에서 팔레트 밖으로 쓴 보조 색 — 용도 이름으로 둔다 */
+  --color-chip: #f2f1ed; /* 중립 칩 · 오류 코드 박스 배경 */
+  --color-track: #eae8e3; /* 진행률 바 배경 · 남은 단계 동그라미 */
+  --color-pending-line: #ebd9b8; /* 주의(cream) 안내 박스 테두리 */
+  --color-failed-line: #e8cfcc; /* 위험(blush) 안내 박스 테두리 */
+  --color-toast-btn: #403c37; /* 토스트 오른쪽 버튼 */
+  --color-toast-sub: #b8b4ae; /* 토스트 설명 글자 */
+  --color-backdrop: rgb(42 40 36 / 0.34); /* 모달 뒤 배경 */
+
+  /* 타이포 스케일 — 색보다 크기와 굵기로 먼저 구분한다 */
+  --text-display: 32px;
+  --text-display--font-weight: 700;
+  --text-h1: 24px;
+  --text-h1--font-weight: 700;
+  --text-h2: 18px;
+  --text-h2--font-weight: 700;
+  --text-h3: 15px;
+  --text-h3--font-weight: 700;
+  --text-body: 13px;
+  --text-body-strong: 13px;
+  --text-body-strong--font-weight: 600;
+  --text-caption: 11.5px;
+  --text-label: 10.5px;
+  --text-label--font-weight: 500;
+}
+
 body {
-  @apply bg-white text-gray-900;
+  @apply bg-bg font-sans text-body text-ink;
 }

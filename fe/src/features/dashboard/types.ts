@@ -1,53 +1,10 @@
-// 도메인 타입 정의
-export interface PendingAction {
-  id: string
-  typeLabel: string
+// M1 메인 전용 타입
+
+// 토리의 판단과 확인한 근거.
+// TODO: API 명세에 아직 없다. 엔드포인트가 정해지면 모양을 맞춘다.
+export interface ToriJudgement {
   title: string
-  subtitle: string
-}
-
-export type StepState = 'DONE' | 'CURRENT' | 'TODO'
-
-export interface ProgressStep {
-  name: string
-  state: StepState
-}
-
-export interface EventSummary {
-  id: string
-  title: string
-  statusLabel: string
-  ddayLabel: string
-  pendingActions: PendingAction[]
-  reasoning: string
-  totalSteps: number
-  currentStepIndex: number
-  scheduleNote: string
-  steps: ProgressStep[]
-}
-
-export interface UpcomingTransaction {
-  id: string
-  date: string
-  label: string
-  statusLabel: 'confirmed' | 'pending' | 'expected'
-  amount: number
-}
-
-export interface BudgetChartData {
-  labels: string[]
-  actualBalances: (number | null)[]
-  planLine: (number | null)[]
-  historicalLine: (number | null)[]
-}
-
-export interface BudgetForecast {
-  hasHistory: boolean
-  confirmedBalance: number
-  confirmedBalanceNote: string
-  planExpected: number
-  historicalExpected: number
-  diffNote: string
-  upcomingTransactions: UpcomingTransaction[]
-  chart: BudgetChartData
+  reason: string
+  // 0~5개. label은 "회원 명단 · 32명", source는 "운영진 등록 · 3/6 18:20"처럼 다듬은 문자열
+  evidence: Array<{ label: string; source: string }>
 }
