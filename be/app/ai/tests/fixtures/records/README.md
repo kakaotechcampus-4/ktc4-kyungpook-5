@@ -14,7 +14,8 @@
 
 - `record`: BE `records` 테이블에 있는 값. 청크에 메타데이터를 붙일 때 BE(테스트에서는 메모리 port)가 쓴다
 - `parse_result`: BE 파서가 넘길 결과. `index_record`에는 `id`·`file_name`·`file_type`과 `blocks`만 넘어간다
-- 문서(PDF)는 쪽·조항 단위, 장부(XLSX·CSV)는 행 하나가 블록 하나다
+- BE 파서(`app/services/record_parser.py`) 출력과 같은 단위로 적는다. 문서(PDF)는 쪽 하나, 장부(XLSX·CSV)는 행 하나가 블록 하나다
+- 문서 블록의 라벨은 `"N쪽"`뿐이다. 장·조항·소제목은 본문의 줄로 들어 있고, 청크 라벨에 붙이는 일은 색인(#71)이 한다
 - 장부 행은 `열 이름: 값`으로 적는다. 행만 떼어 봐도 무슨 값인지 알 수 있게 하기 위해서다
 - `category`는 v11 분류 그대로다: 회칙·규칙 `RULES`, 과거 행사 기록 `EVENT_HISTORY`, 입출금 장부 `LEDGER` (이슈 #107로 `RecordCategory`에 추가, 기존 `PLAN`·`NOTICE`는 제거)
 

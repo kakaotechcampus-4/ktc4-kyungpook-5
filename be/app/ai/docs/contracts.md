@@ -68,10 +68,16 @@ request = IndexRecordRequest(
     blocks=record.parse_result["blocks"],
 )
 
-result = await app.ai.index_record(request)
+try:
+    result = await app.ai.index_record(request)
+except app.ai.AIEmptyRecordError:
+    mark_failed(record)  # 읽을 내용이 없다. 다시 시도해도 같다
+    return
+# AIRetryableError(임베딩 호출 실패)는 다시 시도할 수 있다. 처리 방식은 BE가 정한다
 
 save_chunks(record, result.chunks)  # 메타데이터를 붙여 저장, INDEXED로 변경
 ```
 
 `parse_result` 형식은 [예시 기록](../tests/fixtures/records/README.md)을 기준으로 한다.
-블록마다 본문과 원문 위치(`location.label`)를 두며, 이 위치가 답변의 출처로 그대로 쓰인다.
+블록마다 본문과 원문 위치(`location.label`)를 둔다. 청크 라벨은 이 위치에 조항·소제목이나 행 범위를 더한 것이며
+(예: `2쪽` → `2쪽 · 제10조(참가비 환불)`), 답변의 출처로 그대로 쓰인다.
