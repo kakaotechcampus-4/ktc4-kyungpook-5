@@ -10,6 +10,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 - [BE-AI 데이터 계약](docs/contracts.md): 계약의 목적과 계획 대화 연동 예시
 - [AI 오류 타입](docs/errors.md): 오류 분류와 모델 호출 오류 변환 기준
 - [기록 색인·검색 평가 기록](docs/retrieval-evaluation.md): 청킹·임베딩 측정값과 관찰
+- [회의 어시스턴트 측정 기록](docs/meeting-evaluation.md): 판단 모델·Whisper·지연 측정값과 관찰
 - [계획 단계 카탈로그](docs/step-catalog.md): 계획안의 단계·행동 기준 목록
 - [작업 규칙](AGENTS.md): 요구사항 → Issue → 구현 → PR 협업 절차
 - [이전 기록](docs/migration.md): 모듈 이전 내역과 BE 팀 후속 작업
@@ -38,6 +39,7 @@ be/app/ai/
 │   ├── contracts.md     # BE-AI 데이터 계약 설명
 │   ├── errors.md        # AI 오류 타입과 변환 기준
 │   ├── retrieval-evaluation.md # 기록 색인·검색 측정 기록
+│   ├── meeting-evaluation.md # 회의 판단·음성 인식·지연 측정 기록
 │   ├── requirements.md  # 사용자 경험 중심 AI 기능 요구사항 초안
 │   ├── step-catalog.md  # 계획안 단계·행동 기준 목록
 │   ├── migration.md     # 파일 대응표·BE 팀 후속 작업
