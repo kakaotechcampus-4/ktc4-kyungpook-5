@@ -27,7 +27,7 @@ be/app/ai/
 ├── llm.py               # 공통 채팅·임베딩 모델 생성
 ├── features/
 │   ├── planning/        # 조건 확인·질문·계획 생성 및 수정
-│   ├── retrieval/       # 기록 색인·검색·근거 구성 (chunking: 청킹, indexing: 색인, memory_port: 개발용 검색 구현)
+│   ├── retrieval/       # 기록 색인·검색·근거 구성 (chunking: 청킹, indexing: 색인, nodes: 기록 검색 search_records, memory_port: 개발용 검색 구현)
 │   └── operations/      # 변경 영향 설명·대응안
 ├── workflow/            # 행사 Agent 실행 흐름·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
