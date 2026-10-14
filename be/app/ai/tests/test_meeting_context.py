@@ -5,6 +5,7 @@
 
 import hashlib
 from datetime import datetime, timedelta, timezone
+from typing import get_args
 
 import pytest
 from pydantic import ValidationError
@@ -24,6 +25,7 @@ from app.ai.features.meeting.schemas import (
     JudgeUtteranceResult,
     MeetingEvent,
     MeetingUtterance,
+    ReasonCode,
 )
 
 UTC = timezone.utc
@@ -114,6 +116,18 @@ def test_프롬프트를_바꾸면_버전도_올린다():
     digest = hashlib.sha256((judge_system_prompt() + "\n").encode("utf-8")).hexdigest()
 
     assert PROMPT_SHA256.get(PROMPT_VERSION) == digest
+
+
+def test_조회하지_않은_이유_코드는_프롬프트의_경우와_하나씩_맞는다():
+    # 모델이 보는 기준과 사람이 검수하는 기준이 같아야 한다(#117).
+    # 프롬프트에 경우를 더하면 ReasonCode에도 더한다
+    prompt = judge_system_prompt()
+    section = prompt.split("조회가 필요 없는 경우:\n", 1)[1].split("\n\n", 1)[0]
+    cases = [line for line in section.splitlines() if line.startswith("- ")]
+
+    codes = get_args(ReasonCode)
+    assert len(cases) == codes.index("NEEDS_CONTEXT")
+    assert codes[-2:] == ("NEEDS_CONTEXT", "OTHER")
 
 
 def test_출력_스키마에는_모델에_보낼_설명이_없다():
