@@ -85,7 +85,7 @@ save_chunks(record, result.chunks)  # 메타데이터를 붙여 저장, INDEXED�
 
 ## 회의 발화 처리 초안
 
-> 상태: AI 초안(2026-10-13). #113에서 BE와 합의하기 전이다.
+> 상태: AI 초안(2026-10-13 작성, 10-14 보강). #113에서 BE와 합의하기 전이다.
 > 합의 전에는 `contracts.py`에 옮기지 않고, 합의하면 코드로 옮긴 뒤 이 절은 사용 흐름 예시만 남긴다.
 
 회의 중 발화 하나가 들어올 때마다 BE가 `app.ai.judge_utterance`를 부른다.
@@ -110,9 +110,19 @@ BE는 ANSWER·NOT_FOUND를 도착하는 대로 화면으로 보낸다. 늦게 �
 class MeetingUtterance(ContractModel):
     utterance_id: str      # BE가 붙인다
     seq: int               # 회의 안에서 1부터 하나씩 커진다. 재연결해도 이어진다
-    text: str              # Whisper 원문. AI는 고치지 않는다
-    started_at: datetime   # VAD 구간 시작
+    version: int = 1       # 전사 버전. 같은 발화의 전사가 고쳐지면 커진다
+    text: str              # Whisper 확정 전사. 중간 전사는 넘기지 않는다. AI는 고치지 않는다
+    started_at: datetime   # VAD 구간 시작. 회의 날짜("작년"을 연도로 풀 때)도 여기서 얻는다
     ended_at: datetime     # VAD 구간 끝. 지연 측정에 쓴다
+
+
+class MeetingEvent(ContractModel):
+    """회의가 특정 행사에 묶여 있을 때 그 행사. 검색어를 만들 때 참고한다"""
+
+    event_id: str
+    title: str                       # 예: "2026 봄 MT"
+    event_type: EventType | None = None
+    start_date: date | None = None
 
 
 class JudgeUtteranceRequest(ContractModel):
@@ -121,15 +131,49 @@ class JudgeUtteranceRequest(ContractModel):
     utterance: MeetingUtterance
     # 바로 앞 발화들. 순번 순서로 최대 MEETING_CONTEXT_UTTERANCES개
     context: tuple[MeetingUtterance, ...] = ()
+    event: MeetingEvent | None = None   # 회의를 행사에 묶지 않았으면 None
+
+
+class ToolCall(ContractModel):
+    """판단 뒤 AI가 실제로 부른 도구 하나"""
+
+    tool: Literal["records.search", "llm.generate"]
+    input: str                       # 예: 검색어 "2025 봄 MT 숙소비"
+    status: Literal["OK", "FAILED", "TIMEOUT"]
+    duration_ms: int
+    result_count: int | None = None  # records.search일 때 찾은 조각 수
+
+
+class JudgeTrace(ContractModel):
+    """이 판단을 누가, 어떤 지시로 내렸고 무엇을 했는지. BE가 판단 기록으로 저장한다"""
+
+    model: str                       # 예: "gpt-5.6-luna". Laya·Jev로 바꾸면 그 이름
+    prompt_version: str              # 예: "meeting-judge-v4"
+    judge_ms: int                    # 판단(과 검색어) 호출에 걸린 시간
+    tool_calls: tuple[ToolCall, ...] = ()   # NONE이면 비어 있다
 
 
 class JudgeUtteranceResult(ContractModel):
     utterance_id: str
+    source_version: int    # 판단에 쓴 전사 버전. 요청의 utterance.version을 그대로 돌려준다
+    # 어떤 처리로 갔는지. 지금은 RAG(기록 조회)와 NONE뿐이고 나중에 LLM이 추가된다
+    route: Literal["RAG", "NONE"]
     kind: Literal["NO_LOOKUP", "ANSWER", "NOT_FOUND"]
     # 무엇에 대한 답인지. 검색어 구성 단계가 만든 검색어다. NO_LOOKUP이면 None
     question: str | None = None
     answer: str | None = None                # ANSWER일 때만
     sources: tuple[RecordSource, ...] = ()   # ANSWER일 때 하나 이상
+    trace: JudgeTrace
+
+
+# 처리 단계. 화면의 진행 표시(activity)에 쓴다
+MeetingStage = Literal["JUDGING", "SEARCHING", "ANSWERING"]
+
+
+class MeetingProgressPort(Protocol):
+    """단계가 바뀔 때 AI가 알린다. 구현체는 BE가 주입한다"""
+
+    async def stage_changed(self, utterance_id: str, stage: MeetingStage) -> None: ...
 
 
 # 문맥으로 실어 보낼 앞 발화 수. AI가 정하고 BE는 이 값을 따른다
@@ -140,6 +184,7 @@ async def judge_utterance(
     request: JudgeUtteranceRequest,
     *,
     records: RecordSearchPort,
+    progress: MeetingProgressPort | None = None,
 ) -> JudgeUtteranceResult: ...
 ```
 
@@ -165,6 +210,68 @@ async def judge_utterance(
 | "작년 회비 얼마였지?" 뒤 검색 중에 "점심 뭐 먹지" | `ANSWER` | 늦게 와도 질문과 함께 띄움 |
 | 모델 호출 시간 초과 | `AITimeoutError` | 처리하지 못함 |
 
+### 판단 기록 — `route`, `source_version`, `trace`
+
+BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-12)의 `context-decisions`, #117). AI는 DB에 쓰지 않으므로 저장할 값을 결과에 담아 돌려준다.
+
+```json
+{
+  "utterance_id": "u-31",
+  "source_version": 1,
+  "route": "RAG",
+  "kind": "ANSWER",
+  "question": "2025 봄 MT 숙소비",
+  "answer": "550,000원",
+  "sources": [{"record_id": "r-12", "file_name": "2025 봄 MT 결과보고", "location": {"label": "2쪽 · 2. 예산"}, "score": 0.82}],
+  "trace": {
+    "model": "gpt-5.6-luna",
+    "prompt_version": "meeting-judge-v4",
+    "judge_ms": 1480,
+    "tool_calls": [
+      {"tool": "records.search", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 420, "result_count": 3},
+      {"tool": "llm.generate", "input": "답 작성", "status": "OK", "duration_ms": 1310}
+    ]
+  }
+}
+```
+
+| 값 | 쓰임 | 예 |
+| --- | --- | --- |
+| `source_version` | 전사가 나중에 고쳐지면, 옛 버전으로 내린 판단을 BE가 가려낸다(STALE) | 1번 버전 "회측"으로 판단 → 2번 버전 "회칙"으로 고쳐짐 → 1번 판단은 지난 것 |
+| `route` | 무슨 종류의 처리였는지 화면과 통계에서 본다 | "이번 회의에서 RAG 7번, NONE 120번" |
+| `trace.tool_calls` | 답이 틀리거나 늦을 때 어느 단계가 원인인지 찾는다 | 6초 걸림 → 검색 0.4초, 답 작성 5.5초 |
+| `trace.model`, `prompt_version` | 모델·프롬프트를 바꾼 전후를 나눠 비교하고, 학습 데이터를 고른다(#117) | v3a와 v4의 오탐률 비교 |
+
+- **이 값들은 모델이 만들지 않고 AI 코드가 채운다.** 버전은 받은 값을 돌려주고, 시간은 코드가 재고, 모델·프롬프트 버전은 설정값이다. 모델 출력이 늘지 않으므로 판단 지연은 그대로다.
+- **조회하지 않은 이유(`reasonCode`)는 실시간 결과에 넣지 않는다.** 이유를 모델이 출력하게 하면 판단이 느려진다. 이유 문장과 확신도를 빼서 p50이 0.65초 줄었다(#111). 이유는 검수용이므로 회의가 끝난 뒤 별도 호출로 채운다(#114, #117).
+- **`route`에는 나중에 `LLM`이 추가된다.** 회의 중 AI에게 직접 시키는 기능이다. BE는 모르는 `route` 값이 와도 깨지지 않게 처리한다.
+
+### 처리 단계 — `progress`
+
+화면의 진행 표시에 지금 어느 단계인지 보여줄 수 있도록, AI는 단계가 바뀔 때 `progress.stage_changed`를 부른다. 넘기지 않으면 알리지 않는다.
+
+```text
+발화 u-31  JUDGING   판단과 검색어 구성
+           SEARCHING 기록 검색          ← 조회가 필요할 때만
+           ANSWERING 답 작성            ← 근거를 찾았을 때만
+           (결과 반환)
+```
+
+조회가 필요 없는 발화(대부분)는 JUDGING만 거친다. 화면에서 단계까지 보여줄지는 FE와 정한다.
+
+### 행사 정보 — `event`
+
+회의를 행사에 묶어 만들었다면 그 행사를 넘긴다. "이번 거", "그 행사"를 풀 때 쓴다.
+
+```text
+회의: 2026 봄 MT 준비 (event 있음)
+발화: "이번 거 참가비 상한이 회칙에 있었나?"
+  event 없음 → "참가비 상한"
+  event 있음 → "MT 참가비 상한"
+```
+
+검색 범위를 그 행사로 좁히지는 않는다. 검색 범위는 `club_id`다.
+
 ### 함께 정할 네 가지 — AI 안
 
 | 항목 | AI 안 | 이유 |
@@ -179,14 +286,21 @@ async def judge_utterance(
 - 발화마다 따로 실행한다. 앞 발화의 검색이 길어져도 다음 발화의 판단을 막지 않는다(AI-MEET-06).
 - `judge_utterance`는 BE 상태를 바꾸지 않는다. 회의가 끝나면 BE가 진행 중인 호출을 취소해도 된다.
 - 제한 시간은 AI가 호출 안에서 지키고, 넘기면 `AITimeoutError`를 올린다.
-- 처리에 실패하면 빈 결과가 아니라 [AI 오류 타입](errors.md)을 올린다. BE는 `AIError`를 "처리하지 못함"으로 보여주고 다시 시도하지 않는다. 회의 듣기는 계속한다(AI-MEET-07).
+- 처리에 실패하면 빈 결과가 아니라 [AI 오류 타입](errors.md)을 올린다. BE는 `AIError`를 "처리하지 못함"으로 보여주고 **자동으로 다시 시도하지 않는다.** 회의 듣기는 계속한다(AI-MEET-07).
+- 운영진이 직접 다시 판단을 요청하면 같은 요청으로 다시 부를 수 있다. 회의를 멈추지 않으므로 자동 재시도와 다르다. 이전 실패 기록은 BE가 남긴다.
 - 음성 인식 실패는 BE에서 끝난다. AI를 부르지 않고 BE가 "처리하지 못함"으로 보여준다.
 - 관련 기록이 없는 것은 실패가 아니라 `NOT_FOUND`다.
+
+### 지원 범위
+
+- **한국어 회의만 다룬다.** 판단 프롬프트와 측정을 한국어로만 했다.
+- **누가 말했는지는 쓰지 않는다.** 화자분리는 범위 밖이다([아키텍처](architecture.md#다루지-않는-것)). 전사에 화자 표시 칸이 있어도 AI에는 넘기지 않는다.
 
 ### 아직 정하지 않은 것
 
 - port 주입 방식. 초안은 키워드 인자로 받는다. BE의 AI 초기화 방식과 맞춘다.
-- 판단 기록(#117). 검색어·모델·프롬프트 버전을 결과에 담아 BE가 저장할지 #117에서 정한다.
+- 판단 기록의 저장 형식과 보관 기간(#117). 결과에 담을 값은 위 "판단 기록"으로 정했다.
+- 처리 단계를 화면에 보여줄지(FE), `progress`를 넘기는 방식.
 - 제한 시간 값. 임베딩·검색·답변 생성 지연을 잰 뒤 정한다([측정 기록](meeting-evaluation.md)).
-- `MEETING_CONTEXT_UTTERANCES` 값. 측정은 앞 2발화로 했고, #114에서 정한다.
+- `MEETING_CONTEXT_UTTERANCES` 값. 검색어 측정(#123)에서 4개로 정할 예정이고, #114에서 상수로 둔다.
 - 답 작성은 기록 검색 `search_records`(#72) 위에 만든다. #72가 선행이다.
