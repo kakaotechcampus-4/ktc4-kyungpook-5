@@ -69,7 +69,7 @@ class TimestampMixin:
 # PostgreSQL에서는 JSONB, 그 외(테스트용 SQLite 등)에서는 JSON으로 컴파일된다.
 JsonB = JSON().with_variant(JSONB(), "postgresql")
 
-# 가장 긴 코드는 APPROVAL_REQUIRED(17자). 여유를 둔다.
+# 가장 긴 코드는 CANCEL_NOTIFY_PARTICIPANTS(26자, StepCode). 여유를 둔다.
 ENUM_LENGTH = 32
 
 

@@ -24,6 +24,7 @@ from app.core.enums import (
     EventStatus,
     EventType,
     StepActor,
+    StepCode,
     StepPhase,
 )
 from app.db.base import Base, ID_LENGTH, IdMixin, JsonB, TimestampMixin, enum_column, fk
@@ -54,9 +55,6 @@ class Event(IdMixin, TimestampMixin, Base):
     # AI가 단계를 배열하는 근거. 저장하지 않으면 계획을 열 때마다 대화를 재해석해야 한다.
     event_type: Mapped[EventType | None] = mapped_column(enum_column(EventType))
     location: Mapped[str | None] = mapped_column(String(200))
-    # 장소 확정 전 계획 대화에서 모인 후보. "이어서 하기"는 AI 없이 이 값으로 복원한다.
-    # 후보가 없으면 null이며, AI 계약(EventConditions)으로 넘길 때는 빈 튜플로 바꾼다.
-    location_candidates: Mapped[list[str] | None] = mapped_column(JsonB)
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
     expected_headcount: Mapped[int | None] = mapped_column(Integer)
@@ -75,6 +73,7 @@ class Event(IdMixin, TimestampMixin, Base):
     )
     actions: Mapped[list["Action"]] = relationship(back_populates="event")
     conversations: Mapped[list["Conversation"]] = relationship(back_populates="event")
+    participants: Mapped[list["Participant"]] = relationship(back_populates="event")
 
 
 class Step(IdMixin, TimestampMixin, Base):
@@ -104,6 +103,10 @@ class Step(IdMixin, TimestampMixin, Base):
     )
     step_order: Mapped[int] = mapped_column(Integer, nullable=False)
     phase: Mapped[StepPhase] = mapped_column(enum_column(StepPhase), nullable=False)
+    # 고정 카탈로그(#69 step-catalog.md) 코드. 이름·묶음·담당 조회의 기준이 된다.
+    code: Mapped[StepCode] = mapped_column(enum_column(StepCode), nullable=False)
+    # 카탈로그 이름의 생성 시점 스냅샷. code로 유도 가능해도, 카탈로그 문구가
+    # 나중에 바뀌어도 과거 행사의 화면 문구가 흔들리지 않게 그대로 남긴다.
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     actor: Mapped[StepActor] = mapped_column(enum_column(StepActor), nullable=False)
     starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -142,6 +145,10 @@ class Action(IdMixin, TimestampMixin, Base):
     type: Mapped[ActionType] = mapped_column(enum_column(ActionType), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     subtitle: Mapped[str | None] = mapped_column(Text)
+    # 승인 대상 본문 (예: 공지 문구). payload(설정값)와 달리 수정하면 재승인이
+    # 필요해 생명주기가 다르므로 따로 둔다 — services에서 content가 바뀌면
+    # status를 PENDING으로 되돌린다.
+    content: Mapped[str | None] = mapped_column(Text)
     # 되돌릴 수 없는 작업인지 (사실)
     irreversible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # 승인을 받아야 하는지 (정책 판정)
@@ -151,8 +158,10 @@ class Action(IdMixin, TimestampMixin, Base):
     )
     amount: Mapped[int | None] = mapped_column(Integer)
     due_date: Mapped[date | None] = mapped_column(Date)
-    # CONFIRMATION 전용. 선택지(options)·직접 입력 허용 여부·처리 결과를 담는다.
-    # 다른 ActionType이 여기에 기대지 않는다.
+    # 유형별 설정값. 키는 ActionType마다 다르며 schemas에서 고정한다(#69, #106).
+    # NOTICE: 올릴 곳·대상 범위 / EXTERNAL_SEND: 대상 조건
+    # CONTRACT: 업체·취소 조건 / TRANSFER: 받는 곳·미납 안내 시점
+    # EXPENSE: 영수증 필수·승인 방식 / CONFIRMATION: 선택지(options)·직접 입력 허용 여부
     payload: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
     deny_reason: Mapped[str | None] = mapped_column(Text)
     # 승인·거절·확인요청 선택을 모두 받으므로 resolved_*로 둔다.
@@ -164,3 +173,28 @@ class Action(IdMixin, TimestampMixin, Base):
     event: Mapped["Event"] = relationship(back_populates="actions")
     step: Mapped["Step | None"] = relationship(back_populates="actions")
     resolver: Mapped["Member | None"] = relationship(foreign_keys=[resolved_by])
+
+
+class Participant(IdMixin, TimestampMixin, Base):
+    """동아리 전체 명단(Member)과 별개로, 이 행사에 신청했는지를 추적한다.
+
+    미응답/응답 집계(예: "미응답 9명")는 Member 전체가 아니라 이 행에서 센다.
+    """
+
+    __tablename__ = "participants"
+    __id_prefix__ = "ptp"
+    __table_args__ = (
+        UniqueConstraint("event_id", "member_id", name="uq_participants_event_member"),
+    )
+
+    event_id: Mapped[str] = mapped_column(
+        String(ID_LENGTH), fk("events.id"), nullable=False
+    )
+    member_id: Mapped[str] = mapped_column(
+        String(ID_LENGTH), fk("members.id"), nullable=False
+    )
+    # null이면 미응답.
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    event: Mapped["Event"] = relationship(back_populates="participants")
+    member: Mapped["Member"] = relationship(back_populates="participations")

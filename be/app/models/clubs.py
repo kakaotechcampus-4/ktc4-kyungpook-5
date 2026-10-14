@@ -2,14 +2,14 @@
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Text, UniqueConstraint
+from sqlalchemy import Boolean, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.enums import MemberRole
+from app.core.enums import ClubCategory, MemberRole, MemberStatus
 from app.db.base import Base, ID_LENGTH, IdMixin, TimestampMixin, enum_column, fk
 
 if TYPE_CHECKING:
-    from app.models.events import Event
+    from app.models.events import Event, Participant
     from app.models.records import Record
 
 
@@ -18,7 +18,7 @@ class Club(IdMixin, TimestampMixin, Base):
     __id_prefix__ = "clb"
 
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    category: Mapped[str | None] = mapped_column(String(50))
+    category: Mapped[ClubCategory | None] = mapped_column(enum_column(ClubCategory))
     description: Mapped[str | None] = mapped_column(Text)
 
     members: Mapped[list["Member"]] = relationship(back_populates="club")
@@ -46,7 +46,23 @@ class Member(IdMixin, TimestampMixin, Base):
     )
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     role: Mapped[MemberRole] = mapped_column(enum_column(MemberRole), nullable=False)
+    # 가입 요청을 대표가 승인하기 전까지는 PENDING. 로그인 세션 유효 여부는
+    # Auth.revoked_at이 따로 본다 — 이 값은 "동아리에 들어왔는지"만 본다.
+    status: Mapped[MemberStatus] = mapped_column(
+        enum_column(MemberStatus), nullable=False, default=MemberStatus.ACTIVE
+    )
+    # 학번. 명단 전용(계정 없는) 동아리원을 사람으로 식별하는 용도.
+    student_no: Mapped[str | None] = mapped_column(String(20))
+    phone: Mapped[str | None] = mapped_column(String(20))
     email: Mapped[str | None] = mapped_column(String(255))
     password_hash: Mapped[str | None] = mapped_column(String(255))
+    # 마이페이지 알림 설정.
+    notify_approval_pending: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True
+    )
+    notify_step_delay: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True
+    )
 
     club: Mapped["Club"] = relationship(back_populates="members")
+    participations: Mapped[list["Participant"]] = relationship(back_populates="member")

@@ -34,7 +34,7 @@ def _record(record_id: str, **overrides) -> StoredRecord:
         "record_id": record_id,
         "club_id": CLUB,
         "file_name": f"{record_id}.pdf",
-        "category": RecordCategory.PLAN,
+        "category": RecordCategory.ETC,
     } | overrides
     return StoredRecord(**values)
 
@@ -70,10 +70,10 @@ def test_유사도_높은_순서로_limit개까지_돌려준다():
 
 def test_분류와_행사로_거를_수_있다():
     port = InMemoryRecordSearch()
-    port.add(_record("rec_rules", category=RecordCategory.NOTICE), [_chunk("회비 20,000원", FEE)])
+    port.add(_record("rec_rules", category=RecordCategory.RULES), [_chunk("회비 20,000원", FEE)])
     port.add(_record("rec_feedback", event_id="evt_mt"), [_chunk("회비 45,000원", FEE)])
 
-    by_category = _search(port, category=RecordCategory.NOTICE)
+    by_category = _search(port, category=RecordCategory.RULES)
     by_event = _search(port, event_id="evt_mt")
 
     assert [chunk.source.record_id for chunk in by_category] == ["rec_rules"]

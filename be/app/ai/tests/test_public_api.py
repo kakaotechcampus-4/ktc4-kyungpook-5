@@ -5,7 +5,7 @@ import asyncio
 import pytest
 
 import app.ai
-from app.ai import IndexRecordRequest, index_record
+from app.ai import AIEmptyRecordError, IndexRecordRequest, index_record
 
 
 def test_공개_목록의_이름을_모두_가져올_수_있다():
@@ -13,10 +13,11 @@ def test_공개_목록의_이름을_모두_가져올_수_있다():
         assert hasattr(app.ai, name), name
 
 
-def test_index_record는_구현_전에_가짜_결과를_돌려주지_않는다():
+def test_빈_기록은_빈_결과_대신_AIEmptyRecordError로_알린다():
     request = IndexRecordRequest(
-        record_id="rec_test", file_name="회칙.pdf", file_type=None, blocks=()
+        record_id="rec_test", file_name="빈 장부.csv", file_type="CSV", blocks=()
     )
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(AIEmptyRecordError):
         asyncio.run(index_record(request))
+

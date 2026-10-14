@@ -9,7 +9,7 @@ from app.models.agent import AgentLog
 from app.models.auth import Auth
 from app.models.chat import Conversation, Message
 from app.models.clubs import Club, Member
-from app.models.events import Action, Event, Step
+from app.models.events import Action, Event, Participant, Step
 from app.models.records import Record
 
 __all__ = [
@@ -22,6 +22,7 @@ __all__ = [
     "Event",
     "Member",
     "Message",
+    "Participant",
     "Record",
     "Step",
 ]
