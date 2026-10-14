@@ -12,6 +12,7 @@ from pydantic import AwareDatetime, Field, model_validator
 from app.core.enums import EventType
 
 from ...contracts import ContractModel, NonBlankStr, RecordSource
+from ...ports import RetrievedChunk
 
 
 # 판단 모델이 직접 만드는 값. 나머지 결과는 코드가 채운다.
@@ -146,6 +147,33 @@ class JudgeUtteranceResult(ContractModel):
         if self.kind == "NOT_FOUND" and (self.answer is not None or self.sources):
             raise ValueError("NOT_FOUND에는 답과 출처가 없어야 합니다")
         return self
+
+
+class MeetingAnswer(ContractModel):
+    """찾은 기록으로 쓴 답. 출처는 검색된 조각에서 옮긴 것이어야 한다"""
+
+    answer: NonBlankStr
+    sources: tuple[RecordSource, ...] = Field(min_length=1)
+
+
+class RecordLookup(Protocol):
+    """판단 뒤 기록을 찾아 답을 쓰는 단계. 기록 검색(#72)이 생기면 그 위에 구현한다
+
+    단계를 둘로 나눈 것은 처리 단계(SEARCHING·ANSWERING)와 도구 호출 기록을
+    판단 노드가 한곳에서 남기기 위해서다.
+    """
+
+    async def search(
+        self, club_id: str, question: str
+    ) -> tuple[RetrievedChunk, ...]:
+        """질문과 비슷한 조각을 찾는다. 없으면 빈 튜플이며 실패가 아니다"""
+        ...
+
+    async def answer(
+        self, question: str, chunks: tuple[RetrievedChunk, ...]
+    ) -> MeetingAnswer | None:
+        """찾은 조각으로 답을 쓴다. 조각에 답이 없으면 None이다"""
+        ...
 
 
 # 처리 단계. 화면의 진행 표시(activity)에 쓴다
