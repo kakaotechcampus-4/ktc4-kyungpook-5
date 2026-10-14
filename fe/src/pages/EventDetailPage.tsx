@@ -1,10 +1,13 @@
 // L2 행사 상세: 한 행사의 단계 진행과 확인 요청 · 처리된 승인을 본다.
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { AnswerModal } from '@/features/events/components/AnswerModal'
+import { CancelConfirmModal } from '@/features/events/components/CancelConfirmModal'
 import { ConfirmationList } from '@/features/events/components/ConfirmationList'
 import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
+import { ReviewModal } from '@/features/events/components/ReviewModal'
 import { StepModal } from '@/features/events/components/StepModal'
 import {
   useConfirmations,
@@ -65,6 +68,32 @@ export default function EventDetailPage() {
     toast.show({ kind: 'done', title: '완료로 표시했어요', desc: action.title })
   }
 
+  // 행사 취소 확인 모달. 확인하면 취소 정리 화면으로 간다.
+  const [cancelOpen, setCancelOpen] = useState(false)
+
+  // 검토·답변 모달에 띄울 Action. 유형에 따라 둘 중 하나가 열린다.
+  const [reviewing, setReviewing] = useState<EventAction>()
+  const answering = reviewing?.type === 'CONFIRMATION' ? reviewing : undefined
+  const deciding = reviewing && reviewing.type !== 'CONFIRMATION' ? reviewing : undefined
+
+  // TODO(연동): POST /actions/{id}/approve
+  const approveAction = (action: EventAction) => {
+    setReviewing(undefined)
+    setOpenStepId(null)
+    toast.show({ kind: 'done', title: '승인했어요', desc: action.title })
+  }
+
+  // TODO(연동): POST /actions/{id}/deny 에 { reason } 으로 보낸다
+  const denyAction = (action: EventAction, reason: string) => {
+    setReviewing(undefined)
+    setOpenStepId(null)
+    toast.show({
+      kind: 'done',
+      title: '진행하지 않기로 했어요',
+      desc: `${action.title} · ${reason}`,
+    })
+  }
+
   // TODO(연동): POST /steps/{stepId}/complete. 미처리 Action이 남아 있으면 먼저 확인을 받는다(명세).
   const completeStep = (step: EventStep) => {
     setOpenStepId(null)
@@ -101,6 +130,7 @@ export default function EventDetailPage() {
             event={event}
             steps={steps}
             onSelectStep={(step) => setOpenStepId(step.id)}
+            onCancelEvent={() => setCancelOpen(true)}
           />
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
@@ -129,9 +159,31 @@ export default function EventDetailPage() {
               onRetryActions={() => stepActionsQuery.refetch()}
               onClose={() => setOpenStepId(null)}
               onCompleteAction={finishAction}
+              onReviewAction={setReviewing}
               onCompleteStep={completeStep}
             />
           )}
+          <ReviewModal
+            action={deciding}
+            onClose={() => setReviewing(undefined)}
+            onApprove={approveAction}
+            onDeny={denyAction}
+          />
+          <CancelConfirmModal
+            open={cancelOpen}
+            event={event}
+            onClose={() => setCancelOpen(false)}
+            // TODO(연동): POST /events/{id}/cancel. 취소 Action은 아직 정의 전이다(#73).
+            onConfirm={() => navigate(`/events/${eventId}/cancel${search}`)}
+          />
+          <AnswerModal
+            action={answering}
+            onClose={() => setReviewing(undefined)}
+            onAnswer={(action, answer) => {
+              setReviewing(undefined)
+              resolveConfirmation(action, answer)
+            }}
+          />
         </>
       ) : (
         <EmptyState

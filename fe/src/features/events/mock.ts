@@ -2,6 +2,7 @@
 // 모양은 API 응답과 같게 두고, 날짜는 오늘 기준으로 잡아 D-day가 늘 시안처럼 보이게 한다.
 import type {
   ActionPage,
+  CancelTask,
   EventAction,
   EventDetail,
   EventStep,
@@ -397,3 +398,58 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
     ],
   },
 }
+
+// ── 행사 취소 정리 ──
+// TODO(연동): 취소 단계·Action은 아직 정의 전이다(#73). 정해지면 서버에서 받는다.
+export const DEMO_CANCEL_TASKS: CancelTask[] = [
+  {
+    id: 'cnl_1',
+    name: '참가자 취소 안내',
+    desc: '단톡방 공지 · 3/12 박수겸',
+    state: 'DONE',
+    date: '3/12',
+  },
+  {
+    id: 'cnl_2',
+    name: '펜션 예약 취소',
+    desc: '계약금 100,000원 환불 요청 · 3/16부터 환불 불가',
+    state: 'CURRENT',
+    date: '3/15',
+    message:
+      '안녕하세요. 3월 21–22일 예약한 큰나무 동아리입니다. 사정이 생겨 부득이하게 예약을 취소하려 합니다. 계약금 환불 절차를 안내해 주시면 감사하겠습니다.',
+    note: '3/16부터 계약금 환불이 안 돼요. 3/15까지 펜션에 연락해서 예약 취소와 계약금 100,000원 환불을 요청해 주세요.',
+    todos: ['펜션에 취소 연락 (계약자 박수겸)', '환불받으면 금액 확인하고 완료로 표시'],
+  },
+  {
+    id: 'cnl_3',
+    name: '입금자 환불',
+    desc: '28명 · 총 1,260,000원 · 명단 기준으로 계좌 정리',
+    state: 'TODO',
+    date: '3/20',
+  },
+  {
+    id: 'cnl_4',
+    name: '취소 정산 기록',
+    desc: '남은 회비와 환불 내역을 장부에 남기기',
+    state: 'TODO',
+    date: '3/25',
+  },
+]
+
+// 가입 직후처럼 아직 아무것도 안 한 상태(초기 화면)
+export const EMPTY_CANCEL_TASKS: CancelTask[] = [
+  {
+    id: 'cnl_1',
+    name: '참가자 취소 안내',
+    desc: '단톡방에 취소 소식을 알립니다',
+    state: 'CURRENT',
+  },
+  { id: 'cnl_2', name: '예약 · 계약 취소', desc: '업체에 연락해 예약을 물립니다', state: 'TODO' },
+  { id: 'cnl_3', name: '입금자 환불', desc: '낸 사람에게 돌려줍니다', state: 'TODO' },
+  {
+    id: 'cnl_4',
+    name: '취소 정산 기록',
+    desc: '남은 회비와 환불 내역을 장부에 남깁니다',
+    state: 'TODO',
+  },
+]
