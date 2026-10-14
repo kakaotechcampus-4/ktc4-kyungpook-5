@@ -112,6 +112,28 @@ class JudgeTrace(ContractModel):
     tool_calls: tuple[ToolCall, ...] = ()
 
 
+# 조회하지 않은 이유. route가 NONE일 때만 쓰고 RAG면 검색어가 곧 이유라 비운다.
+# 실시간 결과에는 넣지 않는다. 이유를 출력하게 하면 판단이 느려진다(#111).
+# 회의 뒤 다시 판단하거나 사람이 검수할 때 채운다(#117).
+# 앞의 다섯은 prompts/judge.md의 "조회가 필요 없는 경우"와 같은 순서로 하나씩 맞춘다.
+#   ASK_PERSON          특정 사람에게 확인하는 말        "민수야 예약했어?"
+#   MONOLOGUE           혼잣말·감탄                      "이게 맞나"
+#   CHITCHAT            기록과 무관한 잡담               "점심 뭐 먹지?"
+#   FUTURE_DECISION     앞으로 할 일을 정하는 말         "이번엔 버스 대절하죠"
+#   REFERENCE_MATERIAL  과거 자료를 같이 보자는 말       "작년 축제 자료 펴 놓고 얘기해요"
+#   NEEDS_CONTEXT       가리키는 대상을 아직 알 수 없음  "그거 얼마였지?" (앞에 대상이 없음)
+#   OTHER               어디에도 맞지 않음. 자주 나오면 코드를 늘린다
+ReasonCode = Literal[
+    "ASK_PERSON",
+    "MONOLOGUE",
+    "CHITCHAT",
+    "FUTURE_DECISION",
+    "REFERENCE_MATERIAL",
+    "NEEDS_CONTEXT",
+    "OTHER",
+]
+
+
 class JudgeUtteranceResult(ContractModel):
     """발화 하나의 판단 결과"""
 
