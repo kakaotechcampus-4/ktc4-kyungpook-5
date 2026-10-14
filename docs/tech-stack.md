@@ -119,7 +119,7 @@ FE (React SPA) ──REST──> BE (FastAPI)
 | FE | `VITE_API_BASE_URL` | API 서버 주소 |
 | BE | `DATABASE_URL` | PostgreSQL 연결 문자열 |
 | BE | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `S3_BUCKET_NAME` | S3 접근·버킷 |
-| BE (`app/ai`) | `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | ML API 게이트웨이 호출 — 채팅 모델 (`gpt-5.6-terra`) |
+| BE (`app/ai`) | `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | ML API 게이트웨이 호출 — 채팅 모델 (`gpt-5.6-luna`) |
 | BE (`app/ai`) | `AI_REQUEST_TIMEOUT_SECONDS` | 단일 요청 응답 대기 상한(초), 비우면 60 |
 | BE (`app/ai`) | `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_MODEL` | 임베딩 전용 설정 — 키를 비우면 `AI_API_KEY` 재사용 |
 

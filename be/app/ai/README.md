@@ -65,7 +65,8 @@ be/app/ai/
 
 사용 기술은 Python 3.12, LangGraph, langchain-openai, Pydantic, pydantic-settings입니다.
 모델 연동은 Elice ML API의 OpenAI 호환 API와 `ChatOpenAI`를 기준으로 합니다.
-메인 모델은 `gpt-5.6-terra`이며 모델명은 `AI_MODEL`로 전달합니다.
+채팅 모델은 `gpt-5.6-luna`이며 모델명은 `AI_MODEL`로 전달합니다. 회의 판단도 이 모델을 씁니다.
+게이트웨이는 모델마다 배포 주소가 달라서, 모델을 바꾸면 `AI_API_BASE_URL`도 그 모델의 주소로 바꿉니다.
 
 임베딩은 `openai/text-embedding-3-small`을 같은 게이트웨이의 별도 배포로 호출합니다.
 출력은 1536차원이고 이 값이 저장소(pgvector) 컬럼 차원을 정합니다.
