@@ -208,7 +208,7 @@ async def judge_utterance(
 | "민수야 예약했어?" | `NO_LOOKUP` | 띄우지 않음 |
 | "재작년 신환회 장소 어디였지?" (관련 기록 없음) | `NOT_FOUND` · question "2024 신환회 장소" | 기록에 없음 |
 | "작년 회비 얼마였지?" 뒤 검색 중에 "점심 뭐 먹지" | `ANSWER` | 늦게 와도 질문과 함께 띄움 |
-| 모델 호출 시간 초과 | `AITimeoutError` | 처리하지 못함 |
+| 모델 호출 시간 초과 | `AITimeoutError` (`trace` 포함) | 처리하지 못함 |
 
 ### 판단 기록 — `route`, `source_version`, `trace`
 
@@ -287,6 +287,24 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 - `judge_utterance`는 BE 상태를 바꾸지 않는다. 회의가 끝나면 BE가 진행 중인 호출을 취소해도 된다.
 - 제한 시간은 AI가 호출 안에서 지키고, 넘기면 `AITimeoutError`를 올린다.
 - 처리에 실패하면 빈 결과가 아니라 [AI 오류 타입](errors.md)을 올린다. BE는 `AIError`를 "처리하지 못함"으로 보여주고 **자동으로 다시 시도하지 않는다.** 회의 듣기는 계속한다(AI-MEET-07).
+- **실패한 판단도 판단 기록에 남긴다(#117).** 올리는 오류의 `trace`에 실패하기 전까지의 판단 기록(`JudgeTrace`)이 들어 있다. BE는 이 값을 `status=FAILED`인 판단 기록으로 저장한다. 실패한 판단을 빼고 모으면 어떤 발화에서 얼마나 자주 실패하는지 셀 수 없다.
+
+  ```python
+  try:
+      result = await app.ai.judge_utterance(request, records=records)
+  except app.ai.AIError as error:
+      save_failed_decision(request.utterance, error.trace)  # 오류 종류와 함께 저장
+      show_not_processed(request.utterance)
+  ```
+
+  | 실패한 곳 | 오류 | `trace` |
+  | --- | --- | --- |
+  | 판단 시간 초과 | `AITimeoutError` | `judge_ms` 약 10000, `tool_calls` 없음 |
+  | 판단 응답이 형식에 맞지 않음 | `AIInvalidResponseError` | `tool_calls` 없음 |
+  | 기록 검색 | 검색이 올린 오류 | `records.search`가 `FAILED` 또는 `TIMEOUT` |
+  | 답 작성 | 답 작성이 올린 오류 | `records.search`는 `OK`, `llm.generate`가 `FAILED` 또는 `TIMEOUT` |
+
+  예상하지 못한 예외(`AIError`가 아닌 것)는 `trace` 없이 그대로 올라간다. BE는 서버 오류로 처리한다.
 - 운영진이 직접 다시 판단을 요청하면 같은 요청으로 다시 부를 수 있다. 회의를 멈추지 않으므로 자동 재시도와 다르다. 이전 실패 기록은 BE가 남긴다.
 - 음성 인식 실패는 BE에서 끝난다. AI를 부르지 않고 BE가 "처리하지 못함"으로 보여준다.
 - 관련 기록이 없는 것은 실패가 아니라 `NOT_FOUND`다.
@@ -299,7 +317,7 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 ### 아직 정하지 않은 것
 
 - port 주입 방식. 초안은 키워드 인자로 받는다. BE의 AI 초기화 방식과 맞춘다.
-- 판단 기록의 저장 형식과 보관 기간(#117). 결과에 담을 값은 위 "판단 기록"으로 정했다.
+- 판단 기록의 저장 형식과 보관 기간(#117). 결과와 오류에 담을 값은 위 "판단 기록"과 "비동기와 실패"로 정했다.
 - 처리 단계를 화면에 보여줄지(FE), `progress`를 넘기는 방식.
 - 제한 시간 값. 임베딩·검색·답변 생성 지연을 잰 뒤 정한다([측정 기록](meeting-evaluation.md)).
 - `MEETING_CONTEXT_UTTERANCES` 값. 검색어 측정(#123)에서 4개로 정할 예정이고, #114에서 상수로 둔다.
