@@ -148,7 +148,7 @@ class JudgeTrace(ContractModel):
     """이 판단을 누가, 어떤 지시로 내렸고 무엇을 했는지. BE가 판단 기록으로 저장한다"""
 
     model: str                       # 예: "gpt-5.6-luna". Laya·Jev로 바꾸면 그 이름
-    prompt_version: str              # 예: "meeting-judge-v4"
+    prompt_version: str              # 예: "meeting-judge-v5"
     judge_ms: int                    # 판단(과 검색어) 호출에 걸린 시간
     tool_calls: tuple[ToolCall, ...] = ()   # NONE이면 비어 있다
 
@@ -225,7 +225,7 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
   "sources": [{"record_id": "r-12", "file_name": "2025 봄 MT 결과보고", "location": {"label": "2쪽 · 2. 예산"}, "score": 0.82}],
   "trace": {
     "model": "gpt-5.6-luna",
-    "prompt_version": "meeting-judge-v4",
+    "prompt_version": "meeting-judge-v5",
     "judge_ms": 1480,
     "tool_calls": [
       {"tool": "records.search", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 420, "result_count": 3},
