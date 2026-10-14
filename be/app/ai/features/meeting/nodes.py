@@ -13,7 +13,7 @@ from langchain_core.messages import BaseMessage
 from langchain_openai import ChatOpenAI
 
 from ...config import get_settings
-from ...errors import AIInvalidResponseError, AITimeoutError
+from ...errors import AIError, AIInvalidResponseError, AITimeoutError
 from ...llm import ainvoke_structured, build_chat_model
 from .context import PROMPT_VERSION, build_judge_messages
 from .schemas import (
@@ -25,6 +25,7 @@ from .schemas import (
     MeetingStage,
     RecordLookup,
     ToolCall,
+    ToolName,
 )
 
 # 판단 호출의 제한 시간. 빨리 끊으려는 값이 아니라 무한히 기다리지 않으려는 값이다.
@@ -57,7 +58,68 @@ async def judge_utterance(
     """발화 하나를 판단한다. 테스트에서는 `judge`를 가짜로 바꾼다.
 
     판단·검색·답 작성이 실패하면 NONE이나 빈 결과로 바꾸지 않고 AI 오류 타입을 올린다.
+    올리는 오류의 `trace`에는 실패하기 전까지의 판단 기록을 담는다(#117).
     """
+    run = _Run()
+    try:
+        return await _judge(request, run, lookup=lookup, progress=progress, judge=judge)
+    except AIError as error:
+        error.trace = run.trace()
+        raise
+
+
+class _Run:
+    """판단 하나를 처리하며 쌓는 기록. 성공하든 실패하든 같은 값으로 trace를 만든다"""
+
+    def __init__(self) -> None:
+        self.judge_ms = 0
+        self.tool_calls: list[ToolCall] = []
+
+    def trace(self) -> JudgeTrace:
+        return JudgeTrace(
+            model=get_settings().model,
+            prompt_version=PROMPT_VERSION,
+            judge_ms=self.judge_ms,
+            tool_calls=tuple(self.tool_calls),
+        )
+
+    async def call_tool[T](
+        self,
+        tool: ToolName,
+        query: str,
+        call: Awaitable[T],
+        count: Callable[[T], int] | None = None,
+    ) -> T:
+        """도구를 부르고 결과와 걸린 시간을 남긴다. 실패해도 남기고 오류는 그대로 올린다"""
+        started = time.perf_counter()
+        try:
+            value = await call
+        except AIError as error:
+            status = "TIMEOUT" if isinstance(error, AITimeoutError) else "FAILED"
+            self.tool_calls.append(
+                ToolCall(tool=tool, input=query, status=status, duration_ms=_elapsed_ms(started))
+            )
+            raise
+        self.tool_calls.append(
+            ToolCall(
+                tool=tool,
+                input=query,
+                status="OK",
+                duration_ms=_elapsed_ms(started),
+                result_count=count(value) if count else None,
+            )
+        )
+        return value
+
+
+async def _judge(
+    request: JudgeUtteranceRequest,
+    run: _Run,
+    *,
+    lookup: RecordLookup,
+    progress: MeetingProgressPort | None,
+    judge: Judge,
+) -> JudgeUtteranceResult:
     utterance_id = request.utterance.utterance_id
 
     async def stage(name: MeetingStage) -> None:
@@ -71,25 +133,20 @@ async def judge_utterance(
             output = await judge(build_judge_messages(request))
     except TimeoutError as error:
         raise AITimeoutError("회의 판단이 제한 시간 안에 끝나지 않았습니다") from error
-    judge_ms = _elapsed_ms(started)
+    finally:
+        # 실패해도 실패할 때까지 걸린 시간을 남긴다
+        run.judge_ms = _elapsed_ms(started)
 
     query = output.query.strip()
     if output.needs_lookup and not query:
         # 조회가 필요하다면서 검색어가 없으면 찾을 수 없다. NONE으로 바꾸면 놓친 질문이 된다
         raise AIInvalidResponseError("조회가 필요하다는 판단에 검색어가 없습니다")
 
-    tool_calls: list[ToolCall] = []
-
     def result(**fields) -> JudgeUtteranceResult:
         return JudgeUtteranceResult(
             utterance_id=utterance_id,
             source_version=request.utterance.version,
-            trace=JudgeTrace(
-                model=get_settings().model,
-                prompt_version=PROMPT_VERSION,
-                judge_ms=judge_ms,
-                tool_calls=tuple(tool_calls),
-            ),
+            trace=run.trace(),
             **fields,
         )
 
@@ -98,31 +155,14 @@ async def judge_utterance(
         return result(route="NONE", kind="NO_LOOKUP")
 
     await stage("SEARCHING")
-    started = time.perf_counter()
-    chunks = await lookup.search(request.club_id, query)
-    tool_calls.append(
-        ToolCall(
-            tool="records.search",
-            input=query,
-            status="OK",
-            duration_ms=_elapsed_ms(started),
-            result_count=len(chunks),
-        )
+    chunks = await run.call_tool(
+        "records.search", query, lookup.search(request.club_id, query), count=len
     )
     if not chunks:
         return result(route="RAG", kind="NOT_FOUND", question=query)
 
     await stage("ANSWERING")
-    started = time.perf_counter()
-    answer = await lookup.answer(query, chunks)
-    tool_calls.append(
-        ToolCall(
-            tool="llm.generate",
-            input=query,
-            status="OK",
-            duration_ms=_elapsed_ms(started),
-        )
-    )
+    answer = await run.call_tool("llm.generate", query, lookup.answer(query, chunks))
     if answer is None:
         return result(route="RAG", kind="NOT_FOUND", question=query)
 

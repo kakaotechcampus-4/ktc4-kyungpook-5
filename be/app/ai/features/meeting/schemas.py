@@ -80,10 +80,14 @@ class JudgeUtteranceRequest(ContractModel):
         return self
 
 
+# 판단 뒤 AI가 부르는 도구. records.search는 기록 검색, llm.generate는 답 작성이다
+ToolName = Literal["records.search", "llm.generate"]
+
+
 class ToolCall(ContractModel):
     """판단 뒤 AI가 실제로 부른 도구 하나"""
 
-    tool: Literal["records.search", "llm.generate"]
+    tool: ToolName
     # 예: 검색어 "2025 봄 MT 숙소비"
     input: str
     status: Literal["OK", "FAILED", "TIMEOUT"]
