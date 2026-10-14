@@ -104,7 +104,7 @@ class JudgeTrace(ContractModel):
 
     # 예: "gpt-5.6-luna". AI_MODEL 설정값
     model: str
-    # 예: "meeting-judge-v4". 프롬프트 원문을 바꾸면 올린다
+    # 예: "meeting-judge-v5". 프롬프트 원문을 바꾸면 올린다
     prompt_version: str
     # 판단(과 검색어) 호출에 걸린 시간
     judge_ms: int = Field(ge=0)
@@ -116,15 +116,18 @@ class JudgeTrace(ContractModel):
 # 실시간 결과에는 넣지 않는다. 이유를 출력하게 하면 판단이 느려진다(#111).
 # 회의 뒤 다시 판단하거나 사람이 검수할 때 채운다(#117).
 # 앞의 다섯은 prompts/judge.md의 "조회가 필요 없는 경우"와 같은 순서로 하나씩 맞춘다.
-#   ASK_PERSON          특정 사람에게 확인하는 말        "민수야 예약했어?"
+#   CURRENT_STATUS      기록에 없는 지금 일을 묻는 말    "민수야 예약했어?"
 #   MONOLOGUE           혼잣말·감탄                      "이게 맞나"
-#   CHITCHAT            기록과 무관한 잡담               "점심 뭐 먹지?"
+#   CHITCHAT            기록과 무관한 잡담·부탁          "점심 뭐 먹지?", "화면 좀 넘겨 줄래?"
 #   FUTURE_DECISION     앞으로 할 일을 정하는 말         "이번엔 버스 대절하죠"
 #   REFERENCE_MATERIAL  과거 자료를 같이 보자는 말       "작년 축제 자료 펴 놓고 얘기해요"
 #   NEEDS_CONTEXT       가리키는 대상을 아직 알 수 없음  "그거 얼마였지?" (앞에 대상이 없음)
 #   OTHER               어디에도 맞지 않음. 자주 나오면 코드를 늘린다
+# 사람을 불렀는지는 기준이 아니다. "민수야, 작년 회칙상 환불 기준이 뭐였지?"는 RAG다(AI-MEET-01).
+# REFERENCE_MATERIAL은 값을 묻지 않아 값으로 답하지 않을 뿐이다. 이 코드가 붙은 발화 수로
+# 문서 제목과 열기 링크를 띄우는 record_reference를 만들지 정한다(docs/architecture.md).
 ReasonCode = Literal[
-    "ASK_PERSON",
+    "CURRENT_STATUS",
     "MONOLOGUE",
     "CHITCHAT",
     "FUTURE_DECISION",
