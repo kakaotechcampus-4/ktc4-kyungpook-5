@@ -35,6 +35,7 @@ KST = timezone(timedelta(hours=9))
 # 바꿀 때는 PROMPT_VERSION을 올리고 다시 잰 뒤, 새 버전과 해시를 여기에 더한다.
 PROMPT_SHA256 = {
     "meeting-judge-v4": "b99262f3c101c62616b92c5d915b33ca12ef92e26619cc7eeb26ab5cff9c03e7",
+    "meeting-judge-v5": "ddc687c7be138658dda20c5d9381d592ba4a91cd7236c6cd5eca663d83e06166",
 }
 
 SOURCE = RecordSource(
