@@ -27,10 +27,12 @@ from .schemas import (
     ToolCall,
 )
 
-# 판단 호출의 제한 시간. 측정에서 p95 2.45초, 최대 3.22초였다(#111).
-# 넘기면 조용히 버리지 않고 AITimeoutError로 "처리하지 못함"을 알린다(AI-MEET-06).
+# 판단 호출의 제한 시간. 빨리 끊으려는 값이 아니라 무한히 기다리지 않으려는 값이다.
+# 늦은 답도 띄우므로(AI-MEET-06) 드물게 늦는 호출을 버리지 않게 넉넉히 둔다.
+# 측정에서 p95는 2.3초 안팎이었지만 호출 100번 중 1번꼴로 5초를 넘겼다(#114).
+# 넘기면 조용히 버리지 않고 AITimeoutError로 "처리하지 못함"을 알린다.
 # 검색·답 작성의 제한 시간은 그 구간을 잰 뒤 정한다.
-JUDGE_TIMEOUT_SECONDS = 5.0
+JUDGE_TIMEOUT_SECONDS = 10.0
 
 Judge = Callable[[list[BaseMessage]], Awaitable[JudgeOutput]]
 
