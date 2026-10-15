@@ -49,13 +49,17 @@ async def search_records(
     embed: Embed = aembed_texts,
     invoke: Invoke = ainvoke_structured,
     max_rounds: int = MAX_SEARCH_ROUNDS,
+    rewrite: bool = True,
 ) -> RecordSearchResult:
     """동아리 기록에서 찾을 내용의 근거를 찾아 사실·확인하지 못한 것·자료 간 차이로 돌려준다.
 
     관련 기록이 없으면 출처 없이 찾지 못했다는 결과를 돌려준다. 오류가 아니다.
     모델·임베딩 호출이 실패하면 AI 오류 타입이 그대로 올라간다.
     테스트에서는 `embed`와 `invoke`를 가짜로 바꾼다.
-    `max_rounds`는 재검색 효과를 따로 재는 평가에서만 바꾼다.
+
+    호출하는 쪽의 조건에 맞춰 바꿀 수 있다. 회의 어시스턴트처럼 검색어를 이미 만든 경우
+    `rewrite=False`로 검색어 정리를 건너뛰고 `query`를 그대로 검색어로 쓴다.
+    `max_rounds`는 재검색까지 포함한 검색 횟수이고, 판단 모델은 모델을 정한 `invoke`를 넘겨 바꾼다.
     """
     state: SearchState = {
         "request": request,
@@ -66,7 +70,10 @@ async def search_records(
         "assessment": None,
         "result": None,
     }
-    state.update(await rewrite_query(state, invoke=invoke))
+    if rewrite:
+        state.update(await rewrite_query(state, invoke=invoke))
+    else:
+        state["queries"] = [request.query]
     while True:
         found_before = len(state["chunks"])
         state.update(await retrieve(state, port=port, embed=embed))

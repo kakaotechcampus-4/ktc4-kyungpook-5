@@ -389,6 +389,24 @@ def test_계획_중인_인원_회비_장소는_검색과_판단에_넘기지_않
         assert planned == ["계획 중인 행사: event_type=MT, start_date=2026-04-10"]
 
 
+def test_검색어_정리를_건너뛰면_찾을_내용을_그대로_검색어로_쓴다():
+    embed = FakeEmbed()
+    model = FakeModel(_assessment(not_found=["회비"]))
+
+    asyncio.run(
+        search_records(
+            _request(query="2025 봄 MT 1인 회비"),
+            port=_fixture_port(),
+            embed=embed,
+            invoke=model,
+            rewrite=False,
+        )
+    )
+
+    assert embed.calls == [["2025 봄 MT 1인 회비"]]
+    assert [schema for _, schema in model.calls] == [EvidenceAssessment]
+
+
 def test_검색어는_정해진_개수까지만_쓴다():
     embed = FakeEmbed()
     queries = ["회비", "숙소", "환불", "정산", "장소"]
