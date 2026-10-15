@@ -43,10 +43,18 @@ export default function EventCancelPage() {
     toast.show({ kind: 'done', title: '완료로 표시했어요', desc: task.name })
   }
 
-  const showMessage = (task: CancelTask) => {
+  const copyMessage = async (task: CancelTask) => {
     if (!task.message) return
-    copyText(task.message)
-    toast.show({ kind: 'done', title: '연락 문구를 복사했어요', desc: task.name })
+    const ok = await copyText(task.message)
+    toast.show(
+      ok
+        ? { kind: 'done', title: '연락 문구를 복사했어요', desc: task.name }
+        : {
+            kind: 'error',
+            title: '복사하지 못했어요',
+            desc: '오른쪽 연락 문구를 직접 골라서 복사해 주세요.',
+          },
+    )
   }
 
   const meta = [
@@ -121,7 +129,7 @@ export default function EventCancelPage() {
 
       <div className="flex items-start gap-[20px]">
         <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-          <CancelTaskList tasks={tasks} onShowMessage={showMessage} onComplete={complete} />
+          <CancelTaskList tasks={tasks} onCopyMessage={copyMessage} onComplete={complete} />
           <ResolvedActionList
             actions={resolved?.items ?? []}
             totalCount={resolved?.totalCount ?? 0}
@@ -153,10 +161,17 @@ export default function EventCancelPage() {
               </div>
             )}
 
+            {/* 복사가 막혀도 직접 골라 복사할 수 있게 문구를 그대로 보여준다 */}
             {current.message && (
-              <Button variant="soft" className="w-full" onClick={() => showMessage(current)}>
-                연락 문구 보기
-              </Button>
+              <div className="flex flex-col gap-[7px]">
+                <span className="text-[12px] font-bold text-ink">연락 문구</span>
+                <p className="rounded-[11px] bg-bg px-[14px] py-[12px] text-[12px] leading-[18px] whitespace-pre-line text-ink2">
+                  {current.message}
+                </p>
+                <Button variant="soft" className="w-full" onClick={() => copyMessage(current)}>
+                  연락 문구 복사
+                </Button>
+              </div>
             )}
           </Card>
         )}
