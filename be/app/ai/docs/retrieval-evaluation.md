@@ -7,7 +7,7 @@
 
 ```bash
 cd be && uv run python app/ai/scripts/check_index_record.py [--json 결과.json]
-cd be && uv run python app/ai/scripts/eval_retrieval.py [--search vector|records] [--max-rounds N] \
+cd be && uv run python app/ai/scripts/eval_retrieval.py [--search vector|records] [--max-rounds N] [--no-rewrite] \
     [--header full|file|none] [--holdout] [--no-cache] [--json 결과.json]
 ```
 
@@ -19,6 +19,8 @@ cd be && uv run python app/ai/scripts/eval_retrieval.py [--search vector|records
   - `--search records`: 기록 검색 `search_records` 전체를 부른다. 검색어가 여러 개면 찾은 청크를 검색어 순서대로 이어 검색 지표를 잰다.
     결과(사실·확인하지 못한 것·자료 간 차이)를 정답과 비교한 결과 지표와 모델 응답이 잘못돼 실패한 수도 낸다
   - `--max-rounds`: `records`의 검색 횟수. 기본값은 기록 검색의 기본값(1, 검색어 정리만)이고 2면 재검색까지 잰다
+  - `--no-rewrite`: `records`에서 검색어 정리를 건너뛰고 질문을 그대로 검색어로 쓴다. 회의 어시스턴트가 부르는 방식이다
+  - `records`는 질문마다 구간별 시간(검색어 정리, 임베딩, 청크 검색, 근거 판단)을 남긴다. 청크 검색은 메모리 port라 BE pgvector 시간이 아니다
   - `--header`: 청크 임베딩 이름표. `full` 문서명·위치(현재 색인), `file` 문서명만, `none` 없음
   - `--holdout`: 확인용 질문도 잰다. 개선하는 동안에는 끄고, 기록에 남길 측정에서만 켠다
   - 캐시: 임베딩은 모델·차원·글이, LLM 응답은 모델·출력 형식·메시지가 같으면 `be/app/ai/scripts/.cache/`에 저장한 값을 다시 쓴다.
