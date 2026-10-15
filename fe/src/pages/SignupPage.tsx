@@ -156,7 +156,11 @@ export default function SignupPage() {
             {mode === 'JOIN' ? (
               <ClubSearchField
                 query={query}
-                onQueryChange={setQuery}
+                // 검색어가 바뀌면 고른 동아리를 푼다. 결과에서 사라진 동아리로 요청이 가지 않게.
+                onQueryChange={(value) => {
+                  setQuery(value)
+                  setClub(undefined)
+                }}
                 results={results}
                 selected={club}
                 onSelect={setClub}
