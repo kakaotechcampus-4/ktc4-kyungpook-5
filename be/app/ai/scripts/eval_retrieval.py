@@ -207,14 +207,16 @@ def judge(question: dict, result: RecordSearchResult | None) -> dict:
     expected = question["expected"]
     facts = result.facts if result else ()
     conflicts = result.conflicts if result else ()
-    items = gold_items(question)
-    gold = set().union(*items) if items else set()
+    gold_records = {record_id for item in gold_items(question) for record_id, _ in item}
     return {
         "facts": len(expected["facts"]),
         "facts_hit": sum(any(_matches(e, f) for f in facts) for e in expected["facts"]),
         "result_facts": len(facts),
-        # 출처가 정답 청크와 하나도 겹치지 않는 사실. 다른 연도·행사의 값을 낸 경우를 잡는다
-        "wrong_facts": sum(not (_fact_keys(f) & gold) for f in facts),
+        # 출처가 정답 기록과 하나도 겹치지 않는 사실. 다른 연도·행사의 값을 낸 경우를 잡는다.
+        # 청크 단위로 보면 같은 기록의 다른 청크에서 함께 가져온 관련 사실까지 틀린 것이 된다
+        "wrong_facts": sum(
+            not ({s.record_id for s in f.sources} & gold_records) for f in facts
+        ),
         "not_found": bool(expected["not_found"]),
         "not_found_hit": bool(expected["not_found"])
         and bool(result and result.not_found),
