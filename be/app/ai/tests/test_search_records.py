@@ -346,6 +346,29 @@ def test_검색어_정리에는_오늘과_계획_중인_행사가_들어간다()
     assert "event_type=MT" in content and "start_date=2026-04-10" in content
 
 
+def test_계획_중인_인원_회비_장소는_검색과_판단에_넘기지_않는다():
+    model = FakeModel(
+        SearchQueries(queries=["2025 봄 MT 1인 회비"]),
+        _assessment(not_found=["회비"]),
+    )
+    conditions = EventConditions(
+        event_type=EventType.MT,
+        start_date=date(2026, 4, 10),
+        headcount=30,
+        budget_total=1_500_000,
+        fee_per_person=60_000,
+        location="가평",
+    )
+
+    _search(_request(conditions=conditions), model)
+
+    # 판단 메시지에는 찾은 기록 원문도 들어가므로 행사 줄만 본다
+    for messages, _ in model.calls:
+        lines = messages[1].content.splitlines()
+        planned = [line for line in lines if line.startswith("계획 중인 행사:")]
+        assert planned == ["계획 중인 행사: event_type=MT, start_date=2026-04-10"]
+
+
 def test_검색어는_정해진_개수까지만_쓴다():
     embed = FakeEmbed()
     queries = ["회비", "숙소", "환불", "정산", "장소"]

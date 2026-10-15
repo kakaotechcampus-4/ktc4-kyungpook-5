@@ -191,7 +191,11 @@ def _fact(item: EvidenceItem, by_id: dict[str, RetrievedChunk]) -> RecordFact:
 def _request_context(request: RecordSearchRequest) -> str:
     lines = [f"오늘: {request.today.isoformat()}", f"찾을 내용: {request.query}"]
     if request.conditions is not None:
-        conditions = request.conditions.model_dump(mode="json", exclude_none=True)
+        # 검색에는 행사 종류와 시기만 쓴다. 계획 중인 인원·회비·장소를 넘기면
+        # 검색어가 계획값으로 좁혀지거나 근거 판단에서 기록 속 값과 섞일 수 있다
+        conditions = request.conditions.model_dump(
+            mode="json", include={"event_type", "start_date"}, exclude_none=True
+        )
         if conditions:
             lines.append(
                 "계획 중인 행사: "

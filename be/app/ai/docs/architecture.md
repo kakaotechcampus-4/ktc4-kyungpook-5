@@ -301,7 +301,7 @@ BE가 파일 파싱 (parse_result)
 → BE가 기록 메타데이터를 붙여 청크 저장 + INDEXED (실패하면 FAILED)
 
 [검색] features/retrieval/nodes.py search_records
-AI가 찾을 내용·기준일·행사 맥락으로 검색어 정리 → 검색어 임베딩
+AI가 찾을 내용·기준일·계획 중인 행사의 종류와 시기로 검색어 정리 → 검색어 임베딩
 → RecordSearchPort.search_chunks: BE가 동아리 범위로 제한해 비슷한 청크와 메타데이터 반환
 → AI가 근거가 충분한지 판단하고 결과 구성 (부족하면 검색어를 바꿔 다시 찾음, 검색은 최대 2회)
 → 확인한 사실과 출처, 확인하지 못한 것, 자료 간 차이
