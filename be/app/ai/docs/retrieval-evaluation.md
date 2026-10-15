@@ -6,16 +6,21 @@
 ## 재는 방법
 
 ```bash
-cd be && uv run python app/ai/scripts/check_index_record.py [--json 결과.json] [--no-header]
+cd be && uv run python app/ai/scripts/check_index_record.py [--json 결과.json]
+cd be && uv run python app/ai/scripts/eval_retrieval.py [--header full|file|none] [--holdout] [--json 결과.json]
 ```
 
 - 키가 필요해 CI에서 돌리지 않는다. `be/.env`의 `AI_EMBEDDING_*`를 쓴다.
-- 색인: 예시 기록 4종과 실제 한컴 PDF(`be/tests/fixtures/records/sample_report.pdf`, BE 파서 경유)
-- 검색: 예시 기록 4종을 메모리 port에 넣고 질문 6개로 상위 3개를 본다. 1개는 기대값 없이 관찰만 한다
-- 지표: 기대 청크가 1위인 질문 수(hit@1), 3위 안에 든 질문 수(hit@3)
-- `--no-header`: 청크 임베딩에서 문서명·위치 이름표를 빼고 잰다(이름표 효과 비교용)
+- 색인(`check_index_record.py`): 예시 기록 4종과 실제 한컴 PDF(`be/tests/fixtures/records/sample_report.pdf`, BE 파서 경유)의 청크 수·길이·시간
+- 검색(`eval_retrieval.py`): 예시 기록 12종을 메모리 port에 넣고 [평가 질문](../tests/fixtures/eval/README.md)으로 상위 5개를 본다
+  - 지표: Hit@1·3·5, MRR, Recall@1·3·5. 정의는 평가 질문 README에 있다. 개발용·확인용과 요구사항별로 나눠 보인다
+  - 검색 방식: 질문을 그대로 임베딩해 찾는다(기준점). 검색 방식은 스크립트에 검색 함수로 더한다
+  - `--header`: 청크 임베딩 이름표. `full` 문서명·위치(현재 색인), `file` 문서명만, `none` 없음
+  - `--holdout`: 확인용 질문도 잰다. 개선하는 동안에는 끄고, 기록에 남길 측정에서만 켠다
+  - 결과 JSON에 커밋 해시, 커밋하지 않은 변경이 있었는지(`dirty`), 설정값, 질문별 상위 청크·시간·임베딩 요청 수가 남는다
 
-질문 6개는 스크립트의 `QUESTIONS`에 있다. 질문을 바꾸면 이전 기록과 직접 비교할 수 없으므로 기록에 적는다.
+질문이나 정답을 바꾸면 이전 기록과 직접 비교할 수 없으므로 기록에 적는다.
+아래 2026-10-07 기록은 이전 방식(예시 기록 4종, 질문 6개, 상위 3개)으로 잰 값이라 평가 질문 세트로 잰 값과 직접 비교하지 않는다.
 
 ---
 
