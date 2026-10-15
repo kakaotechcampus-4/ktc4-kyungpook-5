@@ -23,18 +23,6 @@ class Settings(BaseSettings):
     # 운영 배포가 DB 없이 동작해야 해서 기동 시점에 검사하지 않는다.
     database_url: str = ""
 
-    # 업로드 파일(영수증·CSV 등) 저장 경로. S3 연동 전까지 로컬 디스크를 쓴다.
-    # storage_key는 이 경로 기준 상대경로로 남겨 나중에 S3로 바꿔도 호출부가
-    # 바뀌지 않게 한다.
-    storage_dir: str = "./var/storage"
-
-    # 카카오 로그인(OAuth). 비워두면 /auth/kakao/callback 호출 시 실패한다.
-    kakao_rest_api_key: str = ""
-    kakao_redirect_uri: str = ""
-
-    # TEST_MODE=true일 때만 /test-support/* 라우트를 등록한다. 운영 환경은 404.
-    test_mode: bool = False
-
     ai: AISettings = Field(default_factory=AISettings)
 
     def require_database_url(self) -> str:

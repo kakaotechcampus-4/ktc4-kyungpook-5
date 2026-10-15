@@ -1,12 +1,11 @@
 """동아리와 동아리원."""
 
-from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Index, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.enums import ClubCategory, InvitationStatus, MemberRole, MemberStatus
+from app.core.enums import ClubCategory, MemberRole, MemberStatus
 from app.db.base import Base, ID_LENGTH, IdMixin, TimestampMixin, enum_column, fk
 
 if TYPE_CHECKING:
@@ -30,25 +29,20 @@ class Club(IdMixin, TimestampMixin, Base):
 class Member(IdMixin, TimestampMixin, Base):
     """동아리원.
 
-    account_id가 없는 행이 있을 수 있다. 계정(로그인) 없이 명단에만 있는
-    동아리원을 참가자·미납자 집계에 넣기 위해서다. 로그인 신원은 Account가 들고
-    있고(#131), 이 테이블은 "그 계정이 이 동아리에서 어떤 역할인지"만 본다.
+    email과 password_hash가 없는 행이 있을 수 있다. 계정 없이 명단에만 있는
+    동아리원을 참가자·미납자 집계에 넣기 위해서다.
     """
 
     __tablename__ = "members"
     __id_prefix__ = "mbr"
     __table_args__ = (
-        # 같은 동아리에 같은 계정이 두 번 등록되면 권한 확인 시 어느 행인지 정할 수 없다.
-        # account_id가 NULL인 행(계정 없는 동아리원)은 PostgreSQL이 중복으로 보지 않아
-        # 여럿 가능하다.
-        UniqueConstraint("club_id", "account_id", name="uq_members_club_account"),
+        # 같은 동아리에 같은 이메일이 두 번 등록되면 로그인 시 어느 행인지 정할 수 없다.
+        # email이 NULL인 행(계정 없는 동아리원)은 PostgreSQL이 중복으로 보지 않아 여럿 가능하다.
+        UniqueConstraint("club_id", "email", name="uq_members_club_email"),
     )
 
     club_id: Mapped[str] = mapped_column(
         String(ID_LENGTH), fk("clubs.id"), nullable=False, index=True
-    )
-    account_id: Mapped[str | None] = mapped_column(
-        String(ID_LENGTH), fk("accounts.id"), index=True
     )
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     role: Mapped[MemberRole] = mapped_column(enum_column(MemberRole), nullable=False)
@@ -60,6 +54,8 @@ class Member(IdMixin, TimestampMixin, Base):
     # 학번. 명단 전용(계정 없는) 동아리원을 사람으로 식별하는 용도.
     student_no: Mapped[str | None] = mapped_column(String(20))
     phone: Mapped[str | None] = mapped_column(String(20))
+    email: Mapped[str | None] = mapped_column(String(255))
+    password_hash: Mapped[str | None] = mapped_column(String(255))
     # 마이페이지 알림 설정.
     notify_approval_pending: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True
@@ -70,34 +66,3 @@ class Member(IdMixin, TimestampMixin, Base):
 
     club: Mapped["Club"] = relationship(back_populates="members")
     participations: Mapped[list["Participant"]] = relationship(back_populates="member")
-
-
-class Invitation(IdMixin, TimestampMixin, Base):
-    """동아리 운영진 초대. 초대 시점에는 받는 사람의 Account가 없을 수 있다."""
-
-    __tablename__ = "invitations"
-    __id_prefix__ = "inv"
-    __table_args__ = (
-        Index("ix_invitations_club_email_status", "club_id", "email", "status"),
-    )
-
-    club_id: Mapped[str] = mapped_column(
-        String(ID_LENGTH), fk("clubs.id"), nullable=False
-    )
-    email: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[MemberRole] = mapped_column(enum_column(MemberRole), nullable=False)
-    # 원문을 저장하지 않는다. 메일로만 전달한다.
-    token_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    status: Mapped[InvitationStatus] = mapped_column(
-        enum_column(InvitationStatus), nullable=False, default=InvitationStatus.PENDING
-    )
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    invited_by: Mapped[str] = mapped_column(
-        String(ID_LENGTH), fk("members.id"), nullable=False
-    )
-    accepted_by: Mapped[str | None] = mapped_column(
-        String(ID_LENGTH), fk("accounts.id")
-    )
-    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-    club: Mapped["Club"] = relationship()

@@ -25,17 +25,8 @@ ALEMBIC_INI = Path(__file__).resolve().parents[1] / "alembic.ini"
 
 @pytest.fixture
 def client() -> TestClient:
-    """서버를 띄우지 않고 앱을 직접 호출한다.
-
-    TestClient는 요청마다 자기 전용 스레드에서 별도 이벤트 루프(portal)를
-    띄운다. DB를 쓰는 라우터는 psycopg 비동기가 Windows 기본
-    ProactorEventLoop에서 안 돌아가므로, 이 portal도 anyio_backend와 같은
-    SelectorEventLoop를 쓰게 한다. mock 전용 테스트는 이 옵션이 있어도
-    동작이 같다.
-    """
-    return TestClient(
-        app, backend_options={"loop_factory": asyncio.SelectorEventLoop}
-    )
+    """서버를 띄우지 않고 앱을 직접 호출한다."""
+    return TestClient(app)
 
 
 @pytest.fixture
