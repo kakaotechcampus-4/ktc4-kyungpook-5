@@ -1,0 +1,1669 @@
+[
+  {
+    "id": "q01",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 MT 회비는 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "45,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            },
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 3. 정산"
+              }
+            },
+            {
+              "record_id": "rec_notice_2025_spring_mt",
+              "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+              "location": {
+                "label": "1쪽"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h1",
+              "file_name": "2025 상반기 장부.xlsx",
+              "location": {
+                "label": "회비 수납 시트 · 2~15행"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h1",
+              "file_name": "2025 상반기 장부.xlsx",
+              "location": {
+                "label": "회비 수납 시트 · 16~28행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    },
+    "note": "'작년 MT'를 계획 중인 행사(봄)로 좁혀 2025 봄 MT로 봤다. 가장 최근인 2025 가을 MT(50,000원)로 볼 수도 있다"
+  },
+  {
+    "id": "q02",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 봄 MT는 몇 명이 갔어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "28명",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q03",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 봄 MT 어디로 갔었지?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "가평 ○○펜션",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            },
+            {
+              "record_id": "rec_notice_2025_spring_mt",
+              "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+              "location": {
+                "label": "1쪽"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h1",
+              "file_name": "2025 상반기 장부.xlsx",
+              "location": {
+                "label": "지출 시트 · 2~9행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q04",
+    "split": "holdout",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 봄 MT 일정은 언제였어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "3월 15일",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            },
+            {
+              "record_id": "rec_notice_2025_spring_mt",
+              "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+              "location": {
+                "label": "1쪽"
+              }
+            }
+          ]
+        },
+        {
+          "content": "1박 2일",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            },
+            {
+              "record_id": "rec_notice_2025_spring_mt",
+              "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+              "location": {
+                "label": "1쪽"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q05",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 봄 MT 예산은 전체 얼마로 잡았어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "1,260,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 2. 예산"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q06",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 봄 MT 때 예산을 얼마나 초과했어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "42,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 3. 정산"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h1",
+              "file_name": "2025 상반기 장부.xlsx",
+              "location": {
+                "label": "지출 시트 · 2~9행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q07",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 봄 MT 숙소비는 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "550,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 2. 예산"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q08",
+    "split": "holdout",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 봄 MT 식비는 실제로 얼마 들었어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "412,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 2. 예산"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h1",
+              "file_name": "2025 상반기 장부.xlsx",
+              "location": {
+                "label": "지출 시트 · 2~9행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q09",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 봄 MT 예비비는 얼마나 썼어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "172,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 2. 예산"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    },
+    "note": "장부에는 예비비 130,000원과 초과 정산 42,000원이 따로 있다. 합계 172,000원은 결과보고에만 있어 결과보고만 출처로 뒀다"
+  },
+  {
+    "id": "q10",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 봄 MT 회고에서 다음에 고치자고 한 게 뭐야?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "15%",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "3쪽 · 4. 회고"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q11",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "지난 가을 MT 버스 대절비는 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "150,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_autumn_report",
+              "file_name": "2025 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 2. 예산"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h2",
+              "file_name": "2025 하반기 장부.xlsx",
+              "location": {
+                "label": "지출 시트 · 2~6행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q12",
+    "split": "holdout",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 가을 MT 1인 회비는 얼마 받았어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "50,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_autumn_report",
+              "file_name": "2025 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            },
+            {
+              "record_id": "rec_mt_2025_autumn_report",
+              "file_name": "2025 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 3. 정산"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q13",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "MT 때 버스 대절하면 보통 얼마 들었어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "200,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2024_autumn_report",
+              "file_name": "2024 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 2. 예산"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2024_h2",
+              "file_name": "2024 하반기 장부.csv",
+              "location": {
+                "label": "2~7행"
+              }
+            }
+          ]
+        },
+        {
+          "content": "150,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_autumn_report",
+              "file_name": "2025 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 2. 예산"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h2",
+              "file_name": "2025 하반기 장부.xlsx",
+              "location": {
+                "label": "지출 시트 · 2~6행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q14",
+    "split": "holdout",
+    "requirement": "AI-PLAN-04",
+    "question": "봄 MT 1인 회비는 그동안 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "40,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2023_report",
+              "file_name": "2023 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            },
+            {
+              "record_id": "rec_mt_2023_report",
+              "file_name": "2023 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 3. 정산"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2023",
+              "file_name": "2023 장부.csv",
+              "location": {
+                "label": "2~10행"
+              }
+            }
+          ]
+        },
+        {
+          "content": "45,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            },
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 3. 정산"
+              }
+            },
+            {
+              "record_id": "rec_notice_2025_spring_mt",
+              "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+              "location": {
+                "label": "1쪽"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h1",
+              "file_name": "2025 상반기 장부.xlsx",
+              "location": {
+                "label": "회비 수납 시트 · 2~15행"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h1",
+              "file_name": "2025 상반기 장부.xlsx",
+              "location": {
+                "label": "회비 수납 시트 · 16~28행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q15",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "작년 MT 준비하면서 버스 때문에 문제 있었어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "30분",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_autumn_report",
+              "file_name": "2025 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "3쪽 · 4. 회고"
+              }
+            },
+            {
+              "record_id": "rec_feedback_2025_autumn_mt",
+              "file_name": "2025 가을 MT 회고",
+              "location": {
+                "label": "운영진 회고 · 2. 아쉬운 점"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    },
+    "note": "버스 문제는 2025 가을 MT에만 있다. 계획 중인 행사(봄)로 좁히면 2025 봄 MT에는 없다고 답할 수도 있다"
+  },
+  {
+    "id": "q16",
+    "split": "dev",
+    "requirement": "AI-PLAN-04",
+    "question": "버스 예약은 언제쯤 해야 한다고 했어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "2주 전",
+          "sources": [
+            {
+              "record_id": "rec_feedback_2025_autumn_mt",
+              "file_name": "2025 가을 MT 회고",
+              "location": {
+                "label": "운영진 회고 · 3. 다음 행사에 반영할 점"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q17",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "학기 회비는 얼마야?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "20,000",
+          "sources": [
+            {
+              "record_id": "rec_rules_2024",
+              "file_name": "동아리 회칙 (2024 개정).pdf",
+              "location": {
+                "label": "2쪽 · 제8조(학기 회비)"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2023",
+              "file_name": "2023 장부.csv",
+              "location": {
+                "label": "2~10행"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h2",
+              "file_name": "2025 하반기 장부.xlsx",
+              "location": {
+                "label": "회비 수납 시트 · 2~5행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q18",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "행사 취소하면 환불 받을 수 있어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "전액",
+          "sources": [
+            {
+              "record_id": "rec_rules_2024",
+              "file_name": "동아리 회칙 (2024 개정).pdf",
+              "location": {
+                "label": "2쪽 · 제10조(참가비 환불)"
+              }
+            }
+          ]
+        },
+        {
+          "content": "50%",
+          "sources": [
+            {
+              "record_id": "rec_rules_2024",
+              "file_name": "동아리 회칙 (2024 개정).pdf",
+              "location": {
+                "label": "2쪽 · 제10조(참가비 환불)"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q19",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "30만 원 넘게 쓰려면 누구 승인이 필요해?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "회장",
+          "sources": [
+            {
+              "record_id": "rec_rules_2024",
+              "file_name": "동아리 회칙 (2024 개정).pdf",
+              "location": {
+                "label": "3쪽 · 제12조(지출 승인)"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q20",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "예비비는 예산의 몇 퍼센트로 잡아야 해?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "10%",
+          "sources": [
+            {
+              "record_id": "rec_rules_2024",
+              "file_name": "동아리 회칙 (2024 개정).pdf",
+              "location": {
+                "label": "3쪽 · 제11조(예비비)"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    },
+    "note": "2025 봄 MT 회고의 '15% 이상으로 잡자'는 제안이라 정답에 넣지 않았다"
+  },
+  {
+    "id": "q21",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "2024 가을 MT는 몇 명 참가했어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "32명",
+          "sources": [
+            {
+              "record_id": "rec_mt_2024_autumn_report",
+              "file_name": "2024 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q22",
+    "split": "holdout",
+    "requirement": "AI-RET-01",
+    "question": "2024 가을 MT 숙소는 어디였어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "양평 △△펜션",
+          "sources": [
+            {
+              "record_id": "rec_mt_2024_autumn_report",
+              "file_name": "2024 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2024_h2",
+              "file_name": "2024 하반기 장부.csv",
+              "location": {
+                "label": "2~7행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q23",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "2023 봄 MT 1인 회비는 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "40,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2023_report",
+              "file_name": "2023 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            },
+            {
+              "record_id": "rec_mt_2023_report",
+              "file_name": "2023 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 3. 정산"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2023",
+              "file_name": "2023 장부.csv",
+              "location": {
+                "label": "2~10행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q24",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "2023 봄 MT 끝나고 남은 돈은 어떻게 했어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "100,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2023_report",
+              "file_name": "2023 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 3. 정산"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q25",
+    "split": "holdout",
+    "requirement": "AI-RET-01",
+    "question": "2025 신환회에 쓴 돈은 모두 얼마야?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "398,000",
+          "sources": [
+            {
+              "record_id": "rec_welcome_2025_report",
+              "file_name": "2025 신환회 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 2. 지출"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    },
+    "note": "장부에도 식당 350,000원·다과 48,000원이 있지만 합계는 결과보고에만 있어 결과보고만 출처로 뒀다"
+  },
+  {
+    "id": "q26",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "신환회 때 참가비 받았어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "받지 않",
+          "sources": [
+            {
+              "record_id": "rec_welcome_2025_report",
+              "file_name": "2025 신환회 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q27",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "2025 봄 MT 신청 마감일이 언제였어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "3월 10일",
+          "sources": [
+            {
+              "record_id": "rec_notice_2025_spring_mt",
+              "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+              "location": {
+                "label": "1쪽"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q28",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "2025 봄 MT 정원은 몇 명이었어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "32명",
+          "sources": [
+            {
+              "record_id": "rec_notice_2025_spring_mt",
+              "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+              "location": {
+                "label": "1쪽"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q29",
+    "split": "holdout",
+    "requirement": "AI-RET-01",
+    "question": "2024 하반기 학술제 대관료는 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "150,000",
+          "sources": [
+            {
+              "record_id": "rec_ledger_2024_h2",
+              "file_name": "2024 하반기 장부.csv",
+              "location": {
+                "label": "2~7행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q30",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "2025 종강총회 비용은 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "450,000",
+          "sources": [
+            {
+              "record_id": "rec_ledger_2025_h2",
+              "file_name": "2025 하반기 장부.xlsx",
+              "location": {
+                "label": "지출 시트 · 2~6행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q31",
+    "split": "holdout",
+    "requirement": "AI-RET-01",
+    "question": "2023 가을 MT는 어디로 갔어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "가평 ☆☆펜션",
+          "sources": [
+            {
+              "record_id": "rec_ledger_2023",
+              "file_name": "2023 장부.csv",
+              "location": {
+                "label": "2~10행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q32",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "동아리 이름이 뭐야?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "큰나무",
+          "sources": [
+            {
+              "record_id": "rec_rules_2024",
+              "file_name": "동아리 회칙 (2024 개정).pdf",
+              "location": {
+                "label": "1쪽 · 제1조(명칭)"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q33",
+    "split": "holdout",
+    "requirement": "AI-RET-01",
+    "question": "2025 가을 MT 회비는 모두 얼마 걷었어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "1,500,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_autumn_report",
+              "file_name": "2025 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 3. 정산"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    },
+    "note": "장부에는 500,000원 세 줄이라 더해야 한다. 합계는 결과보고에만 있어 결과보고만 출처로 뒀다"
+  },
+  {
+    "id": "q34",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "2025 가을 MT 식비 예산은 얼마로 잡았어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "300,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_autumn_report",
+              "file_name": "2025 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 2. 예산"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q35",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "2023 가을 MT 회비는 몇 명이 냈어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "29명",
+          "sources": [
+            {
+              "record_id": "rec_ledger_2023",
+              "file_name": "2023 장부.csv",
+              "location": {
+                "label": "2~10행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q36",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "2024 하반기 종강총회 식비는 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "420,000",
+          "sources": [
+            {
+              "record_id": "rec_ledger_2024_h2",
+              "file_name": "2024 하반기 장부.csv",
+              "location": {
+                "label": "2~7행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q37",
+    "split": "dev",
+    "requirement": "AI-RET-03",
+    "question": "재작년 봄 MT는 몇 명 갔어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [],
+      "not_found": [
+        "2024 봄 MT 참가 인원"
+      ],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q38",
+    "split": "dev",
+    "requirement": "AI-RET-03",
+    "question": "작년 겨울 MT 회비는 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [],
+      "not_found": [
+        "2025 겨울 MT 회비"
+      ],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q39",
+    "split": "dev",
+    "requirement": "AI-RET-03",
+    "question": "작년 체육대회 예산은 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [],
+      "not_found": [
+        "2025 체육대회 예산"
+      ],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q40",
+    "split": "holdout",
+    "requirement": "AI-RET-03",
+    "question": "작년 봄 MT 버스 대절 비용은 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [],
+      "not_found": [
+        "2025 봄 MT 버스 대절 비용"
+      ],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q41",
+    "split": "dev",
+    "requirement": "AI-RET-03",
+    "question": "작년 봄 MT 예비비는 어디에 썼어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "172,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 2. 예산"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [
+        "2025 봄 MT 예비비 사용처"
+      ],
+      "conflicts": []
+    },
+    "note": "장부에도 예비비 130,000원과 초과분 42,000원만 있고 사용처는 없다. 172,000원이 장부 원문에 없어 장부를 출처로 두지 않았다. 장부를 인용한 답은 틀린 답이 아니지만 결과 지표에서 틀린 사실로 잡힌다"
+  },
+  {
+    "id": "q42",
+    "split": "dev",
+    "requirement": "AI-RET-03",
+    "question": "작년 봄 MT 회비는 몇 명이 냈어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [],
+      "not_found": [],
+      "conflicts": [
+        {
+          "description": "2025 봄 MT 회비 납부 인원",
+          "values": [
+            {
+              "content": "28",
+              "sources": [
+                {
+                  "record_id": "rec_mt_2025_report",
+                  "file_name": "2025 봄 MT 결과보고.pdf",
+                  "location": {
+                    "label": "2쪽 · 3. 정산"
+                  }
+                }
+              ]
+            },
+            {
+              "content": "27",
+              "sources": [
+                {
+                  "record_id": "rec_ledger_2025_h1",
+                  "file_name": "2025 상반기 장부.xlsx",
+                  "location": {
+                    "label": "회비 수납 시트 · 2~15행"
+                  }
+                },
+                {
+                  "record_id": "rec_ledger_2025_h1",
+                  "file_name": "2025 상반기 장부.xlsx",
+                  "location": {
+                    "label": "회비 수납 시트 · 16~28행"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "note": "결과보고 정산은 45,000원 × 28명, 장부 수납은 27건이다. 장부 값은 두 청크의 행을 세야 나와 '27'이 결과에 그대로 쓰이지 않을 수 있다"
+  },
+  {
+    "id": "q43",
+    "split": "holdout",
+    "requirement": "AI-RET-03",
+    "question": "작년 가을 MT 숙소비는 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [],
+      "not_found": [],
+      "conflicts": [
+        {
+          "description": "2025 가을 MT 숙소비",
+          "values": [
+            {
+              "content": "900,000",
+              "sources": [
+                {
+                  "record_id": "rec_mt_2025_autumn_report",
+                  "file_name": "2025 가을 MT 결과보고.pdf",
+                  "location": {
+                    "label": "2쪽 · 2. 예산"
+                  }
+                }
+              ]
+            },
+            {
+              "content": "880,000",
+              "sources": [
+                {
+                  "record_id": "rec_ledger_2025_h2",
+                  "file_name": "2025 하반기 장부.xlsx",
+                  "location": {
+                    "label": "지출 시트 · 2~6행"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "q44",
+    "split": "dev",
+    "requirement": "AI-RET-03",
+    "question": "작년 봄 MT 물품 산 내역 자세히 알려줘",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "168,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 2. 예산"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h1",
+              "file_name": "2025 상반기 장부.xlsx",
+              "location": {
+                "label": "지출 시트 · 2~9행"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [
+        "2025 봄 MT 물품 세부 내역"
+      ],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q45",
+    "split": "dev",
+    "requirement": "AI-RET-01",
+    "question": "작년 MT에 몇 명 참가했어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "28명",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            }
+          ]
+        },
+        {
+          "content": "30명",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_autumn_report",
+              "file_name": "2025 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    },
+    "note": "계획 중인 행사가 없어 2025 봄·가을 MT를 모두 정답으로 봤다"
+  },
+  {
+    "id": "q46",
+    "split": "holdout",
+    "requirement": "AI-RET-03",
+    "question": "2024 신환회에는 돈이 얼마 들었어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [],
+      "not_found": [
+        "2024 신환회 비용"
+      ],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q47",
+    "split": "dev",
+    "requirement": "AI-RET-03",
+    "question": "작년 학술제 대관료는 얼마였어?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [],
+      "not_found": [
+        "2025 학술제 대관료"
+      ],
+      "conflicts": []
+    },
+    "note": "2025 학술제는 다과 60,000원만 있다. 2024 학술제 대관료(150,000원)를 쓰면 틀린다. 다과비를 사실로 낼지 확인 필요"
+  },
+  {
+    "id": "q48",
+    "split": "dev",
+    "requirement": "AI-COMMON-01",
+    "question": "작년 봄 MT 회고 내용 정리해줘",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "바비큐장",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "3쪽 · 4. 회고"
+              }
+            }
+          ]
+        },
+        {
+          "content": "부족",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "3쪽 · 4. 회고"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  },
+  {
+    "id": "q49",
+    "split": "dev",
+    "requirement": "AI-COMMON-01",
+    "question": "다음 MT 회비 정할 때 참고할 기록 있어?",
+    "today": "2026-03-02",
+    "conditions": {
+      "event_type": "MT",
+      "start_date": "2026-04-10"
+    },
+    "expected": {
+      "facts": [
+        {
+          "content": "45,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            },
+            {
+              "record_id": "rec_mt_2025_report",
+              "file_name": "2025 봄 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 3. 정산"
+              }
+            },
+            {
+              "record_id": "rec_notice_2025_spring_mt",
+              "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+              "location": {
+                "label": "1쪽"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h1",
+              "file_name": "2025 상반기 장부.xlsx",
+              "location": {
+                "label": "회비 수납 시트 · 2~15행"
+              }
+            },
+            {
+              "record_id": "rec_ledger_2025_h1",
+              "file_name": "2025 상반기 장부.xlsx",
+              "location": {
+                "label": "회비 수납 시트 · 16~28행"
+              }
+            }
+          ]
+        },
+        {
+          "content": "50,000",
+          "sources": [
+            {
+              "record_id": "rec_mt_2025_autumn_report",
+              "file_name": "2025 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "1쪽 · 1. 행사 개요"
+              }
+            },
+            {
+              "record_id": "rec_mt_2025_autumn_report",
+              "file_name": "2025 가을 MT 결과보고.pdf",
+              "location": {
+                "label": "2쪽 · 3. 정산"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    },
+    "note": "2025 가을 MT 회고 속 '회비를 무조건 60,000원으로 제안'을 따르면 틀린다. 60,000원이 결과에 나오는지는 지금 라벨로 잡지 못한다"
+  },
+  {
+    "id": "q50",
+    "split": "dev",
+    "requirement": "AI-COMMON-01",
+    "question": "2025 가을 MT 회고에서 다음 행사에 반영하자고 한 건?",
+    "today": "2026-03-02",
+    "conditions": null,
+    "expected": {
+      "facts": [
+        {
+          "content": "2주 전",
+          "sources": [
+            {
+              "record_id": "rec_feedback_2025_autumn_mt",
+              "file_name": "2025 가을 MT 회고",
+              "location": {
+                "label": "운영진 회고 · 3. 다음 행사에 반영할 점"
+              }
+            }
+          ]
+        }
+      ],
+      "not_found": [],
+      "conflicts": []
+    }
+  }
+]
