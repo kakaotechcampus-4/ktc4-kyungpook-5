@@ -30,6 +30,20 @@ def upgrade() -> None:
     sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('accounts',
+    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('password_hash', sa.String(length=255), nullable=True),
+    sa.Column('kakao_user_id', sa.String(length=255), nullable=True),
+    sa.Column('email_verified', sa.Boolean(), nullable=False),
+    sa.Column('email_verification_token_hash', sa.String(length=255), nullable=True),
+    sa.Column('email_verification_expires_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('email'),
+    sa.UniqueConstraint('kakao_user_id')
+    )
     op.create_table('events',
     sa.Column('club_id', sa.String(length=26), nullable=False),
     sa.Column('title', sa.String(length=100), nullable=False),
@@ -54,22 +68,23 @@ def upgrade() -> None:
     op.create_index('ix_events_club_status', 'events', ['club_id', 'status'], unique=False)
     op.create_table('members',
     sa.Column('club_id', sa.String(length=26), nullable=False),
+    sa.Column('account_id', sa.String(length=26), nullable=True),
     sa.Column('name', sa.String(length=50), nullable=False),
     sa.Column('role', sa.Enum('OWNER', 'MANAGER', 'MEMBER', name='memberrole', native_enum=False, length=32), nullable=False),
     sa.Column('status', sa.Enum('PENDING', 'ACTIVE', name='memberstatus', native_enum=False, length=32), nullable=False),
     sa.Column('student_no', sa.String(length=20), nullable=True),
     sa.Column('phone', sa.String(length=20), nullable=True),
-    sa.Column('email', sa.String(length=255), nullable=True),
-    sa.Column('password_hash', sa.String(length=255), nullable=True),
     sa.Column('notify_approval_pending', sa.Boolean(), nullable=False),
     sa.Column('notify_step_delay', sa.Boolean(), nullable=False),
     sa.Column('id', sa.String(length=26), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['account_id'], ['accounts.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('club_id', 'email', name='uq_members_club_email')
+    sa.UniqueConstraint('club_id', 'account_id', name='uq_members_club_account')
     )
+    op.create_index(op.f('ix_members_account_id'), 'members', ['account_id'], unique=False)
     op.create_index(op.f('ix_members_club_id'), 'members', ['club_id'], unique=False)
     op.create_table('agent_log',
     sa.Column('club_id', sa.String(length=26), nullable=False),
@@ -90,19 +105,19 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_agent_log_club_id'), 'agent_log', ['club_id'], unique=False)
     op.create_table('auth',
-    sa.Column('member_id', sa.String(length=26), nullable=False),
-    sa.Column('provider', sa.Enum('LOCAL', 'GOOGLE', 'KAKAO', name='authprovider', native_enum=False, length=32), nullable=False),
-    sa.Column('provider_user_id', sa.String(length=255), nullable=True),
+    sa.Column('account_id', sa.String(length=26), nullable=False),
+    sa.Column('access_token_hash', sa.String(length=255), nullable=False),
+    sa.Column('access_token_expires_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('refresh_token_hash', sa.String(length=255), nullable=False),
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('id', sa.String(length=26), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['member_id'], ['members.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['account_id'], ['accounts.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_auth_member_id'), 'auth', ['member_id'], unique=False)
+    op.create_index(op.f('ix_auth_account_id'), 'auth', ['account_id'], unique=False)
     op.create_table('conversations',
     sa.Column('member_id', sa.String(length=26), nullable=False),
     sa.Column('event_id', sa.String(length=26), nullable=False),
@@ -210,12 +225,51 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('conversation_id', 'seq', name='uq_messages_conversation_seq')
     )
+    op.create_table('invitations',
+    sa.Column('club_id', sa.String(length=26), nullable=False),
+    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('role', sa.Enum('OWNER', 'MANAGER', 'MEMBER', name='memberrole', native_enum=False, length=32), nullable=False),
+    sa.Column('token_hash', sa.String(length=255), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'ACCEPTED', 'EXPIRED', name='invitationstatus', native_enum=False, length=32), nullable=False),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('invited_by', sa.String(length=26), nullable=False),
+    sa.Column('accepted_by', sa.String(length=26), nullable=True),
+    sa.Column('accepted_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['accepted_by'], ['accounts.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['invited_by'], ['members.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('ix_invitations_club_email_status', 'invitations', ['club_id', 'email', 'status'], unique=False)
+    op.create_table('idempotency_keys',
+    sa.Column('club_id', sa.String(length=26), nullable=True),
+    sa.Column('member_id', sa.String(length=26), nullable=False),
+    sa.Column('endpoint', sa.String(length=200), nullable=False),
+    sa.Column('idempotency_key', sa.String(length=255), nullable=False),
+    sa.Column('request_body_hash', sa.String(length=64), nullable=False),
+    sa.Column('status', sa.String(length=50), nullable=False),
+    sa.Column('response_status', sa.Integer(), nullable=True),
+    sa.Column('response_body', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['member_id'], ['members.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('member_id', 'endpoint', 'idempotency_key', name='uq_idempotency_member_endpoint_key')
+    )
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_table('idempotency_keys')
+    op.drop_index('ix_invitations_club_email_status', table_name='invitations')
+    op.drop_table('invitations')
     op.drop_table('messages')
     op.drop_index(op.f('ix_actions_step_id'), table_name='actions')
     op.drop_index('ix_actions_event_status', table_name='actions')
@@ -227,13 +281,15 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_conversations_member_id'), table_name='conversations')
     op.drop_index(op.f('ix_conversations_event_id'), table_name='conversations')
     op.drop_table('conversations')
-    op.drop_index(op.f('ix_auth_member_id'), table_name='auth')
+    op.drop_index(op.f('ix_auth_account_id'), table_name='auth')
     op.drop_table('auth')
     op.drop_index(op.f('ix_agent_log_club_id'), table_name='agent_log')
     op.drop_table('agent_log')
     op.drop_index(op.f('ix_members_club_id'), table_name='members')
+    op.drop_index(op.f('ix_members_account_id'), table_name='members')
     op.drop_table('members')
     op.drop_index('ix_events_club_status', table_name='events')
     op.drop_table('events')
+    op.drop_table('accounts')
     op.drop_table('clubs')
     # ### end Alembic commands ###

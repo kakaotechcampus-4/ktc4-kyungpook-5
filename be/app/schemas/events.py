@@ -6,11 +6,8 @@
 enum은 core/enums.py의 StrEnum을 그대로 쓴다. 값이 곧 API 코드라 변환이 필요 없다.
 """
 
-from datetime import UTC, date, datetime
-from typing import Annotated, Any
-
-from pydantic import BaseModel, ConfigDict, PlainSerializer
-from pydantic.alias_generators import to_camel
+from datetime import date
+from typing import Any
 
 from app.core.enums import (
     ActionStatus,
@@ -20,22 +17,7 @@ from app.core.enums import (
     StepActor,
     StepState,
 )
-
-
-def _iso_utc(value: datetime) -> str:
-    """명세의 ISO 8601 UTC 표기에 맞춘다. 기본 직렬화는 Z 대신 +00:00으로 나간다."""
-    return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-UtcDateTime = Annotated[datetime, PlainSerializer(_iso_utc, return_type=str)]
-
-
-class CamelModel(BaseModel):
-    model_config = ConfigDict(
-        alias_generator=to_camel,
-        populate_by_name=True,
-        from_attributes=True,
-    )
+from app.schemas.common import CamelModel, UtcDateTime
 
 
 class ResolvedBy(CamelModel):
