@@ -143,13 +143,16 @@ def _fact(content: str, *chunk_ids: str) -> EvidenceItem:
     return EvidenceItem(content=content, chunk_ids=list(chunk_ids))
 
 
-def _search(request, model, port=None, embed=None) -> RecordSearchResult:
+def _search(
+    request, model, port=None, embed=None, max_rounds=MAX_SEARCH_ROUNDS
+) -> RecordSearchResult:
     return asyncio.run(
         search_records(
             request,
             port=port if port is not None else _fixture_port(),
             embed=embed or FakeEmbed(),
             invoke=model,
+            max_rounds=max_rounds,
         )
     )
 
@@ -265,7 +268,7 @@ def test_근거가_부족하면_다른_검색어로_다시_찾는다():
         _assessment(facts=[_fact("숙소는 가평 ○○펜션이다", "c2")]),
     )
 
-    result = _search(_request(), model, port)
+    result = _search(_request(), model, port, max_rounds=2)
 
     assert [query.embedding for query in port.queries] == [
         _keyword_vector("회비"),
@@ -279,7 +282,8 @@ def test_근거가_부족하면_다른_검색어로_다시_찾는다():
 
 
 def test_재검색은_정해진_횟수까지만_한다():
-    keywords = KEYWORDS[: MAX_SEARCH_ROUNDS + 1]
+    rounds = 2
+    keywords = KEYWORDS[: rounds + 1]
     port = _fixture_port()
     model = FakeModel(
         SearchQueries(queries=[keywords[0]]),
@@ -289,18 +293,18 @@ def test_재검색은_정해진_횟수까지만_한다():
                 retry_queries=[keywords[index + 1]],
                 not_found=["근거"],
             )
-            for index in range(MAX_SEARCH_ROUNDS)
+            for index in range(rounds)
         ),
     )
 
-    result = _search(_request(), model, port)
+    result = _search(_request(), model, port, max_rounds=rounds)
 
-    assert len(port.queries) == MAX_SEARCH_ROUNDS
+    assert len(port.queries) == rounds
     assert "다시 찾을 수 있는 횟수: 0" in _assess_messages(model)[-1][1].content
     assert result.not_found == ("근거",)
 
 
-def test_검색_횟수를_1로_주면_다시_찾지_않는다():
+def test_기본값으로는_다시_찾지_않는다():
     port = _fixture_port()
     model = FakeModel(
         SearchQueries(queries=["회비"]),
@@ -308,9 +312,7 @@ def test_검색_횟수를_1로_주면_다시_찾지_않는다():
     )
 
     result = asyncio.run(
-        search_records(
-            _request(), port=port, embed=FakeEmbed(), invoke=model, max_rounds=1
-        )
+        search_records(_request(), port=port, embed=FakeEmbed(), invoke=model)
     )
 
     assert len(port.queries) == 1
@@ -325,7 +327,7 @@ def test_이미_찾은_검색어만_다시_내면_더_찾지_않는다():
         _assessment(sufficient=False, retry_queries=["회비"], not_found=["회비"]),
     )
 
-    _search(_request(), model, port)
+    _search(_request(), model, port, max_rounds=2)
 
     assert len(port.queries) == 1
     assert len(model.calls) == 2
@@ -339,7 +341,7 @@ def test_다시_찾아도_새_청크가_없으면_다시_판단하지_않는다(
         _assessment(sufficient=False, retry_queries=["회비 회비"], not_found=["회비"]),
     )
 
-    result = _search(_request(), model, port)
+    result = _search(_request(), model, port, max_rounds=2)
 
     assert len(port.queries) == 2
     assert len(model.calls) == 2

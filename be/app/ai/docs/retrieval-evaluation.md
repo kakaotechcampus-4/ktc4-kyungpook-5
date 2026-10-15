@@ -18,7 +18,7 @@ cd be && uv run python app/ai/scripts/eval_retrieval.py [--search vector|records
   - `--search vector`: 질문을 그대로 임베딩해 찾는다(기준점)
   - `--search records`: 기록 검색 `search_records` 전체를 부른다. 검색어가 여러 개면 찾은 청크를 검색어 순서대로 이어 검색 지표를 잰다.
     결과(사실·확인하지 못한 것·자료 간 차이)를 정답과 비교한 결과 지표와 모델 응답이 잘못돼 실패한 수도 낸다
-  - `--max-rounds`: `records`의 검색 횟수. 1이면 검색어 정리만, 2(기본값)면 재검색까지 잰다
+  - `--max-rounds`: `records`의 검색 횟수. 기본값은 기록 검색의 기본값(1, 검색어 정리만)이고 2면 재검색까지 잰다
   - `--header`: 청크 임베딩 이름표. `full` 문서명·위치(현재 색인), `file` 문서명만, `none` 없음
   - `--holdout`: 확인용 질문도 잰다. 개선하는 동안에는 끄고, 기록에 남길 측정에서만 켠다
   - 캐시: 임베딩은 모델·차원·글이, LLM 응답은 모델·출력 형식·메시지가 같으면 `be/app/ai/scripts/.cache/`에 저장한 값을 다시 쓴다.

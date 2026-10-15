@@ -29,8 +29,9 @@ from .schemas import (
     SearchState,
 )
 
-# 첫 검색을 포함한 검색 횟수. 계획 대화 한 턴 안에서 불리므로 재검색은 한 번까지만 한다
-MAX_SEARCH_ROUNDS = 2
+# 첫 검색을 포함한 검색 횟수. 재검색은 측정에서 나아진 것 없이 틀린 사실과 시간만 늘어
+# 기본은 한 번만 찾는다(docs/retrieval-evaluation.md 2026-10-15 #72)
+MAX_SEARCH_ROUNDS = 1
 # 한 번에 찾는 검색어 수. 프롬프트도 1~3개로 안내한다
 MAX_QUERIES = 3
 
