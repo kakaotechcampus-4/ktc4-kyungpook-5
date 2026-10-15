@@ -47,12 +47,14 @@ async def search_records(
     port: RecordSearchPort,
     embed: Embed = aembed_texts,
     invoke: Invoke = ainvoke_structured,
+    max_rounds: int = MAX_SEARCH_ROUNDS,
 ) -> RecordSearchResult:
     """동아리 기록에서 찾을 내용의 근거를 찾아 사실·확인하지 못한 것·자료 간 차이로 돌려준다.
 
     관련 기록이 없으면 출처 없이 찾지 못했다는 결과를 돌려준다. 오류가 아니다.
     모델·임베딩 호출이 실패하면 AI 오류 타입이 그대로 올라간다.
     테스트에서는 `embed`와 `invoke`를 가짜로 바꾼다.
+    `max_rounds`는 재검색 효과를 따로 재는 평가에서만 바꾼다.
     """
     state: SearchState = {
         "request": request,
@@ -71,7 +73,7 @@ async def search_records(
         # 재검색에서 새 청크가 없으면 같은 자료로 다시 판단할 이유가 없다.
         if len(state["chunks"]) == found_before:
             break
-        state.update(await assess(state, invoke=invoke))
+        state.update(await assess(state, invoke=invoke, max_rounds=max_rounds))
         # 근거가 충분하거나 회차를 다 쓰면 assess가 다음 검색어를 비운다
         if not state["queries"]:
             break
@@ -125,9 +127,11 @@ async def retrieve(state: SearchState, *, port: RecordSearchPort, embed: Embed) 
     }
 
 
-async def assess(state: SearchState, *, invoke: Invoke) -> dict:
+async def assess(
+    state: SearchState, *, invoke: Invoke, max_rounds: int = MAX_SEARCH_ROUNDS
+) -> dict:
     """근거가 충분한지 판단하고 지금 자료로 결과를 구성한다. 부족하면 다음 검색어를 남긴다"""
-    retries_left = MAX_SEARCH_ROUNDS - state["rounds"]
+    retries_left = max_rounds - state["rounds"]
     messages = [
         SystemMessage(ASSESS_EVIDENCE_PROMPT),
         HumanMessage(

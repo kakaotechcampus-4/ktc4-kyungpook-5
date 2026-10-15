@@ -300,6 +300,24 @@ def test_재검색은_정해진_횟수까지만_한다():
     assert result.not_found == ("근거",)
 
 
+def test_검색_횟수를_1로_주면_다시_찾지_않는다():
+    port = _fixture_port()
+    model = FakeModel(
+        SearchQueries(queries=["회비"]),
+        _assessment(sufficient=False, retry_queries=["숙소"], not_found=["회비"]),
+    )
+
+    result = asyncio.run(
+        search_records(
+            _request(), port=port, embed=FakeEmbed(), invoke=model, max_rounds=1
+        )
+    )
+
+    assert len(port.queries) == 1
+    assert "다시 찾을 수 있는 횟수: 0" in _assess_messages(model)[0][1].content
+    assert result.not_found == ("회비",)
+
+
 def test_이미_찾은_검색어만_다시_내면_더_찾지_않는다():
     port = _fixture_port()
     model = FakeModel(
