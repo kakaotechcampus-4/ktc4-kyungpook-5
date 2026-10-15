@@ -10,12 +10,15 @@ import { Modal } from '@/shared/ui/Modal'
 import { ToriNote } from '@/shared/ui/ToriNote'
 
 // 보기 중에 없을 때 직접 적는 자리. allowManual이 켜진 질문에만 보인다.
-const MANUAL_KEY = '__manual__'
+// 값은 서버에 보내는 choice와 같다(L2 확인 요청 카드의 직접 처리와 같은 값).
+const MANUAL_KEY = 'MANUAL'
 
 interface AnswerModalProps {
   action?: EventAction
   onClose: () => void
-  onAnswer: (action: EventAction, answer: string) => void
+  // choice는 options[].key, 직접 처리면 'MANUAL'이고 적은 내용은 manualValue로 준다
+  // (POST /actions/{id}/resolve 요청 값과 같다)
+  onAnswer: (action: EventAction, choice: string, manualValue?: string) => void
 }
 
 export function AnswerModal({ action, onClose, onAnswer }: AnswerModalProps) {
@@ -36,8 +39,20 @@ export function AnswerModal({ action, onClose, onAnswer }: AnswerModalProps) {
   if (!action) return null
 
   const options = action.options ?? []
-  const chosen = options.find((o) => o.key === picked)
-  const answer = picked === MANUAL_KEY ? manual.trim() : (chosen?.label ?? '')
+  const manualValue = manual.trim()
+  // 보기를 골랐거나, 직접 처리면 내용까지 적어야 보낼 수 있다
+  const choice =
+    picked === MANUAL_KEY
+      ? manualValue
+        ? MANUAL_KEY
+        : undefined
+      : options.find((o) => o.key === picked)?.key
+
+  const submit = () => {
+    if (!choice) return
+    reset()
+    onAnswer(action, choice, choice === MANUAL_KEY ? manualValue : undefined)
+  }
 
   return (
     <Modal
@@ -53,13 +68,7 @@ export function AnswerModal({ action, onClose, onAnswer }: AnswerModalProps) {
           <Button variant="secondary" onClick={close}>
             취소
           </Button>
-          <Button
-            disabled={!answer}
-            onClick={() => {
-              reset()
-              onAnswer(action, answer)
-            }}
-          >
+          <Button disabled={!choice} onClick={submit}>
             답변 완료
           </Button>
         </>
