@@ -190,25 +190,76 @@ def test_판단이_제한_시간을_넘기면_시간_초과_오류다(monkeypatc
     async def slow(messages):
         await asyncio.sleep(1)
 
-    with pytest.raises(AITimeoutError):
+    with pytest.raises(AITimeoutError) as caught:
         _run(_request(), slow)
+
+    # 실패한 판단도 판단 기록에 남는다(#117). 도구를 부르기 전에 실패했다
+    trace = caught.value.trace
+    assert (trace.model, trace.prompt_version) == (MODEL, PROMPT_VERSION)
+    assert trace.judge_ms >= 10
+    assert trace.tool_calls == ()
 
 
 def test_모델_오류는_NONE으로_바꾸지_않고_그대로_올린다():
     async def failing(messages):
         raise AIRetryableError("모델 API에 연결하지 못했습니다")
 
-    with pytest.raises(AIRetryableError):
+    with pytest.raises(AIRetryableError) as caught:
         _run(_request(), failing)
 
+    assert caught.value.trace.tool_calls == ()
 
-def test_검색_오류는_NOT_FOUND로_바꾸지_않고_그대로_올린다():
+
+def test_검색어_없는_조회_판단도_판단_기록을_남긴다():
+    with pytest.raises(AIInvalidResponseError) as caught:
+        _run(_request(), _judge(True, ""))
+
+    assert caught.value.trace.prompt_version == PROMPT_VERSION
+    assert caught.value.trace.tool_calls == ()
+
+
+@pytest.mark.parametrize(
+    ("error", "status"),
+    [(AIRetryableError("임베딩 호출 실패"), "FAILED"), (AITimeoutError("검색 시간 초과"), "TIMEOUT")],
+)
+def test_검색_오류는_NOT_FOUND로_바꾸지_않고_실패한_도구를_남긴다(error, status):
     class FailingLookup(FakeLookup):
         async def search(self, club_id, question):
-            raise AIRetryableError("임베딩 호출 실패")
+            raise error
 
-    with pytest.raises(AIRetryableError):
+    with pytest.raises(AIRetryableError) as caught:
         _run(_request(), _judge(True, "2025 봄 MT 숙소비"), FailingLookup())
+
+    [call] = caught.value.trace.tool_calls
+    assert (call.tool, call.input, call.status, call.result_count) == (
+        "records.search",
+        "2025 봄 MT 숙소비",
+        status,
+        None,
+    )
+
+
+def test_답_작성_오류는_성공한_검색과_실패한_답_작성을_남긴다():
+    class FailingLookup(FakeLookup):
+        async def answer(self, question, chunks):
+            raise AIRetryableError("답 작성 실패")
+
+    with pytest.raises(AIRetryableError) as caught:
+        _run(_request(), _judge(True, "2025 봄 MT 숙소비"), FailingLookup((CHUNK,)))
+
+    assert [(call.tool, call.status) for call in caught.value.trace.tool_calls] == [
+        ("records.search", "OK"),
+        ("llm.generate", "FAILED"),
+    ]
+
+
+def test_검색되지_않은_출처_오류도_두_도구를_남긴다():
+    lookup = FakeLookup((CHUNK,), MeetingAnswer(answer="20,000원", sources=(OTHER,)))
+
+    with pytest.raises(AIInvalidResponseError) as caught:
+        _run(_request(), _judge(True, "2025 봄 MT 숙소비"), lookup)
+
+    assert [call.status for call in caught.value.trace.tool_calls] == ["OK", "OK"]
 
 
 def test_진행_알림을_넘기지_않아도_판단한다():

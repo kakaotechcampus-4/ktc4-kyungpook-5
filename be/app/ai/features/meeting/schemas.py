@@ -80,10 +80,14 @@ class JudgeUtteranceRequest(ContractModel):
         return self
 
 
+# 판단 뒤 AI가 부르는 도구. records.search는 기록 검색, llm.generate는 답 작성이다
+ToolName = Literal["records.search", "llm.generate"]
+
+
 class ToolCall(ContractModel):
     """판단 뒤 AI가 실제로 부른 도구 하나"""
 
-    tool: Literal["records.search", "llm.generate"]
+    tool: ToolName
     # 예: 검색어 "2025 봄 MT 숙소비"
     input: str
     status: Literal["OK", "FAILED", "TIMEOUT"]
@@ -100,12 +104,41 @@ class JudgeTrace(ContractModel):
 
     # 예: "gpt-5.6-luna". AI_MODEL 설정값
     model: str
-    # 예: "meeting-judge-v4". 프롬프트 원문을 바꾸면 올린다
+    # 예: "meeting-judge-v5". 프롬프트 원문을 바꾸면 올린다
     prompt_version: str
     # 판단(과 검색어) 호출에 걸린 시간
     judge_ms: int = Field(ge=0)
     # NONE이면 비어 있다
     tool_calls: tuple[ToolCall, ...] = ()
+
+
+# 어떤 처리로 갔는지. 지금은 RAG(기록 조회)와 NONE뿐이고 나중에 LLM이 추가된다(#124)
+Route = Literal["RAG", "NONE"]
+
+
+# 조회하지 않은 이유. route가 NONE일 때만 쓰고 RAG면 검색어가 곧 이유라 비운다.
+# 실시간 결과에는 넣지 않는다. 이유를 출력하게 하면 판단이 느려진다(#111).
+# 회의 뒤 다시 판단하거나 사람이 검수할 때 채운다(#117).
+# 앞의 다섯은 prompts/judge.md의 "조회가 필요 없는 경우"와 같은 순서로 하나씩 맞춘다.
+#   CURRENT_STATUS      기록에 없는 지금 일을 묻는 말    "민수야 예약했어?"
+#   MONOLOGUE           혼잣말·감탄                      "이게 맞나"
+#   CHITCHAT            기록과 무관한 잡담·부탁          "점심 뭐 먹지?", "화면 좀 넘겨 줄래?"
+#   FUTURE_DECISION     앞으로 할 일을 정하는 말         "이번엔 버스 대절하죠"
+#   REFERENCE_MATERIAL  과거 자료를 같이 보자는 말       "작년 축제 자료 펴 놓고 얘기해요"
+#   NEEDS_CONTEXT       가리키는 대상을 아직 알 수 없음  "그거 얼마였지?" (앞에 대상이 없음)
+#   OTHER               어디에도 맞지 않음. 자주 나오면 코드를 늘린다
+# 사람을 불렀는지는 기준이 아니다. "민수야, 작년 회칙상 환불 기준이 뭐였지?"는 RAG다(AI-MEET-01).
+# REFERENCE_MATERIAL은 값을 묻지 않아 값으로 답하지 않을 뿐이다. 이 코드가 붙은 발화 수로
+# 문서 제목과 열기 링크를 띄우는 record_reference를 만들지 정한다(docs/architecture.md).
+ReasonCode = Literal[
+    "CURRENT_STATUS",
+    "MONOLOGUE",
+    "CHITCHAT",
+    "FUTURE_DECISION",
+    "REFERENCE_MATERIAL",
+    "NEEDS_CONTEXT",
+    "OTHER",
+]
 
 
 class JudgeUtteranceResult(ContractModel):
@@ -114,8 +147,7 @@ class JudgeUtteranceResult(ContractModel):
     utterance_id: str
     # 판단에 쓴 전사 버전. 전사가 고쳐지면 BE가 옛 판단을 STALE로 가려낸다
     source_version: int = Field(ge=1)
-    # 지금은 RAG(기록 조회)와 NONE뿐이고 나중에 LLM이 추가된다(#124)
-    route: Literal["RAG", "NONE"]
+    route: Route
     kind: Literal["NO_LOOKUP", "ANSWER", "NOT_FOUND"]
     # 무엇에 대한 답인지. 검색어 구성 단계가 만든 검색어(보정 전)다. NO_LOOKUP이면 None
     question: NonBlankStr | None = None
@@ -146,6 +178,39 @@ class JudgeUtteranceResult(ContractModel):
             raise ValueError("ANSWER에는 답과 출처가 하나 이상 있어야 합니다")
         if self.kind == "NOT_FOUND" and (self.answer is not None or self.sources):
             raise ValueError("NOT_FOUND에는 답과 출처가 없어야 합니다")
+        return self
+
+
+class JudgeReview(ContractModel):
+    """사람이 판단 하나를 보고 붙인 정답. Laya 학습 데이터의 정답이 된다(#117)
+
+    판단 기록(BE의 context-decisions)에 넣지 않고 그 id를 가리키는 별도 기록으로 둔다.
+    제품 화면이 쓰는 값이 아니라 학습 데이터이기 때문이다. 저장 위치는 BE와 정한다.
+    경계 사례는 두 명 이상이 보므로 판단 하나에 검수 기록이 여러 개 붙을 수 있다.
+    """
+
+    # 검수한 판단 기록의 id
+    decision_id: NonBlankStr
+    # 사람이 정한 정답. 모델이 낸 route가 아니다
+    label: Route
+    # label이 NONE일 때만 채운다. 정할 수 없으면 OTHER
+    reason_code: ReasonCode | None = None
+    # 검수자를 가리키는 id. 실명을 넣지 않는다
+    reviewer: NonBlankStr
+    # 모델의 판단을 가리고 붙였는지. 가린 라벨과 보여준 라벨의 일치율을 비교해
+    # 검수가 모델 답에 끌려가는지 본다
+    blind: bool
+    reviewed_at: AwareDatetime
+    # 형식 버전. 칸을 바꾸면 올리고, 이전 버전을 읽는 변환을 이 파일에 함께 둔다
+    schema_version: Literal[1] = 1
+
+    @model_validator(mode="after")
+    def _reason_matches_label(self) -> Self:
+        """이유는 NONE에만 있다. RAG는 검색어가 곧 이유다"""
+        if self.label == "NONE" and self.reason_code is None:
+            raise ValueError("NONE으로 검수했으면 조회하지 않은 이유를 골라야 합니다")
+        if self.label == "RAG" and self.reason_code is not None:
+            raise ValueError("RAG로 검수했으면 조회하지 않은 이유를 비워야 합니다")
         return self
 
 

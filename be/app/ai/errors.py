@@ -19,9 +19,18 @@ HTTP 상태 코드나 API 응답 코드로 변환하는 책임은 BE에 있다.
 -> 이런 예외는 그대로 BE에 전달해 서버 오류로 처리한다.
 """
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .features.meeting.schemas import JudgeTrace
+
 
 class AIError(Exception):
     """AI 모듈에서 발생한 오류의 최상위 타입."""
+
+    # 회의 판단(judge_utterance)이 실패하면 실패하기 전까지의 판단 기록을 담는다.
+    # BE는 이 값으로 실패한 판단도 판단 기록에 남긴다(#117). 다른 기능에서는 None이다
+    trace: "JudgeTrace | None" = None
 
 
 class AIConfigError(AIError):

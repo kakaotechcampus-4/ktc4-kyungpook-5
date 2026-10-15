@@ -17,7 +17,7 @@ from .schemas import JudgeUtteranceRequest
 MEETING_CONTEXT_UTTERANCES = 4
 
 # prompts/judge.md를 바꾸면 올린다. 판단 기록(trace)에 남아 바뀌기 전후를 나눠 본다
-PROMPT_VERSION = "meeting-judge-v4"
+PROMPT_VERSION = "meeting-judge-v5"
 
 # "작년"을 연도로 풀 때 쓰는 회의 날짜의 기준. 발화 시각은 UTC로 올 수 있다
 MEETING_TIMEZONE = ZoneInfo("Asia/Seoul")
