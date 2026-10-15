@@ -21,7 +21,18 @@ from .errors import (
     AIRetryableError,
     AITimeoutError,
 )
-from .facade import index_record
+from .facade import index_record, judge_utterance
+from .features.meeting.context import MEETING_CONTEXT_UTTERANCES
+from .features.meeting.schemas import (
+    JudgeTrace,
+    JudgeUtteranceRequest,
+    JudgeUtteranceResult,
+    MeetingEvent,
+    MeetingProgressPort,
+    MeetingStage,
+    MeetingUtterance,
+    ToolCall,
+)
 from .llm import EMBEDDING_DIMENSIONS
 from .ports import ChunkSearchQuery, RecordSearchPort, RetrievedChunk
 
@@ -33,6 +44,18 @@ __all__ = (
     "IndexedChunk",
     "RecordBlock",
     "SourceLocation",
+    # 회의 발화 처리. #113에서 BE와 합의하기 전의 초안이라 바뀔 수 있다 (docs/contracts.md)
+    "judge_utterance",
+    "JudgeUtteranceRequest",
+    "JudgeUtteranceResult",
+    "MeetingUtterance",
+    "MeetingEvent",
+    "JudgeTrace",
+    "ToolCall",
+    "MeetingProgressPort",
+    "MeetingStage",
+    # BE가 judge_utterance에 실어 보낼 앞 발화 수
+    "MEETING_CONTEXT_UTTERANCES",
     # 기록 검색 port (BE가 구현)
     "RecordSearchPort",
     "ChunkSearchQuery",
