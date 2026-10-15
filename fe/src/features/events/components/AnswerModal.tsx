@@ -22,9 +22,14 @@ export function AnswerModal({ action, onClose, onAnswer }: AnswerModalProps) {
   const [picked, setPicked] = useState<string>()
   const [manual, setManual] = useState('')
 
-  const close = () => {
+  // 답변·닫기 어느 쪽으로 끝나든 비운다. 모달은 화면에 남아 있어 다음 질문으로 넘어가기 때문이다.
+  const reset = () => {
     setPicked(undefined)
     setManual('')
+  }
+
+  const close = () => {
+    reset()
     onClose()
   }
 
@@ -48,7 +53,13 @@ export function AnswerModal({ action, onClose, onAnswer }: AnswerModalProps) {
           <Button variant="secondary" onClick={close}>
             취소
           </Button>
-          <Button disabled={!answer} onClick={() => onAnswer(action, answer)}>
+          <Button
+            disabled={!answer}
+            onClick={() => {
+              reset()
+              onAnswer(action, answer)
+            }}
+          >
             답변 완료
           </Button>
         </>
