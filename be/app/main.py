@@ -1,13 +1,14 @@
 """FastAPI 앱.
 
-현재 등록된 엔드포인트는 DB 없이 고정 응답을 내는 mock이다 (이슈 #30).
+auth·clubs는 실제 DB로 동작한다(#131). events는 아직 mock이다 (이슈 #30, #41).
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
-from app.routers import events
+from app.routers import auth, clubs, events
 
 app = FastAPI(title="운영해 BE", version="0.1.0")
 
@@ -26,4 +27,11 @@ app.add_middleware(
 )
 
 register_exception_handlers(app)
+app.include_router(auth.router)
+app.include_router(clubs.router)
 app.include_router(events.router)
+
+if get_settings().test_mode:
+    from app.routers import test_support
+
+    app.include_router(test_support.router)

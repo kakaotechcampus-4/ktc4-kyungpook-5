@@ -16,16 +16,13 @@ class CodeEnum(StrEnum):
     """DB 저장값과 API 코드가 같은 문자열 enum."""
 
 
-# --- auth ---------------------------------------------------------------
-
-
-class AuthProvider(CodeEnum):
-    LOCAL = "LOCAL"
-    GOOGLE = "GOOGLE"
-    KAKAO = "KAKAO"
-
-
 # --- clubs --------------------------------------------------------------
+
+
+class InvitationStatus(CodeEnum):
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    EXPIRED = "EXPIRED"
 
 
 class MemberRole(CodeEnum):
