@@ -1,0 +1,20 @@
+{
+  "record": {
+    "id": "rec_notice_2025_spring_mt",
+    "club_id": "clb_keunnamu",
+    "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+    "file_type": "PDF",
+    "category": "ETC",
+    "event_id": null
+  },
+  "parse_result": {
+    "blocks": [
+      {
+        "text": "2025 봄 MT 참가 신청 안내\n일정: 2025년 3월 15일(토) ~ 16일(일), 1박 2일\n장소: 가평 ○○펜션\n정원: 32명 (선착순)\n1인 회비: 45,000원\n신청 마감: 3월 10일\n취소와 환불은 회칙의 참가비 환불 기준을 따른다.",
+        "location": {
+          "label": "1쪽"
+        }
+      }
+    ]
+  }
+}

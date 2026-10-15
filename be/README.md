@@ -177,7 +177,7 @@ BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE �
 | 이름 | 용도 | 상태 |
 | --- | --- | --- |
 | `DATABASE_URL` | PostgreSQL 연결 문자열 (`postgresql+psycopg://...`) | 코드 반영됨 (`app/core/config.py`). 비어 있어도 앱은 뜨고 DB를 쓰는 시점에 실패 |
-| `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | `app/ai/config.py` — ML API 게이트웨이 호출, 채팅 모델(`gpt-5.6-terra`) | 코드 반영됨 (`app/ai/config.py`) |
+| `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | `app/ai/config.py` — ML API 게이트웨이 호출, 채팅 모델(`gpt-5.6-luna`) | 코드 반영됨 (`app/ai/config.py`) |
 | `AI_REQUEST_TIMEOUT_SECONDS` | 단일 요청 응답 대기 상한(초). 비우면 60 | 코드 반영됨 (`app/ai/config.py`) |
 | `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_MODEL` | 임베딩 전용 설정. 키를 비우면 `AI_API_KEY` 재사용 | 코드 반영됨 (`app/ai/config.py`) |
 | `JWT_SECRET_KEY` / `SESSION_SECRET` | 인증 방식 확정 후 결정 | 미정 |

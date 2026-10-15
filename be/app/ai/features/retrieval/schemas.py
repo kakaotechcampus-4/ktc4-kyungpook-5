@@ -29,7 +29,7 @@ class TextChunk(ContractModel):
 
 
 class RecordSearchRequest(ContractModel):
-    """기록 검색 입력. planning·operations와 Agent Tool이 같은 형식으로 부른다"""
+    """기록 검색 입력. planning·operations·회의 어시스턴트와 Agent Tool이 같은 형식으로 부른다"""
 
     # 이 동아리의 기록만 찾는다. 범위 제한은 port 구현체(BE)가 보장한다
     club_id: str

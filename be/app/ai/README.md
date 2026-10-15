@@ -1,15 +1,16 @@
 # 운영해 · AI 모듈
 
 AI 팀이 담당하는 BE 내부 모듈입니다. 
-행사 계획·수정, 과거 기록 검색, 운영 중 변경에 대한 대응안 제안을 담당합니다.
+행사 계획·수정, 과거 기록 검색, 운영 중 변경에 대한 대응안 제안, 회의 중 기록 조회를 담당합니다.
 
 ## 관련 문서
 
 - [기능 요구사항](docs/requirements.md): 제공할 사용자 경험과 확인 기준
 - [아키텍처](docs/architecture.md): 기능별 역할과 AI·BE 책임 경계
-- [BE-AI 데이터 계약](docs/contracts.md): 계약의 목적과 계획 대화 연동 예시
+- [BE-AI 데이터 계약](docs/contracts.md): 계약의 목적, 계획 대화·기록 색인 연동 예시, 회의 발화 처리 초안
 - [AI 오류 타입](docs/errors.md): 오류 분류와 모델 호출 오류 변환 기준
 - [기록 색인·검색 평가 기록](docs/retrieval-evaluation.md): 청킹·임베딩 측정값과 관찰
+- [회의 어시스턴트 측정 기록](docs/meeting-evaluation.md): 판단 모델·Whisper·지연 측정값과 관찰
 - [계획 단계 카탈로그](docs/step-catalog.md): 계획안의 단계·행동 기준 목록
 - [작업 규칙](AGENTS.md): 요구사항 → Issue → 구현 → PR 협업 절차
 - [이전 기록](docs/migration.md): 모듈 이전 내역과 BE 팀 후속 작업
@@ -28,7 +29,8 @@ be/app/ai/
 ├── features/
 │   ├── planning/        # 조건 확인·질문·계획 생성 및 수정
 │   ├── retrieval/       # 기록 색인·검색·근거 구성 (chunking: 청킹, indexing: 색인, nodes: 기록 검색 search_records, memory_port: 개발용 검색 구현)
-│   └── operations/      # 변경 영향 설명·대응안
+│   ├── operations/      # 변경 영향 설명·대응안
+│   └── meeting/         # 회의 발화 판단과 검색어 (context: 판단 입력, nodes: 판단·결과 구성, questions: 판단 전용 모델의 질문)
 ├── workflow/            # 행사 Agent 실행 흐름·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
 ├── scripts/             # 실제 ML API 확인 스크립트 (키 필요, CI 제외)
@@ -38,6 +40,7 @@ be/app/ai/
 │   ├── contracts.md     # BE-AI 데이터 계약 설명
 │   ├── errors.md        # AI 오류 타입과 변환 기준
 │   ├── retrieval-evaluation.md # 기록 색인·검색 측정 기록
+│   ├── meeting-evaluation.md # 회의 판단·음성 인식·지연 측정 기록
 │   ├── requirements.md  # 사용자 경험 중심 AI 기능 요구사항 초안
 │   ├── step-catalog.md  # 계획안 단계·행동 기준 목록
 │   ├── migration.md     # 파일 대응표·BE 팀 후속 작업
@@ -63,7 +66,8 @@ be/app/ai/
 
 사용 기술은 Python 3.12, LangGraph, langchain-openai, Pydantic, pydantic-settings입니다.
 모델 연동은 Elice ML API의 OpenAI 호환 API와 `ChatOpenAI`를 기준으로 합니다.
-메인 모델은 `gpt-5.6-terra`이며 모델명은 `AI_MODEL`로 전달합니다.
+채팅 모델은 `gpt-5.6-luna`이며 모델명은 `AI_MODEL`로 전달합니다. 회의 판단도 이 모델을 씁니다.
+게이트웨이는 모델마다 배포 주소가 달라서, 모델을 바꾸면 `AI_API_BASE_URL`도 그 모델의 주소로 바꿉니다.
 
 임베딩은 `openai/text-embedding-3-small`을 같은 게이트웨이의 별도 배포로 호출합니다.
 출력은 1536차원이고 이 값이 저장소(pgvector) 컬럼 차원을 정합니다.

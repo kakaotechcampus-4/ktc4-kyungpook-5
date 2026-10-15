@@ -58,6 +58,8 @@ venv/
 *.egg-info/
 .pytest_cache/
 .ipynb_checkpoints/
+# 기록 검색 평가 스크립트의 임베딩 캐시 (#99)
+be/app/ai/scripts/.cache/
 
 # ── Java / Kotlin / Gradle ──────────────────────────
 target/
