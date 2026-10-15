@@ -7,19 +7,24 @@
 
 ```bash
 cd be && uv run python app/ai/scripts/check_index_record.py [--json 결과.json]
-cd be && uv run python app/ai/scripts/eval_retrieval.py [--header full|file|none] [--holdout] [--no-cache] [--json 결과.json]
+cd be && uv run python app/ai/scripts/eval_retrieval.py [--search vector|records] [--max-rounds N] \
+    [--header full|file|none] [--holdout] [--no-cache] [--json 결과.json]
 ```
 
-- 키가 필요해 CI에서 돌리지 않는다. `be/.env`의 `AI_EMBEDDING_*`를 쓴다.
+- 키가 필요해 CI에서 돌리지 않는다. `be/.env`의 `AI_EMBEDDING_*`를 쓰고, `--search records`는 `AI_API_*`·`AI_MODEL`도 쓴다.
 - 색인(`check_index_record.py`): 예시 기록 4종과 실제 한컴 PDF(`be/tests/fixtures/records/sample_report.pdf`, BE 파서 경유)의 청크 수·길이·시간
 - 검색(`eval_retrieval.py`): 예시 기록 12종을 메모리 port에 넣고 [평가 질문](../tests/fixtures/eval/README.md)으로 상위 5개를 본다
   - 지표: Hit@1·3·5, MRR, Recall@1·3·5. 정의는 평가 질문 README에 있다. 개발용·확인용과 요구사항별로 나눠 보인다
-  - 검색 방식: 질문을 그대로 임베딩해 찾는다(기준점). 검색 방식은 스크립트에 검색 함수로 더한다
+  - `--search vector`: 질문을 그대로 임베딩해 찾는다(기준점)
+  - `--search records`: 기록 검색 `search_records` 전체를 부른다. 검색어가 여러 개면 찾은 청크를 검색어 순서대로 이어 검색 지표를 잰다.
+    결과(사실·확인하지 못한 것·자료 간 차이)를 정답과 비교한 결과 지표와 모델 응답이 잘못돼 실패한 수도 낸다
+  - `--max-rounds`: `records`의 검색 횟수. 1이면 검색어 정리만, 2(기본값)면 재검색까지 잰다
   - `--header`: 청크 임베딩 이름표. `full` 문서명·위치(현재 색인), `file` 문서명만, `none` 없음
   - `--holdout`: 확인용 질문도 잰다. 개선하는 동안에는 끄고, 기록에 남길 측정에서만 켠다
-  - 임베딩 캐시: 모델·차원·글이 같으면 `be/app/ai/scripts/.cache/`에 저장한 벡터를 다시 쓴다. 같은 조건이면 같은 벡터로 다시 잴 수 있고 요청이 나가지 않는다.
-    캐시에서 꺼내면 걸린 시간이 실제와 달라서, 시간을 비교할 측정은 `--no-cache`로 잰다. 캐시 파일은 커밋하지 않는다
-  - 결과 JSON에 커밋 해시, 커밋하지 않은 변경이 있었는지(`dirty`), 설정값(캐시 사용 여부 포함), 질문별 상위 청크·시간·임베딩 요청 수·캐시에서 꺼낸 글 수가 남는다
+  - 캐시: 임베딩은 모델·차원·글이, LLM 응답은 모델·출력 형식·메시지가 같으면 `be/app/ai/scripts/.cache/`에 저장한 값을 다시 쓴다.
+    같은 조건이면 같은 결과로 다시 잴 수 있고 요청이 나가지 않는다. 캐시 파일은 커밋하지 않는다.
+    캐시에서 꺼내면 걸린 시간이 실제와 다르고 LLM 응답의 흔들림이 보이지 않으므로, 기록에 남길 비교는 `--no-cache`로 3번 재서 평균과 범위를 적는다
+  - 결과 JSON에 커밋 해시, 커밋하지 않은 변경이 있었는지(`dirty`), 설정값(검색 방식·검색 횟수·캐시 사용 여부 포함), 질문별 찾은 청크·결과·결과 지표·시간·요청 수·캐시에서 꺼낸 수가 남는다
 
 평가 세트
 

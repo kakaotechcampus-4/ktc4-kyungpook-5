@@ -1,17 +1,21 @@
-"""기록 검색을 평가 질문 세트로 잰다 (#99).
+"""기록 검색을 평가 질문 세트로 잰다 (#99, #72).
 
 키가 필요해 CI에서 돌리지 않는다. 검색 방식·이름표·모델을 바꿨을 때 수동으로 실행하고
 결과는 docs/retrieval-evaluation.md 에 남긴다. 질문과 지표 정의는 tests/fixtures/eval/README.md 에 있다.
 
-    cd be && uv run python app/ai/scripts/eval_retrieval.py [--header full|file|none] [--holdout] [--no-cache] [--json 결과.json]
+    cd be && uv run python app/ai/scripts/eval_retrieval.py [--search vector|records] [--max-rounds N]
+        [--header full|file|none] [--holdout] [--no-cache] [--json 결과.json]
 
-예시 기록 12종을 색인해 메모리 port에 넣고, 질문마다 검색 함수로 상위 청크를 받아 검색 지표를 계산한다.
+예시 기록 12종을 색인해 메모리 port에 넣고, 질문마다 검색 함수로 청크를 받아 검색 지표를 계산한다.
+--search: vector는 질문을 그대로 임베딩해 찾는 기준점, records는 기록 검색(search_records) 전체다.
+          records는 결과(사실·확인하지 못한 것·자료 간 차이)를 정답과 비교한 결과 지표도 낸다
+--max-rounds: records의 검색 횟수. 1이면 검색어 정리만, 2면 재검색까지 잰다
 --header: 청크 임베딩에 붙이는 이름표. full 문서명·위치(현재 색인), file 문서명만, none 없음
 --holdout: 확인용 질문도 잰다. 개선하는 동안에는 끄고, 기록에 남길 측정에서만 켠다.
            확인용 질문은 화면에 요약만 보이고 질문별 결과는 JSON에만 남는다
---no-cache: 임베딩 캐시를 쓰지 않는다. 캐시는 모델·차원·글이 같으면 저장한 벡터를 다시 써서
-            같은 조건이면 같은 벡터로 다시 잴 수 있게 한다. 캐시에서 꺼내면 걸린 시간이 실제와 달라서
-            시간을 비교할 측정에서는 끈다. 캐시 파일(scripts/.cache/)은 커밋하지 않는다
+--no-cache: 임베딩·LLM 응답 캐시를 쓰지 않는다. 캐시는 같은 입력이면 저장한 값을 다시 써서
+            같은 조건이면 같은 결과로 다시 잴 수 있게 한다. 캐시에서 꺼내면 걸린 시간이 실제와 달라서
+            시간을 비교하거나 LLM 응답의 흔들림을 재는 측정에서는 끈다. 캐시 파일(scripts/.cache/)은 커밋하지 않는다
 
 AI_* 는 be/.env 에서 읽는다. 출력은 scrub()을 거쳐 키가 남지 않는다.
 """
@@ -20,10 +24,12 @@ import argparse
 import asyncio
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import time
 from collections.abc import Awaitable, Callable, Sequence
+from datetime import date
 from pathlib import Path
 from statistics import mean
 
@@ -33,16 +39,25 @@ from dotenv import load_dotenv
 load_dotenv(Path(".env").resolve(), override=True)
 
 from app.ai.config import AISettings
+from app.ai.errors import AIError
 from app.ai.features.retrieval.chunking import (
     CHUNK_MAX_CHARS,
     CHUNK_OVERLAP_CHARS,
 )
 from app.ai.features.retrieval.indexing import index_record_chunks
 from app.ai.features.retrieval.memory_port import InMemoryRecordSearch
+from app.ai.features.retrieval.nodes import MAX_SEARCH_ROUNDS, search_records
+from app.ai.features.retrieval.schemas import (
+    RecordFact,
+    RecordSearchRequest,
+    RecordSearchResult,
+)
 from app.ai.llm import (
     EMBEDDING_BATCH_SIZE,
     EMBEDDING_DIMENSIONS,
     aembed_texts,
+    ainvoke_structured,
+    build_chat_model,
     build_embeddings,
 )
 from app.ai.ports import ChunkSearchQuery, RetrievedChunk
@@ -58,21 +73,76 @@ QUESTIONS = AI_DIR / "tests" / "fixtures" / "eval" / "questions.json"
 CLUB_ID = "clb_keunnamu"
 KS = (1, 3, 5)
 HEADERS = ("full", "file", "none")
-CACHE = AI_DIR / "scripts" / ".cache" / "embeddings.json"
+SEARCHES = ("vector", "records")
+CACHE_DIR = AI_DIR / "scripts" / ".cache"
+EMBEDDING_CACHE = CACHE_DIR / "embeddings.json"
+LLM_CACHE = CACHE_DIR / "llm.json"
 
-# 질문 하나로 청크를 유사도 높은 순서로 찾는 함수. 비교할 검색 방식마다 하나씩 만든다
-Search = Callable[[dict], Awaitable[Sequence[RetrievedChunk]]]
 ChunkKey = tuple[str, str]  # (record_id, location.label)
+# 질문 하나로 (찾은 청크, 기록 검색 결과, 실패한 오류 이름)을 돌려주는 함수. 비교할 검색 방식마다 하나씩 만든다.
+# 청크는 검색 지표에, 결과는 결과 지표에 쓴다. 기준점은 결과가 없다
+SearchOutput = tuple[list[RetrievedChunk], RecordSearchResult | None, str | None]
+Search = Callable[[dict], Awaitable[SearchOutput]]
 
 
 def vector_search(port: InMemoryRecordSearch, embed) -> Search:
     """기준점: 질문을 그대로 임베딩해 비슷한 청크를 찾는다"""
 
-    async def search(question: dict) -> Sequence[RetrievedChunk]:
+    async def search(question: dict) -> SearchOutput:
         [vector] = await embed([question["question"]])
-        return await port.search_chunks(
+        found = await port.search_chunks(
             ChunkSearchQuery(club_id=CLUB_ID, embedding=vector, limit=max(KS))
         )
+        return list(found), None, None
+
+    return search
+
+
+class _RecordingPort:
+    """port가 돌려준 청크를 처음 나온 순서대로 모은다. 검색어가 여러 개면 검색어 순서대로 이어진다"""
+
+    def __init__(self, inner: InMemoryRecordSearch) -> None:
+        self._inner = inner
+        self.chunks: list[RetrievedChunk] = []
+        self._seen: set[tuple[str, str, str]] = set()
+
+    async def search_chunks(
+        self, query: ChunkSearchQuery
+    ) -> tuple[RetrievedChunk, ...]:
+        found = await self._inner.search_chunks(query)
+        for chunk in found:
+            key = (chunk.source.record_id, chunk.source.location.label, chunk.text)
+            if key not in self._seen:
+                self._seen.add(key)
+                self.chunks.append(chunk)
+        return found
+
+
+def records_search(
+    port: InMemoryRecordSearch, embed, invoke, *, max_rounds: int
+) -> Search:
+    """기록 검색(search_records) 전체. 모델 응답이 잘못돼 실패하면 실패로 센다"""
+
+    async def search(question: dict) -> SearchOutput:
+        recorder = _RecordingPort(port)
+        request = RecordSearchRequest(
+            club_id=CLUB_ID,
+            query=question["question"],
+            today=date.fromisoformat(question["today"]),
+            conditions=question["conditions"],
+            limit=max(KS),
+        )
+        try:
+            result = await search_records(
+                request,
+                port=recorder,
+                embed=embed,
+                invoke=invoke,
+                max_rounds=max_rounds,
+            )
+        except AIError as error:
+            return recorder.chunks, None, type(error).__name__
+        return recorder.chunks, result, None
 
     return search
 
@@ -85,14 +155,15 @@ def strip_header(text: str, header: str) -> str:
     return f"{head.splitlines()[0]}\n\n{body}" if header == "file" else body
 
 
+def _keys(sources) -> set[ChunkKey]:
+    return {(s["record_id"], s["location"]["label"]) for s in sources}
+
+
 def gold_items(question: dict) -> list[set[ChunkKey]]:
     """정답 사실·충돌 값마다 출처 청크 집합"""
     expected = question["expected"]
     items = expected["facts"] + [v for c in expected["conflicts"] for v in c["values"]]
-    return [
-        {(s["record_id"], s["location"]["label"]) for s in item["sources"]}
-        for item in items
-    ]
+    return [_keys(item["sources"]) for item in items]
 
 
 def score(question: dict, ranked: Sequence[ChunkKey]) -> dict | None:
@@ -110,6 +181,55 @@ def score(question: dict, ranked: Sequence[ChunkKey]) -> dict | None:
     return metrics
 
 
+def value_matches(content: str, text: str) -> bool:
+    """정답 값 조각이 결과 문장에 들어 있는가. 숫자는 앞뒤 숫자까지 같아야 한다(27은 275,000에 맞지 않는다)"""
+    pattern = re.escape(content)
+    if content[:1].isdigit():
+        pattern = r"(?<!\d)(?<!\d,)" + pattern
+    if content[-1:].isdigit():
+        pattern += r"(?!\d)(?!,\d)"
+    return re.search(pattern, text) is not None
+
+
+def _fact_keys(fact: RecordFact) -> set[ChunkKey]:
+    return {(s.record_id, s.location.label) for s in fact.sources}
+
+
+def _matches(item: dict, fact: RecordFact) -> bool:
+    """값이 일치하고 출처가 겹치는가"""
+    return value_matches(item["content"], fact.content) and bool(
+        _fact_keys(fact) & _keys(item["sources"])
+    )
+
+
+def judge(question: dict, result: RecordSearchResult | None) -> dict:
+    """결과 지표. 실패(result 없음)는 맞힌 것이 없는 결과로 센다"""
+    expected = question["expected"]
+    facts = result.facts if result else ()
+    conflicts = result.conflicts if result else ()
+    items = gold_items(question)
+    gold = set().union(*items) if items else set()
+    return {
+        "facts": len(expected["facts"]),
+        "facts_hit": sum(any(_matches(e, f) for f in facts) for e in expected["facts"]),
+        "result_facts": len(facts),
+        # 출처가 정답 청크와 하나도 겹치지 않는 사실. 다른 연도·행사의 값을 낸 경우를 잡는다
+        "wrong_facts": sum(not (_fact_keys(f) & gold) for f in facts),
+        "not_found": bool(expected["not_found"]),
+        "not_found_hit": bool(expected["not_found"])
+        and bool(result and result.not_found),
+        "conflicts": len(expected["conflicts"]),
+        "conflicts_hit": sum(
+            any(
+                all(any(_matches(v, rv) for rv in rc.values) for v in c["values"])
+                for rc in conflicts
+            )
+            for c in expected["conflicts"]
+        ),
+        "extra_conflict": bool(conflicts) and not expected["conflicts"],
+    }
+
+
 def summarize(rows: list[dict]) -> dict:
     scored = [row["metrics"] for row in rows if row["metrics"]]
     summary: dict = {"questions": len(rows), "scored": len(scored)}
@@ -122,24 +242,33 @@ def summarize(rows: list[dict]) -> dict:
     summary["seconds_max"] = round(max(row["seconds"] for row in rows), 2)
     summary["requests"] = sum(row["requests"] for row in rows)
     summary["cache_hits"] = sum(row["cache_hits"] for row in rows)
+    judged = [row["judge"] for row in rows if row["judge"] is not None]
+    if judged:
+        total = {key: sum(j[key] for j in judged) for key in judged[0]}
+        summary["results"] = {
+            "facts": f"{total['facts_hit']}/{total['facts']}",
+            "wrong_facts": f"{total['wrong_facts']}/{total['result_facts']}",
+            "not_found": f"{total['not_found_hit']}/{total['not_found']}",
+            "conflicts": f"{total['conflicts_hit']}/{total['conflicts']}",
+            "extra_conflicts": total["extra_conflict"],
+            "failures": sum(row["error"] is not None for row in rows),
+            "llm_requests": sum(row["llm_requests"] for row in rows),
+            "llm_cache_hits": sum(row["llm_cache_hits"] for row in rows),
+        }
     return summary
 
 
-def cache_key(model: str, text: str) -> str:
-    return hashlib.sha256(
-        f"{model}\n{EMBEDDING_DIMENSIONS}\n{text}".encode()
-    ).hexdigest()
+def _hash(*parts: str) -> str:
+    return hashlib.sha256("\n".join(parts).encode()).hexdigest()
 
 
-def load_cache() -> dict[str, list[float]]:
-    if not CACHE.exists():
-        return {}
-    return json.loads(CACHE.read_text(encoding="utf-8"))
+def _load(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
-def save_cache(cache: dict[str, list[float]]) -> None:
-    CACHE.parent.mkdir(parents=True, exist_ok=True)
-    CACHE.write_text(json.dumps(cache), encoding="utf-8")
+def _save(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
 def _git() -> dict:
@@ -157,39 +286,74 @@ def _git() -> dict:
         return {"commit": None, "dirty": None}
 
 
-async def run(
-    settings: AISettings, *, header: str, holdout: bool, use_cache: bool
-) -> dict:
-    requests = 0
-
+def _counting_client(counter: list[int]) -> httpx.AsyncClient:
     async def count(request: httpx.Request) -> None:
-        nonlocal requests
-        requests += 1
+        counter[0] += 1
 
-    model = build_embeddings(
-        settings, http_async_client=httpx.AsyncClient(event_hooks={"request": [count]})
+    return httpx.AsyncClient(event_hooks={"request": [count]})
+
+
+async def run(
+    settings: AISettings,
+    *,
+    search_name: str,
+    max_rounds: int,
+    header: str,
+    holdout: bool,
+    use_cache: bool,
+) -> dict:
+    # 실제로 API에 보낸 요청 수와 캐시에서 꺼낸 수
+    embed_requests, llm_requests = [0], [0]
+    embed_hits, llm_hits = [0], [0]
+
+    embeddings = build_embeddings(
+        settings, http_async_client=_counting_client(embed_requests)
     )
-
-    cache = load_cache() if use_cache else None
-    cache_hits = 0
+    embed_cache = _load(EMBEDDING_CACHE) if use_cache else None
 
     async def embed(texts):
-        nonlocal cache_hits
-        if cache is None:
-            return await aembed_texts(texts, model=model)
-        keys = [cache_key(settings.embedding_model, text) for text in texts]
+        if embed_cache is None:
+            return await aembed_texts(texts, model=embeddings)
+        keys = [
+            _hash(settings.embedding_model, str(EMBEDDING_DIMENSIONS), t) for t in texts
+        ]
         missing = list(
-            dict.fromkeys(t for t, k in zip(texts, keys, strict=True) if k not in cache)
+            dict.fromkeys(
+                t for t, k in zip(texts, keys, strict=True) if k not in embed_cache
+            )
         )
         if missing:
-            vectors = await aembed_texts(missing, model=model)
+            vectors = await aembed_texts(missing, model=embeddings)
             for text, vector in zip(missing, vectors, strict=True):
-                cache[cache_key(settings.embedding_model, text)] = list(vector)
-        cache_hits += len(texts) - len(missing)
-        return [tuple(cache[key]) for key in keys]
+                embed_cache[
+                    _hash(settings.embedding_model, str(EMBEDDING_DIMENSIONS), text)
+                ] = list(vector)
+        embed_hits[0] += len(texts) - len(missing)
+        return [tuple(embed_cache[key]) for key in keys]
 
     async def embed_chunks(texts):
         return await embed([strip_header(text, header) for text in texts])
+
+    llm_cache = _load(LLM_CACHE) if use_cache else None
+    chat = (
+        build_chat_model(settings, http_async_client=_counting_client(llm_requests))
+        if search_name == "records"
+        else None
+    )
+
+    async def invoke(messages, schema):
+        key = _hash(
+            settings.model,
+            json.dumps(schema.model_json_schema(), ensure_ascii=False, sort_keys=True),
+            *(f"{m.type}\n{m.content}" for m in messages),
+        )
+        if llm_cache is not None and key in llm_cache:
+            llm_hits[0] += 1
+            return schema.model_validate(llm_cache[key])
+        output = await ainvoke_structured(messages, schema, model=chat)
+        if llm_cache is not None:
+            llm_cache[key] = output.model_dump(mode="json")
+        return output
 
     # 색인
     port = InMemoryRecordSearch()
@@ -202,24 +366,30 @@ async def run(
     index = {
         "records": len(list(FIXTURES.glob("*.json"))),
         "chunks": chunks,
-        "requests": requests,
-        "cache_hits": cache_hits,
+        "requests": embed_requests[0],
+        "cache_hits": embed_hits[0],
         "seconds": round(time.perf_counter() - started, 2),
     }
     print(
-        f"== 색인: 기록 {index['records']}종 → 청크 {chunks}개, 요청 {requests}회, {index['seconds']}초"
+        f"== 색인: 기록 {index['records']}종 → 청크 {chunks}개, "
+        f"요청 {index['requests']}회, {index['seconds']}초"
     )
 
     # 검색
     questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
     if not holdout:
         questions = [q for q in questions if q["split"] == "dev"]
-    search = vector_search(port, embed)
+    search = (
+        records_search(port, embed, invoke, max_rounds=max_rounds)
+        if search_name == "records"
+        else vector_search(port, embed)
+    )
     rows = []
-    print(f"\n== 검색 (상위 {max(KS)}개, 개발용 질문만 질문별로 보인다)")
+    print(f"\n== 검색 ({search_name}, 개발용 질문만 질문별로 보인다)")
     for question in questions:
-        before, hits_before, started = requests, cache_hits, time.perf_counter()
-        found = await search(question)
+        before = (embed_requests[0], embed_hits[0], llm_requests[0], llm_hits[0])
+        started = time.perf_counter()
+        found, result, error = await search(question)
         seconds = time.perf_counter() - started
         ranked = [(c.source.record_id, c.source.location.label) for c in found]
         row = {
@@ -228,8 +398,10 @@ async def run(
             "requirement": question["requirement"],
             "question": question["question"],
             "seconds": round(seconds, 2),
-            "requests": requests - before,
-            "cache_hits": cache_hits - hits_before,
+            "requests": embed_requests[0] - before[0],
+            "cache_hits": embed_hits[0] - before[1],
+            "llm_requests": llm_requests[0] - before[2],
+            "llm_cache_hits": llm_hits[0] - before[3],
             "top": [
                 {
                     "record_id": c.source.record_id,
@@ -240,22 +412,13 @@ async def run(
                 for c in found
             ],
             "metrics": score(question, ranked),
+            "result": result.model_dump(mode="json") if result else None,
+            "error": error,
+            "judge": judge(question, result) if search_name == "records" else None,
         }
         rows.append(row)
         if question["split"] == "dev":
-            first = row["metrics"]["first_rank"] if row["metrics"] else None
-            mark = (
-                "정답 없음"
-                if not row["metrics"]
-                else (f"{first}위" if first else f"{max(KS)}위 밖")
-            )
-            top1 = row["top"][0] if row["top"] else None
-            top1_text = (
-                f"{top1['file_name']} · {top1['label']} ({top1['score']:.3f})"
-                if top1
-                else "-"
-            )
-            print(f"- {row['id']} [{mark}] {row['question']}\n    1위: {top1_text}")
+            _print_row(row)
 
     groups = {
         split: summarize([r for r in rows if r["split"] == split])
@@ -266,8 +429,77 @@ async def run(
         groups[requirement] = summarize(
             [r for r in rows if r["requirement"] == requirement]
         )
+    _print_summary(groups, header=header, search_name=search_name)
+    print(
+        f"임베딩 요청: 색인 {index['requests']}회, 검색 {embed_requests[0] - index['requests']}회. "
+        f"캐시에서 꺼낸 글: 색인 {index['cache_hits']}개, 검색 {embed_hits[0] - index['cache_hits']}개"
+    )
+    if search_name == "records":
+        print(f"LLM 요청: {llm_requests[0]}회, 캐시에서 꺼낸 응답 {llm_hits[0]}개")
 
-    print(f"\n== 요약 (header={header})")
+    if embed_cache is not None:
+        _save(EMBEDDING_CACHE, embed_cache)
+    if llm_cache is not None:
+        _save(LLM_CACHE, llm_cache)
+
+    return {
+        "settings": {
+            **_git(),
+            "embedding_model": settings.embedding_model,
+            "dimensions": EMBEDDING_DIMENSIONS,
+            "chunk_max_chars": CHUNK_MAX_CHARS,
+            "chunk_overlap_chars": CHUNK_OVERLAP_CHARS,
+            "embedding_batch_size": EMBEDDING_BATCH_SIZE,
+            "embedding_header": header,
+            "search": search_name,
+            "chat_model": settings.model if search_name == "records" else None,
+            "max_rounds": max_rounds if search_name == "records" else None,
+            "limit": max(KS),
+            "holdout": holdout,
+            "cache": use_cache,
+        },
+        "index": index,
+        "summary": groups,
+        "questions": rows,
+    }
+
+
+def _print_row(row: dict) -> None:
+    first = row["metrics"]["first_rank"] if row["metrics"] else None
+    mark = (
+        "정답 청크 없음"
+        if not row["metrics"]
+        else (f"{first}위" if first else "못 찾음")
+    )
+    print(f"- {row['id']} [{mark}] {row['question']}")
+    j = row["judge"]
+    if j is None:
+        top1 = row["top"][0] if row["top"] else None
+        print(
+            f"    1위: {top1['file_name']} · {top1['label']} ({top1['score']:.3f})"
+            if top1
+            else "    1위: -"
+        )
+        return
+    if row["error"]:
+        print(f"    실패: {row['error']}")
+        return
+    parts = [
+        f"사실 {j['facts_hit']}/{j['facts']}",
+        f"틀린 사실 {j['wrong_facts']}/{j['result_facts']}",
+    ]
+    if j["not_found"]:
+        parts.append(f"없음 {'O' if j['not_found_hit'] else 'X'}")
+    if j["conflicts"]:
+        parts.append(f"충돌 {j['conflicts_hit']}/{j['conflicts']}")
+    if j["extra_conflict"]:
+        parts.append("없는 충돌")
+    parts.append(f"{row['seconds']}초")
+    print("    " + " · ".join(parts))
+
+
+def _print_summary(groups: dict, *, header: str, search_name: str) -> None:
+    print(f"\n== 검색 지표 (search={search_name}, header={header})")
     print(
         "구분            질문 채점  Hit@1 Hit@3 Hit@5   MRR   R@1   R@3   R@5  평균초"
     )
@@ -281,41 +513,34 @@ async def run(
         print(
             f"{name:<14} {s['questions']:4} {s['scored']:4}  {metrics} {s['seconds_avg']:6.2f}"
         )
+    if search_name != "records":
+        return
+    print("\n== 결과 지표 (맞힌 수/전체)")
     print(
-        f"임베딩 요청: 색인 {index['requests']}회, 검색 {requests - index['requests']}회. "
-        f"캐시에서 꺼낸 글: 색인 {index['cache_hits']}개, 검색 {cache_hits - index['cache_hits']}개"
+        "구분            사실     틀린 사실  없음    충돌   없는 충돌  실패  LLM 요청"
     )
-    if cache is not None:
-        save_cache(cache)
-
-    return {
-        "settings": {
-            **_git(),
-            "embedding_model": settings.embedding_model,
-            "dimensions": EMBEDDING_DIMENSIONS,
-            "chunk_max_chars": CHUNK_MAX_CHARS,
-            "chunk_overlap_chars": CHUNK_OVERLAP_CHARS,
-            "embedding_batch_size": EMBEDDING_BATCH_SIZE,
-            "embedding_header": header,
-            "search": "vector",
-            "limit": max(KS),
-            "holdout": holdout,
-            "embedding_cache": use_cache,
-        },
-        "index": index,
-        "summary": groups,
-        "questions": rows,
-    }
+    for name, s in groups.items():
+        r = s["results"]
+        print(
+            f"{name:<14} {r['facts']:>7} {r['wrong_facts']:>9} {r['not_found']:>6} "
+            f"{r['conflicts']:>6} {r['extra_conflicts']:>9} {r['failures']:>5} {r['llm_requests']:>8}"
+        )
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--search", choices=SEARCHES, default="vector", help="검색 방식"
+    )
+    parser.add_argument(
+        "--max-rounds", type=int, default=MAX_SEARCH_ROUNDS, help="records의 검색 횟수"
+    )
+    parser.add_argument(
         "--header", choices=HEADERS, default="full", help="청크 임베딩 이름표"
     )
     parser.add_argument("--holdout", action="store_true", help="확인용 질문도 잰다")
     parser.add_argument(
-        "--no-cache", action="store_true", help="임베딩 캐시를 쓰지 않는다"
+        "--no-cache", action="store_true", help="임베딩·LLM 캐시를 쓰지 않는다"
     )
     parser.add_argument("--json", type=Path, help="결과를 JSON으로 저장할 경로")
     args = parser.parse_args()
@@ -328,9 +553,11 @@ def main() -> int:
         ]
     )
     settings.require_embedding()
+    if args.search == "records":
+        settings.require_api()
     print(
         scrub(
-            f"model={settings.embedding_model} header={args.header} "
+            f"search={args.search} max_rounds={args.max_rounds} header={args.header} "
             f"holdout={args.holdout} cache={not args.no_cache}"
         )
     )
@@ -339,6 +566,8 @@ def main() -> int:
         result = asyncio.run(
             run(
                 settings,
+                search_name=args.search,
+                max_rounds=args.max_rounds,
                 header=args.header,
                 holdout=args.holdout,
                 use_cache=not args.no_cache,

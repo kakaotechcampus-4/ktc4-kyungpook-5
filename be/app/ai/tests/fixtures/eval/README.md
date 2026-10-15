@@ -60,7 +60,7 @@
 
 ## 결과 지표
 
-기록 검색 결과(`RecordSearchResult`)를 정답과 비교한다.
+기록 검색 결과(`RecordSearchResult`)를 정답과 비교한다. `eval_retrieval.py --search records`가 계산한다.
 
 - 값 일치: 결과 문장에 `content`가 들어 있으면 일치로 본다. 모델이 문장을 쓰므로 같은지가 아니라 들어 있는지로 본다.
   `content`가 숫자로 시작하면 앞에 숫자나 `숫자,`가, 숫자로 끝나면 뒤에 숫자나 `,숫자`가 붙은 경우는 일치로 보지 않는다
