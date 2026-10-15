@@ -1,7 +1,7 @@
 // L2-d 행사 취소 정리. 취소를 누른 뒤 뒷정리를 차례로 안내한다.
 // 앱이 대신 취소해주지 않는다 — 운영진이 직접 하고 완료로 표시한다.
 import { useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { CancelTaskList } from '@/features/events/components/CancelTaskList'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
 import { StepStepper } from '@/features/events/components/StepStepper'
@@ -14,14 +14,17 @@ import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
+import { ServerErrorScreen } from '@/shared/ui/StateScreen'
 import { ToriNote } from '@/shared/ui/ToriNote'
 
 export default function EventCancelPage() {
   const { eventId } = useParams()
   const { search } = useLocation()
+  const navigate = useNavigate()
   const demo = new URLSearchParams(search).has('demo')
 
-  const event = useEventDetail(eventId).data
+  const detailQuery = useEventDetail(eventId)
+  const event = detailQuery.data
   const resolved = useResolvedActions(eventId).data
 
   // TODO(연동): 취소 단계·Action은 아직 정의 전이다(#73).
@@ -51,8 +54,14 @@ export default function EventCancelPage() {
     { label: '장소', value: event?.location ?? '—' },
     { label: '참가', value: event?.headcount ? `${event.headcount}명` : '—' },
     { label: '정리 단계', value: current?.name ?? '정리 완료', highlight: true },
-    { label: '담당', value: '박수겸 · 총무' },
+    { label: '담당', value: event?.manager ?? '—' },
   ]
+
+  // 행사 상세와 같은 방식. 받기 전에는 그리지 않고, 실패하면 자리값 대신 오류 화면을 보인다.
+  if (detailQuery.isPending) return null
+  if (detailQuery.isError) {
+    return <ServerErrorScreen onRetry={() => detailQuery.refetch()} onHome={() => navigate('/')} />
+  }
 
   return (
     <div className="flex flex-col gap-[20px]">
