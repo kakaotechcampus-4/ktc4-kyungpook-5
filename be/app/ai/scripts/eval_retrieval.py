@@ -3,13 +3,15 @@
 키가 필요해 CI에서 돌리지 않는다. 검색 방식·이름표·모델을 바꿨을 때 수동으로 실행하고
 결과는 docs/retrieval-evaluation.md 에 남긴다. 질문과 지표 정의는 tests/fixtures/eval/README.md 에 있다.
 
-    cd be && uv run python app/ai/scripts/eval_retrieval.py [--search vector|records] [--max-rounds N]
+    cd be && uv run python app/ai/scripts/eval_retrieval.py [--search vector|records] [--max-rounds N] [--no-rewrite]
         [--header full|file|none] [--holdout] [--no-cache] [--json 결과.json]
 
 예시 기록 12종을 색인해 메모리 port에 넣고, 질문마다 검색 함수로 청크를 받아 검색 지표를 계산한다.
 --search: vector는 질문을 그대로 임베딩해 찾는 기준점, records는 기록 검색(search_records) 전체다.
           records는 결과(사실·확인하지 못한 것·자료 간 차이)를 정답과 비교한 결과 지표도 낸다
 --max-rounds: records의 검색 횟수. 1이면 검색어 정리만, 2면 재검색까지 잰다
+--no-rewrite: records에서 검색어 정리를 건너뛰고 질문을 그대로 검색어로 쓴다(회의 어시스턴트의 호출 방식)
+records는 질문마다 구간별 시간(검색어 정리, 임베딩, 청크 검색, 근거 판단)도 남긴다
 --header: 청크 임베딩에 붙이는 이름표. full 문서명·위치(현재 색인), file 문서명만, none 없음
 --holdout: 확인용 질문도 잰다. 개선하는 동안에는 끄고, 기록에 남길 측정에서만 켠다.
            확인용 질문은 화면에 요약만 보이고 질문별 결과는 JSON에만 남는다
@@ -31,7 +33,7 @@ import time
 from collections.abc import Awaitable, Callable, Sequence
 from datetime import date
 from pathlib import Path
-from statistics import mean
+from statistics import mean, median
 
 import httpx
 from dotenv import load_dotenv
@@ -51,6 +53,7 @@ from app.ai.features.retrieval.schemas import (
     RecordFact,
     RecordSearchRequest,
     RecordSearchResult,
+    SearchQueries,
 )
 from app.ai.llm import (
     EMBEDDING_BATCH_SIZE,
@@ -74,6 +77,8 @@ CLUB_ID = "clb_keunnamu"
 KS = (1, 3, 5)
 HEADERS = ("full", "file", "none")
 SEARCHES = ("vector", "records")
+# records의 구간: 검색어 정리(LLM), 임베딩, 청크 검색(port), 근거 판단(LLM, 충분성 판단과 결과 구성을 한 번에)
+STAGES = ("rewrite", "embed", "chunk_search", "assess")
 CACHE_DIR = AI_DIR / "scripts" / ".cache"
 EMBEDDING_CACHE = CACHE_DIR / "embeddings.json"
 LLM_CACHE = CACHE_DIR / "llm.json"
@@ -101,15 +106,18 @@ def vector_search(port: InMemoryRecordSearch, embed) -> Search:
 class _RecordingPort:
     """port가 돌려준 청크를 처음 나온 순서대로 모은다. 검색어가 여러 개면 검색어 순서대로 이어진다"""
 
-    def __init__(self, inner: InMemoryRecordSearch) -> None:
+    def __init__(self, inner: InMemoryRecordSearch, stages: dict[str, float]) -> None:
         self._inner = inner
+        self._stages = stages
         self.chunks: list[RetrievedChunk] = []
         self._seen: set[tuple[str, str, str]] = set()
 
     async def search_chunks(
         self, query: ChunkSearchQuery
     ) -> tuple[RetrievedChunk, ...]:
+        started = time.perf_counter()
         found = await self._inner.search_chunks(query)
+        self._stages["chunk_search"] += time.perf_counter() - started
         for chunk in found:
             key = (chunk.source.record_id, chunk.source.location.label, chunk.text)
             if key not in self._seen:
@@ -119,12 +127,18 @@ class _RecordingPort:
 
 
 def records_search(
-    port: InMemoryRecordSearch, embed, invoke, *, max_rounds: int
+    port: InMemoryRecordSearch,
+    embed,
+    invoke,
+    *,
+    max_rounds: int,
+    rewrite: bool,
+    stages: dict[str, float],
 ) -> Search:
     """기록 검색(search_records) 전체. 모델 응답이 잘못돼 실패하면 실패로 센다"""
 
     async def search(question: dict) -> SearchOutput:
-        recorder = _RecordingPort(port)
+        recorder = _RecordingPort(port, stages)
         request = RecordSearchRequest(
             club_id=CLUB_ID,
             query=question["question"],
@@ -139,6 +153,7 @@ def records_search(
                 embed=embed,
                 invoke=invoke,
                 max_rounds=max_rounds,
+                rewrite=rewrite,
             )
         except AIError as error:
             return recorder.chunks, None, type(error).__name__
@@ -244,6 +259,14 @@ def summarize(rows: list[dict]) -> dict:
     summary["seconds_max"] = round(max(row["seconds"] for row in rows), 2)
     summary["requests"] = sum(row["requests"] for row in rows)
     summary["cache_hits"] = sum(row["cache_hits"] for row in rows)
+    summary["stages"] = {
+        k: {
+            "avg": round(mean(row["stages"][k] for row in rows), 3),
+            "p50": round(median(row["stages"][k] for row in rows), 3),
+            "max": round(max(row["stages"][k] for row in rows), 3),
+        }
+        for k in STAGES
+    }
     judged = [row["judge"] for row in rows if row["judge"] is not None]
     if judged:
         total = {key: sum(j[key] for j in judged) for key in judged[0]}
@@ -300,6 +323,7 @@ async def run(
     *,
     search_name: str,
     max_rounds: int,
+    rewrite: bool,
     header: str,
     holdout: bool,
     use_cache: bool,
@@ -307,6 +331,8 @@ async def run(
     # 실제로 API에 보낸 요청 수와 캐시에서 꺼낸 수
     embed_requests, llm_requests = [0], [0]
     embed_hits, llm_hits = [0], [0]
+    # 구간별 누적 시간(초). 질문마다 앞뒤 차이로 그 질문의 구간 시간을 낸다
+    stages = dict.fromkeys(STAGES, 0.0)
 
     embeddings = build_embeddings(
         settings, http_async_client=_counting_client(embed_requests)
@@ -314,6 +340,13 @@ async def run(
     embed_cache = _load(EMBEDDING_CACHE) if use_cache else None
 
     async def embed(texts):
+        started = time.perf_counter()
+        try:
+            return await _embed(texts)
+        finally:
+            stages["embed"] += time.perf_counter() - started
+
+    async def _embed(texts):
         if embed_cache is None:
             return await aembed_texts(texts, model=embeddings)
         keys = [
@@ -344,6 +377,14 @@ async def run(
     )
 
     async def invoke(messages, schema):
+        started = time.perf_counter()
+        try:
+            return await _invoke(messages, schema)
+        finally:
+            stage = "rewrite" if schema is SearchQueries else "assess"
+            stages[stage] += time.perf_counter() - started
+
+    async def _invoke(messages, schema):
         key = _hash(
             settings.model,
             json.dumps(schema.model_json_schema(), ensure_ascii=False, sort_keys=True),
@@ -382,7 +423,9 @@ async def run(
     if not holdout:
         questions = [q for q in questions if q["split"] == "dev"]
     search = (
-        records_search(port, embed, invoke, max_rounds=max_rounds)
+        records_search(
+            port, embed, invoke, max_rounds=max_rounds, rewrite=rewrite, stages=stages
+        )
         if search_name == "records"
         else vector_search(port, embed)
     )
@@ -390,6 +433,7 @@ async def run(
     print(f"\n== 검색 ({search_name}, 개발용 질문만 질문별로 보인다)")
     for question in questions:
         before = (embed_requests[0], embed_hits[0], llm_requests[0], llm_hits[0])
+        stages_before = dict(stages)
         started = time.perf_counter()
         found, result, error = await search(question)
         seconds = time.perf_counter() - started
@@ -400,6 +444,7 @@ async def run(
             "requirement": question["requirement"],
             "question": question["question"],
             "seconds": round(seconds, 2),
+            "stages": {k: round(stages[k] - stages_before[k], 3) for k in STAGES},
             "requests": embed_requests[0] - before[0],
             "cache_hits": embed_hits[0] - before[1],
             "llm_requests": llm_requests[0] - before[2],
@@ -438,6 +483,16 @@ async def run(
     )
     if search_name == "records":
         print(f"LLM 요청: {llm_requests[0]}회, 캐시에서 꺼낸 응답 {llm_hits[0]}개")
+        print("구간별 시간 (질문당 평균 / 중앙 / 최대 초):")
+        for name, s in groups.items():
+            if name in ("dev", "holdout"):
+                print(
+                    f"  {name:<8} "
+                    + "  ".join(
+                        f"{k} {v['avg']:.2f}/{v['p50']:.2f}/{v['max']:.2f}"
+                        for k, v in s["stages"].items()
+                    )
+                )
 
     if embed_cache is not None:
         _save(EMBEDDING_CACHE, embed_cache)
@@ -456,6 +511,7 @@ async def run(
             "search": search_name,
             "chat_model": settings.model if search_name == "records" else None,
             "max_rounds": max_rounds if search_name == "records" else None,
+            "rewrite": rewrite if search_name == "records" else None,
             "limit": max(KS),
             "holdout": holdout,
             "cache": use_cache,
@@ -538,6 +594,9 @@ def main() -> int:
         "--max-rounds", type=int, default=MAX_SEARCH_ROUNDS, help="records의 검색 횟수"
     )
     parser.add_argument(
+        "--no-rewrite", action="store_true", help="records에서 검색어 정리를 건너뛴다"
+    )
+    parser.add_argument(
         "--header", choices=HEADERS, default="full", help="청크 임베딩 이름표"
     )
     parser.add_argument("--holdout", action="store_true", help="확인용 질문도 잰다")
@@ -559,7 +618,8 @@ def main() -> int:
         settings.require_api()
     print(
         scrub(
-            f"search={args.search} max_rounds={args.max_rounds} header={args.header} "
+            f"search={args.search} max_rounds={args.max_rounds} rewrite={not args.no_rewrite} "
+            f"header={args.header} "
             f"holdout={args.holdout} cache={not args.no_cache}"
         )
     )
@@ -570,6 +630,7 @@ def main() -> int:
                 settings,
                 search_name=args.search,
                 max_rounds=args.max_rounds,
+                rewrite=not args.no_rewrite,
                 header=args.header,
                 holdout=args.holdout,
                 use_cache=not args.no_cache,
