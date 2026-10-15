@@ -3,18 +3,22 @@
 키가 필요해 CI에서 돌리지 않는다. 검색 방식·이름표·모델을 바꿨을 때 수동으로 실행하고
 결과는 docs/retrieval-evaluation.md 에 남긴다. 질문과 지표 정의는 tests/fixtures/eval/README.md 에 있다.
 
-    cd be && uv run python app/ai/scripts/eval_retrieval.py [--header full|file|none] [--holdout] [--json 결과.json]
+    cd be && uv run python app/ai/scripts/eval_retrieval.py [--header full|file|none] [--holdout] [--no-cache] [--json 결과.json]
 
 예시 기록 12종을 색인해 메모리 port에 넣고, 질문마다 검색 함수로 상위 청크를 받아 검색 지표를 계산한다.
 --header: 청크 임베딩에 붙이는 이름표. full 문서명·위치(현재 색인), file 문서명만, none 없음
 --holdout: 확인용 질문도 잰다. 개선하는 동안에는 끄고, 기록에 남길 측정에서만 켠다.
            확인용 질문은 화면에 요약만 보이고 질문별 결과는 JSON에만 남는다
+--no-cache: 임베딩 캐시를 쓰지 않는다. 캐시는 모델·차원·글이 같으면 저장한 벡터를 다시 써서
+            같은 조건이면 같은 벡터로 다시 잴 수 있게 한다. 캐시에서 꺼내면 걸린 시간이 실제와 달라서
+            시간을 비교할 측정에서는 끈다. 캐시 파일(scripts/.cache/)은 커밋하지 않는다
 
 AI_* 는 be/.env 에서 읽는다. 출력은 scrub()을 거쳐 키가 남지 않는다.
 """
 
 import argparse
 import asyncio
+import hashlib
 import json
 import subprocess
 import sys
@@ -54,6 +58,7 @@ QUESTIONS = AI_DIR / "tests" / "fixtures" / "eval" / "questions.json"
 CLUB_ID = "clb_keunnamu"
 KS = (1, 3, 5)
 HEADERS = ("full", "file", "none")
+CACHE = AI_DIR / "scripts" / ".cache" / "embeddings.json"
 
 # 질문 하나로 청크를 유사도 높은 순서로 찾는 함수. 비교할 검색 방식마다 하나씩 만든다
 Search = Callable[[dict], Awaitable[Sequence[RetrievedChunk]]]
@@ -116,7 +121,25 @@ def summarize(rows: list[dict]) -> dict:
     summary["seconds_avg"] = round(mean(row["seconds"] for row in rows), 2)
     summary["seconds_max"] = round(max(row["seconds"] for row in rows), 2)
     summary["requests"] = sum(row["requests"] for row in rows)
+    summary["cache_hits"] = sum(row["cache_hits"] for row in rows)
     return summary
+
+
+def cache_key(model: str, text: str) -> str:
+    return hashlib.sha256(
+        f"{model}\n{EMBEDDING_DIMENSIONS}\n{text}".encode()
+    ).hexdigest()
+
+
+def load_cache() -> dict[str, list[float]]:
+    if not CACHE.exists():
+        return {}
+    return json.loads(CACHE.read_text(encoding="utf-8"))
+
+
+def save_cache(cache: dict[str, list[float]]) -> None:
+    CACHE.parent.mkdir(parents=True, exist_ok=True)
+    CACHE.write_text(json.dumps(cache), encoding="utf-8")
 
 
 def _git() -> dict:
@@ -134,7 +157,9 @@ def _git() -> dict:
         return {"commit": None, "dirty": None}
 
 
-async def run(settings: AISettings, *, header: str, holdout: bool) -> dict:
+async def run(
+    settings: AISettings, *, header: str, holdout: bool, use_cache: bool
+) -> dict:
     requests = 0
 
     async def count(request: httpx.Request) -> None:
@@ -145,8 +170,23 @@ async def run(settings: AISettings, *, header: str, holdout: bool) -> dict:
         settings, http_async_client=httpx.AsyncClient(event_hooks={"request": [count]})
     )
 
+    cache = load_cache() if use_cache else None
+    cache_hits = 0
+
     async def embed(texts):
-        return await aembed_texts(texts, model=model)
+        nonlocal cache_hits
+        if cache is None:
+            return await aembed_texts(texts, model=model)
+        keys = [cache_key(settings.embedding_model, text) for text in texts]
+        missing = list(
+            dict.fromkeys(t for t, k in zip(texts, keys, strict=True) if k not in cache)
+        )
+        if missing:
+            vectors = await aembed_texts(missing, model=model)
+            for text, vector in zip(missing, vectors, strict=True):
+                cache[cache_key(settings.embedding_model, text)] = list(vector)
+        cache_hits += len(texts) - len(missing)
+        return [tuple(cache[key]) for key in keys]
 
     async def embed_chunks(texts):
         return await embed([strip_header(text, header) for text in texts])
@@ -163,6 +203,7 @@ async def run(settings: AISettings, *, header: str, holdout: bool) -> dict:
         "records": len(list(FIXTURES.glob("*.json"))),
         "chunks": chunks,
         "requests": requests,
+        "cache_hits": cache_hits,
         "seconds": round(time.perf_counter() - started, 2),
     }
     print(
@@ -177,7 +218,7 @@ async def run(settings: AISettings, *, header: str, holdout: bool) -> dict:
     rows = []
     print(f"\n== 검색 (상위 {max(KS)}개, 개발용 질문만 질문별로 보인다)")
     for question in questions:
-        before, started = requests, time.perf_counter()
+        before, hits_before, started = requests, cache_hits, time.perf_counter()
         found = await search(question)
         seconds = time.perf_counter() - started
         ranked = [(c.source.record_id, c.source.location.label) for c in found]
@@ -188,6 +229,7 @@ async def run(settings: AISettings, *, header: str, holdout: bool) -> dict:
             "question": question["question"],
             "seconds": round(seconds, 2),
             "requests": requests - before,
+            "cache_hits": cache_hits - hits_before,
             "top": [
                 {
                     "record_id": c.source.record_id,
@@ -240,8 +282,11 @@ async def run(settings: AISettings, *, header: str, holdout: bool) -> dict:
             f"{name:<14} {s['questions']:4} {s['scored']:4}  {metrics} {s['seconds_avg']:6.2f}"
         )
     print(
-        f"임베딩 요청: 색인 {index['requests']}회, 검색 {requests - index['requests']}회"
+        f"임베딩 요청: 색인 {index['requests']}회, 검색 {requests - index['requests']}회. "
+        f"캐시에서 꺼낸 글: 색인 {index['cache_hits']}개, 검색 {cache_hits - index['cache_hits']}개"
     )
+    if cache is not None:
+        save_cache(cache)
 
     return {
         "settings": {
@@ -255,6 +300,7 @@ async def run(settings: AISettings, *, header: str, holdout: bool) -> dict:
             "search": "vector",
             "limit": max(KS),
             "holdout": holdout,
+            "embedding_cache": use_cache,
         },
         "index": index,
         "summary": groups,
@@ -268,6 +314,9 @@ def main() -> int:
         "--header", choices=HEADERS, default="full", help="청크 임베딩 이름표"
     )
     parser.add_argument("--holdout", action="store_true", help="확인용 질문도 잰다")
+    parser.add_argument(
+        "--no-cache", action="store_true", help="임베딩 캐시를 쓰지 않는다"
+    )
     parser.add_argument("--json", type=Path, help="결과를 JSON으로 저장할 경로")
     args = parser.parse_args()
 
@@ -281,12 +330,20 @@ def main() -> int:
     settings.require_embedding()
     print(
         scrub(
-            f"model={settings.embedding_model} header={args.header} holdout={args.holdout}"
+            f"model={settings.embedding_model} header={args.header} "
+            f"holdout={args.holdout} cache={not args.no_cache}"
         )
     )
 
     try:
-        result = asyncio.run(run(settings, header=args.header, holdout=args.holdout))
+        result = asyncio.run(
+            run(
+                settings,
+                header=args.header,
+                holdout=args.holdout,
+                use_cache=not args.no_cache,
+            )
+        )
     except Exception as error:  # noqa: BLE001 - 확인 스크립트는 원인만 보여주고 끝낸다
         print(scrub(f"[FAIL] {type(error).__name__}: {error}"))
         return 1

@@ -7,7 +7,7 @@
 
 ```bash
 cd be && uv run python app/ai/scripts/check_index_record.py [--json 결과.json]
-cd be && uv run python app/ai/scripts/eval_retrieval.py [--header full|file|none] [--holdout] [--json 결과.json]
+cd be && uv run python app/ai/scripts/eval_retrieval.py [--header full|file|none] [--holdout] [--no-cache] [--json 결과.json]
 ```
 
 - 키가 필요해 CI에서 돌리지 않는다. `be/.env`의 `AI_EMBEDDING_*`를 쓴다.
@@ -17,7 +17,9 @@ cd be && uv run python app/ai/scripts/eval_retrieval.py [--header full|file|none
   - 검색 방식: 질문을 그대로 임베딩해 찾는다(기준점). 검색 방식은 스크립트에 검색 함수로 더한다
   - `--header`: 청크 임베딩 이름표. `full` 문서명·위치(현재 색인), `file` 문서명만, `none` 없음
   - `--holdout`: 확인용 질문도 잰다. 개선하는 동안에는 끄고, 기록에 남길 측정에서만 켠다
-  - 결과 JSON에 커밋 해시, 커밋하지 않은 변경이 있었는지(`dirty`), 설정값, 질문별 상위 청크·시간·임베딩 요청 수가 남는다
+  - 임베딩 캐시: 모델·차원·글이 같으면 `be/app/ai/scripts/.cache/`에 저장한 벡터를 다시 쓴다. 같은 조건이면 같은 벡터로 다시 잴 수 있고 요청이 나가지 않는다.
+    캐시에서 꺼내면 걸린 시간이 실제와 달라서, 시간을 비교할 측정은 `--no-cache`로 잰다. 캐시 파일은 커밋하지 않는다
+  - 결과 JSON에 커밋 해시, 커밋하지 않은 변경이 있었는지(`dirty`), 설정값(캐시 사용 여부 포함), 질문별 상위 청크·시간·임베딩 요청 수·캐시에서 꺼낸 글 수가 남는다
 
 질문이나 정답을 바꾸면 이전 기록과 직접 비교할 수 없으므로 기록에 적는다.
 아래 2026-10-07 기록은 이전 방식(예시 기록 4종, 질문 6개, 상위 3개)으로 잰 값이라 평가 질문 세트로 잰 값과 직접 비교하지 않는다.
