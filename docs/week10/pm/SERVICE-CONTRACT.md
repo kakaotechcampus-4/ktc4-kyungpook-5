@@ -63,7 +63,7 @@ RAG 검색이나 LLM 생성은 필요한 정보 제공을 위한 내부 도구 �
 | `GET /clubs/{id}/activity` | cursor/jobs[]/connections[]/characterState | mini의 상태는 작업 집계, 행사를 실행했다는 뜻이 아님 |
 | `GET /clubs/{id}/activity/stream` | SSE id/event/data, Last-Event-ID 재접속 | after cursor 재생, 만료 409 ACTIVITY_CURSOR_EXPIRED → snapshot. heartbeat 별도 |
 
-경로별 기존 구현 여부는 README에 있다. 위 신규 API는 현재 라우터에 없다. 회원 명단·참가 응답·미응답 안내 승인·수동 게시 흐름은 이번 중심 기능의 선행조건으로 넣지 않았다. 기존 기획은 legacy에 보존했다.
+경로별 구현 상태와 더미로 둔 범위, 이 표와 다르게 동작하는 부분은 [BE README의 "팀장 요청 curl 흐름"](../../../be/README.md)에 있다. 표의 `POST /clubs/{id}/context-decisions`, `dismiss`는 아직 구현하지 않았다. 회원 명단·참가 응답·미응답 안내 승인·수동 게시 흐름은 이번 중심 기능의 선행조건으로 넣지 않았다. 기존 기획은 legacy에 보존했다.
 
 ## Jev 세 분기 테스트
 
