@@ -60,6 +60,8 @@ venv/
 .ipynb_checkpoints/
 # 기록 검색 평가 스크립트의 임베딩 캐시 (#99)
 be/app/ai/scripts/.cache/
+# 로컬 파일 업로드 저장소 (#133, storage_dir 기본값). S3 연동 전까지 디스크에 쌓인다.
+be/var/
 
 # ── Java / Kotlin / Gradle ──────────────────────────
 target/
