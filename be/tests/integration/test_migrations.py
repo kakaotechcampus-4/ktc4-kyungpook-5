@@ -17,6 +17,7 @@ EXPECTED_TABLES = {
     "expenses",
     "idempotency_keys",
     "invitations",
+    "meetings",
     "receipt_imports",
     "receipt_import_rows",
     "steps",
@@ -25,6 +26,7 @@ EXPECTED_TABLES = {
     "messages",
     "participants",
     "records",
+    "transcript_segments",
 }
 
 # 인증 도입 전까지 현재 사용자로 쓰는 시드 (FE 동아리 찾기 데모 목업과 같은 id).
