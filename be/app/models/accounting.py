@@ -44,6 +44,10 @@ class ReceiptImport(IdMixin, TimestampMixin, Base):
         default=ReceiptImportStatus.QUEUED,
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # 영수증 이미지 OCR 작업. CSV는 요청 안에서 바로 파싱해 null이다.
+    job_id: Mapped[str | None] = mapped_column(
+        String(ID_LENGTH), fk("agent_jobs.id", ondelete="SET NULL")
+    )
     # OCR/CSV 원본 추출값. 사람이 고친 값은 receipt_import_rows의 draft_fields에 따로 둔다.
     extraction_result: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
     # 같은 파일 재업로드 감지용 보조 정보.

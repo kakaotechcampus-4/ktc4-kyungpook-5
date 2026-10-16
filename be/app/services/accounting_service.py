@@ -1,20 +1,19 @@
 """영수 내역 기록 도메인 오케스트레이션 (#133).
 
 CSV는 결정론적으로 파싱하고, 영수증 이미지는 더미 OCR(services/receipt_ocr_stub.py)로
-초안을 만든다. 둘 다 이번 구현에서는 동기적으로 즉시 처리한다 — 실제 비동기
-작업 큐(agent_jobs)가 아직 없어서다. 나중에 비동기로 바꿔도 라우터 계약은
-그대로 쓸 수 있게 서비스 함수 경계를 나눠둔다.
+초안을 만든다. 이미지 OCR은 agent_jobs 작업으로 기록하지만 실제 작업 큐가 없어
+둘 다 요청 안에서 즉시 처리한다. 나중에 큐로 옮겨도 라우터 계약은 그대로 쓸 수
+있게 서비스 함수 경계를 나눠둔다.
 """
 
-import uuid
-from datetime import UTC, date, datetime
-from pathlib import Path
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import get_settings
 from app.core.enums import (
+    AgentJobKind,
+    AgentJobStage,
     ExpenseSource,
     ReceiptImportStatus,
     ReceiptImportType,
@@ -23,27 +22,19 @@ from app.core.enums import (
     RecordParseStatus,
 )
 from app.core.exceptions import (
+    ExpenseNotFound,
     ImportNotReady,
     ReceiptImportNotFound,
     ValidationFailed,
     VersionConflict,
 )
+from app.infra.storage import save_file
 from app.models.accounting import Expense, ReceiptImport, ReceiptImportRow
 from app.models.records import Record
 from app.schemas.accounting import ExpenseRowDraftIn
+from app.services import agent_job_service
 from app.services.expense_csv_parser import CsvFormatError, parse_expense_csv
 from app.services.receipt_ocr_stub import extract_receipt
-
-
-def _save_file(club_id: str, file_name: str, content: bytes) -> str:
-    """로컬 디스크에 저장하고 storage_key(상대경로)를 돌려준다."""
-    settings = get_settings()
-    safe_name = f"{uuid.uuid4().hex}_{file_name}"
-    relative = f"{club_id}/{safe_name}"
-    full_path = Path(settings.storage_dir) / relative
-    full_path.parent.mkdir(parents=True, exist_ok=True)
-    full_path.write_bytes(content)
-    return relative
 
 
 async def create_expense(
@@ -76,6 +67,13 @@ async def create_expense(
     return expense
 
 
+async def get_expense(session: AsyncSession, *, club_id: str, expense_id: str) -> Expense:
+    expense = await session.get(Expense, expense_id)
+    if expense is None or expense.club_id != club_id:
+        raise ExpenseNotFound()
+    return expense
+
+
 async def list_expenses(
     session: AsyncSession, *, club_id: str, page: int, size: int
 ) -> tuple[list[Expense], int]:
@@ -102,7 +100,7 @@ async def create_receipt_import(
     file_bytes: bytes,
     created_by: str,
 ) -> ReceiptImport:
-    storage_key = _save_file(club_id, file_name, file_bytes)
+    storage_key = save_file(club_id, file_name, file_bytes)
     record = Record(
         club_id=club_id,
         event_id=event_id,
@@ -158,7 +156,13 @@ async def create_receipt_import(
                 )
             )
     else:
+        job = await agent_job_service.create_job(
+            session, club_id=club_id, kind=AgentJobKind.RECEIPT_OCR, created_by=created_by
+        )
+        receipt_import.job_id = job.id
+        agent_job_service.start(session, job, AgentJobStage.OCR)
         extracted_rows = extract_receipt(file_bytes)
+        agent_job_service.succeed(session, job, {"receiptImportId": receipt_import.id})
         for row_no, extracted in enumerate(extracted_rows, start=1):
             session.add(
                 ReceiptImportRow(
@@ -208,10 +212,6 @@ async def list_receipt_imports(
     return list(rows), total or 0
 
 
-def _spent_at_from_date(value: date) -> datetime:
-    return datetime(value.year, value.month, value.day, tzinfo=UTC)
-
-
 async def update_draft(
     session: AsyncSession,
     *,
@@ -227,13 +227,13 @@ async def update_draft(
         raise ImportNotReady()
 
     rows_by_no = {row.row_no: row for row in receipt_import.rows}
-    for edit in row_edits:
-        row = rows_by_no.get(edit.row_no)
+    for position, edit in enumerate(row_edits, start=1):
+        row = rows_by_no.get(edit.row_no or position)
         if row is None:
             continue
         submitted: dict[str, object] = {}
         if edit.spent_at is not None:
-            row.spent_at = _spent_at_from_date(edit.spent_at)
+            row.spent_at = edit.spent_at
             submitted["spent_at"] = edit.spent_at.isoformat()
         if edit.merchant is not None:
             row.merchant = edit.merchant
@@ -267,7 +267,7 @@ async def confirm_receipt_import(
     import_id: str,
     expected_version: int,
     confirmed_by: str,
-) -> list[str]:
+) -> tuple[ReceiptImport, list[str]]:
     receipt_import = await get_receipt_import(session, club_id=club_id, import_id=import_id)
     if receipt_import.version != expected_version:
         raise VersionConflict()
@@ -314,4 +314,4 @@ async def confirm_receipt_import(
     receipt_import.confirmed_by = confirmed_by
     receipt_import.confirmed_at = datetime.now(UTC)
     await session.commit()
-    return expense_ids
+    return receipt_import, expense_ids
