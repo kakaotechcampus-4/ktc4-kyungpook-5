@@ -148,7 +148,7 @@ def upgrade() -> None:
     sa.Column('event_id', sa.String(length=26), nullable=True),
     sa.Column('file_name', sa.String(length=255), nullable=False),
     sa.Column('file_type', sa.Enum('XLSX', 'CSV', 'HWP', 'PDF', 'IMAGE', name='recordfiletype', native_enum=False, length=32), nullable=False),
-    sa.Column('category', sa.Enum('LEDGER', 'ETC', 'RULES', 'EVENT_HISTORY', name='recordcategory', native_enum=False, length=32), nullable=False),
+    sa.Column('category', sa.Enum('LEDGER', 'ETC', 'RULES', 'EVENT_HISTORY', 'RECEIPT', name='recordcategory', native_enum=False, length=32), nullable=False),
     sa.Column('storage_key', sa.String(length=512), nullable=False),
     sa.Column('size', sa.BigInteger(), nullable=False),
     sa.Column('parse_status', sa.Enum('QUEUED', 'PARSING', 'NEEDS_REVIEW', 'COMPLETED', 'INDEXED', 'FAILED', name='recordparsestatus', native_enum=False, length=32), nullable=False),
@@ -163,6 +163,75 @@ def upgrade() -> None:
     comment='동아리 기록 원본 메타데이터'
     )
     op.create_index('ix_records_club_category', 'records', ['club_id', 'category'], unique=False)
+    op.create_table('expenses',
+    sa.Column('club_id', sa.String(length=26), nullable=False),
+    sa.Column('event_id', sa.String(length=26), nullable=True),
+    sa.Column('spent_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('merchant', sa.String(length=200), nullable=True),
+    sa.Column('amount', sa.Integer(), nullable=False),
+    sa.Column('currency', sa.Enum('KRW', name='currencycode', native_enum=False, length=32), nullable=False),
+    sa.Column('category', sa.String(length=50), nullable=True),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('source', sa.Enum('MANUAL', 'CSV_IMPORT', 'OCR_IMPORT', name='expensesource', native_enum=False, length=32), nullable=False),
+    sa.Column('receipt_record_id', sa.String(length=26), nullable=True),
+    sa.Column('created_by', sa.String(length=26), nullable=False),
+    sa.Column('version', sa.Integer(), nullable=False),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['created_by'], ['members.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['event_id'], ['events.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['receipt_record_id'], ['records.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_expenses_club_id'), 'expenses', ['club_id'], unique=False)
+    op.create_table('receipt_imports',
+    sa.Column('club_id', sa.String(length=26), nullable=False),
+    sa.Column('event_id', sa.String(length=26), nullable=True),
+    sa.Column('record_id', sa.String(length=26), nullable=True),
+    sa.Column('type', sa.Enum('EXPENSE_CSV', 'RECEIPT_IMAGE', name='receiptimporttype', native_enum=False, length=32), nullable=False),
+    sa.Column('status', sa.Enum('QUEUED', 'PROCESSING', 'NEEDS_REVIEW', 'CONFIRMED', 'FAILED', name='receiptimportstatus', native_enum=False, length=32), nullable=False),
+    sa.Column('version', sa.Integer(), nullable=False),
+    sa.Column('extraction_result', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('file_sha256', sa.String(length=64), nullable=True),
+    sa.Column('error', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('confirmed_by', sa.String(length=26), nullable=True),
+    sa.Column('confirmed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_by', sa.String(length=26), nullable=False),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['confirmed_by'], ['members.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['created_by'], ['members.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['event_id'], ['events.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['record_id'], ['records.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_receipt_imports_club_id'), 'receipt_imports', ['club_id'], unique=False)
+    op.create_table('receipt_import_rows',
+    sa.Column('receipt_import_id', sa.String(length=26), nullable=False),
+    sa.Column('row_no', sa.Integer(), nullable=False),
+    sa.Column('spent_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('merchant', sa.String(length=200), nullable=True),
+    sa.Column('amount', sa.Integer(), nullable=True),
+    sa.Column('currency', sa.Enum('KRW', name='currencycode', native_enum=False, length=32), nullable=False),
+    sa.Column('category', sa.String(length=50), nullable=True),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('raw_fields', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('draft_fields', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('field_confidence', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('validation_errors', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('confirmed_expense_id', sa.String(length=26), nullable=True),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['confirmed_expense_id'], ['expenses.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['receipt_import_id'], ['receipt_imports.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('receipt_import_id', 'row_no', name='uq_receipt_rows_import_rowno')
+    )
     op.create_table('steps',
     sa.Column('event_id', sa.String(length=26), nullable=False),
     sa.Column('step_order', sa.Integer(), nullable=False),
@@ -275,6 +344,11 @@ def downgrade() -> None:
     op.drop_index('ix_actions_event_status', table_name='actions')
     op.drop_table('actions')
     op.drop_table('steps')
+    op.drop_table('receipt_import_rows')
+    op.drop_index(op.f('ix_receipt_imports_club_id'), table_name='receipt_imports')
+    op.drop_table('receipt_imports')
+    op.drop_index(op.f('ix_expenses_club_id'), table_name='expenses')
+    op.drop_table('expenses')
     op.drop_index('ix_records_club_category', table_name='records')
     op.drop_table('records')
     op.drop_table('participants')
