@@ -17,7 +17,7 @@ from app.core.enums import (
     StepActor,
     StepState,
 )
-from app.schemas.common import CamelModel, UtcDateTime
+from app.schemas.common import CamelModel, PageMeta, UtcDateTime
 
 
 class ResolvedBy(CamelModel):
@@ -55,12 +55,6 @@ class ActionOut(CamelModel):
     options: list[ActionOption] | None
     allow_manual: bool | None
     can_approve: bool
-
-
-class PageMeta(CamelModel):
-    page: int
-    size: int
-    total_count: int
 
 
 class ActionListResponse(CamelModel):

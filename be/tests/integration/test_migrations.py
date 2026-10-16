@@ -8,11 +8,17 @@ from sqlalchemy import create_engine, inspect, text
 pytestmark = pytest.mark.db
 
 EXPECTED_TABLES = {
+    "accounts",
     "agent_log",
     "auth",
     "clubs",
     "members",
     "events",
+    "expenses",
+    "idempotency_keys",
+    "invitations",
+    "receipt_imports",
+    "receipt_import_rows",
     "steps",
     "actions",
     "conversations",

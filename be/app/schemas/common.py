@@ -31,7 +31,13 @@ T = TypeVar("T")
 
 
 class Envelope(CamelModel, Generic[T]):
-    """단건 성공 응답 봉투. 목록은 각 도메인의 PageMeta 기반 Response를 그대로 쓴다."""
+    """단건 성공 응답 봉투. 목록은 PageMeta 기반 ListResponse를 쓴다."""
 
     data: T
     meta: None = None
+
+
+class PageMeta(CamelModel):
+    page: int
+    size: int
+    total_count: int
