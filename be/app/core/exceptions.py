@@ -74,6 +74,24 @@ class IdempotencyConflict(ApiError):
         super().__init__("같은 Idempotency-Key로 다른 요청이 이미 처리되었습니다.")
 
 
+class ReceiptImportNotFound(ApiError):
+    status_code = 404
+    code = "RECEIPT_IMPORT_NOT_FOUND"
+
+    def __init__(self) -> None:
+        super().__init__("해당 영수 내역 초안을 찾을 수 없습니다.")
+
+
+class ImportNotReady(ApiError):
+    """검수 전(QUEUED/PROCESSING)이거나 이미 CONFIRMED/FAILED인 초안을 확정하려 할 때."""
+
+    status_code = 409
+    code = "IMPORT_NOT_READY"
+
+    def __init__(self) -> None:
+        super().__init__("아직 확정할 수 있는 상태가 아닙니다.")
+
+
 class ValidationFailed(ApiError):
     status_code = 422
     code = "VALIDATION_FAILED"

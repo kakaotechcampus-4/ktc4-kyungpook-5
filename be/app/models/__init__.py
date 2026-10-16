@@ -5,6 +5,7 @@ Base.metadata가 모든 테이블을 알도록 여기서 전부 import한다.
 """
 
 from app.db.base import Base
+from app.models.accounting import Expense, ReceiptImport, ReceiptImportRow
 from app.models.agent import AgentLog
 from app.models.auth import Account, Auth
 from app.models.chat import Conversation, Message
@@ -23,6 +24,7 @@ __all__ = [
     "Club",
     "Conversation",
     "Event",
+    "Expense",
     "IdempotencyKey",
     "Invitation",
     "Meeting",
@@ -30,6 +32,8 @@ __all__ = [
     "Message",
     "Participant",
     "Record",
+    "ReceiptImport",
+    "ReceiptImportRow",
     "Step",
     "TranscriptSegment",
 ]
