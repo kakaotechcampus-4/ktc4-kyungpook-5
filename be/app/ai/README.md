@@ -28,13 +28,13 @@ be/app/ai/
 ├── llm.py               # 공통 채팅·임베딩 모델 생성
 ├── features/
 │   ├── planning/        # 조건 확인·질문·계획 생성 및 수정
-│   ├── retrieval/       # 기록 색인·검색·근거 구성 (chunking: 청킹, indexing: 색인, memory_port: 개발용 검색 구현)
+│   ├── retrieval/       # 기록 색인·검색·근거 구성 (chunking: 청킹, indexing: 색인, nodes: 기록 검색 search_records, memory_port: 개발용 검색 구현)
 │   ├── operations/      # 변경 영향 설명·대응안
 │   └── meeting/         # 회의 발화 판단과 검색어 (context: 판단 입력, nodes: 판단·결과 구성, questions: 판단 전용 모델의 질문)
 ├── workflow/            # 행사 Agent 실행 흐름·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
 ├── scripts/             # 실제 ML API 확인 스크립트 (키 필요, CI 제외)
-├── tests/               # AI 테스트 (fixtures/records: 예시 기록)
+├── tests/               # AI 테스트 (fixtures/records: 예시 기록, fixtures/eval: 기록 검색 평가 질문)
 ├── docs/
 │   ├── architecture.md
 │   ├── contracts.md     # BE-AI 데이터 계약 설명
