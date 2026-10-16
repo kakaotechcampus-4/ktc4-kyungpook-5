@@ -174,6 +174,30 @@ class RecordParseErrorReason(CodeEnum):
     UNKNOWN = "UNKNOWN"
 
 
+# --- meetings (#135) ------------------------------------------------------
+
+
+class MeetingStatus(CodeEnum):
+    RECORDING = "RECORDING"
+    FINALIZING = "FINALIZING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
+class JudgeRoute(CodeEnum):
+    """지금은 RAG/NONE만 쓴다. LLM은 #124에서 추가된다 — BE는 모르는 값도
+    견뎌야 하므로 이 enum 자체를 DB 제약으로 강하게 걸지 않는다(VARCHAR 그대로)."""
+
+    RAG = "RAG"
+    NONE = "NONE"
+
+
+class JudgeKind(CodeEnum):
+    NO_LOOKUP = "NO_LOOKUP"
+    ANSWER = "ANSWER"
+    NOT_FOUND = "NOT_FOUND"
+
+
 # --- agent --------------------------------------------------------------
 
 

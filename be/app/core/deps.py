@@ -20,6 +20,28 @@ from app.models.auth import Account, Auth
 from app.models.clubs import Member
 
 
+async def resolve_account_by_token(
+    token: str, session: AsyncSession
+) -> Account | None:
+    """access token 원문으로 Account를 찾는다. 유효하지 않으면 None.
+
+    브라우저 WebSocket은 커스텀 헤더를 못 보내 쿼리 파라미터로 토큰을 받는
+    경로(routers/meetings.py)가 따로 있어, 예외를 던지는 get_current_account와
+    분리해둔다.
+    """
+    if not token:
+        return None
+    token_hash = hash_token(token)
+    auth = await session.scalar(
+        select(Auth).where(Auth.access_token_hash == token_hash)
+    )
+    if auth is None or auth.revoked_at is not None:
+        return None
+    if auth.access_token_expires_at < datetime.now(UTC):
+        return None
+    return await session.get(Account, auth.account_id)
+
+
 async def get_current_account(
     authorization: Annotated[str | None, Header()] = None,
     session: AsyncSession = Depends(get_session),
@@ -30,16 +52,7 @@ async def get_current_account(
     if not token:
         raise Unauthorized()
 
-    token_hash = hash_token(token)
-    auth = await session.scalar(
-        select(Auth).where(Auth.access_token_hash == token_hash)
-    )
-    if auth is None or auth.revoked_at is not None:
-        raise Unauthorized()
-    if auth.access_token_expires_at < datetime.now(UTC):
-        raise Unauthorized("access token이 만료되었습니다.")
-
-    account = await session.get(Account, auth.account_id)
+    account = await resolve_account_by_token(token, session)
     if account is None:
         raise Unauthorized()
     return account

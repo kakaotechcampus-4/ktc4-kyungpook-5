@@ -118,6 +118,48 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_auth_account_id'), 'auth', ['account_id'], unique=False)
+    op.create_table('meetings',
+    sa.Column('club_id', sa.String(length=26), nullable=False),
+    sa.Column('event_id', sa.String(length=26), nullable=True),
+    sa.Column('title', sa.String(length=200), nullable=True),
+    sa.Column('language', sa.String(length=10), nullable=False),
+    sa.Column('status', sa.Enum('RECORDING', 'FINALIZING', 'COMPLETED', 'FAILED', name='meetingstatus', native_enum=False, length=32), nullable=False),
+    sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('ended_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('recording_consent_confirmed_by', sa.String(length=26), nullable=True),
+    sa.Column('recording_consent_confirmed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_by', sa.String(length=26), nullable=False),
+    sa.Column('version', sa.Integer(), nullable=False),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['created_by'], ['members.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['event_id'], ['events.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['recording_consent_confirmed_by'], ['members.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_meetings_club_id'), 'meetings', ['club_id'], unique=False)
+    op.create_table('transcript_segments',
+    sa.Column('meeting_id', sa.String(length=26), nullable=False),
+    sa.Column('seq', sa.Integer(), nullable=False),
+    sa.Column('text', sa.Text(), nullable=False),
+    sa.Column('is_final', sa.Boolean(), nullable=False),
+    sa.Column('version', sa.Integer(), nullable=False),
+    sa.Column('route', sa.Enum('RAG', 'NONE', name='judgeroute', native_enum=False, length=32), nullable=True),
+    sa.Column('kind', sa.Enum('NO_LOOKUP', 'ANSWER', 'NOT_FOUND', name='judgekind', native_enum=False, length=32), nullable=True),
+    sa.Column('question', sa.Text(), nullable=True),
+    sa.Column('answer', sa.Text(), nullable=True),
+    sa.Column('sources', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('trace', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['meeting_id'], ['meetings.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('meeting_id', 'seq', name='uq_transcript_segments_meeting_seq')
+    )
+    op.create_index(op.f('ix_transcript_segments_meeting_id'), 'transcript_segments', ['meeting_id'], unique=False)
     op.create_table('conversations',
     sa.Column('member_id', sa.String(length=26), nullable=False),
     sa.Column('event_id', sa.String(length=26), nullable=False),
@@ -281,6 +323,10 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_conversations_member_id'), table_name='conversations')
     op.drop_index(op.f('ix_conversations_event_id'), table_name='conversations')
     op.drop_table('conversations')
+    op.drop_index(op.f('ix_transcript_segments_meeting_id'), table_name='transcript_segments')
+    op.drop_table('transcript_segments')
+    op.drop_index(op.f('ix_meetings_club_id'), table_name='meetings')
+    op.drop_table('meetings')
     op.drop_index(op.f('ix_auth_account_id'), table_name='auth')
     op.drop_table('auth')
     op.drop_index(op.f('ix_agent_log_club_id'), table_name='agent_log')

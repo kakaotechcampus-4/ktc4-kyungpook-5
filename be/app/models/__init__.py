@@ -11,6 +11,7 @@ from app.models.chat import Conversation, Message
 from app.models.clubs import Club, Invitation, Member
 from app.models.common import IdempotencyKey
 from app.models.events import Action, Event, Participant, Step
+from app.models.meetings import Meeting, TranscriptSegment
 from app.models.records import Record
 
 __all__ = [
@@ -24,9 +25,11 @@ __all__ = [
     "Event",
     "IdempotencyKey",
     "Invitation",
+    "Meeting",
     "Member",
     "Message",
     "Participant",
     "Record",
     "Step",
+    "TranscriptSegment",
 ]
