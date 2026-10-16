@@ -146,6 +146,7 @@ class RecordCategory(CodeEnum):
     ETC = "ETC"
     RULES = "RULES"
     EVENT_HISTORY = "EVENT_HISTORY"
+    RECEIPT = "RECEIPT"
 
 
 class RecordFileType(CodeEnum):
@@ -196,6 +197,34 @@ class JudgeKind(CodeEnum):
     NO_LOOKUP = "NO_LOOKUP"
     ANSWER = "ANSWER"
     NOT_FOUND = "NOT_FOUND"
+
+
+# --- accounting (#133) ---------------------------------------------------
+
+
+class CurrencyCode(CodeEnum):
+    """우선 KRW만 허용."""
+
+    KRW = "KRW"
+
+
+class ReceiptImportType(CodeEnum):
+    EXPENSE_CSV = "EXPENSE_CSV"
+    RECEIPT_IMAGE = "RECEIPT_IMAGE"
+
+
+class ReceiptImportStatus(CodeEnum):
+    QUEUED = "QUEUED"
+    PROCESSING = "PROCESSING"
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+    CONFIRMED = "CONFIRMED"
+    FAILED = "FAILED"
+
+
+class ExpenseSource(CodeEnum):
+    MANUAL = "MANUAL"
+    CSV_IMPORT = "CSV_IMPORT"
+    OCR_IMPORT = "OCR_IMPORT"
 
 
 # --- agent --------------------------------------------------------------
