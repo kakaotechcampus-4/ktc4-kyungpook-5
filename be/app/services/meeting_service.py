@@ -113,6 +113,9 @@ async def finish_meeting(
     session: AsyncSession, *, club_id: str, meeting_id: str
 ) -> Meeting:
     meeting = await get_meeting(session, club_id=club_id, meeting_id=meeting_id)
+    # 이미 끝난 회의를 다시 끝내면 ended_at이 덮어써지고 종료 알림이 중복된다.
+    if meeting.status != MeetingStatus.RECORDING:
+        raise MeetingNotRecording()
     # 음성 청크는 받는 요청 안에서 전사·판단까지 끝나 밀린 처리가 없다 —
     # FINALIZING을 거치지 않고 바로 COMPLETED로 끝난다.
     meeting.status = MeetingStatus.COMPLETED

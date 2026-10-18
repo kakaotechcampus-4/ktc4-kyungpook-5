@@ -204,6 +204,21 @@ async def test_회의를_종료하면_COMPLETED가_된다(client: TestClient, ap
     assert res.json()["data"]["status"] == "COMPLETED"
 
 
+async def test_이미_종료한_회의를_다시_종료하면_409(client: TestClient, app_db: None) -> None:
+    access_token, club_id = _owner_with_club(client)
+    headers = {"Authorization": f"Bearer {access_token}"}
+    meeting_id = _start_meeting(client, headers, club_id)
+    first = client.post(f"/api/v1/meetings/{meeting_id}/finish", headers=headers)
+    ended_at = first.json()["data"]["endedAt"]
+
+    again = client.post(f"/api/v1/meetings/{meeting_id}/finish", headers=headers)
+
+    assert again.status_code == 409
+    assert again.json()["error"]["code"] == "MEETING_NOT_RECORDING"
+    detail = client.get(f"/api/v1/meetings/{meeting_id}", headers=headers)
+    assert detail.json()["data"]["endedAt"] == ended_at
+
+
 async def test_다른_동아리_사람은_회의를_못_본다(client: TestClient, app_db: None) -> None:
     owner_token, club_id = _owner_with_club(client)
     owner_headers = {"Authorization": f"Bearer {owner_token}"}
