@@ -98,7 +98,9 @@ async def test_CSV_업로드부터_확정까지(client: TestClient, app_db: None
     assert upload.status_code == 202, upload.text
     body = upload.json()["data"]
     assert body["status"] == "NEEDS_REVIEW"
-    assert len(body["rows"]) == 2
+    assert len(body["expenseRows"]) == 2
+    assert body["totalAmount"] == 32000
+    assert body["errors"] == []
     import_id = body["id"]
 
     confirm = client.post(
@@ -157,9 +159,14 @@ async def test_영수증_이미지는_더미_OCR_초안을_만들고_수정_후_
     assert upload.status_code == 202, upload.text
     body = upload.json()["data"]
     assert body["status"] == "NEEDS_REVIEW"
-    assert len(body["rows"]) == 1
+    assert len(body["expenseRows"]) == 1
     import_id = body["id"]
-    row_no = body["rows"][0]["rowNo"]
+    row_no = body["expenseRows"][0]["rowNo"]
+
+    job = client.get(f"/api/v1/agent-jobs/{body['jobId']}", headers=headers)
+    assert job.json()["data"]["kind"] == "RECEIPT_OCR"
+    assert job.json()["data"]["status"] == "SUCCEEDED"
+    assert job.json()["data"]["result"] == {"receiptImportId": import_id}
 
     draft = client.patch(
         f"/api/v1/clubs/{club_id}/receipt-imports/{import_id}/draft",
@@ -173,7 +180,7 @@ async def test_영수증_이미지는_더미_OCR_초안을_만들고_수정_후_
     )
     assert draft.status_code == 200, draft.text
     assert draft.json()["data"]["version"] == 2
-    assert draft.json()["data"]["rows"][0]["merchant"] == "진짜 가게"
+    assert draft.json()["data"]["expenseRows"][0]["merchant"] == "진짜 가게"
 
     confirm = client.post(
         f"/api/v1/clubs/{club_id}/receipt-imports/{import_id}/confirm",
@@ -181,6 +188,7 @@ async def test_영수증_이미지는_더미_OCR_초안을_만들고_수정_후_
         json={"expectedVersion": 2},
     )
     assert confirm.status_code == 200, confirm.text
+    assert confirm.json()["data"]["status"] == "CONFIRMED"
     assert len(confirm.json()["data"]["expenseIds"]) == 1
 
 

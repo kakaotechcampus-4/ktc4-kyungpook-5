@@ -58,12 +58,18 @@ async def get_current_account(
     return account
 
 
-async def require_member(
+async def ensure_member(
+    session: AsyncSession,
+    *,
     club_id: str,
-    account: Annotated[Account, Depends(get_current_account)],
-    session: AsyncSession = Depends(get_session),
+    account: Account,
+    allowed: tuple[MemberRole, ...] | None = None,
 ) -> Member:
-    """경로의 club_id에 현재 계정이 속해 있는지 확인한다. 아니면 403."""
+    """현재 계정이 club_id 동아리의 활성 동아리원인지 확인한다. 아니면 403.
+
+    경로에 club_id가 없는 라우트(/meetings/{id}, /agent-jobs/{id} 등)는 리소스를
+    먼저 조회해 club_id를 얻은 뒤 이 함수를 직접 부른다.
+    """
     member = await session.scalar(
         select(Member).where(
             Member.club_id == club_id, Member.account_id == account.id
@@ -71,7 +77,18 @@ async def require_member(
     )
     if member is None or member.status != MemberStatus.ACTIVE:
         raise Forbidden("이 동아리에 속한 운영진만 할 수 있습니다.")
+    if allowed is not None and member.role not in allowed:
+        raise Forbidden("이 역할만 할 수 있습니다.")
     return member
+
+
+async def require_member(
+    club_id: str,
+    account: Annotated[Account, Depends(get_current_account)],
+    session: AsyncSession = Depends(get_session),
+) -> Member:
+    """경로의 club_id에 현재 계정이 속해 있는지 확인한다. 아니면 403."""
+    return await ensure_member(session, club_id=club_id, account=account)
 
 
 def require_club_role(*allowed: MemberRole):
@@ -85,3 +102,7 @@ def require_club_role(*allowed: MemberRole):
         return member
 
     return dependency
+
+
+# 자료 확정·연결 변경·할 일 수락처럼 결과를 바꾸는 요청에 쓴다.
+WRITER_ROLES = (MemberRole.OWNER, MemberRole.MANAGER)

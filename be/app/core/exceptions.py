@@ -74,6 +74,14 @@ class IdempotencyConflict(ApiError):
         super().__init__("같은 Idempotency-Key로 다른 요청이 이미 처리되었습니다.")
 
 
+class ExpenseNotFound(ApiError):
+    status_code = 404
+    code = "EXPENSE_NOT_FOUND"
+
+    def __init__(self) -> None:
+        super().__init__("해당 지출 내역을 찾을 수 없습니다.")
+
+
 class ReceiptImportNotFound(ApiError):
     status_code = 404
     code = "RECEIPT_IMPORT_NOT_FOUND"

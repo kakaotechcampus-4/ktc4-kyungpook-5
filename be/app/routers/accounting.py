@@ -17,6 +17,7 @@ from app.schemas.accounting import (
     ReceiptImportListResponse,
     ReceiptImportOut,
     ReceiptImportRowOut,
+    RowErrorOut,
 )
 from app.schemas.common import Envelope, PageMeta
 from app.services import accounting_service
@@ -25,13 +26,16 @@ router = APIRouter(prefix="/api/v1/clubs/{club_id}", tags=["accounting"])
 
 
 def _import_out(receipt_import) -> ReceiptImportOut:
+    rows = receipt_import.rows
     return ReceiptImportOut(
         id=receipt_import.id,
         type=receipt_import.type,
         status=receipt_import.status,
         version=receipt_import.version,
+        job_id=receipt_import.job_id,
+        record_id=receipt_import.record_id,
         error=receipt_import.error,
-        rows=[
+        expense_rows=[
             ReceiptImportRowOut(
                 id=row.id,
                 row_no=row.row_no,
@@ -45,7 +49,13 @@ def _import_out(receipt_import) -> ReceiptImportOut:
                 validation_errors=row.validation_errors,
                 confirmed_expense_id=row.confirmed_expense_id,
             )
-            for row in receipt_import.rows
+            for row in rows
+        ],
+        total_amount=sum(row.amount for row in rows if row.amount is not None),
+        errors=[
+            RowErrorOut(row_no=row.row_no, field=field, message=message)
+            for row in rows
+            for field, message in (row.validation_errors or {}).items()
         ],
     )
 
@@ -87,6 +97,19 @@ async def list_expenses(
         data=[ExpenseOut.model_validate(row) for row in rows],
         meta=PageMeta(page=page, size=size, total_count=total),
     )
+
+
+@router.get("/expenses/{expense_id}", response_model=Envelope[ExpenseOut])
+async def get_expense(
+    club_id: str,
+    expense_id: str,
+    _member: Member = Depends(require_member),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[ExpenseOut]:
+    expense = await accounting_service.get_expense(
+        session, club_id=club_id, expense_id=expense_id
+    )
+    return Envelope(data=ExpenseOut.model_validate(expense))
 
 
 @router.post(
@@ -183,11 +206,18 @@ async def confirm_receipt_import(
     member: Member = Depends(require_club_role(MemberRole.OWNER, MemberRole.MANAGER)),
     session: AsyncSession = Depends(get_session),
 ) -> Envelope[ReceiptImportConfirmOut]:
-    expense_ids = await accounting_service.confirm_receipt_import(
+    receipt_import, expense_ids = await accounting_service.confirm_receipt_import(
         session,
         club_id=club_id,
         import_id=import_id,
         expected_version=body.expected_version,
         confirmed_by=member.id,
     )
-    return Envelope(data=ReceiptImportConfirmOut(expense_ids=expense_ids))
+    return Envelope(
+        data=ReceiptImportConfirmOut(
+            id=receipt_import.id,
+            status=receipt_import.status,
+            version=receipt_import.version,
+            expense_ids=expense_ids,
+        )
+    )

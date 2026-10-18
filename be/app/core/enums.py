@@ -214,10 +214,11 @@ class MeetingStatus(CodeEnum):
 
 
 class JudgeRoute(CodeEnum):
-    """지금은 RAG/NONE만 쓴다. LLM은 #124에서 추가된다 — BE는 모르는 값도
+    """Jev 판단 분기. LLM은 AI 쪽 #124에서 실제로 붙는다 — BE는 모르는 값도
     견뎌야 하므로 이 enum 자체를 DB 제약으로 강하게 걸지 않는다(VARCHAR 그대로)."""
 
     RAG = "RAG"
+    LLM = "LLM"
     NONE = "NONE"
 
 
@@ -225,6 +226,50 @@ class JudgeKind(CodeEnum):
     NO_LOOKUP = "NO_LOOKUP"
     ANSWER = "ANSWER"
     NOT_FOUND = "NOT_FOUND"
+
+
+# --- discord ------------------------------------------------------------
+
+
+class DiscordConnectionMode(CodeEnum):
+    """LIVE는 실제 bot으로 읽는 연결, FIXTURE는 TEST_MODE에서 이벤트를 주입하는 연결."""
+
+    LIVE = "LIVE"
+    FIXTURE = "FIXTURE"
+
+
+class DiscordConnectionStatus(CodeEnum):
+    """MONITORING: 새 메시지를 받아 분석한다. PAUSED: 운영진이 중지했다.
+    DISCONNECTED: 사용할 수집기가 없다(실제 bot 수집은 아직 구현되지 않았다)."""
+
+    MONITORING = "MONITORING"
+    PAUSED = "PAUSED"
+    DISCONNECTED = "DISCONNECTED"
+
+
+# --- context assistant (Jev) ---------------------------------------------
+
+
+class ContextSourceType(CodeEnum):
+    MEETING_TRANSCRIPT = "MEETING_TRANSCRIPT"
+    DISCORD_MESSAGE = "DISCORD_MESSAGE"
+
+
+class ContextDecisionStatus(CodeEnum):
+    """판단 기록의 유효성. route(무엇을 하기로 했는지)와 따로 본다.
+
+    STALE: 근거 원문이 바뀌어 이 판단을 더 이상 최신 결과로 보여주지 않는다.
+    """
+
+    SUCCEEDED = "SUCCEEDED"
+    STALE = "STALE"
+
+
+class TaskSuggestionStatus(CodeEnum):
+    """ACCEPTED는 할 일로 받아들였다는 기록일 뿐 실행·완료가 아니다."""
+
+    PROPOSED = "PROPOSED"
+    ACCEPTED = "ACCEPTED"
 
 
 # --- agent --------------------------------------------------------------
@@ -240,6 +285,41 @@ class AgentRunStatus(CodeEnum):
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
+
+
+class AgentJobKind(CodeEnum):
+    RECEIPT_OCR = "RECEIPT_OCR"
+    MEETING_STT = "MEETING_STT"
+    CONTEXT_DECISION = "CONTEXT_DECISION"
+    DISCORD_SYNC = "DISCORD_SYNC"
+
+
+class AgentJobStatus(CodeEnum):
+    """작업 처리 상태. 202 응답은 접수일 뿐이고 결과는 이 값으로 본다."""
+
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+
+
+class AgentJobStage(CodeEnum):
+    """RUNNING 중 어느 단계인지. 상태(status)와 다른 축이다."""
+
+    OCR = "OCR"
+    TRANSCRIBING = "TRANSCRIBING"
+    DECIDING = "DECIDING"
+    RETRIEVING = "RETRIEVING"
+    GENERATING = "GENERATING"
+    DETECTING_TASK = "DETECTING_TASK"
+
+
+class CharacterState(CodeEnum):
+    """mini 캐릭터 표시값. 작업·할 일 상태로 서버가 계산하며 DB에 저장하지 않는다."""
+
+    IDLE = "IDLE"
+    WORKING = "WORKING"
+    ATTENTION = "ATTENTION"
 
 
 # --- chat ---------------------------------------------------------------

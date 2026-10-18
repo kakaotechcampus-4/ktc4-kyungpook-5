@@ -1,8 +1,6 @@
 """회의 세션·전사 도메인 요청·응답 스키마 (#135)."""
 
-from typing import Any
-
-from app.core.enums import JudgeKind, JudgeRoute, MeetingStatus
+from app.core.enums import MeetingStatus
 from app.schemas.common import CamelModel, UtcDateTime
 
 
@@ -25,16 +23,37 @@ class MeetingOut(CamelModel):
 
 class TranscriptSegmentOut(CamelModel):
     id: str
+    # 판단 근거로 참조할 때의 원문 id·버전. 지금은 전사 id·version과 같다.
+    source_id: str
+    source_version: int
     seq: int
     text: str
     final: bool
     version: int
-    route: JudgeRoute | None
-    kind: JudgeKind | None
-    question: str | None
-    answer: str | None
-    sources: list[dict[str, Any]] | None
-    trace: dict[str, Any] | None
+    speaker_label: str | None
+    start_ms: int | None
+    end_ms: int | None
+    # 현재 version에 대한 판단 작업. final이 아니면 null.
+    decision_job_id: str | None
+    created_at: UtcDateTime
+    modified_at: UtcDateTime
+
+
+class TranscriptListOut(CamelModel):
+    # 다음 조회의 afterSeq로 넘길 값.
+    cursor: int
+    items: list[TranscriptSegmentOut]
+
+
+class AudioChunkOut(CamelModel):
+    chunk_id: str
+    seq: int
+    job_id: str
+
+
+class TestSupportTranscriptOut(TranscriptSegmentOut):
+    # 자동으로 생긴 판단 작업. decisionJobId와 같다.
+    job_id: str | None
 
 
 class TestSupportTranscriptIn(CamelModel):
