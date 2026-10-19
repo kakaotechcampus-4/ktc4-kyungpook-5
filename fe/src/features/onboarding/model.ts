@@ -1,10 +1,14 @@
 export interface OnboardingState {
+  signedIn: boolean
+  clubSelected: boolean
   guideEnabled: boolean
   teamName: string
   operatorName: string
   role: 'OWNER' | 'MANAGER'
   setupDone: boolean
   recordsAdded: boolean
+  meetingCreated: boolean
+  meetingTitle: string
   meetingPlayed: boolean
   saved: boolean
   candidate: {
@@ -16,14 +20,18 @@ export interface OnboardingState {
   }
 }
 
-export const ONBOARDING_STORAGE_KEY = 'unyounghae_onboarding_preview_v1'
+export const ONBOARDING_STORAGE_KEY = 'unyounghae_onboarding_preview_v2'
 export const INITIAL_ONBOARDING: OnboardingState = {
+  signedIn: false,
+  clubSelected: false,
   guideEnabled: true,
   teamName: '온빛 캠퍼스 운영팀',
   operatorName: '김하늘',
   role: 'MANAGER',
   setupDone: false,
   recordsAdded: false,
+  meetingCreated: false,
+  meetingTitle: '가을 행사 준비 회의',
   meetingPlayed: false,
   saved: false,
   candidate: {
@@ -48,12 +56,16 @@ function normalize(value: unknown): OnboardingState {
   const candidate = object(input.candidate)
   const initial = INITIAL_ONBOARDING
   return {
+    signedIn: flag(input.signedIn, initial.signedIn),
+    clubSelected: flag(input.clubSelected, initial.clubSelected),
     guideEnabled: flag(input.guideEnabled, initial.guideEnabled),
     teamName: text(input.teamName, initial.teamName),
     operatorName: text(input.operatorName, initial.operatorName),
     role: input.role === 'OWNER' || input.role === 'MANAGER' ? input.role : initial.role,
     setupDone: flag(input.setupDone, initial.setupDone),
     recordsAdded: flag(input.recordsAdded, initial.recordsAdded),
+    meetingCreated: flag(input.meetingCreated, initial.meetingCreated),
+    meetingTitle: text(input.meetingTitle, initial.meetingTitle),
     meetingPlayed: flag(input.meetingPlayed, initial.meetingPlayed),
     saved: flag(input.saved, initial.saved),
     candidate: {

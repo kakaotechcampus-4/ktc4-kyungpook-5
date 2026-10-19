@@ -44,7 +44,7 @@ export function OnboardingLayout({
         event.key === 'Escape' &&
         !event.defaultPrevented &&
         !document.querySelector('dialog[open]') &&
-        !document.querySelector('[data-onboarding-coach]')
+        !document.querySelector('[data-onboarding-spotlight]')
       ) {
         setSidebarOpen(false)
         menuButton.current?.focus()
@@ -131,9 +131,6 @@ export function OnboardingLayout({
           tabIndex={-1}
           className="min-w-0 flex-1 px-4 pt-5 pb-11 outline-none sm:px-7 lg:px-8"
         >
-          <p className="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-[12px] font-medium text-blue-700">
-            목업 체험 · 서버에 저장되지 않아요
-          </p>
           {children}
         </main>
       </div>
