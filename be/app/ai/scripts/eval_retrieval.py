@@ -4,6 +4,7 @@
 결과는 docs/retrieval-evaluation.md 에 남긴다. 질문과 지표 정의는 tests/fixtures/eval/README.md 에 있다.
 
     cd be && uv run python app/ai/scripts/eval_retrieval.py [--search vector|records] [--max-rounds N] [--no-rewrite]
+        [--queries 검색어.json] [--assess-effort default|none]
         [--header full|file|none] [--holdout] [--no-cache] [--json 결과.json]
 
 예시 기록 12종을 색인해 메모리 port에 넣고, 질문마다 검색 함수로 청크를 받아 검색 지표를 계산한다.
@@ -11,6 +12,9 @@
           records는 결과(사실·확인하지 못한 것·자료 간 차이)를 정답과 비교한 결과 지표도 낸다
 --max-rounds: records의 검색 횟수. 1이면 검색어 정리만, 2면 재검색까지 잰다
 --no-rewrite: records에서 검색어 정리를 건너뛰고 질문을 그대로 검색어로 쓴다(회의 어시스턴트의 호출 방식)
+--queries: --no-rewrite에서 질문 대신 쓸 검색어 파일. make_meeting_queries.py가 회의 판단으로 만든다.
+           회의 판단이 조회가 필요 없다고 본 질문(검색어 없음)은 회의에서 찾지 않으므로 재지 않고 따로 센다
+--assess-effort: records의 근거 판단 추론 깊이. default는 모델 기본값, none은 추론을 끈다(회의 판단과 같은 설정)
 records는 질문마다 구간별 시간(검색어 정리, 임베딩, 청크 검색, 근거 판단)도 남긴다
 --header: 청크 임베딩에 붙이는 이름표. full 문서명·위치(현재 색인), file 문서명만, none 없음
 --holdout: 확인용 질문도 잰다. 개선하는 동안에는 끄고, 기록에 남길 측정에서만 켠다.
@@ -139,14 +143,18 @@ def records_search(
     max_rounds: int,
     rewrite: bool,
     stages: dict[str, float],
+    queries: dict[str, str | None] | None = None,
 ) -> Search:
-    """기록 검색(search_records) 전체. 모델 응답이 잘못돼 실패하면 실패로 센다"""
+    """기록 검색(search_records) 전체. 모델 응답이 잘못돼 실패하면 실패로 센다
+
+    `queries`가 있으면 질문 대신 그 검색어로 찾는다(회의 판단이 만든 검색어).
+    """
 
     async def search(question: dict) -> SearchOutput:
         recorder = _RecordingPort(port, stages)
         request = RecordSearchRequest(
             club_id=CLUB_ID,
-            query=question["question"],
+            query=queries[question["id"]] if queries else question["question"],
             today=date.fromisoformat(question["today"]),
             conditions=question["conditions"],
             limit=max(KS),
@@ -332,6 +340,8 @@ async def run(
     header: str,
     holdout: bool,
     use_cache: bool,
+    queries: dict[str, str | None] | None = None,
+    assess_effort: str = "default",
 ) -> dict:
     # 실제로 API에 보낸 요청 수와 캐시에서 꺼낸 수
     embed_requests, llm_requests = [0], [0]
@@ -376,7 +386,11 @@ async def run(
 
     llm_cache = _load(LLM_CACHE) if use_cache else None
     chat = (
-        build_chat_model(settings, http_async_client=_counting_client(llm_requests))
+        build_chat_model(
+            settings,
+            http_async_client=_counting_client(llm_requests),
+            **({"reasoning": {"effort": "none"}} if assess_effort == "none" else {}),
+        )
         if search_name == "records"
         else None
     )
@@ -392,6 +406,8 @@ async def run(
     async def _invoke(messages, schema):
         key = _hash(
             settings.model,
+            # 추론 깊이가 다르면 같은 입력도 다른 응답이다. 기본값은 이전 캐시 키와 같게 둔다
+            *(() if assess_effort == "default" else (f"effort={assess_effort}",)),
             json.dumps(schema.model_json_schema(), ensure_ascii=False, sort_keys=True),
             *(f"{m.type}\n{m.content}" for m in messages),
         )
@@ -427,9 +443,21 @@ async def run(
     questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
     if not holdout:
         questions = [q for q in questions if q["split"] == "dev"]
+    no_lookup = []
+    if queries is not None:
+        # 회의 판단이 조회가 필요 없다고 본 질문은 회의에서 찾지 않는다
+        no_lookup = [q["id"] for q in questions if not queries.get(q["id"])]
+        questions = [q for q in questions if queries.get(q["id"])]
+        print(f"== 회의 판단이 조회 아님으로 본 질문 {len(no_lookup)}개: {', '.join(no_lookup) or '-'}")
     search = (
         records_search(
-            port, embed, invoke, max_rounds=max_rounds, rewrite=rewrite, stages=stages
+            port,
+            embed,
+            invoke,
+            max_rounds=max_rounds,
+            rewrite=rewrite,
+            stages=stages,
+            queries=queries,
         )
         if search_name == "records"
         else vector_search(port, embed)
@@ -448,6 +476,7 @@ async def run(
             "split": question["split"],
             "requirement": question["requirement"],
             "question": question["question"],
+            "query": queries[question["id"]] if queries else None,
             "seconds": round(seconds, 2),
             "stages": {k: round(stages[k] - stages_before[k], 3) for k in STAGES},
             "requests": embed_requests[0] - before[0],
@@ -522,6 +551,9 @@ async def run(
                 if search_name == "records"
                 else None
             ),
+            "queries": queries is not None,
+            "no_lookup": no_lookup,
+            "assess_effort": assess_effort if search_name == "records" else None,
             "limit": max(KS),
             "holdout": holdout,
             "cache": use_cache,
@@ -607,6 +639,15 @@ def main() -> int:
         "--no-rewrite", action="store_true", help="records에서 검색어 정리를 건너뛴다"
     )
     parser.add_argument(
+        "--queries", type=Path, help="--no-rewrite에서 질문 대신 쓸 검색어 파일"
+    )
+    parser.add_argument(
+        "--assess-effort",
+        choices=("default", "none"),
+        default="default",
+        help="records의 근거 판단 추론 깊이",
+    )
+    parser.add_argument(
         "--header", choices=HEADERS, default="full", help="청크 임베딩 이름표"
     )
     parser.add_argument("--holdout", action="store_true", help="확인용 질문도 잰다")
@@ -615,6 +656,18 @@ def main() -> int:
     )
     parser.add_argument("--json", type=Path, help="결과를 JSON으로 저장할 경로")
     args = parser.parse_args()
+    if args.queries and not (args.search == "records" and args.no_rewrite):
+        parser.error("--queries는 --search records --no-rewrite와 함께 쓴다")
+    queries = (
+        {
+            qid: item["query"]
+            for qid, item in json.loads(args.queries.read_text(encoding="utf-8"))[
+                "queries"
+            ].items()
+        }
+        if args.queries
+        else None
+    )
 
     settings = AISettings()
     SECRETS.extend(
@@ -629,7 +682,7 @@ def main() -> int:
     print(
         scrub(
             f"search={args.search} max_rounds={args.max_rounds} rewrite={not args.no_rewrite} "
-            f"header={args.header} "
+            f"queries={args.queries} assess_effort={args.assess_effort} header={args.header} "
             f"holdout={args.holdout} cache={not args.no_cache}"
         )
     )
@@ -644,6 +697,8 @@ def main() -> int:
                 header=args.header,
                 holdout=args.holdout,
                 use_cache=not args.no_cache,
+                queries=queries,
+                assess_effort=args.assess_effort,
             )
         )
     except Exception as error:  # noqa: BLE001 - 확인 스크립트는 원인만 보여주고 끝낸다
