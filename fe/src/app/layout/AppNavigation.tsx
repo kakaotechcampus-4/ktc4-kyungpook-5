@@ -1,9 +1,12 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { cn } from '@/shared/lib/cn'
 
-type NavigationIcon = 'home' | 'event' | 'meeting' | 'planning' | 'profile'
+type NavigationIcon =
+  'home' | 'event' | 'meeting' | 'planning' | 'profile' | 'records' | 'accounting'
 function Icon({ name }: { name: NavigationIcon }) {
   const paths: Record<NavigationIcon, string> = {
+    records: 'M3 7h7l2-3h9v16H3V7Zm0 4h18',
+    accounting: 'M4 4h16v16H4V4Zm4 4h8m-8 4h3m4 0h1m-8 4h3m4 0h1',
     home: 'm3 10 9-7 9 7M5 9v11h5v-6h4v6h5V9',
     event: 'M7 3v4m10-4v4M4 10h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z',
     meeting:
@@ -65,6 +68,8 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: Navigat
     items: [
       { to: '/', label: '메인', icon: 'home' },
       { to: '/meetings', label: '회의', icon: 'meeting' },
+      { to: '/records', label: '자료함', icon: 'records' },
+      { to: '/accounting', label: '회계', icon: 'accounting' },
     ],
   },
   {

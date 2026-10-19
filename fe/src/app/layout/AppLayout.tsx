@@ -123,7 +123,11 @@ export function AppLayout() {
                   value={clubId ?? ''}
                   onChange={(event) => {
                     selectClub(event.target.value)
-                    navigate('/meetings')
+                    navigate(
+                      pathname === '/records' || pathname === '/accounting'
+                        ? pathname
+                        : '/meetings',
+                    )
                   }}
                   className="max-w-[130px] truncate rounded-lg border border-line bg-card py-2 pl-2 pr-1 text-ink2 sm:max-w-[180px]"
                 >

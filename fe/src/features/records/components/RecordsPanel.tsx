@@ -77,11 +77,11 @@ function RecordStatusRow({ clubId, record }: { clubId: string; record: ClubRecor
   )
 }
 
-export function RecordsPanel({ clubId }: { clubId: string }) {
-  return <ClubRecordsPanel key={clubId} clubId={clubId} />
+export function RecordsPanel({ clubId, title = '회의 자료' }: { clubId: string; title?: string }) {
+  return <ClubRecordsPanel key={clubId} clubId={clubId} title={title} />
 }
 
-function ClubRecordsPanel({ clubId }: { clubId: string }) {
+function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) {
   const { records, upload, refresh } = useRecordUploads(clubId)
   const [category, setCategory] = useState<RecordCategory>('ETC')
   const [file, setFile] = useState<File | null>(null)
@@ -111,7 +111,7 @@ function ClubRecordsPanel({ clubId }: { clubId: string }) {
   return (
     <Card className="p-[20px]">
       <div className="mb-[18px] flex flex-col gap-[6px]">
-        <h2 className="text-h2 text-ink">회의 자료</h2>
+        <h2 className="text-h2 text-ink">{title}</h2>
         <p className="text-[12px] leading-[19px] text-mute">
           자료를 올리고 검색 준비 상태를 확인해 주세요. 검색 준비가 완료된 자료만 회의 검색에 사용할
           수 있어요.
