@@ -4,6 +4,7 @@
 바꾸면 측정값과 비교할 수 없으므로 PROMPT_VERSION을 올리고 다시 잰다.
 """
 
+from datetime import date
 from functools import cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -31,6 +32,11 @@ def judge_system_prompt() -> str:
     return _PROMPT_PATH.read_text(encoding="utf-8").removesuffix("\n")
 
 
+def meeting_date(request: JudgeUtteranceRequest) -> date:
+    """회의 날짜. "작년"을 연도로 풀 때와 기록 검색의 기준일로 같이 쓴다"""
+    return request.utterance.started_at.astimezone(MEETING_TIMEZONE).date()
+
+
 def build_judge_messages(request: JudgeUtteranceRequest) -> list[BaseMessage]:
     """지시문과 이번 발화 입력을 모델에 보낼 메시지로 만든다"""
     return [
@@ -54,10 +60,9 @@ def build_judge_input(request: JudgeUtteranceRequest) -> str:
     [방금 발화]
     그때 숙소비 얼마였지?
     """
-    meeting_date = request.utterance.started_at.astimezone(MEETING_TIMEZONE).date()
     recent = request.context[-MEETING_CONTEXT_UTTERANCES:]
 
-    parts = [f"[회의 날짜]\n{meeting_date.isoformat()}"]
+    parts = [f"[회의 날짜]\n{meeting_date(request).isoformat()}"]
     if request.event is not None:
         parts.append(f"[행사]\n{request.event.title}")
     parts.append(

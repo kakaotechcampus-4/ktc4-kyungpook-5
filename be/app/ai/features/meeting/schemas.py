@@ -13,6 +13,7 @@ from app.core.enums import EventType
 
 from ...contracts import ContractModel, NonBlankStr, RecordSource
 from ...ports import RetrievedChunk
+from ..retrieval.schemas import RecordSearchRequest
 
 
 # 판단 모델이 직접 만드는 값. 나머지 결과는 코드가 채운다.
@@ -222,20 +223,19 @@ class MeetingAnswer(ContractModel):
 
 
 class RecordLookup(Protocol):
-    """판단 뒤 기록을 찾아 답을 쓰는 단계. 기록 검색(#72)이 생기면 그 위에 구현한다
+    """판단 뒤 기록을 찾아 답을 쓰는 단계. 실제 구현은 lookup.py의 RecordsLookup이다
 
     단계를 둘로 나눈 것은 처리 단계(SEARCHING·ANSWERING)와 도구 호출 기록을
     판단 노드가 한곳에서 남기기 위해서다.
+    `search`는 판단이 만든 검색어와 회의 날짜를 담은 기록 검색 요청을 받는다(#72).
     """
 
-    async def search(
-        self, club_id: str, question: str
-    ) -> tuple[RetrievedChunk, ...]:
-        """질문과 비슷한 조각을 찾는다. 없으면 빈 튜플이며 실패가 아니다"""
+    async def search(self, request: RecordSearchRequest) -> tuple[RetrievedChunk, ...]:
+        """검색어와 비슷한 조각을 찾는다. 없으면 빈 튜플이며 실패가 아니다"""
         ...
 
     async def answer(
-        self, question: str, chunks: tuple[RetrievedChunk, ...]
+        self, request: RecordSearchRequest, chunks: tuple[RetrievedChunk, ...]
     ) -> MeetingAnswer | None:
         """찾은 조각으로 답을 쓴다. 조각에 답이 없으면 None이다"""
         ...
