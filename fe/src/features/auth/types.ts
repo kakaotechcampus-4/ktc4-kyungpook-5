@@ -16,5 +16,5 @@ export interface ClubSearchResult {
 export const CLUB_FIELDS = ['학술', '운동', '봉사', '취미', '기타'] as const
 export type ClubField = (typeof CLUB_FIELDS)[number]
 
-// 임원 역할. 계정을 만드는 사람은 임원뿐이라 일반 동아리원은 여기 없다.
-export const EXECUTIVE_ROLES = ['대표', '부대표', '총무', '홍보부장', '기타'] as const
+// 서비스 역할은 두 종류다. 총무·홍보부장 등의 직책은 내부 명단에서 따로 관리한다.
+export const EXECUTIVE_ROLES = ['회장', '임원'] as const

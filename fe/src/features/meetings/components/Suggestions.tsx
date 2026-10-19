@@ -4,6 +4,7 @@ import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 import { Input, Textarea } from '@/shared/ui/Input'
+import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
 import { meetingsApi } from '../api'
 import {
   confirmedApi,
@@ -101,6 +102,15 @@ function ReviewFields({
     setChecked(false)
     setNotice('')
   }
+  const unavailableAssignee =
+    recipients.isSuccess &&
+    Boolean(
+      assigneeAccount &&
+      !recipients.data.some((recipient) => recipient.accountId === assigneeAccount),
+    )
+  const unavailableRecipients = recipients.isSuccess
+    ? selected.filter((id) => !recipients.data.some((recipient) => recipient.accountId === id))
+    : []
   const future = reminderAt && new Date(`${reminderAt}:00+09:00`).getTime() > Date.now()
   const valid =
     title.trim() &&
@@ -111,6 +121,7 @@ function ReviewFields({
     future &&
     reminderAt <= itemAt &&
     !recipients.isError &&
+    !unavailableAssignee &&
     selected.every((id) => recipients.data?.some((r) => r.accountId === id))
   return (
     <form
@@ -164,13 +175,24 @@ function ReviewFields({
           }}
         >
           <option value="">이름으로 확인 · 계정 미연결</option>
+          {unavailableAssignee && (
+            <option value={assigneeAccount} disabled>
+              이전 담당 계정 · 다시 선택 필요
+            </option>
+          )}
           {recipients.data?.map((r) => (
             <option key={r.accountId} value={r.accountId}>
-              {r.name}
+              {r.name} · {MEMBER_ROLE_LABEL[r.role]}
             </option>
           ))}
         </select>
       </label>
+      {unavailableAssignee && (
+        <p role="alert" className="text-caption text-failed">
+          이전 담당 계정은 현재 이용 대상이 아니에요. 회장·임원 계정을 선택하거나 이름으로 확인해
+          주세요.
+        </p>
+      )}
       <Textarea
         label="상세"
         value={description}
@@ -239,10 +261,10 @@ function ReviewFields({
       <fieldset className="rounded-xl border border-soft p-3">
         <legend className="px-2 text-caption font-bold">알림 수신 계정</legend>
         <p className="mb-2 text-caption text-mute">
-          담당자와 별도로 선택한 소속 구성원에게만 알립니다. 추출된 이름을 계정으로 자동 확정하지
-          않습니다.
+          담당자와 별도로 선택한 소속 회장·임원 계정에만 알립니다. 추출된 이름을 계정으로 자동
+          확정하지 않습니다.
         </p>
-        {recipients.isPending && <p>구성원 확인 중…</p>}
+        {recipients.isPending && <p>회장·임원 계정 확인 중…</p>}
         {recipients.isError && (
           <div role="alert">
             <p className="text-failed">
@@ -265,10 +287,27 @@ function ReviewFields({
                 invalidate()
               }}
             />
-            {r.name}
+            {r.name} · {MEMBER_ROLE_LABEL[r.role]}
           </label>
         ))}
-        {recipients.data?.length === 0 && <p>선택할 소속 구성원이 없습니다.</p>}
+        {recipients.data?.length === 0 && <p>선택할 회장·임원 계정이 없습니다.</p>}
+        {unavailableRecipients.length > 0 && (
+          <div role="alert" className="space-y-2 text-caption text-failed">
+            <p>
+              이전 수신 계정 {unavailableRecipients.length}개는 현재 이용 대상이 아니에요. 제외한 뒤
+              수신자를 다시 확인해 주세요.
+            </p>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSelected((ids) => ids.filter((id) => !unavailableRecipients.includes(id)))
+                invalidate()
+              }}
+            >
+              이용할 수 없는 수신 계정 제외
+            </Button>
+          </div>
+        )}
       </fieldset>
       <div className="rounded-xl bg-bg p-4 text-caption leading-6">
         <p>

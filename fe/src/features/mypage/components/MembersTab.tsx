@@ -16,11 +16,14 @@ const ACCOUNT: Record<AccountStatus, { label: string; tone: 'done' | 'pending' |
 
 const GROUP_NOTE: Record<MemberGroup, string> = {
   임원: '승인과 계획을 맡습니다',
-  동아리원: '행사 참가·미납 집계에 쓰입니다',
+  동아리원: '서비스 계정 없이 명단으로 관리합니다',
 }
 
 function MemberRow({ member }: { member: Member }) {
-  const account = ACCOUNT[member.account]
+  const account =
+    member.group === '동아리원'
+      ? { label: '명단 전용', tone: 'neutral' as const }
+      : ACCOUNT[member.account]
   return (
     <div className="flex items-center gap-[16px] border-t border-line px-[26px] py-[14px]">
       <Avatar name={member.name} size={30} />
@@ -40,7 +43,9 @@ function MemberRow({ member }: { member: Member }) {
           {account.label}
         </Chip>
         <span className="text-[11.5px] text-mute">
-          {member.accountNote ?? (member.account === 'NONE' ? '명단에만 있음' : '')}
+          {member.group === '동아리원'
+            ? '서비스 이용 대상이 아니에요'
+            : (member.accountNote ?? (member.account === 'NONE' ? '명단에만 있음' : ''))}
         </span>
       </span>
       <button type="button" aria-label="더 보기" className="text-[13px] text-mute hover:text-ink2">
@@ -118,8 +123,8 @@ export function MembersTab({
             <Button onClick={onAddClick}>+ 직접 추가</Button>
           </div>
           <p className="text-[12px] leading-[18px] text-mute">
-            계정이 없어도 명단에 넣을 수 있어요. 계정이 있어야 로그인해서 승인과 계획을 할 수
-            있습니다.
+            회장과 임원만 계정으로 서비스를 이용해요. 일반 동아리원은 계정 없이 내부 명단으로
+            관리합니다.
           </p>
         </div>
 

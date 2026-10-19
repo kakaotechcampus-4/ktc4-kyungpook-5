@@ -1611,7 +1611,11 @@ export interface components {
     InvitationAcceptOut: {
       /** Clubid */
       clubId: string
-      role: components['schemas']['MemberRole']
+      /**
+       * Role
+       * @enum {string}
+       */
+      role: 'OWNER' | 'MANAGER'
     }
     /** InvitationCreateIn */
     InvitationCreateIn: {
@@ -1620,7 +1624,11 @@ export interface components {
        * Format: email
        */
       email: string
-      role: components['schemas']['MemberRole']
+      /**
+       * Role
+       * @enum {string}
+       */
+      role: 'OWNER' | 'MANAGER'
     }
     /** InvitationCreateOut */
     InvitationCreateOut: {
@@ -1719,6 +1727,7 @@ export interface components {
     MeetingStatus: 'RECORDING' | 'FINALIZING' | 'COMPLETED' | 'FAILED'
     /**
      * MemberRole
+     * @description 서비스는 회장·대표와 임원만 사용한다. MEMBER는 기존 명단 호환용이다.
      * @enum {string}
      */
     MemberRole: 'OWNER' | 'MANAGER' | 'MEMBER'
@@ -1731,7 +1740,11 @@ export interface components {
       id: string
       /** Name */
       name: string
-      role: components['schemas']['MemberRole']
+      /**
+       * Role
+       * @enum {string}
+       */
+      role: 'OWNER' | 'MANAGER'
     }
     /** PageMeta */
     PageMeta: {
@@ -1992,7 +2005,11 @@ export interface components {
       memberId: string
       /** Name */
       name: string
-      role: components['schemas']['MemberRole']
+      /**
+       * Role
+       * @enum {string}
+       */
+      role: 'OWNER' | 'MANAGER'
     }
     /**
      * ResolvedBy

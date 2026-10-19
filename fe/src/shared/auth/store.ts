@@ -2,7 +2,7 @@
 import { create } from 'zustand'
 import { getAccessToken, setAccessToken } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
-import type { AuthUser } from '@/shared/auth/types'
+import { isServiceRole, type AuthUser } from '@/shared/auth/types'
 
 type Me = components['schemas']['MeOut']
 type Tokens = components['schemas']['SessionOut']
@@ -11,7 +11,7 @@ const REFRESH_KEY = 'unyounghae_refresh_token'
 
 function selectedUser(me: Me | null, clubId: string | null): AuthUser | null {
   const club = me?.clubs.find((item) => item.id === clubId)
-  if (!me || !club) return null
+  if (!me || !club || !isServiceRole(club.role)) return null
   return {
     id: me.id,
     clubId: club.id,
@@ -50,18 +50,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ token: tokens.accessToken, me: null, user: null, clubId: null })
   },
   setMe: (me) => {
+    // 서비스 화면에는 회장·팀 대표와 임원 소속만 제공한다. 원본 응답/명단은 수정하지 않는다.
+    const serviceMe = { ...me, clubs: me.clubs.filter((club) => isServiceRole(club.role)) }
     const savedClubId = get().clubId ?? localStorage.getItem(CLUB_KEY)
-    const clubId = me.clubs.some((club) => club.id === savedClubId) ? savedClubId : null
+    const clubId = serviceMe.clubs.some((club) => club.id === savedClubId) ? savedClubId : null
     if (!clubId) localStorage.removeItem(CLUB_KEY)
-    set({ me, clubId, user: selectedUser(me, clubId) })
+    set({ me: serviceMe, clubId, user: selectedUser(serviceMe, clubId) })
   },
   selectClub: (clubId) => {
     const me = get().me
-    if (!me?.clubs.some((club) => club.id === clubId)) return
+    if (!me?.clubs.some((club) => club.id === clubId && isServiceRole(club.role))) return
     localStorage.setItem(CLUB_KEY, clubId)
     set({ clubId, user: selectedUser(me, clubId) })
   },
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    if (isServiceRole(user.role)) set({ user })
+  },
   clear: () => {
     setAccessToken(null)
     localStorage.removeItem(REFRESH_KEY)

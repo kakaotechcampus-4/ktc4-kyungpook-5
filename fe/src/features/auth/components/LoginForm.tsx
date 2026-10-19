@@ -9,11 +9,10 @@ import {
 } from '@/features/auth/hooks'
 import { ErrorBanner } from '@/features/auth/components/AuthShell'
 import { useAuthStore } from '@/shared/auth/store'
+import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Input } from '@/shared/ui/Input'
-
-const ROLE_LABEL = { OWNER: '대표', MANAGER: '운영진', MEMBER: '구성원' }
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
@@ -41,14 +40,16 @@ export function LoginForm() {
                 onClick={() => chooseClub(club.id)}
               >
                 <span>{club.name}</span>
-                <span className="shrink-0 text-[11px]">{ROLE_LABEL[club.role]} · 회의로 ›</span>
+                <span className="shrink-0 text-[11px]">
+                  {MEMBER_ROLE_LABEL[club.role]} · 회의로 ›
+                </span>
               </Button>
             ))}
           </div>
         ) : (
           <div className="rounded-[11px] bg-bg p-[15px] text-[13px] leading-relaxed text-ink2">
-            가입된 팀·조직이 없어요. 대표에게 이 계정의 초대를 요청하고, 소속 등록 후 다시 확인해
-            주세요.
+            이용할 수 있는 소속이 없어요. 회장에게 회장·임원 계정 초대를 요청하고 소속 등록 후 다시
+            확인해 주세요.
           </div>
         )}
         {meQuery.error && <ErrorBanner title={authErrorMessage(meQuery.error)} />}

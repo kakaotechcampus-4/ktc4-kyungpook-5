@@ -3,8 +3,8 @@ import type { SignupMode } from '@/features/auth/types'
 import { cn } from '@/shared/lib/cn'
 
 const MODES: Array<{ value: SignupMode; label: string; desc: string }> = [
-  { value: 'JOIN', label: '기존 동아리에 참여', desc: '대표가 허가하면 이용할 수 있어요' },
-  { value: 'CREATE', label: '동아리 새로 만들기', desc: '내가 대표가 됩니다' },
+  { value: 'JOIN', label: '기존 동아리에 참여', desc: '회장이 허가하면 이용할 수 있어요' },
+  { value: 'CREATE', label: '동아리 새로 만들기', desc: '내가 회장이 됩니다' },
 ]
 
 interface ModeCardsProps {

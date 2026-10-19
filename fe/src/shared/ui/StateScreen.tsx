@@ -124,12 +124,12 @@ export function JoinPendingScreen({
     ['동아리', club],
     ['내 역할', role],
     ['보낸 시각', sentAt],
-    ['대표', owner],
+    ['회장', owner],
   ]
   return (
     <StateScreen
       title="허가를 기다리고 있어요"
-      desc="대표가 허가하면 바로 쓸 수 있어요. 그 전까지는 동아리 자료와 행사를 볼 수 없어요."
+      desc="회장이 허가하면 바로 쓸 수 있어요. 그 전까지는 동아리 자료와 행사를 볼 수 없어요."
     >
       <Card className="flex w-[460px] max-w-full flex-col gap-[18px] px-[26px] pt-[24px] pb-[26px]">
         <div className="flex items-center justify-between">
