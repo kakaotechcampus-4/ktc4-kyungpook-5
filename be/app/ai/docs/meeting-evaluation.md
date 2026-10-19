@@ -13,7 +13,7 @@
 
 - CI에서 돌리지 않는다. luna는 키가 필요하다.
 - 공통 조건: 추론 끔(`effort=none`), 재시도 끔(`max_retries=0`), 노트북에서 인터넷을 거쳐 게이트웨이 호출
-- 지표: 균형 정확도(조회 필요와 불필요를 각각 맞힌 비율의 평균), 지연 p50·p95, 판단 1,000회 비용
+- 지표: 균형 정확도(조회 필요와 불필요를 각각 맞힌 비율의 평균), 재현율·특이도·정밀도, 오개입률(조회 아닌 발화 100개당 조회로 판단한 수), 지연 p50·p95, 판단 1,000회 비용. 평가 세트는 오답을 묶음별·태그별로도 센다
 
 | 스크립트 | 재는 것 |
 | --- | --- |
@@ -32,6 +32,9 @@
 cd be && uv run python app/ai/scripts/check_meeting_judge.py [--set query] [--json 결과.json]
 cd be && uv run --with laya==0.4.7 python app/ai/scripts/check_laya_judge.py [--model 체크포인트] [--threads 2] [--json 결과.json]
 ```
+
+프롬프트·모델 비교와 판단 전용 모델 교체 결정은 [회의 판단 평가 세트](../tests/fixtures/eval/README.md#회의-판단-평가-세트) 200건(`meeting_judge_set.jsonl`, #115)으로 한다.
+두 스크립트 모두 `--eval-set`을 주면 이 세트의 개발용을 재고, `--holdout`을 더하면 홀드아웃도 재서 따로 낸다. 홀드아웃은 기록에 남길 측정에서만 켠다.
 
 - `check_meeting_judge.py`: luna 판단을 레포 코드 경로(`features/meeting`)로 잰다. 호출마다 토큰(입력·캐시·출력)을 세서 아래 단가로 판단 1,000회 비용을 낸다
 - `check_laya_judge.py`: 같은 입력 글(`build_judge_input`)과 판단 질문(`questions.py`)으로 Laya를 CPU에서 돌린다. P(true) 0.5 이상을 조회로 보고, AUROC(기준값과 관계없이 조회할 발화에 더 높은 확률을 줬는지)와 지연·최대 메모리를 낸다

@@ -250,7 +250,8 @@ AI 이름을 부른 말과 부르지 않은 말, 사람끼리 하는 말("이 �
 
 ### 지표
 
-`check_meeting_judge.py`로 잰다. 홀드아웃은 `--holdout`을 줄 때만 돈다.
+`check_meeting_judge.py --eval-set`으로 잰다. 판단 전용 모델은 `check_laya_judge.py --eval-set`으로 같은 문항을 잰다.
+홀드아웃은 `--holdout`을 줄 때만 돈다.
 
 - 균형 정확도, 재현율, 특이도, 정밀도
 - 묶음별·태그별 오답 수. 무엇을 놓치고 어디서 잘못 끼어드는지 본다
