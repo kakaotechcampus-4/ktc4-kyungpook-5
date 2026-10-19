@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
@@ -36,12 +36,13 @@ function ReviewFields({
   existing?: ConfirmedTask
   onSaved: () => void
 }) {
+  const memoHelpId = useId()
   const [kind, setKind] = useState<'TASK' | 'SCHEDULE'>(
     existing?.kind ?? (suggestion.kind === 'SCHEDULE' ? 'SCHEDULE' : 'TASK'),
   )
   const [title, setTitle] = useState(existing?.title ?? suggestion.title)
   const [description, setDescription] = useState(
-    existing?.description ?? suggestion.description ?? '',
+    existing ? (existing.description ?? '') : (suggestion.description ?? ''),
   )
   const [assignee, setAssignee] = useState(
     existing?.assigneeName ?? suggestion.suggestedAssignee ?? '',
@@ -194,13 +195,21 @@ function ReviewFields({
         </p>
       )}
       <Textarea
-        label="상세"
+        label="기타 메모 (선택)"
         value={description}
+        placeholder="준비물, 참고 링크, 전달할 내용을 자유롭게 적어 주세요."
+        rows={4}
+        maxLength={10000}
+        aria-describedby={memoHelpId}
         onChange={(e) => {
           setDescription(e.target.value)
           invalidate()
         }}
       />
+      <p id={memoHelpId} className="text-caption text-mute">
+        여러 줄로 적을 수 있어요. 비워 두어도 저장할 수 있고, 저장 후에도 다시 확인·수정할 수
+        있어요.
+      </p>
       {!existing && (
         <details className="rounded-lg border border-line p-3 text-caption">
           <summary>추출 후보만 수정</summary>
@@ -327,6 +336,12 @@ function ReviewFields({
             .map((id) => recipients.data?.find((r) => r.accountId === id)?.name ?? '확인 필요')
             .join(', ') || '미지정'}
         </p>
+        {description.trim() && (
+          <div className="mt-2">
+            <p className="font-bold">기타 메모</p>
+            <p className="whitespace-pre-wrap break-words">{description}</p>
+          </div>
+        )}
         <label className="mt-2 flex items-center gap-2">
           <input
             type="checkbox"
@@ -463,6 +478,12 @@ export function ConfirmedTasks({
             {item.kind === 'TASK' ? '마감' : '일정'}: {displayTime(item.dueAt ?? item.scheduledAt)}
           </p>
           <p className="mt-1 text-caption">담당: {item.assigneeName || '미지정'}</p>
+          {item.description?.trim() && (
+            <div className="mt-3 text-caption">
+              <p className="font-bold">기타 메모</p>
+              <p className="mt-1 whitespace-pre-wrap break-words text-ink2">{item.description}</p>
+            </div>
+          )}
           <p className="mt-1 text-caption">
             알림: {displayTime(item.reminder.reminderAt)} · 지정 수신자{' '}
             {item.reminder.recipientAccountIds.length}명

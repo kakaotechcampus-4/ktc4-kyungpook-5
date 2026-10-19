@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
-import { Input } from '@/shared/ui/Input'
+import { Input, Textarea } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
 import { Tori } from '@/shared/ui/Tori'
 import { FlowRail } from './FlowRail'
@@ -11,6 +11,7 @@ import { PreviewControls } from './PreviewControls'
 import { PreviewSections } from './PreviewSections'
 import { Spotlight } from './Spotlight'
 import type { useOnboarding } from './useOnboarding'
+import type { PreviewTask } from './model'
 
 export function OnboardingExperience({
   onboarding,
@@ -18,7 +19,14 @@ export function OnboardingExperience({
   onboarding: ReturnType<typeof useOnboarding>
 }) {
   const { view = '' } = useParams<{ view: string }>()
-  const { state, update } = onboarding
+  const { state, update, selectCandidate, updateCandidate, saveCandidate } = onboarding
+  const candidate =
+    state.candidates.find((item) => item.id === state.selectedCandidateId) ?? state.candidates[0]
+  const pending = state.candidates.filter(
+    (item) => !state.savedItems.some((saved) => saved.id === item.id),
+  )
+  const hasSaved = state.savedItems.length > 0
+  const allSaved = pending.length === 0
   const navigate = useNavigate()
   const [confirmed, setConfirmed] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -44,28 +52,34 @@ export function OnboardingExperience({
     window.addEventListener('keydown', close)
     return () => window.removeEventListener('keydown', close)
   }, [state.guideEnabled, closeGuide])
-  const patch = (key: keyof typeof state.candidate, value: string) => {
-    update({ candidate: { ...state.candidate, [key]: value }, saved: false })
+  const openCandidate = (id: string) => {
+    selectCandidate(id)
+    setConfirmed(false)
+    setEditing(false)
+    go('review')
+  }
+  const patch = (key: keyof Omit<PreviewTask, 'id'>, value: string) => {
+    updateCandidate(candidate.id, { [key]: value })
     setConfirmed(false)
   }
   const valid = !!(
-    state.candidate.title.trim() &&
-    state.candidate.assignee &&
-    state.candidate.recipient &&
-    state.candidate.dueAt &&
-    state.candidate.reminderAt &&
-    state.candidate.reminderAt <= state.candidate.dueAt
+    candidate.title.trim() &&
+    candidate.assignee &&
+    candidate.recipient &&
+    candidate.dueAt &&
+    candidate.reminderAt &&
+    candidate.reminderAt <= candidate.dueAt
   )
   const step =
     view === 'meetings'
       ? 4
-      : view === 'review' || state.saved || (view === '' && state.meetingPlayed)
+      : view === 'review' || hasSaved || (view === '' && state.meetingPlayed)
         ? 5
         : view === '' && state.recordsAdded
           ? 4
           : 3
   let spot: { target: string; title: string; description: string } | null = null
-  if (view === '' && !state.saved)
+  if (view === '' && !allSaved)
     spot = !state.recordsAdded
       ? {
           target: 'main-action',
@@ -117,11 +131,14 @@ export function OnboardingExperience({
               title: '토리의 답은 출처와 함께 확인해요',
               description: '운영팀 규칙의 출처 보기를 눌러 답의 근거를 확인해 주세요.',
             }
-          : {
-              target: 'review-candidate',
-              title: '대화에서 할 일 후보를 찾았어요',
-              description: '할 일 확인하기를 눌러 내용·담당·시각·알림 수신자를 확인하세요.',
-            }
+          : pending.length
+            ? {
+                target: 'review-candidate',
+                title: '대화에서 할 일 후보를 찾았어요',
+                description:
+                  '저장할 후보의 확인하기를 눌러 내용·담당·시각·알림 수신자와 메모를 확인하세요.',
+              }
+            : null
   if (view === 'review' && !editing)
     spot = confirmed
       ? {
@@ -144,7 +161,7 @@ export function OnboardingExperience({
           {state.teamName} · {state.role === 'OWNER' ? '회장' : '임원'}
         </p>
         <h1 className="text-[27px] font-bold leading-10">
-          {state.saved
+          {hasSaved
             ? '회의에서 정한 일을 챙겨보세요'
             : `${state.operatorName}님, 첫 회의를 준비해 볼까요?`}
         </h1>
@@ -154,14 +171,14 @@ export function OnboardingExperience({
       </header>
       {savedNotice && (
         <p role="status" className="mb-5 rounded-xl bg-done-bg p-4 text-[13px] font-bold text-done">
-          예시 할 일을 저장했어요. 아래에서 담당자와 시각을 다시 확인하세요.
+          예시 할 일을 저장했어요. 아래에서 담당자·시각·메모를 다시 확인하세요.
         </p>
       )}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {[
           { label: '참고 자료', count: state.recordsAdded ? '2개' : '0개' },
           { label: '회의', count: state.meetingCreated ? '1개' : '0개' },
-          { label: '저장한 할 일', count: state.saved ? '1개' : '0개' },
+          { label: '저장한 할 일', count: `${state.savedItems.length}개` },
         ].map((item) => (
           <Card key={item.label} className="p-3 sm:p-5">
             <p className="text-caption text-mute">{item.label}</p>
@@ -169,24 +186,27 @@ export function OnboardingExperience({
           </Card>
         ))}
       </div>
-      {state.saved ? (
-        <Card className="mt-5 border-blue-200 p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-h2">저장한 할 일</h2>
-            <Chip tone="done" size="sm">
-              예시 저장
-            </Chip>
-          </div>
-          <h3 className="text-[18px] font-bold">{state.candidate.title}</h3>
-          <TaskFacts candidate={state.candidate} />
-          <p className="mt-4 text-caption text-mute">
+      {hasSaved && (
+        <section className="mt-5 space-y-4" aria-label="저장한 할 일 목록">
+          <h2 className="text-h2">저장한 할 일 · {state.savedItems.length}개</h2>
+          {state.savedItems.map((item) => (
+            <Card key={item.id} className="border-blue-200 p-6">
+              <Chip tone="done" size="sm">
+                예시 저장
+              </Chip>
+              <h3 className="mt-3 text-[18px] font-bold">{item.title}</h3>
+              <TaskFacts candidate={item} />
+              <Button className="mt-5" variant="secondary" onClick={() => openCandidate(item.id)}>
+                {item.title} 다시 확인
+              </Button>
+            </Card>
+          ))}
+          <p className="text-caption text-mute">
             이 브라우저에 저장한 예시예요. 실제 알림은 발송되지 않아요.
           </p>
-          <Button className="mt-5" variant="secondary" onClick={() => go('review')}>
-            내용 다시 확인
-          </Button>
-        </Card>
-      ) : (
+        </section>
+      )}
+      {!allSaved && (
         <Card className="mt-5 p-6 sm:p-8">
           <div className="flex items-start gap-4">
             <Tori size={50} />
@@ -195,7 +215,7 @@ export function OnboardingExperience({
                 {!state.recordsAdded
                   ? '아직 자료와 회의가 없어요'
                   : state.meetingPlayed
-                    ? '회의에서 찾은 할 일을 확인해 주세요'
+                    ? `회의에서 찾은 할 일이 ${pending.length}개 남았어요`
                     : '참고할 자료가 준비됐어요'}
               </h2>
               <p className="mt-2 text-[13px] leading-7 text-ink2">
@@ -210,7 +230,9 @@ export function OnboardingExperience({
                 size="lg"
                 className="mt-5"
                 onClick={() =>
-                  go(!state.recordsAdded ? 'records' : state.meetingPlayed ? 'review' : 'meetings')
+                  state.meetingPlayed
+                    ? openCandidate(pending[0].id)
+                    : go(!state.recordsAdded ? 'records' : 'meetings')
                 }
               >
                 {!state.recordsAdded
@@ -315,7 +337,7 @@ export function OnboardingExperience({
               title={state.meetingTitle}
               description={
                 state.meetingPlayed
-                  ? '예시 전사 2개 · 자료 답 1개 · 확인할 할 일 1개'
+                  ? `예시 전사 3개 · 자료 답 1개 · 할 일 후보 ${state.candidates.length}개`
                   : '회의 공간이 준비됐어요. 시작하면 대화가 아래에 쌓여요.'
               }
             />
@@ -363,25 +385,34 @@ export function OnboardingExperience({
               <Transcript time="00:24">
                 하늘님이 금요일 오후 4시까지 예약을 확인해 주세요. 30분 전에 알림도 받으면 좋겠어요.
               </Transcript>
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
-                <p className="text-[11px] font-bold text-blue-600">
-                  대화에서 찾은 후보 · 아직 저장되지 않았어요
+              <Transcript time="00:35">
+                지훈님은 금요일 오후 6시까지 행사 운영 물품도 준비해 주세요.
+              </Transcript>
+              <section className="space-y-3" aria-label="회의 할 일 후보">
+                <h2 className="text-h2">할 일 후보 · {state.candidates.length}개</h2>
+                <p className="text-caption leading-6 text-mute">
+                  각 항목을 따로 확인하고 저장해요. 메모와 담당자는 항목별로 남아요.
                 </p>
-                <h2 className="mt-2 text-h3">{state.candidate.title}</h2>
-                <p className="mt-2 text-[13px] leading-6 text-ink2">
-                  담당·마감·알림 받을 사람을 직접 확인해야 저장돼요.
-                </p>
-                <Button
-                  data-guide-target="review-candidate"
-                  className="mt-4"
-                  onClick={() => {
-                    setConfirmed(false)
-                    go('review')
-                  }}
-                >
-                  할 일 확인하기
-                </Button>
-              </div>
+                {state.candidates.map((item) => (
+                  <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+                    <p className="text-[11px] font-bold text-blue-600">
+                      {state.savedItems.some((saved) => saved.id === item.id)
+                        ? '저장본 있음'
+                        : '아직 저장되지 않은 후보'}
+                    </p>
+                    <h3 className="mt-2 text-h3">{item.title}</h3>
+                    <Button
+                      data-guide-target={
+                        item.id === pending[0]?.id ? 'review-candidate' : undefined
+                      }
+                      className="mt-4"
+                      onClick={() => openCandidate(item.id)}
+                    >
+                      {item.title} 확인하기
+                    </Button>
+                  </div>
+                ))}
+              </section>
             </div>
           )}
         </>
@@ -395,37 +426,61 @@ export function OnboardingExperience({
         title="이 할 일을 저장할까요?"
         description="대화에서 찾은 내용은 후보예요. 담당자·시각·알림 받을 사람을 직접 확인해 주세요."
       />
+      <div role="group" aria-label="확인할 할 일 선택" className="mt-5 flex flex-wrap gap-2">
+        {state.candidates.map((item) => (
+          <Button
+            key={item.id}
+            size="sm"
+            variant={item.id === candidate.id ? 'primary' : 'secondary'}
+            aria-pressed={item.id === candidate.id}
+            onClick={() => openCandidate(item.id)}
+          >
+            {item.title} 선택
+          </Button>
+        ))}
+      </div>
       {editing ? (
         <div className="mt-6 space-y-5">
           <Input
             label="할 일 내용"
-            value={state.candidate.title}
+            value={candidate.title}
             onChange={(event) => patch('title', event.target.value)}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <PersonSelect
               label="담당자"
-              value={state.candidate.assignee}
+              value={candidate.assignee}
               onChange={(value) => patch('assignee', value)}
             />
             <PersonSelect
               label="알림 수신자"
-              value={state.candidate.recipient}
+              value={candidate.recipient}
               onChange={(value) => patch('recipient', value)}
             />
             <Input
               label="마감 · 한국시간"
               type="datetime-local"
-              value={state.candidate.dueAt}
+              value={candidate.dueAt}
               onChange={(event) => patch('dueAt', event.target.value)}
             />
             <Input
               label="알림 · 한국시간"
               type="datetime-local"
-              value={state.candidate.reminderAt}
+              value={candidate.reminderAt}
               onChange={(event) => patch('reminderAt', event.target.value)}
             />
           </div>
+          <Textarea
+            label="기타 메모 (선택)"
+            rows={5}
+            maxLength={10000}
+            value={candidate.description}
+            placeholder="준비 방법, 참고 링크, 세부 요청 등 자유롭게 남겨 주세요."
+            onChange={(event) => patch('description', event.target.value)}
+          />
+          <p className="text-caption text-mute">
+            비워도 저장할 수 있어요. 메모는 선택한 할 일에만 남아요.
+          </p>
           {!valid && (
             <p role="alert" className="text-caption text-failed">
               내용과 시각을 입력하고, 알림을 마감 이전으로 확인해 주세요.
@@ -442,12 +497,12 @@ export function OnboardingExperience({
             className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-5"
           >
             <div className="flex items-start justify-between gap-3">
-              <h2 className="text-[17px] font-bold">{state.candidate.title}</h2>
+              <h2 className="text-[17px] font-bold">{candidate.title}</h2>
               <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
                 내용 수정
               </Button>
             </div>
-            <TaskFacts candidate={state.candidate} />
+            <TaskFacts candidate={candidate} />
             <label className="mt-5 flex items-start gap-2 border-t border-blue-200 pt-4 text-[13px] font-bold">
               <input
                 className="mt-1 size-4 shrink-0 accent-blue-600"
@@ -455,7 +510,7 @@ export function OnboardingExperience({
                 checked={confirmed}
                 onChange={(event) => setConfirmed(event.target.checked)}
               />
-              <span>내용·담당자·시각·수신자를 확인했어요</span>
+              <span>내용·담당자·시각·수신자·메모를 확인했어요</span>
             </label>
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -464,7 +519,7 @@ export function OnboardingExperience({
               disabled={!valid || !confirmed}
               onClick={() => {
                 if (!confirmed || !valid) return
-                update({ saved: true })
+                saveCandidate(candidate.id)
                 setSavedNotice(true)
                 go()
               }}
@@ -485,7 +540,7 @@ export function OnboardingExperience({
   return (
     <div className="mx-auto max-w-[960px] pb-8">
       <PreviewControls onboarding={onboarding} />
-      <FlowRail current={step} complete={state.saved} />
+      <FlowRail current={step} complete={allSaved} />
       {view === '' ? (
         main
       ) : view === 'records' ? (
@@ -572,11 +627,7 @@ function Transcript({ time, children }: { time: string; children: React.ReactNod
     </div>
   )
 }
-function TaskFacts({
-  candidate,
-}: {
-  candidate: ReturnType<typeof useOnboarding>['state']['candidate']
-}) {
+function TaskFacts({ candidate }: { candidate: PreviewTask }) {
   return (
     <dl className="mt-4 grid grid-cols-[80px_1fr] gap-x-3 gap-y-3 text-[13px] leading-6">
       <dt className="text-mute">담당자</dt>
@@ -587,6 +638,8 @@ function TaskFacts({
       <dd>{candidate.reminderAt.replace('T', ' ')} (한국시간)</dd>
       <dt className="text-mute">알림 수신자</dt>
       <dd>{candidate.recipient} 1명</dd>
+      <dt className="text-mute">기타 메모</dt>
+      <dd className="min-w-0 whitespace-pre-wrap break-words">{candidate.description || '없음'}</dd>
     </dl>
   )
 }
