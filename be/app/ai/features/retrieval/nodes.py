@@ -4,6 +4,10 @@
                                      └→ build_result
 
 각 단계는 상태를 받아 바뀐 값만 돌려준다. 그래프로 옮길 때 노드로 그대로 쓴다.
+
+회의 어시스턴트는 검색과 근거 판단 사이에 처리 단계를 알리고 구간 시간을 따로 남기므로
+search_records 대신 find_chunks와 assess_chunks를 차례로 부른다. 두 함수는
+search_records(rewrite=False, max_rounds=1)와 같은 단계를 같은 입력으로 거친다.
 """
 
 from collections.abc import Awaitable, Callable
@@ -61,15 +65,7 @@ async def search_records(
     `rewrite=False`로 검색어 정리를 건너뛰고 `query`를 그대로 검색어로 쓴다.
     `max_rounds`는 재검색까지 포함한 검색 횟수이고, 판단 모델은 모델을 정한 `invoke`를 넘겨 바꾼다.
     """
-    state: SearchState = {
-        "request": request,
-        "queries": [],
-        "searched": [],
-        "chunks": [],
-        "rounds": 0,
-        "assessment": None,
-        "result": None,
-    }
+    state = _new_state(request)
     if rewrite:
         state.update(await rewrite_query(state, invoke=invoke))
     else:
@@ -85,6 +81,41 @@ async def search_records(
         # 근거가 충분하거나 회차를 다 쓰면 assess가 다음 검색어를 비운다
         if not state["queries"]:
             break
+    state.update(build_result(state))
+    return state["result"]
+
+
+async def find_chunks(
+    request: RecordSearchRequest,
+    *,
+    port: RecordSearchPort,
+    embed: Embed = aembed_texts,
+) -> tuple[RetrievedChunk, ...]:
+    """검색어 정리 없이 `query`로 한 번 찾은 청크. 없으면 빈 튜플이며 실패가 아니다"""
+    state = _new_state(request)
+    state["queries"] = [request.query]
+    state.update(await retrieve(state, port=port, embed=embed))
+    return tuple(state["chunks"])
+
+
+async def assess_chunks(
+    request: RecordSearchRequest,
+    chunks: tuple[RetrievedChunk, ...],
+    *,
+    invoke: Invoke = ainvoke_structured,
+) -> RecordSearchResult:
+    """find_chunks로 찾은 청크의 근거를 판단해 결과를 만든다. 다시 찾지 않는다
+
+    청크가 없으면 search_records처럼 모델을 부르지 않고 찾지 못했다는 결과를 돌려준다.
+    """
+    state = _new_state(request)
+    if chunks:
+        # find_chunks를 한 번 마친 상태와 같게 둔다. 모델이 보는 "앞서 찾은 검색어"와
+        # "다시 찾을 수 있는 횟수: 0"이 search_records(rewrite=False)와 같아진다
+        state.update(
+            {"chunks": list(chunks), "searched": [request.query], "rounds": 1}
+        )
+        state.update(await assess(state, invoke=invoke, max_rounds=1))
     state.update(build_result(state))
     return state["result"]
 
@@ -198,6 +229,18 @@ def _fact(item: EvidenceItem, by_id: dict[str, RetrievedChunk]) -> RecordFact:
         if source not in sources:
             sources.append(source)
     return RecordFact(content=item.content, sources=tuple(sources))
+
+
+def _new_state(request: RecordSearchRequest) -> SearchState:
+    return {
+        "request": request,
+        "queries": [],
+        "searched": [],
+        "chunks": [],
+        "rounds": 0,
+        "assessment": None,
+        "result": None,
+    }
 
 
 def _request_context(request: RecordSearchRequest) -> str:

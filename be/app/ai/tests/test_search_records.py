@@ -27,6 +27,8 @@ from app.ai.features.retrieval.nodes import (
     ASSESS_EVIDENCE_PROMPT,
     MAX_QUERIES,
     MAX_SEARCH_ROUNDS,
+    assess_chunks,
+    find_chunks,
     search_records,
 )
 from app.ai.features.retrieval.schemas import (
@@ -534,3 +536,43 @@ def test_자료_간_차이는_값이_두_개_이상이다():
 def test_사실에는_출처가_있어야_한다():
     with pytest.raises(ValidationError):
         RecordFact(content="28명", sources=())
+
+
+# --- 나눠 부르기 (회의 어시스턴트) -------------------------------------------------
+
+
+def test_나눠_불러도_검색어_정리를_건너뛴_search_records와_같다():
+    """회의는 검색과 근거 판단을 나눠 부른다. 모델이 받는 입력과 결과가 같아야 한다"""
+    request = _request(query="2025 봄 MT 1인 회비")
+    assessment = _assessment(facts=[_fact("2025 봄 MT 1인 회비 45,000원", "c1")])
+
+    whole_embed, whole_model = FakeEmbed(), FakeModel(assessment)
+    whole = asyncio.run(
+        search_records(
+            request,
+            port=_fixture_port(),
+            embed=whole_embed,
+            invoke=whole_model,
+            rewrite=False,
+        )
+    )
+
+    split_embed, split_model = FakeEmbed(), FakeModel(assessment)
+    chunks = asyncio.run(find_chunks(request, port=_fixture_port(), embed=split_embed))
+    split = asyncio.run(assess_chunks(request, chunks, invoke=split_model))
+
+    assert split_embed.calls == whole_embed.calls == [["2025 봄 MT 1인 회비"]]
+    assert _assess_messages(split_model) == _assess_messages(whole_model)
+    assert split == whole
+
+
+def test_나눠_부를_때_찾은_청크가_없으면_판단을_부르지_않는다():
+    request = _request(club_id="clb_other")
+    model = FakeModel()
+
+    chunks = asyncio.run(find_chunks(request, port=_fixture_port(), embed=FakeEmbed()))
+    result = asyncio.run(assess_chunks(request, chunks, invoke=model))
+
+    assert chunks == ()
+    assert result == RecordSearchResult(not_found=("작년 봄 MT 회비",))
+    assert model.calls == []
