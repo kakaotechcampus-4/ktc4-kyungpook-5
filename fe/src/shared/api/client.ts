@@ -2,7 +2,11 @@
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
 import { ApiError, type ApiErrorBody, type ApiMeta, type ApiSuccess } from '@/shared/api/types'
 
-const BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1`
+export function getApiBaseUrl(): string {
+  return (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+}
+
+const BASE_URL = `${getApiBaseUrl()}/api/v1`
 const TOKEN_KEY = 'unyounghae_access_token'
 
 export function getAccessToken(): string | null {

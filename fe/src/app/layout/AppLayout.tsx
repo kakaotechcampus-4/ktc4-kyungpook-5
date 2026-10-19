@@ -1,11 +1,15 @@
 // 로그인 뒤 모든 화면의 틀: 상단바 + 크림 배경 본문
 import type { ReactNode } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useMe, useLogout } from '@/features/auth/hooks'
+import { useAuthStore } from '@/shared/auth/store'
+import { Button } from '@/shared/ui/Button'
 import { cn } from '@/shared/lib/cn'
 import { Avatar } from '@/shared/ui/Avatar'
 import { Tori } from '@/shared/ui/Tori'
 
 const NAV = [
+  { to: '/meetings', label: '회의 베타' },
   { to: '/', label: '메인' },
   { to: '/planning', label: '행사 계획' },
   { to: '/events', label: '행사 목록' },
@@ -25,10 +29,14 @@ export function TopBar({ children }: { children?: ReactNode }) {
 }
 
 export function AppLayout() {
+  const navigate = useNavigate()
+  useMe()
+  const { me, clubId, selectClub } = useAuthStore()
+  const logout = useLogout()
   return (
     <div className="min-h-screen">
       <TopBar>
-        <nav className="flex gap-[4px] rounded-[12px] bg-bg p-[4px]">
+        <nav className="flex flex-wrap gap-[4px] rounded-[12px] bg-bg p-[4px]">
           {NAV.map(({ to, label }) => (
             <NavLink
               key={to}
@@ -47,9 +55,39 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        {/* TODO: 로그인 연동 후 실제 동아리·역할로 바꾼다 */}
+
         <div className="flex items-center gap-[10px]">
-          <span className="text-[12px] font-medium text-mute">큰나무 동아리 · 총무</span>
+          {me ? (
+            <>
+              <label className="text-caption">
+                <span className="sr-only">선택 소속</span>
+                <select
+                  aria-label="선택 소속"
+                  value={clubId ?? ''}
+                  onChange={(event) => {
+                    selectClub(event.target.value)
+                    navigate('/meetings')
+                  }}
+                >
+                  <option value="" disabled>
+                    소속 선택
+                  </option>
+                  {me.clubs.map((club) => (
+                    <option key={club.id} value={club.id}>
+                      {club.name} · {club.role}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button size="sm" variant="ghost" onClick={() => logout.mutate()}>
+                로그아웃
+              </Button>
+            </>
+          ) : (
+            <NavLink to="/login" className="text-caption text-blue-700">
+              로그인
+            </NavLink>
+          )}
           <Avatar />
         </div>
       </TopBar>

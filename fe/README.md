@@ -1,3 +1,59 @@
+# 운영해 Frontend
+
+React 19 · TypeScript · Vite 6 · Tailwind 4 · TanStack Query 5 · Zustand · axios 기반입니다.
+
+## 로컬 실행
+
+```sh
+cd fe
+npm ci
+cp .env.example .env
+npm run dev
+```
+
+`.env.example`의 `VITE_API_BASE_URL=http://localhost:8000`을 실제 BE 주소로 맞춥니다. 주소는 `/api/v1`을 제외한 origin이며 Vite 프록시는 없습니다. FE/BE를 별도 포트로 실행하면 BE CORS에서 FE origin을 허용해야 합니다. localhost·HTTPS에서 마이크와 Service Worker를 사용할 수 있습니다. 실제 `.env`는 Git 제외입니다.
+
+이번 로컬 병렬 검증은 기존 Docker5173/BE8000을 보존하고 FE5175→BE8001을 사용했습니다. 이 포트는 제품 고정값이 아닙니다.
+
+## 회의 베타
+
+`/login`에서 실제 로그인하고 `/me`가 반환한 소속을 선택합니다. `/meetings`에서 자료와 회의를 준비하고 `/meetings/:meetingId`에서 확정 전사·자료 답/출처·일정/할 일 후보를 확인합니다. 후보의 내용·담당자·정확한 시각·별도 수신 계정을 확인한 뒤 저장·예약합니다. 서버가 권한·조직·버전·예약을 판단합니다.
+
+- 자료의 `COMPLETED`는 파싱 완료, `INDEXED`만 검색 준비 완료입니다. 실제 실패를 fixture로 대체하지 않습니다.
+- 마이크는 WS 서버의 `audio.ready` 이후 켭니다. mono PCM16LE 16kHz 연속 음성을 전송하며 VAD·STT는 서버가 맡습니다. 마지막 음성 전송·`audio.end_ack`·`audio.completed`를 구분합니다.
+- PWA manifest·Service Worker가 있습니다. 사용자가 알림을 허용하고 본인 기기의 Push 구독을 등록합니다. 서버 Push 접수와 기기 시스템 알림 표시는 다릅니다. 알림을 누르면 소속을 확인하고 실제 확정 항목을 다시 조회합니다.
+- 개발 서버에서만 `/meetings?fixture=1`로 명시적 예시를 볼 수 있습니다. 실제 저장·음성·예약·알림은 생성하지 않습니다. 기존 다른 화면의 `?demo` 규칙과 별개입니다.
+- 회원가입·행사/계획/마이페이지 전체의 실연동 완료를 뜻하지 않습니다. 이번 범위는 기존 로그인과 회의 베타 연결입니다.
+
+서버에 실제 STT/AI 모델 설정이 필요합니다. 설정이 없거나 API가 실패하면 오류를 표시합니다. 자동 WS 재접속·모바일 백그라운드 녹음·전체 오프라인 캐시는 이번 범위가 아닙니다.
+
+## 개발 규칙
+
+`pages`는 조립, 통신은 `features`의 hook → api → `shared/api/client`를 사용합니다. features 간 import를 만들지 않습니다. 소속·세션은 기존 shared Zustand를 재사용하고 공통 UI는 `/dev/ui`에서 확인합니다.
+
+```sh
+npm run build
+npm run lint
+node --test tests/*.test.mjs
+node --experimental-transform-types --test src/features/meetings/audio/pcm.test.mjs
+```
+
+## API 타입
+
+생성 파일 `src/shared/api/schema.d.ts`는 손으로 수정하지 않습니다.
+
+```sh
+npm run gen:api-types
+npm run gen:api-types -- /path/to/openapi.json
+OPENAPI_SOURCE=http://127.0.0.1:8001/openapi.json npm run gen:api-types
+```
+
+기본 source는 `http://localhost:8000/openapi.json`입니다. API 응답은 `{data, meta}`, 인증은 opaque Bearer 세션입니다. 에러의 `code`로 화면 문구를 매핑합니다.
+
+자료 API·제약은 [자료 연결](docs/records-integration.md), Push payload와 상태는 [알림 연결](docs/meeting-push-contract.md), 오디오 순서와 마지막 프레임은 [음성 adapter](src/features/meetings/audio/README.md)를 참고합니다.
+
+## 기존 개발 기준 문서
+
 # 운영해 · Frontend
 
 동아리 행사 보조 에이전트 "운영해"의 프론트엔드입니다.
