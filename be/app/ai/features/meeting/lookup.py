@@ -5,7 +5,13 @@ search_records(rewrite=False)와 같은 단계라 기록 검색의 측정값과 
 이 파일이 더하는 것은 근거 판단 결과를 회의 카드 한 장의 문구와 출처로 옮기는 일뿐이다.
 """
 
-from ...llm import aembed_texts, ainvoke_structured
+from functools import lru_cache
+
+from langchain_core.messages import BaseMessage
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel
+
+from ...llm import aembed_texts, ainvoke_structured, build_chat_model
 from ...ports import RecordSearchPort, RetrievedChunk
 from ..retrieval.indexing import Embed
 from ..retrieval.nodes import (
@@ -16,6 +22,20 @@ from ..retrieval.nodes import (
 )
 from ..retrieval.schemas import RecordFact, RecordSearchRequest, RecordSearchResult
 from .schemas import MeetingAnswer
+
+
+@lru_cache(maxsize=1)
+def get_assess_model() -> ChatOpenAI:
+    """회의의 근거 판단용 모델. 판단과 같이 실시간 호출이라 추론을 끈다.
+
+    회의 검색어 48개로 잰 근거 판단 p50이 2.9초에서 2.0초, p95가 5.9초에서 3.1초로 줄었고
+    사실 맞힘은 실행마다의 흔들림 안이었다(docs/meeting-evaluation.md 2026-10-19).
+    """
+    return build_chat_model(reasoning={"effort": "none"})
+
+
+async def call_assess_model[T: BaseModel](messages: list[BaseMessage], schema: type[T]) -> T:
+    return await ainvoke_structured(messages, schema, model=get_assess_model())
 
 
 class RecordsLookup:
@@ -31,7 +51,7 @@ class RecordsLookup:
         records: RecordSearchPort,
         *,
         embed: Embed = aembed_texts,
-        invoke: Invoke = ainvoke_structured,
+        invoke: Invoke = call_assess_model,
     ) -> None:
         self._records = records
         self._embed = embed

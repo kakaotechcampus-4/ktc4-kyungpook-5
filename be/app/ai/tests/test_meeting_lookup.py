@@ -13,7 +13,7 @@ import pytest
 from app.ai.config import get_settings
 from app.ai.contracts import IndexedChunk, RecordSource, SourceLocation
 from app.ai.errors import AIError, AIInvalidResponseError, AITimeoutError
-from app.ai.features.meeting.lookup import RecordsLookup, to_meeting_answer
+from app.ai.features.meeting.lookup import RecordsLookup, get_assess_model, to_meeting_answer
 from app.ai.features.meeting.nodes import judge_utterance
 from app.ai.features.meeting.schemas import (
     JudgeOutput,
@@ -248,3 +248,13 @@ def test_임베딩이_늦으면_검색에서_멈추고_시간_초과로_남긴�
 
     [search] = raised.value.trace.tool_calls
     assert (search.tool, search.status) == ("records.search", "TIMEOUT")
+
+
+def test_회의의_근거_판단은_추론을_끈_모델로_부른다(monkeypatch):
+    monkeypatch.setenv("AI_API_BASE_URL", "https://example.invalid/v1")
+    monkeypatch.setenv("AI_API_KEY", "test-key")
+    get_settings.cache_clear()
+    get_assess_model.cache_clear()
+
+    assert get_assess_model().reasoning == {"effort": "none"}
+    get_assess_model.cache_clear()
