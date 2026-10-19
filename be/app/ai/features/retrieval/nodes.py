@@ -39,6 +39,10 @@ MAX_SEARCH_ROUNDS = 1
 # 한 번에 찾는 검색어 수. 프롬프트도 1~3개로 안내한다
 MAX_QUERIES = 3
 
+# 프롬프트 원문을 바꾸면 올린다. 측정 기록과 회의 판단 기록(trace)에 남아 바뀌기 전후를 나눠 본다
+REWRITE_QUERY_PROMPT_VERSION = "records-rewrite-v1"
+ASSESS_EVIDENCE_PROMPT_VERSION = "records-assess-v1"
+
 _PROMPTS = Path(__file__).parent / "prompts"
 REWRITE_QUERY_PROMPT = (_PROMPTS / "rewrite_query.md").read_text(encoding="utf-8")
 ASSESS_EVIDENCE_PROMPT = (_PROMPTS / "assess_evidence.md").read_text(encoding="utf-8")

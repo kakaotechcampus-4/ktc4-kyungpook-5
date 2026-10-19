@@ -48,7 +48,12 @@ from app.ai.features.retrieval.chunking import (
 )
 from app.ai.features.retrieval.indexing import index_record_chunks
 from app.ai.features.retrieval.memory_port import InMemoryRecordSearch
-from app.ai.features.retrieval.nodes import MAX_SEARCH_ROUNDS, search_records
+from app.ai.features.retrieval.nodes import (
+    ASSESS_EVIDENCE_PROMPT_VERSION,
+    MAX_SEARCH_ROUNDS,
+    REWRITE_QUERY_PROMPT_VERSION,
+    search_records,
+)
 from app.ai.features.retrieval.schemas import (
     RecordFact,
     RecordSearchRequest,
@@ -512,6 +517,11 @@ async def run(
             "chat_model": settings.model if search_name == "records" else None,
             "max_rounds": max_rounds if search_name == "records" else None,
             "rewrite": rewrite if search_name == "records" else None,
+            "prompt_versions": (
+                {"rewrite": REWRITE_QUERY_PROMPT_VERSION, "assess": ASSESS_EVIDENCE_PROMPT_VERSION}
+                if search_name == "records"
+                else None
+            ),
             "limit": max(KS),
             "holdout": holdout,
             "cache": use_cache,

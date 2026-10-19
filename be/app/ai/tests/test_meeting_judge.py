@@ -65,6 +65,8 @@ def _judge(needs_lookup, query=""):
 
 
 class FakeLookup:
+    answer_prompt_version = "test-answer-v1"
+
     def __init__(self, chunks=(), answer=None):
         self.chunks = chunks
         self.result = answer

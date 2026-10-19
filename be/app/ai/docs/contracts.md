@@ -143,6 +143,7 @@ class ToolCall(ContractModel):
     status: Literal["OK", "FAILED", "TIMEOUT"]
     duration_ms: int
     result_count: int | None = None  # records.search일 때 찾은 조각 수
+    prompt_version: str | None = None  # llm.generate일 때 그 호출의 프롬프트 버전. 예: "records-assess-v1"
 
 
 class JudgeTrace(ContractModel):
@@ -248,7 +249,7 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
     "judge_ms": 1480,
     "tool_calls": [
       {"tool": "records.search", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 480, "result_count": 5},
-      {"tool": "llm.generate", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 3490}
+      {"tool": "llm.generate", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 3490, "prompt_version": "records-assess-v1"}
     ]
   }
 }
@@ -260,6 +261,7 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 | `route` | 무슨 종류의 처리였는지 화면과 통계에서 본다 | "이번 회의에서 RAG 7번, NONE 120번" |
 | `trace.tool_calls` | 답이 틀리거나 늦을 때 어느 단계가 원인인지 찾는다 | 6초 걸림 → 검색 0.4초, 답 작성 5.5초 |
 | `trace.model`, `prompt_version` | 모델·프롬프트를 바꾼 전후를 나눠 비교하고, 학습 데이터를 고른다(#117) | v3a와 v4의 오탐률 비교 |
+| `tool_calls[].prompt_version` | 답을 쓴 근거 판단 지시문이 바뀐 전후를 나눠 본다 | `records-assess-v1`과 v2의 "기록에 없음" 비율 비교 |
 
 - **이 값들은 모델이 만들지 않고 AI 코드가 채운다.** 버전은 받은 값을 돌려주고, 시간은 코드가 재고, 모델·프롬프트 버전은 설정값이다. 모델 출력이 늘지 않으므로 판단 지연은 그대로다.
 - **조회하지 않은 이유(`reasonCode`)는 실시간 결과에 넣지 않는다.** 이유를 모델이 출력하게 하면 판단이 느려진다. 이유 문장과 확신도를 빼서 p50이 0.65초 줄었다(#111). 이유는 검수용이므로 회의가 끝난 뒤 별도 호출로 채운다(#114, #117).
@@ -352,5 +354,4 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 - 판단 기록의 저장 형식과 보관 기간(#117). 결과와 오류에 담을 값은 위 "판단 기록"과 "비동기와 실패"로 정했다.
 - 처리 단계를 화면에 보여줄지(FE), `progress`를 넘기는 방식.
 - 제한 시간 값. 기록 검색은 근거 판단의 추론 깊이 기본값으로 p50 4.03초, p95 7.74초였다([기록 색인·검색 평가 기록](retrieval-evaluation.md)). 회의에서 추론을 끌지 잰 뒤 정한다.
-- 근거 판단 프롬프트의 버전을 판단 기록(`trace`)에 남길지. 지금은 판단 프롬프트 버전만 남는다.
 - 카드에 근거 원문 조각을 보여줄지(FE·PM). 보여준다면 결과의 출처에 청크 원문을 더한다.

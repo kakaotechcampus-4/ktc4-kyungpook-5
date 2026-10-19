@@ -95,6 +95,8 @@ class ToolCall(ContractModel):
     duration_ms: int = Field(ge=0)
     # records.search일 때 찾은 조각 수
     result_count: int | None = Field(default=None, ge=0)
+    # llm.generate일 때 그 호출의 프롬프트 버전. 예: "records-assess-v1"
+    prompt_version: str | None = None
 
 
 class JudgeTrace(ContractModel):
@@ -239,6 +241,9 @@ class RecordLookup(Protocol):
     ) -> MeetingAnswer | None:
         """찾은 조각으로 답을 쓴다. 조각에 답이 없으면 None이다"""
         ...
+
+    # 답을 쓸 때 쓰는 프롬프트의 버전. 판단 기록의 llm.generate에 남긴다
+    answer_prompt_version: str
 
 
 # 처리 단계. 화면의 진행 표시(activity)에 쓴다

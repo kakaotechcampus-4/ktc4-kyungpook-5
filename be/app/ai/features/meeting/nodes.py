@@ -90,6 +90,7 @@ class _Run:
         query: str,
         call: Awaitable[T],
         count: Callable[[T], int] | None = None,
+        prompt_version: str | None = None,
     ) -> T:
         """도구를 부르고 결과와 걸린 시간을 남긴다. 실패해도 남기고 오류는 그대로 올린다"""
         started = time.perf_counter()
@@ -98,7 +99,13 @@ class _Run:
         except AIError as error:
             status = "TIMEOUT" if isinstance(error, AITimeoutError) else "FAILED"
             self.tool_calls.append(
-                ToolCall(tool=tool, input=query, status=status, duration_ms=_elapsed_ms(started))
+                ToolCall(
+                    tool=tool,
+                    input=query,
+                    status=status,
+                    duration_ms=_elapsed_ms(started),
+                    prompt_version=prompt_version,
+                )
             )
             raise
         self.tool_calls.append(
@@ -108,6 +115,7 @@ class _Run:
                 status="OK",
                 duration_ms=_elapsed_ms(started),
                 result_count=count(value) if count else None,
+                prompt_version=prompt_version,
             )
         )
         return value
@@ -165,7 +173,12 @@ async def _judge(
         return result(route="RAG", kind="NOT_FOUND", question=query)
 
     await stage("ANSWERING")
-    answer = await run.call_tool("llm.generate", query, lookup.answer(search, chunks))
+    answer = await run.call_tool(
+        "llm.generate",
+        query,
+        lookup.answer(search, chunks),
+        prompt_version=lookup.answer_prompt_version,
+    )
     if answer is None:
         return result(route="RAG", kind="NOT_FOUND", question=query)
 

@@ -8,7 +8,12 @@ search_records(rewrite=False)와 같은 단계라 기록 검색의 측정값과 
 from ...llm import aembed_texts, ainvoke_structured
 from ...ports import RecordSearchPort, RetrievedChunk
 from ..retrieval.indexing import Embed
-from ..retrieval.nodes import Invoke, assess_chunks, find_chunks
+from ..retrieval.nodes import (
+    ASSESS_EVIDENCE_PROMPT_VERSION,
+    Invoke,
+    assess_chunks,
+    find_chunks,
+)
 from ..retrieval.schemas import RecordFact, RecordSearchRequest, RecordSearchResult
 from .schemas import MeetingAnswer
 
@@ -18,6 +23,8 @@ class RecordsLookup:
 
     테스트에서는 `embed`와 `invoke`를 가짜로 바꾼다.
     """
+
+    answer_prompt_version = ASSESS_EVIDENCE_PROMPT_VERSION
 
     def __init__(
         self,

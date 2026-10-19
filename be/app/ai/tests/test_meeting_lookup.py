@@ -21,6 +21,7 @@ from app.ai.features.meeting.schemas import (
     MeetingUtterance,
 )
 from app.ai.features.retrieval.memory_port import InMemoryRecordSearch, StoredRecord
+from app.ai.features.retrieval.nodes import ASSESS_EVIDENCE_PROMPT_VERSION
 from app.ai.features.retrieval.schemas import (
     EvidenceAssessment,
     EvidenceItem,
@@ -191,6 +192,8 @@ def test_찾은_청크의_근거로_답하고_출처는_검색된_기록이다()
     search, answer = result.trace.tool_calls
     assert (search.tool, search.status, search.result_count) == ("records.search", "OK", 2)
     assert (answer.tool, answer.status) == ("llm.generate", "OK")
+    # 어떤 근거 판단 지시문으로 답했는지 판단 기록에 남는다
+    assert (search.prompt_version, answer.prompt_version) == (None, ASSESS_EVIDENCE_PROMPT_VERSION)
 
 
 def test_근거_판단은_다시_찾지_않고_회의_날짜를_기준일로_본다():
@@ -233,6 +236,7 @@ def test_받지_않은_자료를_가리키면_근거_판단에서_실패했다�
     search, answer = raised.value.trace.tool_calls
     assert (search.tool, search.status) == ("records.search", "OK")
     assert (answer.tool, answer.status) == ("llm.generate", "FAILED")
+    assert answer.prompt_version == ASSESS_EVIDENCE_PROMPT_VERSION
 
 
 def test_임베딩이_늦으면_검색에서_멈추고_시간_초과로_남긴다():

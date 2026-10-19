@@ -5,6 +5,7 @@ ML API 대신 낱말 개수로 만든 가짜 임베딩과, 정해 둔 응답을 
 """
 
 import asyncio
+import hashlib
 import json
 from collections.abc import Sequence
 from datetime import date
@@ -26,7 +27,10 @@ from app.ai.features.retrieval.memory_port import InMemoryRecordSearch, StoredRe
 from app.ai.features.retrieval.nodes import (
     ASSESS_EVIDENCE_PROMPT,
     MAX_QUERIES,
+    ASSESS_EVIDENCE_PROMPT_VERSION,
     MAX_SEARCH_ROUNDS,
+    REWRITE_QUERY_PROMPT,
+    REWRITE_QUERY_PROMPT_VERSION,
     assess_chunks,
     find_chunks,
     search_records,
@@ -576,3 +580,26 @@ def test_나눠_부를_때_찾은_청크가_없으면_판단을_부르지_않는
     assert chunks == ()
     assert result == RecordSearchResult(not_found=("작년 봄 MT 회비",))
     assert model.calls == []
+
+
+# --- 프롬프트 버전 ------------------------------------------------------------------
+
+# 프롬프트 원문의 해시. 원문을 바꾸면 측정값과 비교할 수 없으므로
+# 버전을 올리고 다시 잰 뒤, 새 버전과 해시를 여기에 더한다.
+PROMPT_SHA256 = {
+    "records-rewrite-v1": "f883566c6015922ff5d23ac3ac1bc3c9aa9e7d8f387190264ec98e6dcd546e09",
+    "records-assess-v1": "0fd2a36a66901811c5936c71c47a08a3eb8fa28069867ebbcc5b2ac6b19e7738",
+}
+
+
+@pytest.mark.parametrize(
+    ("prompt", "version"),
+    [
+        (REWRITE_QUERY_PROMPT, REWRITE_QUERY_PROMPT_VERSION),
+        (ASSESS_EVIDENCE_PROMPT, ASSESS_EVIDENCE_PROMPT_VERSION),
+    ],
+)
+def test_프롬프트를_바꾸면_버전도_올린다(prompt, version):
+    digest = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+
+    assert PROMPT_SHA256.get(version) == digest
