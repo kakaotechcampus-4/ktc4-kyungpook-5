@@ -12,7 +12,8 @@
    --baseline을 주면 측정 폴더에서 같은 프롬프트로 낸 판단·검색어와 발화별로 비교한다.
 ② 행사(event)를 넣었을 때와 뺐을 때 검색어가 어떻게 달라지는지 본다.
 
-문항은 레포 밖 측정 폴더에 있다(#111, #123). 검색은 부르지 않는다(답 작성은 #72 뒤).
+문항은 레포 밖 측정 폴더에 있다(#111, #123). 검색은 부르지 않는다.
+검색과 근거 판단은 eval_retrieval.py --queries로 회의 검색어를 넣어 잰다(#72).
 AI_* 는 --env-file(기본 be/.env)에서 읽고 키는 출력하지 않는다.
 """
 
@@ -49,10 +50,12 @@ EVENT_CASES: tuple[tuple[str, tuple[str, ...], str], ...] = (
 class NoSearch:
     """검색을 부르지 않는다. 판단과 검색어만 본다"""
 
-    async def search(self, club_id, question):
+    answer_prompt_version = "no-search"
+
+    async def search(self, request):
         return ()
 
-    async def answer(self, question, chunks):
+    async def answer(self, request, chunks):
         return None
 
 

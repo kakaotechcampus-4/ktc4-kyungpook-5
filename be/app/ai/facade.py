@@ -1,11 +1,20 @@
 """BE가 app.ai를 통해 호출할 AI 기능의 구현 위치.
 
 함수와 입력·출력은 BE와 계약 합의 후 정의하고 __init__.py에서 재공개한다.
+회의 발화 처리(judge_utterance)는 BE가 #118에서 연결해 보도록 합의 전 초안을 먼저 공개한다.
 내부 HTTP 라우터를 만들지 않으며 기능 연결은 workflow에 위임한다.
 """
 
 from .contracts import IndexRecordRequest, IndexRecordResult
+from .features.meeting.lookup import RecordsLookup
+from .features.meeting.nodes import judge_utterance as judge_meeting_utterance
+from .features.meeting.schemas import (
+    JudgeUtteranceRequest,
+    JudgeUtteranceResult,
+    MeetingProgressPort,
+)
 from .features.retrieval.indexing import index_record_chunks
+from .ports import RecordSearchPort
 
 
 async def index_record(request: IndexRecordRequest) -> IndexRecordResult:
@@ -15,3 +24,20 @@ async def index_record(request: IndexRecordRequest) -> IndexRecordResult:
     읽을 블록이 없으면 AIEmptyRecordError, 임베딩 호출이 실패하면 AI 오류 타입을 올린다.
     """
     return await index_record_chunks(request)
+
+
+async def judge_utterance(
+    request: JudgeUtteranceRequest,
+    *,
+    records: RecordSearchPort,
+    progress: MeetingProgressPort | None = None,
+) -> JudgeUtteranceResult:
+    """회의 발화 하나를 판단하고, 기록 조회가 필요하면 기록을 찾아 출처가 붙은 답을 만든다.
+
+    계약은 docs/contracts.md "회의 발화 처리 초안"이며 #113에서 BE와 합의하기 전이다.
+    BE는 동아리 범위로 청크를 찾는 `records`만 넘긴다. 검색과 답 작성을 잇는 일은 AI가 한다.
+    관련 기록이 없으면 NOT_FOUND이고, 처리에 실패하면 `trace`를 담은 AI 오류 타입을 올린다.
+    """
+    return await judge_meeting_utterance(
+        request, lookup=RecordsLookup(records), progress=progress
+    )

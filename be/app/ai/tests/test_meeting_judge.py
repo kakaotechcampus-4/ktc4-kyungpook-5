@@ -65,16 +65,20 @@ def _judge(needs_lookup, query=""):
 
 
 class FakeLookup:
+    answer_prompt_version = "test-answer-v1"
+
     def __init__(self, chunks=(), answer=None):
         self.chunks = chunks
         self.result = answer
         self.searched = []
+        self.requests = []
 
-    async def search(self, club_id, question):
-        self.searched.append((club_id, question))
+    async def search(self, request):
+        self.requests.append(request)
+        self.searched.append((request.club_id, request.query))
         return self.chunks
 
-    async def answer(self, question, chunks):
+    async def answer(self, request, chunks):
         return self.result
 
 
@@ -123,6 +127,23 @@ def test_답을_찾으면_ANSWER와_출처를_돌려준다():
     assert [stage for _, stage in progress.stages] == ["JUDGING", "SEARCHING", "ANSWERING"]
     assert [call.tool for call in result.trace.tool_calls] == ["records.search", "llm.generate"]
     assert result.trace.tool_calls[0].result_count == 1
+
+
+def test_기록_검색의_기준일은_한국_시간의_회의_날짜다():
+    request = _request().model_copy(
+        update={
+            "utterance": _request().utterance.model_copy(
+                # 한국 시간으로는 3월 5일 새벽 1시다
+                update={"started_at": datetime(2026, 3, 4, 16, 0, tzinfo=timezone.utc)}
+            )
+        }
+    )
+    lookup = FakeLookup((CHUNK,), MeetingAnswer(answer="550,000원", sources=(FOUND,)))
+
+    _run(request, _judge(True, "2025 봄 MT 숙소비"), lookup)
+
+    [search] = lookup.requests
+    assert (search.query, search.today.isoformat()) == ("2025 봄 MT 숙소비", "2026-03-05")
 
 
 def test_검색_결과가_없으면_답을_쓰지_않고_NOT_FOUND다():
@@ -224,7 +245,7 @@ def test_검색어_없는_조회_판단도_판단_기록을_남긴다():
 )
 def test_검색_오류는_NOT_FOUND로_바꾸지_않고_실패한_도구를_남긴다(error, status):
     class FailingLookup(FakeLookup):
-        async def search(self, club_id, question):
+        async def search(self, request):
             raise error
 
     with pytest.raises(AIRetryableError) as caught:
@@ -241,7 +262,7 @@ def test_검색_오류는_NOT_FOUND로_바꾸지_않고_실패한_도구를_남�
 
 def test_답_작성_오류는_성공한_검색과_실패한_답_작성을_남긴다():
     class FailingLookup(FakeLookup):
-        async def answer(self, question, chunks):
+        async def answer(self, request, chunks):
             raise AIRetryableError("답 작성 실패")
 
     with pytest.raises(AIRetryableError) as caught:

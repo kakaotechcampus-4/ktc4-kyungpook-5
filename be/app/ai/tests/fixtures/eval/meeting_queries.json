@@ -1,0 +1,261 @@
+{
+  "settings": {
+    "commit": "6c8b8a5e55d89e4ae3776cea310244d85a411d75",
+    "dirty": false,
+    "model": "gpt-5.6-luna",
+    "prompt_version": "meeting-judge-v5",
+    "generated_at": "2026-10-19T19:35:12+09:00"
+  },
+  "queries": {
+    "q01": {
+      "question": "작년 MT 회비는 얼마였어?",
+      "query": "2025 MT 회비",
+      "judge_ms": 2461
+    },
+    "q02": {
+      "question": "작년 봄 MT는 몇 명이 갔어?",
+      "query": "2025 봄 MT 참가 인원",
+      "judge_ms": 1858
+    },
+    "q03": {
+      "question": "작년 봄 MT 어디로 갔었지?",
+      "query": "2025 봄 MT 장소",
+      "judge_ms": 1538
+    },
+    "q04": {
+      "question": "작년 봄 MT 일정은 언제였어?",
+      "query": "2025 봄 MT 일정",
+      "judge_ms": 1474
+    },
+    "q05": {
+      "question": "작년 봄 MT 예산은 전체 얼마로 잡았어?",
+      "query": "2025 봄 MT 전체 예산",
+      "judge_ms": 1597
+    },
+    "q06": {
+      "question": "작년 봄 MT 때 예산을 얼마나 초과했어?",
+      "query": "2025 봄 MT 예산 초과액",
+      "judge_ms": 1488
+    },
+    "q07": {
+      "question": "작년 봄 MT 숙소비는 얼마였어?",
+      "query": "2025 봄 MT 숙소비",
+      "judge_ms": 1590
+    },
+    "q08": {
+      "question": "작년 봄 MT 식비는 실제로 얼마 들었어?",
+      "query": "2025 봄 MT 식비",
+      "judge_ms": 1675
+    },
+    "q09": {
+      "question": "작년 봄 MT 예비비는 얼마나 썼어?",
+      "query": "2025 봄 MT 예비비",
+      "judge_ms": 1635
+    },
+    "q10": {
+      "question": "작년 봄 MT 회고에서 다음에 고치자고 한 게 뭐야?",
+      "query": "2025년 봄 MT 회고 개선 사항",
+      "judge_ms": 1843
+    },
+    "q11": {
+      "question": "지난 가을 MT 버스 대절비는 얼마였어?",
+      "query": "2025 가을 MT 버스 대절비",
+      "judge_ms": 1660
+    },
+    "q12": {
+      "question": "작년 가을 MT 1인 회비는 얼마 받았어?",
+      "query": "2025 가을 MT 1인 회비",
+      "judge_ms": 1514
+    },
+    "q13": {
+      "question": "MT 때 버스 대절하면 보통 얼마 들었어?",
+      "query": "MT 버스 대절비",
+      "judge_ms": 2568
+    },
+    "q14": {
+      "question": "봄 MT 1인 회비는 그동안 얼마였어?",
+      "query": "봄 MT 1인 회비",
+      "judge_ms": 1627
+    },
+    "q15": {
+      "question": "작년 MT 준비하면서 버스 때문에 문제 있었어?",
+      "query": "2025 MT 버스 문제",
+      "judge_ms": 1748
+    },
+    "q16": {
+      "question": "버스 예약은 언제쯤 해야 한다고 했어?",
+      "query": "버스 예약 시기",
+      "judge_ms": 1627
+    },
+    "q17": {
+      "question": "학기 회비는 얼마야?",
+      "query": "학기 회비",
+      "judge_ms": 1289
+    },
+    "q18": {
+      "question": "행사 취소하면 환불 받을 수 있어?",
+      "query": "행사 취소 환불 규정",
+      "judge_ms": 1377
+    },
+    "q19": {
+      "question": "30만 원 넘게 쓰려면 누구 승인이 필요해?",
+      "query": "30만 원 초과 지출 승인 규정",
+      "judge_ms": 1640
+    },
+    "q20": {
+      "question": "예비비는 예산의 몇 퍼센트로 잡아야 해?",
+      "query": "예비비 예산 편성 비율",
+      "judge_ms": 1333
+    },
+    "q21": {
+      "question": "2024 가을 MT는 몇 명 참가했어?",
+      "query": "2024 가을 MT 참가 인원",
+      "judge_ms": 1455
+    },
+    "q22": {
+      "question": "2024 가을 MT 숙소는 어디였어?",
+      "query": "2024 가을 MT 숙소",
+      "judge_ms": 1531
+    },
+    "q23": {
+      "question": "2023 봄 MT 1인 회비는 얼마였어?",
+      "query": "2023 봄 MT 1인 회비",
+      "judge_ms": 1613
+    },
+    "q24": {
+      "question": "2023 봄 MT 끝나고 남은 돈은 어떻게 했어?",
+      "query": "2023 봄 MT 잔액 처리",
+      "judge_ms": 1641
+    },
+    "q25": {
+      "question": "2025 신환회에 쓴 돈은 모두 얼마야?",
+      "query": "2025 신환회 총 지출액",
+      "judge_ms": 1741
+    },
+    "q26": {
+      "question": "신환회 때 참가비 받았어?",
+      "query": "신환회 참가비",
+      "judge_ms": 1361
+    },
+    "q27": {
+      "question": "2025 봄 MT 신청 마감일이 언제였어?",
+      "query": "2025 봄 MT 신청 마감일",
+      "judge_ms": 1405
+    },
+    "q28": {
+      "question": "2025 봄 MT 정원은 몇 명이었어?",
+      "query": "2025 봄 MT 정원",
+      "judge_ms": 1533
+    },
+    "q29": {
+      "question": "2024 하반기 학술제 대관료는 얼마였어?",
+      "query": "2024 하반기 학술제 대관료",
+      "judge_ms": 1533
+    },
+    "q30": {
+      "question": "2025 종강총회 비용은 얼마였어?",
+      "query": "2025 종강총회 비용",
+      "judge_ms": 1537
+    },
+    "q31": {
+      "question": "2023 가을 MT는 어디로 갔어?",
+      "query": "2023 가을 MT 장소",
+      "judge_ms": 1639
+    },
+    "q32": {
+      "question": "동아리 이름이 뭐야?",
+      "query": null,
+      "judge_ms": 1436
+    },
+    "q33": {
+      "question": "2025 가을 MT 회비는 모두 얼마 걷었어?",
+      "query": "2025 가을 MT 회비 총액",
+      "judge_ms": 1638
+    },
+    "q34": {
+      "question": "2025 가을 MT 식비 예산은 얼마로 잡았어?",
+      "query": "2025 가을 MT 식비 예산",
+      "judge_ms": 1941
+    },
+    "q35": {
+      "question": "2023 가을 MT 회비는 몇 명이 냈어?",
+      "query": "2023 가을 MT 회비 납부 인원",
+      "judge_ms": 1587
+    },
+    "q36": {
+      "question": "2024 하반기 종강총회 식비는 얼마였어?",
+      "query": "2024 하반기 종강총회 식비",
+      "judge_ms": 2002
+    },
+    "q37": {
+      "question": "재작년 봄 MT는 몇 명 갔어?",
+      "query": "2024 봄 MT 참가 인원",
+      "judge_ms": 1534
+    },
+    "q38": {
+      "question": "작년 겨울 MT 회비는 얼마였어?",
+      "query": "2025 겨울 MT 회비",
+      "judge_ms": 1706
+    },
+    "q39": {
+      "question": "작년 체육대회 예산은 얼마였어?",
+      "query": "2025 체육대회 예산",
+      "judge_ms": 1982
+    },
+    "q40": {
+      "question": "작년 봄 MT 버스 대절 비용은 얼마였어?",
+      "query": "2025 봄 MT 버스 대절 비용",
+      "judge_ms": 1557
+    },
+    "q41": {
+      "question": "작년 봄 MT 예비비는 어디에 썼어?",
+      "query": "2025 봄 MT 예비비 사용 내역",
+      "judge_ms": 2229
+    },
+    "q42": {
+      "question": "작년 봄 MT 회비는 몇 명이 냈어?",
+      "query": "2025 봄 MT 회비 납부 인원",
+      "judge_ms": 1840
+    },
+    "q43": {
+      "question": "작년 가을 MT 숙소비는 얼마였어?",
+      "query": "2025 가을 MT 숙소비",
+      "judge_ms": 1653
+    },
+    "q44": {
+      "question": "작년 봄 MT 물품 산 내역 자세히 알려줘",
+      "query": "2025 봄 MT 물품 구매 내역",
+      "judge_ms": 1799
+    },
+    "q45": {
+      "question": "작년 MT에 몇 명 참가했어?",
+      "query": "2025 MT 참가 인원",
+      "judge_ms": 1357
+    },
+    "q46": {
+      "question": "2024 신환회에는 돈이 얼마 들었어?",
+      "query": "2024 신환회 비용",
+      "judge_ms": 1329
+    },
+    "q47": {
+      "question": "작년 학술제 대관료는 얼마였어?",
+      "query": "2025 학술제 대관료",
+      "judge_ms": 2052
+    },
+    "q48": {
+      "question": "작년 봄 MT 회고 내용 정리해줘",
+      "query": "2025 봄 MT 회고 내용",
+      "judge_ms": 1950
+    },
+    "q49": {
+      "question": "다음 MT 회비 정할 때 참고할 기록 있어?",
+      "query": null,
+      "judge_ms": 1523
+    },
+    "q50": {
+      "question": "2025 가을 MT 회고에서 다음 행사에 반영하자고 한 건?",
+      "query": "2025 가을 MT 회고 다음 행사 반영 사항",
+      "judge_ms": 2362
+    }
+  }
+}

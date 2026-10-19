@@ -15,7 +15,8 @@ from langchain_openai import ChatOpenAI
 from ...config import get_settings
 from ...errors import AIError, AIInvalidResponseError, AITimeoutError
 from ...llm import ainvoke_structured, build_chat_model
-from .context import PROMPT_VERSION, build_judge_messages
+from ..retrieval.schemas import RecordSearchRequest
+from .context import PROMPT_VERSION, build_judge_messages, meeting_date
 from .schemas import (
     JudgeOutput,
     JudgeTrace,
@@ -89,6 +90,7 @@ class _Run:
         query: str,
         call: Awaitable[T],
         count: Callable[[T], int] | None = None,
+        prompt_version: str | None = None,
     ) -> T:
         """도구를 부르고 결과와 걸린 시간을 남긴다. 실패해도 남기고 오류는 그대로 올린다"""
         started = time.perf_counter()
@@ -97,7 +99,13 @@ class _Run:
         except AIError as error:
             status = "TIMEOUT" if isinstance(error, AITimeoutError) else "FAILED"
             self.tool_calls.append(
-                ToolCall(tool=tool, input=query, status=status, duration_ms=_elapsed_ms(started))
+                ToolCall(
+                    tool=tool,
+                    input=query,
+                    status=status,
+                    duration_ms=_elapsed_ms(started),
+                    prompt_version=prompt_version,
+                )
             )
             raise
         self.tool_calls.append(
@@ -107,6 +115,7 @@ class _Run:
                 status="OK",
                 duration_ms=_elapsed_ms(started),
                 result_count=count(value) if count else None,
+                prompt_version=prompt_version,
             )
         )
         return value
@@ -154,15 +163,22 @@ async def _judge(
         # needs_lookup이 false면 모델이 검색어를 적어 와도 쓰지 않는다
         return result(route="NONE", kind="NO_LOOKUP")
 
-    await stage("SEARCHING")
-    chunks = await run.call_tool(
-        "records.search", query, lookup.search(request.club_id, query), count=len
+    # 검색어는 판단이 이미 정리했으므로 그대로 찾는다. 기준일은 회의 날짜다
+    search = RecordSearchRequest(
+        club_id=request.club_id, query=query, today=meeting_date(request)
     )
+    await stage("SEARCHING")
+    chunks = await run.call_tool("records.search", query, lookup.search(search), count=len)
     if not chunks:
         return result(route="RAG", kind="NOT_FOUND", question=query)
 
     await stage("ANSWERING")
-    answer = await run.call_tool("llm.generate", query, lookup.answer(query, chunks))
+    answer = await run.call_tool(
+        "llm.generate",
+        query,
+        lookup.answer(search, chunks),
+        prompt_version=lookup.answer_prompt_version,
+    )
     if answer is None:
         return result(route="RAG", kind="NOT_FOUND", question=query)
 

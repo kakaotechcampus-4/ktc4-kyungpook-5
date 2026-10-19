@@ -86,7 +86,8 @@ save_chunks(record, result.chunks)  # 메타데이터를 붙여 저장, INDEXED�
 ## 회의 발화 처리 초안
 
 > 상태: AI 초안(2026-10-13 작성, 10-14 보강). #113에서 BE와 합의하기 전이다.
-> 합의 전에는 `contracts.py`에 옮기지 않고, 합의하면 코드로 옮긴 뒤 이 절은 사용 흐름 예시만 남긴다.
+> BE가 연결해 볼 수 있도록 `app.ai.judge_utterance`와 아래 타입을 초안 그대로 공개했다(#72). 합의하면서 바뀔 수 있다.
+> 합의 전에는 `contracts.py`에 옮기지 않고(타입은 `features/meeting/schemas.py`), 합의하면 코드로 옮긴 뒤 이 절은 사용 흐름 예시만 남긴다.
 
 회의 중 발화 하나가 들어올 때마다 BE가 `app.ai.judge_utterance`를 부른다.
 AI는 기록 조회가 필요한지 판단하고, 필요하면 기록을 찾아 출처가 붙은 답을 돌려준다(AI-MEET).
@@ -142,6 +143,7 @@ class ToolCall(ContractModel):
     status: Literal["OK", "FAILED", "TIMEOUT"]
     duration_ms: int
     result_count: int | None = None  # records.search일 때 찾은 조각 수
+    prompt_version: str | None = None  # llm.generate일 때 그 호출의 프롬프트 버전. 예: "records-assess-v1"
 
 
 class JudgeTrace(ContractModel):
@@ -197,13 +199,31 @@ async def judge_utterance(
 
 ```text
 ┌ 2025 회비 금액 · 12초 전
-│ 20,000원 (2025 회비 수납 장부 · 2~15행)
+│ 2025 학기 회비 20,000원 (2025 회비 수납 장부 · 2~15행)
 └ [닫기]
 ```
 
+### 답 문구 — 기록 검색 결과를 옮긴다
+
+답은 기록 검색 `search_records`(#72)와 같은 단계로 만든다. 판단이 만든 검색어로 청크를 찾고(`find_chunks`), 찾은 청크로 근거를 판단한다(`assess_chunks`).
+검색어는 판단이 이미 정리했으므로 다시 정리하지 않고, 다시 찾지도 않는다. 기준일은 회의 날짜다.
+근거 판단 결과(확인한 사실, 확인하지 못한 것, 자료 간 차이)를 코드가 카드 문구로 옮긴다. 모델을 다시 부르지 않는다.
+
+| 근거 판단 결과 | `kind` · `answer` |
+| --- | --- |
+| 확인한 사실 | `ANSWER` · 사실 문구를 한 줄에 하나씩. 예: "2025 봄 MT 숙박비 550,000원" |
+| 자료 간 차이 | `ANSWER` · 하나를 고르지 않고 값마다 문서 이름을 붙인다(AI-RET-03). 예: "2025 봄 MT 참가 인원: 28명 (2025 봄 MT 결과보고.pdf) / 27명 (2025 상반기 장부.xlsx)" |
+| 사실과 확인하지 못한 것이 함께 | `ANSWER` · 사실 뒤에 한 줄을 덧붙인다. 예: "기록에 없음: 숙소비 세부 내역" |
+| 확인하지 못한 것만 | `NOT_FOUND` |
+| 찾은 청크가 없음 | `NOT_FOUND`. 근거 판단을 부르지 않는다 |
+
+- 사실 문구에는 어느 기록의 값인지 알 수 있게 연도와 행사 이름이 들어간다. 근거 판단 규칙이다.
+- `sources`는 사실과 자료 간 차이에 쓰인 출처를 나온 순서대로 한 번씩 담는다. 모두 검색된 청크에서 옮긴 것이다(AI-RET-02).
+- 출처에는 문서 이름과 위치만 있고 청크 원문은 없다. 카드에 원문 조각까지 보여줄지는 화면과 함께 정한다.
+
 | 발화 (앞 발화) | 결과 | 화면 |
 | --- | --- | --- |
-| "작년 MT 때 숙소비 얼마 나왔지?" | `ANSWER` · "550,000원" · 출처 `2025 봄 MT 결과보고 · 2쪽 · 2. 예산` | 질문과 답, 출처 |
+| "작년 MT 때 숙소비 얼마 나왔지?" | `ANSWER` · "2025 봄 MT 숙박비 550,000원" · 출처 `2025 봄 MT 결과보고 · 2쪽 · 2. 예산` | 질문과 답, 출처 |
 | "그때 인원은?" (앞: "작년 봄 MT 얘기인데") | `ANSWER` · question "2025 봄 MT 참가 인원" | 질문과 답, 출처 |
 | "민수야 예약했어?" | `NO_LOOKUP` | 띄우지 않음 |
 | "재작년 신환회 장소 어디였지?" (관련 기록 없음) | `NOT_FOUND` · question "2024 신환회 장소" | 기록에 없음 |
@@ -221,15 +241,15 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
   "route": "RAG",
   "kind": "ANSWER",
   "question": "2025 봄 MT 숙소비",
-  "answer": "550,000원",
-  "sources": [{"record_id": "r-12", "file_name": "2025 봄 MT 결과보고", "location": {"label": "2쪽 · 2. 예산"}, "score": 0.82}],
+  "answer": "2025 봄 MT 숙박비 550,000원",
+  "sources": [{"record_id": "r-12", "file_name": "2025 봄 MT 결과보고", "location": {"label": "2쪽 · 2. 예산"}}],
   "trace": {
     "model": "gpt-5.6-luna",
     "prompt_version": "meeting-judge-v5",
     "judge_ms": 1480,
     "tool_calls": [
-      {"tool": "records.search", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 420, "result_count": 3},
-      {"tool": "llm.generate", "input": "답 작성", "status": "OK", "duration_ms": 1310}
+      {"tool": "records.search", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 480, "result_count": 5},
+      {"tool": "llm.generate", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 3490, "prompt_version": "records-assess-v1"}
     ]
   }
 }
@@ -241,6 +261,7 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 | `route` | 무슨 종류의 처리였는지 화면과 통계에서 본다 | "이번 회의에서 RAG 7번, NONE 120번" |
 | `trace.tool_calls` | 답이 틀리거나 늦을 때 어느 단계가 원인인지 찾는다 | 6초 걸림 → 검색 0.4초, 답 작성 5.5초 |
 | `trace.model`, `prompt_version` | 모델·프롬프트를 바꾼 전후를 나눠 비교하고, 학습 데이터를 고른다(#117) | v3a와 v4의 오탐률 비교 |
+| `tool_calls[].prompt_version` | 답을 쓴 근거 판단 지시문이 바뀐 전후를 나눠 본다 | `records-assess-v1`과 v2의 "기록에 없음" 비율 비교 |
 
 - **이 값들은 모델이 만들지 않고 AI 코드가 채운다.** 버전은 받은 값을 돌려주고, 시간은 코드가 재고, 모델·프롬프트 버전은 설정값이다. 모델 출력이 늘지 않으므로 판단 지연은 그대로다.
 - **조회하지 않은 이유(`reasonCode`)는 실시간 결과에 넣지 않는다.** 이유를 모델이 출력하게 하면 판단이 느려진다. 이유 문장과 확신도를 빼서 p50이 0.65초 줄었다(#111). 이유는 검수용이므로 회의가 끝난 뒤 별도 호출로 채운다(#114, #117).
@@ -332,6 +353,6 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 - port 주입 방식. 초안은 키워드 인자로 받는다. BE의 AI 초기화 방식과 맞춘다.
 - 판단 기록의 저장 형식과 보관 기간(#117). 결과와 오류에 담을 값은 위 "판단 기록"과 "비동기와 실패"로 정했다.
 - 처리 단계를 화면에 보여줄지(FE), `progress`를 넘기는 방식.
-- 제한 시간 값. 임베딩·검색·답변 생성 지연을 잰 뒤 정한다([측정 기록](meeting-evaluation.md)).
-- `MEETING_CONTEXT_UTTERANCES` 값. 검색어 측정(#123)에서 4개로 정할 예정이고, #114에서 상수로 둔다.
-- 답 작성은 기록 검색 `search_records`(#72) 위에 만든다. #72가 선행이다.
+- 제한 시간 값. 회의 설정(근거 판단 추론 끔)의 기록 검색은 p50 2.52초, p95 3.78초였다([측정 기록](meeting-evaluation.md)). 판단부터 답까지 한 번에 잰 뒤 정한다.
+- 답 카드의 길이. 사실이 여러 개면 한 줄씩 늘어나 4줄 이상인 답이 약 39개 중 7~9개였다. 화면에서 접어 보여줄지(FE)와 함께 정한다.
+- 카드에 근거 원문 조각을 보여줄지(FE·PM). 보여준다면 결과의 출처에 청크 원문을 더한다.
