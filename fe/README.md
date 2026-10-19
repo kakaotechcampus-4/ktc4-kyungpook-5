@@ -245,3 +245,10 @@ export const DEFAULT_ERROR_MESSAGE = "일시적인 오류가 발생했어요. �
 | `VITE_API_BASE_URL` | API 서버 주소 | 박수겸 |
 
 `.env.example`은 커밋하고, 실제 값이 든 `.env`는 커밋하지 않습니다.
+## 첫 운영진 목업 온보딩
+
+`/`는 `/onboarding`으로 이동합니다. 로그인 없이 팀 확인 → 예시 자료 → 예시 회의 전사·답 → 후보 수정·확인·예시 저장을 체험합니다. 모든 체험 메뉴는 `/onboarding/*` 안에서 이동하며, 인증·자료·회의·예약 API나 마이크·Push 권한을 사용하지 않습니다. 기존 메인은 명시적인 `/dashboard`에 유지됩니다.
+
+상단 임시 버튼으로 안내를 끄거나 다시 켤 수 있고, **온보딩 초기화**로 처음부터 체험할 수 있습니다. 브라우저의 `unyounghae_onboarding_preview_v1`만 사용하며 초기화는 실제 로그인 세션이나 다른 데이터를 지우지 않습니다. 예시 저장은 실제 일정·예약·알림 발송이 아닙니다.
+
+관련 상태 검사는 `node --test tests/onboarding-state.test.mjs`로 실행합니다.

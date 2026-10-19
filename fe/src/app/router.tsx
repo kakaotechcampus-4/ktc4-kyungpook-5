@@ -7,6 +7,8 @@ import MeetingsPage from '@/pages/MeetingsPage'
 import LoginPage from '@/pages/LoginPage'
 import SignupPage from '@/pages/SignupPage'
 import MainPage from '@/pages/MainPage'
+import MainEntryPage from '@/pages/MainEntryPage'
+import OnboardingPage from '@/pages/OnboardingPage'
 import PlanningPage from '@/pages/PlanningPage'
 import PlanStepsPage from '@/pages/PlanStepsPage'
 import EventListPage from '@/pages/EventListPage'
@@ -17,12 +19,14 @@ import DevUiPage from '@/pages/DevUiPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
+  { path: '/', element: <MainEntryPage /> },
+  { path: '/onboarding/:view?', element: <OnboardingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },
   {
     element: <AppLayout />,
     children: [
-      { index: true, element: <MainPage /> },
+      { path: 'dashboard', element: <MainPage /> },
       { path: 'meetings', element: <MeetingsPage /> },
       { path: 'records', element: <RecordsPage /> },
       { path: 'accounting', element: <AccountingPage /> },

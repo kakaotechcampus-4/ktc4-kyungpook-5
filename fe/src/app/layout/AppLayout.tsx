@@ -164,6 +164,9 @@ export function AppLayout() {
             className="sticky top-[72px] hidden h-[calc(100dvh-72px)] w-[224px] shrink-0 flex-col gap-6 border-r border-line bg-card px-4 py-6 lg:flex"
           >
             <WorkspaceNavigation />
+            <Button size="sm" variant="secondary" onClick={() => navigate('/onboarding')}>
+              처음 사용 가이드 (임시)
+            </Button>
             {account}
           </aside>
         )}
@@ -185,6 +188,16 @@ export function AppLayout() {
       >
         <div id="mobile-navigation" className="flex min-h-[calc(100dvh-140px)] flex-col gap-8">
           <WorkspaceNavigation onNavigate={() => setDrawerOpen(false)} />
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              setDrawerOpen(false)
+              navigate('/onboarding')
+            }}
+          >
+            처음 사용 가이드 (임시)
+          </Button>
           {account}
         </div>
       </Modal>

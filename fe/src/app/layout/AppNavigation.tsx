@@ -32,21 +32,46 @@ function Icon({ name }: { name: NavigationIcon }) {
   )
 }
 
-export function PrimaryNavigation({ onNavigate }: { onNavigate?: () => void }) {
-  const { pathname } = useLocation()
+interface NavigationProps {
+  onNavigate?: () => void
+  preview?: boolean
+}
+
+function navigationPath(path: string, preview: boolean): string {
+  if (preview) return path === '/' ? '/onboarding' : `/onboarding${path}`
+  return path === '/' ? '/dashboard' : path
+}
+
+export function PrimaryNavigation({ onNavigate, preview = false }: NavigationProps) {
+  const location = useLocation()
+  const pathname =
+    preview && (location.pathname === '/onboarding' || location.pathname.startsWith('/onboarding/'))
+      ? location.pathname.slice('/onboarding'.length) || '/'
+      : location.pathname
   const inSection = (base: string) => pathname === base || pathname.startsWith(`${base}/`)
   const items = [
-    { to: '/', label: '메인', active: pathname === '/' },
-    { to: '/events', label: '행사', active: inSection('/events') || inSection('/planning') },
-    { to: '/meetings', label: '회의', active: inSection('/meetings') },
+    {
+      to: '/',
+      label: '메인',
+      icon: 'home',
+      active: pathname === '/' || (!preview && inSection('/dashboard')),
+    },
+    {
+      to: '/events',
+      label: '행사',
+      icon: 'event',
+      active: inSection('/events') || inSection('/planning'),
+    },
+    { to: '/meetings', label: '회의', icon: 'meeting', active: inSection('/meetings') },
   ]
   return (
     <nav aria-label="주요 기능" className="flex items-center gap-1 rounded-xl bg-bg p-1">
       {items.map((item) => (
         <Link
           key={item.to}
-          to={item.to}
+          to={navigationPath(item.to, preview)}
           onClick={onNavigate}
+          data-onboarding={preview ? `top-${item.icon}` : undefined}
           aria-current={item.active ? 'page' : undefined}
           className={cn(
             'min-w-[68px] rounded-lg border px-4 py-2 text-[13px] text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600',
@@ -82,7 +107,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: Navigat
   { label: '내 공간', items: [{ to: '/mypage', label: '마이페이지', icon: 'profile' }] },
 ]
 
-export function WorkspaceNavigation({ onNavigate }: { onNavigate?: () => void }) {
+export function WorkspaceNavigation({ onNavigate, preview = false }: NavigationProps) {
   return (
     <nav aria-label="전체 메뉴" className="space-y-7">
       {GROUPS.map((group) => (
@@ -94,9 +119,10 @@ export function WorkspaceNavigation({ onNavigate }: { onNavigate?: () => void })
             {group.items.map((item) => (
               <NavLink
                 key={item.to}
-                to={item.to}
+                to={navigationPath(item.to, preview)}
                 end={item.to === '/'}
                 onClick={onNavigate}
+                data-onboarding={preview ? `nav-${item.icon}` : undefined}
                 className={({ isActive }) =>
                   cn(
                     'flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-blue-600',
