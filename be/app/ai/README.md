@@ -33,8 +33,8 @@ be/app/ai/
 │   └── meeting/         # 회의 발화 판단과 답 (context: 판단 입력, nodes: 판단·결과 구성, lookup: 기록 검색 연결과 카드 문구, questions: 판단 전용 모델의 질문)
 ├── workflow/            # 행사 Agent 실행 흐름·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
-├── scripts/             # 실제 ML API 확인 스크립트 (키 필요, CI 제외)
-├── tests/               # AI 테스트 (fixtures/records: 예시 기록, fixtures/eval: 기록 검색 평가 질문)
+├── scripts/             # 실제 모델 확인·측정 스크립트 (CI 제외. 대부분 키 필요, Laya는 uv run --with로 잴 때만 붙임)
+├── tests/               # AI 테스트 (fixtures/records: 예시 기록, fixtures/eval: 기록 검색 평가 질문·회의 판단 평가 문항)
 ├── docs/
 │   ├── architecture.md
 │   ├── contracts.md     # BE-AI 데이터 계약 설명
