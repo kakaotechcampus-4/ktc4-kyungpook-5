@@ -132,7 +132,7 @@ async def _judge(request: JudgeUtteranceRequest) -> dict:
 def eval_record(row: dict) -> dict:
     """문항 하나의 결과 기록에 남길 문항 정보. 판단 값은 부르는 쪽이 더한다"""
     record = {"id": row["id"], "truth": row["needs_lookup"], "heard": row["heard"]}
-    for key in ("set", "split", "bundle", "category"):
+    for key in ("set", "split", "bundle", "category", "either"):
         if key in row:
             record[key] = row[key]
     return record
@@ -186,9 +186,12 @@ def confusion(records: list[dict]) -> dict:
     - 정밀도: 조회로 판단한 것 중 실제로 조회할 발화의 비율. 조회로 판단한 것이 없으면 None
     - 오개입률: 조회 아닌 발화 100개당 조회로 판단한 수. 회의 중 화면이 쓸데없이 뜨는 빈도다.
       시간당 오개입은 여기에 실제 회의의 시간당 발화 수를 곱해야 해서 여기서 내지 않는다
+    - 둘 다 허용(`either`)인 문항은 채점하지 않고, 조회로 판단한 수만 따로 센다. 호출이 드는 횟수라서다
     """
-    pos = [r for r in records if r["truth"]]
-    neg = [r for r in records if not r["truth"]]
+    either = [r for r in records if r.get("either")]
+    scored = [r for r in records if not r.get("either")]
+    pos = [r for r in scored if r["truth"]]
+    neg = [r for r in scored if not r["truth"]]
     hit = sum(r["pred"] for r in pos)
     false_positive = sum(r["pred"] for r in neg)
     recall = hit / len(pos) if pos else 0.0
@@ -201,14 +204,16 @@ def confusion(records: list[dict]) -> dict:
         "false_positive": f"{false_positive} / {len(neg)}",
         "missed": f"{len(pos) - hit} / {len(pos)}",
         "false_alarm_per_100": round(100 * false_positive / len(neg), 1) if neg else None,
+        **({"either_lookup": f"{sum(r['pred'] for r in either)} / {len(either)}"} if either else {}),
     }
 
 
 def breakdown(records: list[dict]) -> dict:
-    """묶음별·태그별로 문항 수와 틀린 수를 센다. 무엇을 놓치고 어디서 잘못 끼어드는지 본다"""
+    """묶음별·태그별로 문항 수와 틀린 수를 센다. 무엇을 놓치고 어디서 잘못 끼어드는지 본다.
+    둘 다 허용인 문항은 문항 수에만 들어가고 틀린 수에는 들어가지 않는다"""
     def count(groups: dict[str, list[dict]]) -> dict:
         return {
-            name: {"items": len(rows), "wrong": sum(r["pred"] != r["truth"] for r in rows)}
+            name: {"items": len(rows), "wrong": sum(r["pred"] != r["truth"] for r in rows if not r.get("either"))}
             for name, rows in sorted(groups.items())
         }
 

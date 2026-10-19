@@ -4,11 +4,15 @@ luna와 Laya가 같은 문항·같은 입력 글로 재야 학습 전후와 모�
 """
 
 import json
+from typing import get_args
 
 from app.ai.features.meeting.context import build_judge_input
+from app.ai.features.meeting.schemas import ReasonCode
 from app.ai.scripts.check_meeting_judge import (
+    EVAL_SET,
     EVAL_UTTERANCES,
     SETS,
+    SPLITS,
     breakdown,
     confusion,
     load_requests,
@@ -118,3 +122,61 @@ def test_breakdown_counts_wrong_by_bundle_and_tag():
     assert result["by_bundle"] == {"언급만": {"items": 2, "wrong": 1}, "조회 필요": {"items": 2, "wrong": 1}}
     assert result["by_tag"]["지시어"] == {"items": 2, "wrong": 1}
     assert result["by_tag"]["참고자료-제안"] == {"items": 1, "wrong": 1}
+
+
+def test_either_items_are_not_scored_but_counted():
+    # 둘 다 허용인 문항은 오탐·놓침으로 세지 않고, 조회로 판단한 수만 따로 낸다
+    records = [
+        {"truth": True, "pred": True},
+        {"truth": False, "pred": False},
+        {"truth": True, "pred": False, "either": True, "bundle": "언급만", "category": []},
+        {"truth": False, "pred": True, "either": True, "bundle": "언급만", "category": []},
+    ]
+    result = confusion(records)
+    assert result["balanced_accuracy"] == 1.0
+    assert result["false_positive"] == "0 / 1" and result["missed"] == "0 / 1"
+    assert result["either_lookup"] == "1 / 2"
+    assert breakdown(records[2:])["by_bundle"]["언급만"] == {"items": 2, "wrong": 0}
+
+
+SET_ROWS = [
+    json.loads(line)
+    for line in EVAL_SET.read_text(encoding="utf-8").splitlines()
+    if line.strip()
+]
+REASON_CODES = set(get_args(ReasonCode))
+BUNDLES = {"조회 필요", "언급만", "사람에게 묻는 말", "혼잣말·끊긴 발화", "무관한 질문·잡담"}
+TAGS = {"참고자료-제안", "직접요청", "AI호출", "호칭", "지시어", "정정", "먼저답함", "평서형", "오인식"}
+
+
+def test_eval_set_rows_follow_label_rules():
+    # 형식은 tests/fixtures/eval/README.md "회의 판단 평가 세트"
+    assert len({row["id"] for row in SET_ROWS}) == len(SET_ROWS)
+    for row in SET_ROWS:
+        assert row["split"] in SPLITS and row["audio"] in {"none", "tts", "recording"}
+        assert row["spoken"].strip() and row["heard"].strip()
+        if row["audio"] == "none":
+            assert row["heard"] == row["spoken"]
+        # 조회 아님일 때만 이유가 있다
+        assert (row["reason_code"] is None) == row["needs_lookup"], row["id"]
+        assert row["reason_code"] is None or row["reason_code"] in REASON_CODES
+        assert row["bundle"] in BUNDLES
+        if not row.get("either"):
+            assert (row["bundle"] == "조회 필요") == row["needs_lookup"], row["id"]
+        assert set(row["category"]) <= TAGS
+        assert row["reviewers"] >= 1
+
+
+def test_eval_set_splits_by_meeting():
+    # 한 회의의 발화가 개발용과 홀드아웃에 갈리면 앞 발화가 새어 나간다
+    meetings: dict[str, set] = {}
+    for row in SET_ROWS:
+        meetings.setdefault(row["meeting"], set()).add((row["split"], row["audio"]))
+    assert all(len(kinds) == 1 for kinds in meetings.values())
+    holdout = [m for m, kinds in meetings.items() if next(iter(kinds))[0] == "holdout"]
+    assert len(holdout) * 4 == len(meetings)
+
+
+def test_eval_set_does_not_repeat_laya_comparison_items():
+    # 두 세트는 쓰임이 달라 같은 발화를 함께 두지 않는다
+    assert not {row["spoken"] for row in SET_ROWS} & {row["spoken"] for row in ROWS}
