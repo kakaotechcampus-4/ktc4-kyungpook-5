@@ -5,12 +5,15 @@
 
     cd be && uv run python app/ai/scripts/check_meeting_judge.py \\
         [--set query --set pipeline ...] [--baseline <측정폴더>/results/query_compare_v4.json] [--json 결과.json]
+    cd be && uv run python app/ai/scripts/check_meeting_judge.py --eval-set [--holdout] [--json 결과.json]
 
 ① 회의 판단 평가 문항(tests/fixtures/eval/meeting_judge.jsonl)을 회의 순서대로 판단한다.
-   앞 발화는 같은 회의의 이전 발화다. 균형 정확도·오탐·놓침과 판단 지연(trace.judge_ms),
+   앞 발화는 같은 회의의 이전 발화다. 균형 정확도·재현율·특이도·정밀도·오탐·놓침·오개입률과 판단 지연(trace.judge_ms),
    호출당 토큰(입력·캐시·출력)과 판단 1,000회 비용을 문항 묶음별로 낸다.
    --baseline을 주면 측정 폴더에서 같은 프롬프트로 낸 판단·검색어와 발화별로 비교한다.
-② 행사(event)를 넣었을 때와 뺐을 때 검색어가 어떻게 달라지는지 본다.
+   --eval-set이면 회의 판단 평가 세트(meeting_judge_set.jsonl, #115)를 쓴다. 개발용만 재고, --holdout을 주면
+   홀드아웃도 재서 따로 낸다. 오답을 묶음별·태그별로 센다.
+② 행사(event)를 넣었을 때와 뺐을 때 검색어가 어떻게 달라지는지 본다. 평가 세트는 회의마다 행사를 이미 넣으므로 건너뛴다.
 
 검색은 부르지 않는다. 검색과 근거 판단은 eval_retrieval.py --queries로 회의 검색어를 넣어 잰다(#72).
 학습 전·후 Laya는 같은 문항을 check_laya_judge.py로 잰다.
@@ -37,9 +40,12 @@ from app.ai.features.meeting.schemas import (
     MeetingUtterance,
 )
 
-# 회의 판단 평가 문항. 형식은 tests/fixtures/eval/README.md
-EVAL_UTTERANCES = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "eval" / "meeting_judge.jsonl"
+# 회의 판단 평가 문항(Laya 학습 전후 비교)과 평가 세트(#115). 형식은 tests/fixtures/eval/README.md
+EVAL_DIR = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "eval"
+EVAL_UTTERANCES = EVAL_DIR / "meeting_judge.jsonl"
+EVAL_SET = EVAL_DIR / "meeting_judge_set.jsonl"
 SETS = ("query", "pipeline", "vocative")
+SPLITS = ("dev", "holdout")
 
 # 평가 문항에는 발화 시각이 없어 회의 날짜 오후 2시부터 10초 간격으로 둔다
 MEETING_START = time(14, 0)
@@ -77,19 +83,24 @@ def _utterance(seq: int, text: str, meeting_date: str) -> MeetingUtterance:
 
 
 def load_requests(
-    path: Path = EVAL_UTTERANCES, sets: tuple[str, ...] = SETS
+    path: Path = EVAL_UTTERANCES, sets: tuple[str, ...] = SETS, splits: tuple[str, ...] = SPLITS
 ) -> list[tuple[dict, JudgeUtteranceRequest]]:
-    """평가 문항을 회의 순서대로 판단 요청으로 만든다. 앞 발화는 같은 회의의 이전 발화(Whisper 텍스트)다"""
+    """평가 문항을 회의 순서대로 판단 요청으로 만든다. 앞 발화는 같은 회의의 이전 발화(Whisper 텍스트)다.
+
+    `sets`는 평가 문항의 묶음(`set`), `splits`는 평가 세트의 개발용·홀드아웃(`split`)으로 거른다.
+    둘 다 회의 단위로 붙어 있어 걸러도 앞 발화가 끊기지 않는다. 그 칸이 없는 파일에는 쓰지 않는다.
+    """
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     requests, history, meeting = [], [], None
     for row in rows:
-        if row["set"] not in sets:
+        if row.get("set", sets[0]) not in sets or row.get("split", splits[0]) not in splits:
             continue
         if row["meeting"] != meeting:
             meeting, history = row["meeting"], []
         utterance = _utterance(len(history) + 1, row["heard"], row["meeting_date"])
+        event = MeetingEvent(event_id=f"evt_{row['meeting']}", title=row["event"]) if row.get("event") else None
         request = JudgeUtteranceRequest(
-            meeting_id=row["meeting"], club_id="clb_check", utterance=utterance, context=tuple(history)
+            meeting_id=row["meeting"], club_id="clb_check", utterance=utterance, context=tuple(history), event=event
         )
         requests.append((row, request))
         history.append(utterance)
@@ -118,13 +129,20 @@ async def _judge(request: JudgeUtteranceRequest) -> dict:
     }
 
 
-async def run_eval(sets: tuple[str, ...]) -> list[dict]:
+def eval_record(row: dict) -> dict:
+    """문항 하나의 결과 기록에 남길 문항 정보. 판단 값은 부르는 쪽이 더한다"""
+    record = {"id": row["id"], "truth": row["needs_lookup"], "heard": row["heard"]}
+    for key in ("set", "split", "bundle", "category", "either"):
+        if key in row:
+            record[key] = row[key]
+    return record
+
+
+async def run_eval(items: list[tuple[dict, JudgeUtteranceRequest]]) -> list[dict]:
     records = []
-    for row, request in load_requests(sets=sets):
+    for row, request in items:
         outcome = await _judge(request)
-        records.append(
-            {"id": row["id"], "set": row["set"], "truth": row["needs_lookup"], "heard": row["heard"], **outcome}
-        )
+        records.append({**eval_record(row), **outcome})
         mark = "!" if "error" in outcome else ("O" if outcome["pred"] == row["needs_lookup"] else "X")
         print(f"  {mark} {row['id']:6} {outcome.get('judge_ms', '-'):>5}ms  {outcome.get('query') or outcome.get('error', '')}")
     return records
@@ -162,12 +180,55 @@ def _cost_per_1000(model: str | None, tokens: dict) -> float | None:
     return round(won * 1000, 1)
 
 
+def confusion(records: list[dict]) -> dict:
+    """판단(`pred`)과 정답(`truth`)으로 낸 지표. luna와 Laya가 같은 식으로 센다.
+
+    - 정밀도: 조회로 판단한 것 중 실제로 조회할 발화의 비율. 조회로 판단한 것이 없으면 None
+    - 오개입률: 조회 아닌 발화 100개당 조회로 판단한 수. 회의 중 화면이 쓸데없이 뜨는 빈도다.
+      시간당 오개입은 여기에 실제 회의의 시간당 발화 수를 곱해야 해서 여기서 내지 않는다
+    - 둘 다 허용(`either`)인 문항은 채점하지 않고, 조회로 판단한 수만 따로 센다. 호출이 드는 횟수라서다
+    """
+    either = [r for r in records if r.get("either")]
+    scored = [r for r in records if not r.get("either")]
+    pos = [r for r in scored if r["truth"]]
+    neg = [r for r in scored if not r["truth"]]
+    hit = sum(r["pred"] for r in pos)
+    false_positive = sum(r["pred"] for r in neg)
+    recall = hit / len(pos) if pos else 0.0
+    specificity = 1 - false_positive / len(neg) if neg else 0.0
+    return {
+        "balanced_accuracy": round((recall + specificity) / 2, 3),
+        "recall": round(recall, 3),
+        "specificity": round(specificity, 3),
+        "precision": round(hit / (hit + false_positive), 3) if hit + false_positive else None,
+        "false_positive": f"{false_positive} / {len(neg)}",
+        "missed": f"{len(pos) - hit} / {len(pos)}",
+        "false_alarm_per_100": round(100 * false_positive / len(neg), 1) if neg else None,
+        **({"either_lookup": f"{sum(r['pred'] for r in either)} / {len(either)}"} if either else {}),
+    }
+
+
+def breakdown(records: list[dict]) -> dict:
+    """묶음별·태그별로 문항 수와 틀린 수를 센다. 무엇을 놓치고 어디서 잘못 끼어드는지 본다.
+    둘 다 허용인 문항은 문항 수에만 들어가고 틀린 수에는 들어가지 않는다"""
+    def count(groups: dict[str, list[dict]]) -> dict:
+        return {
+            name: {"items": len(rows), "wrong": sum(r["pred"] != r["truth"] for r in rows if not r.get("either"))}
+            for name, rows in sorted(groups.items())
+        }
+
+    bundles: dict[str, list[dict]] = {}
+    tags: dict[str, list[dict]] = {}
+    for record in records:
+        if "bundle" in record:
+            bundles.setdefault(record["bundle"], []).append(record)
+        for tag in record.get("category", ()):
+            tags.setdefault(tag, []).append(record)
+    return {"by_bundle": count(bundles), "by_tag": count(tags)}
+
+
 def summarize(records: list[dict]) -> dict:
     done = [r for r in records if "error" not in r]
-    pos = [r for r in done if r["truth"]]
-    neg = [r for r in done if not r["truth"]]
-    recall = sum(r["pred"] for r in pos) / len(pos) if pos else 0.0
-    specificity = sum(not r["pred"] for r in neg) / len(neg) if neg else 0.0
     ms = sorted(r["judge_ms"] for r in done)
     tokens = {
         key: round(mean(r["tokens"][key] for r in done), 1) if done else None
@@ -176,9 +237,7 @@ def summarize(records: list[dict]) -> dict:
     return {
         "calls": len(records),
         "errors": len(records) - len(done),
-        "balanced_accuracy": round((recall + specificity) / 2, 3),
-        "false_positive": f"{sum(r['pred'] for r in neg)} / {len(neg)}",
-        "missed": f"{sum(not r['pred'] for r in pos)} / {len(pos)}",
+        **confusion(done),
         "p50_s": round(median(ms) / 1000, 2) if ms else None,
         "p95_s": round(quantiles(ms, n=20)[18] / 1000, 2) if len(ms) >= 2 else None,
         "tokens_per_call": tokens,
@@ -213,40 +272,70 @@ def compare(records: list[dict], baseline: Path) -> dict:
     }
 
 
+def eval_items(args) -> tuple[Path, str, tuple[str, ...], list[tuple[dict, JudgeUtteranceRequest]]]:
+    """잴 파일과 나눌 기준(묶음 또는 개발용·홀드아웃)과 문항. luna와 Laya가 같은 인자로 같은 문항을 고른다"""
+    if args.eval_set:
+        groups = SPLITS if args.holdout else ("dev",)
+        return EVAL_SET, "split", groups, load_requests(EVAL_SET, splits=groups)
+    groups = tuple(args.set or SETS)
+    return EVAL_UTTERANCES, "set", groups, load_requests(EVAL_UTTERANCES, sets=groups)
+
+
 async def run(args) -> dict:
-    sets = tuple(args.set or SETS)
-    print(f"① 평가 문항 판단 · 프롬프트 {PROMPT_VERSION} · {', '.join(sets)}")
-    records = await run_eval(sets)
+    # eval_retrieval은 불러올 때 .env를 읽는다. 테스트가 이 파일을 불러와도 환경을 바꾸지 않게 여기서 불러온다
+    from app.ai.scripts.eval_retrieval import _git
+
+    path, key, groups, items = eval_items(args)
+    print(f"① {path.name} 판단 · 프롬프트 {PROMPT_VERSION} · {', '.join(groups)}")
+    records = await run_eval(items)
     report = {
+        "settings": {**_git(), "eval": path.name, key: groups},
         "prompt_version": PROMPT_VERSION,
         "summary": summarize(records),
-        "by_set": {name: summarize([r for r in records if r["set"] == name]) for name in sets},
+        f"by_{key}": {name: summarize([r for r in records if r[key] == name]) for name in groups},
     }
+    if args.eval_set:
+        done = [r for r in records if "error" not in r]
+        report["breakdown"] = {name: breakdown([r for r in done if r["split"] == name]) for name in groups}
     if records and "model" in records[0]:
         report["model"] = records[0]["model"]
     if args.baseline:
         report["baseline"] = compare(records, args.baseline)
-    print("\n② 행사 정보에 따른 검색어")
-    report["events"] = await run_events()
+    if not args.eval_set:
+        print("\n② 행사 정보에 따른 검색어")
+        report["events"] = await run_events()
     report["records"] = records
     return report
 
 
+def add_eval_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--set", action="append", choices=SETS, help="잴 문항 묶음. 여러 번 줄 수 있다. 기본은 전부")
+    parser.add_argument("--eval-set", action="store_true", help="회의 판단 평가 세트(#115)를 잰다. 기본은 개발용만")
+    parser.add_argument("--holdout", action="store_true", help="평가 세트의 홀드아웃도 잰다. 기록에 남길 측정에서만 켠다")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--set", action="append", choices=SETS, help="잴 문항 묶음. 여러 번 줄 수 있다. 기본은 전부")
+    add_eval_args(parser)
     parser.add_argument("--baseline", type=Path, help="측정 폴더의 v4 결과 (query_compare_v4.json)")
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
     parser.add_argument("--json", type=Path, help="결과를 저장할 파일")
     args = parser.parse_args()
+    if args.eval_set and (args.set or args.baseline):
+        parser.error("--eval-set에는 --set·--baseline을 함께 쓸 수 없다")
+    if args.holdout and not args.eval_set:
+        parser.error("--holdout은 --eval-set과 함께 쓴다")
 
     load_dotenv(args.env_file.resolve(), override=True)
     # 한 이벤트 루프에서 모두 돈다. asyncio.run을 여러 번 부르면 공유 HTTP 연결이 깨진다
     report = asyncio.run(run(args))
 
     print("\n요약", json.dumps(report["summary"], ensure_ascii=False))
-    for name, summary in report["by_set"].items():
+    for name, summary in report.get("by_set", report.get("by_split", {})).items():
         print(f"  {name}", json.dumps(summary, ensure_ascii=False))
+    for name, counts in report.get("breakdown", {}).items():
+        print(f"  {name} 묶음별", json.dumps(counts["by_bundle"], ensure_ascii=False))
+        print(f"  {name} 태그별", json.dumps(counts["by_tag"], ensure_ascii=False))
     if "baseline" in report:
         shown = {k: v for k, v in report["baseline"].items() if k != "query_changed"}
         print("측정 폴더와 비교", json.dumps(shown, ensure_ascii=False))
