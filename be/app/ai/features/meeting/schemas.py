@@ -194,10 +194,14 @@ class JudgeReview(ContractModel):
 
     # 검수한 판단 기록의 id
     decision_id: NonBlankStr
-    # 사람이 정한 정답. 모델이 낸 route가 아니다
+    # 사람이 정한 정답. 모델이 낸 route가 아니다. 둘 다 허용이어도 더 가깝다고 본 쪽을 고른다
     label: Route
     # label이 NONE일 때만 채운다. 정할 수 없으면 OTHER
     reason_code: ReasonCode | None = None
+    # 조회해도 되고 안 해도 되는 말. 학습 파일에서는 label보다 앞선다(채점하지 않는 말이라 학습에서 뺀다)
+    either: bool = False
+    # AI에게 무언가를 시킨 말인지(#124). 묻지 않았으면 None이다. False는 시킨 말이 아니라고 확인한 것이다
+    direct_request: bool | None = None
     # 검수자를 가리키는 id. 실명을 넣지 않는다
     reviewer: NonBlankStr
     # 모델의 판단을 가리고 붙였는지. 가린 라벨과 보여준 라벨의 일치율을 비교해
@@ -205,7 +209,20 @@ class JudgeReview(ContractModel):
     blind: bool
     reviewed_at: AwareDatetime
     # 형식 버전. 칸을 바꾸면 올리고, 이전 버전을 읽는 변환을 이 파일에 함께 둔다
-    schema_version: Literal[1] = 1
+    schema_version: Literal[2] = 2
+
+    @model_validator(mode="before")
+    @classmethod
+    def _upgrade_v1(cls, data):
+        """버전 1에는 either·direct_request 칸이 없었다. 기본값(False·None)으로 읽는다
+
+        direct_request는 묻지 않았으므로 False가 아니라 None이다.
+        """
+        if isinstance(data, dict) and data.get("schema_version") == 1:
+            if "either" in data or "direct_request" in data:
+                raise ValueError("버전 1 검수 기록에는 either·direct_request 칸이 없습니다")
+            data = {**data, "schema_version": 2}
+        return data
 
     @model_validator(mode="after")
     def _reason_matches_label(self) -> Self:

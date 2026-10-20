@@ -32,10 +32,14 @@ def _request(text="민수야, 작년 회칙상 환불 기준이 뭐였지?", con
 
 
 def _review(decision_id, label, reviewer="reviewer-1", minutes=0):
+    """label이 "EITHER"면 둘 다 허용이다. 더 가깝다고 본 쪽은 NONE으로 둔다"""
+    either = label == "EITHER"
+    label = "NONE" if either else label
     return JudgeReview(
         decision_id=decision_id,
         label=label,
         reason_code="CURRENT_STATUS" if label == "NONE" else None,
+        either=either,
         reviewer=reviewer,
         blind=True,
         reviewed_at=REVIEWED + timedelta(minutes=minutes),
@@ -94,6 +98,51 @@ def test_반반으로_갈리면_내보내지_않고_한_명_더_보게_한다():
 
     assert export.needs_review == ("cd-1",)
     assert len(export.lines) == 1
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        ("EITHER",),
+        ("EITHER", "EITHER", "RAG"),
+    ],
+)
+def test_둘_다_허용이_가장_많으면_학습에서_뺀다(labels):
+    # 채점하지 않는 말에 정답을 가르치면 판단의 경계가 정하지 않은 쪽으로 움직인다
+    export = export_training_lines([_decision("cd-1", *labels)])
+
+    assert export.lines == ()
+    assert export.either == ("cd-1",)
+
+
+def test_둘_다_허용과_조회가_같은_수면_한_명_더_보게_한다():
+    export = export_training_lines([_decision("cd-1", "EITHER", "RAG")])
+
+    assert export.lines == ()
+    assert export.needs_review == ("cd-1",)
+
+
+def test_셋이_같은_수로_갈리면_한_명_더_보지_않고_뺀다():
+    export = export_training_lines([_decision("cd-1", "RAG", "NONE", "EITHER")])
+
+    assert export.lines == ()
+    assert export.three_way == ("cd-1",)
+    assert export.needs_review == ()
+
+
+def test_둘_다_허용_표가_있어도_조회가_가장_많으면_조회로_넣는다():
+    [line] = export_training_lines([_decision("cd-1", "EITHER", "RAG", "RAG")]).lines
+
+    assert line["expected"] == {"record_lookup": True}
+    assert "gold" not in line
+
+
+def test_비율은_조회와_아님_표로만_센다():
+    # 둘 다 허용 표를 0.5씩 나눠 넣으면 5단계에서 고르지 않은 "0.5 / 0.5로 넣기"가 된다
+    [line] = export_training_lines([_decision("cd-1", "RAG", "RAG", "NONE", "EITHER")]).lines
+
+    assert line["expected"] == {"record_lookup": True}
+    assert line["gold"] == {"record_lookup": {"probabilities": {"false": 0.3333, "true": 0.6667}}}
 
 
 def test_검수하지_않은_판단은_내보내지_않는다():
