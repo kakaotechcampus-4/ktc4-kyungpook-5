@@ -507,6 +507,13 @@ Laya 질문으로 가면 학습은 이렇게 됩니다. `laya-train`은 학습 �
 
 측정 조건과 원시 값은 [회의 어시스턴트 측정 기록](meeting-evaluation.md)에 있습니다.
 
+**검색어만 만드는 호출.** 판단을 Laya로 바꾸면 Laya가 조회로 본 발화에만 LLM을 불러 검색어를 받습니다. 지시문은 `features/meeting/prompts/query.md`이고 `QUERY_PROMPT_VERSION`으로 관리합니다. 입력 글은 판단과 같은 `build_judge_input`이고, 검색어 규칙은 판단 프롬프트의 검색어 부분을 그대로 옮겼습니다. 같은 규칙이어야 위 측정값이 이 호출에도 이어집니다. 조회 여부는 묻지 않으므로 출력은 `query` 한 칸입니다.
+
+```text
+판단 + 검색어 (지금)   luna: needs_lookup, query
+검색어만 (Laya 뒤)     Laya: 조회 → luna: query
+```
+
 ### 음성 인식
 
 음성 인식은 게이트웨이의 Whisper large v3를 씁니다. 스트리밍이 아니라 발화 구간 하나를 보내면 텍스트가 돌아옵니다.

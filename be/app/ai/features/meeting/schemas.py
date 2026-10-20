@@ -26,6 +26,12 @@ class JudgeOutput(ContractModel):
     query: str
 
 
+# 판단 전용 모델이 조회로 본 발화에 검색어만 받는다(#117). JudgeOutput처럼 docstring을 달지 않는다
+class QueryOutput(ContractModel):
+    # 검색어이자 화면의 "무엇을 물었는지" 문구다
+    query: str
+
+
 class MeetingUtterance(ContractModel):
     """발화 하나. BE가 VAD 구간을 Whisper로 바꾼 확정 전사다"""
 

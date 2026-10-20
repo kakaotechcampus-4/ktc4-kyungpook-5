@@ -14,9 +14,12 @@ from app.ai.contracts import RecordSource, SourceLocation
 from app.ai.features.meeting.context import (
     MEETING_CONTEXT_UTTERANCES,
     PROMPT_VERSION,
+    QUERY_PROMPT_VERSION,
     build_judge_input,
     build_judge_messages,
+    build_query_messages,
     judge_system_prompt,
+    query_system_prompt,
 )
 from app.ai.features.meeting.schemas import (
     JudgeOutput,
@@ -36,6 +39,9 @@ KST = timezone(timedelta(hours=9))
 PROMPT_SHA256 = {
     "meeting-judge-v4": "b99262f3c101c62616b92c5d915b33ca12ef92e26619cc7eeb26ab5cff9c03e7",
     "meeting-judge-v5": "ddc687c7be138658dda20c5d9381d592ba4a91cd7236c6cd5eca663d83e06166",
+}
+QUERY_PROMPT_SHA256 = {
+    "meeting-query-v1": "3e2e3a5dfe53f9192043166c198b208c6721b0418f047255459724bd697330d8",
 }
 
 SOURCE = RecordSource(
@@ -117,6 +123,29 @@ def test_프롬프트를_바꾸면_버전도_올린다():
     digest = hashlib.sha256((judge_system_prompt() + "\n").encode("utf-8")).hexdigest()
 
     assert PROMPT_SHA256.get(PROMPT_VERSION) == digest
+
+
+def test_검색어_프롬프트를_바꾸면_버전도_올린다():
+    digest = hashlib.sha256((query_system_prompt() + "\n").encode("utf-8")).hexdigest()
+
+    assert QUERY_PROMPT_SHA256.get(QUERY_PROMPT_VERSION) == digest
+
+
+def test_검색어_규칙은_판단_프롬프트와_같다():
+    # 검색어 측정(#114)은 판단 프롬프트의 규칙으로 쟀다. 규칙이 같아야 그 측정값이 이어진다
+    rules = query_system_prompt().split("query 는 기록 검색어이면서", 1)[1]
+
+    assert rules in judge_system_prompt()
+
+
+def test_검색어만_받는_호출도_판단과_같은_입력_글을_쓴다():
+    request = _request()
+
+    messages = build_query_messages(request)
+
+    assert [message.type for message in messages] == ["system", "human"]
+    assert messages[0].content == query_system_prompt()
+    assert messages[1].content == build_judge_input(request)
 
 
 def test_조회하지_않은_이유_코드는_프롬프트의_경우와_하나씩_맞는다():

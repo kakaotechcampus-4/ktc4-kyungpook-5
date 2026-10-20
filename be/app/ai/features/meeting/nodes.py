@@ -23,6 +23,7 @@ from .schemas import (
     JudgeUtteranceRequest,
     JudgeUtteranceResult,
     MeetingProgressPort,
+    QueryOutput,
     MeetingStage,
     RecordLookup,
     ToolCall,
@@ -47,6 +48,12 @@ def get_judge_model() -> ChatOpenAI:
 
 async def call_judge_model(messages: list[BaseMessage]) -> JudgeOutput:
     return await ainvoke_structured(messages, JudgeOutput, model=get_judge_model())
+
+
+async def call_query_model(messages: list[BaseMessage]) -> QueryOutput:
+    """검색어만 받는다. 판단 전용 모델(Laya)로 바꾸면 조회로 본 발화에만 부른다(#117).
+    판단과 같은 모델·설정(추론 끔)을 써서 판단 + 검색어 호출과 지연을 견줄 수 있게 한다"""
+    return await ainvoke_structured(messages, QueryOutput, model=get_judge_model())
 
 
 async def judge_utterance(

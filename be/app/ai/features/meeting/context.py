@@ -20,16 +20,26 @@ MEETING_CONTEXT_UTTERANCES = 4
 # prompts/judge.md를 바꾸면 올린다. 판단 기록(trace)에 남아 바뀌기 전후를 나눠 본다
 PROMPT_VERSION = "meeting-judge-v5"
 
+# prompts/query.md를 바꾸면 올린다. 판단 전용 모델(Laya)이 조회로 본 발화에 검색어만 받는 지시문이다(#117)
+QUERY_PROMPT_VERSION = "meeting-query-v1"
+
 # "작년"을 연도로 풀 때 쓰는 회의 날짜의 기준. 발화 시각은 UTC로 올 수 있다
 MEETING_TIMEZONE = ZoneInfo("Asia/Seoul")
 
 _PROMPT_PATH = Path(__file__).parent / "prompts" / "judge.md"
+_QUERY_PROMPT_PATH = Path(__file__).parent / "prompts" / "query.md"
 
 
 @cache
 def judge_system_prompt() -> str:
     """판단 지시문 원문. 파일 끝 줄바꿈은 측정 때 문자열에 없어 뺀다"""
     return _PROMPT_PATH.read_text(encoding="utf-8").removesuffix("\n")
+
+
+@cache
+def query_system_prompt() -> str:
+    """검색어만 받는 지시문 원문. 검색어 규칙은 judge.md의 검색어 부분과 같다"""
+    return _QUERY_PROMPT_PATH.read_text(encoding="utf-8").removesuffix("\n")
 
 
 def meeting_date(request: JudgeUtteranceRequest) -> date:
@@ -41,6 +51,14 @@ def build_judge_messages(request: JudgeUtteranceRequest) -> list[BaseMessage]:
     """지시문과 이번 발화 입력을 모델에 보낼 메시지로 만든다"""
     return [
         SystemMessage(judge_system_prompt()),
+        HumanMessage(build_judge_input(request)),
+    ]
+
+
+def build_query_messages(request: JudgeUtteranceRequest) -> list[BaseMessage]:
+    """검색어만 받는 메시지. 입력 글은 판단과 같다. 같은 입력이어야 검색어 측정값이 이어진다"""
+    return [
+        SystemMessage(query_system_prompt()),
         HumanMessage(build_judge_input(request)),
     ]
 
