@@ -217,6 +217,22 @@ def confusion(records: list[dict]) -> dict:
     }
 
 
+def threshold_sweep(records: list[dict], thresholds: tuple[float, ...]) -> list[dict]:
+    """조회 확률(`p_true`)이 있는 판단을 임계값마다 다시 센다. 판단 전용 모델의 임계값을 고를 때 쓴다(#117).
+
+    같은 확률로 판단만 다시 정하므로 모델을 다시 부르지 않는다. 지표는 confusion과 같은 식이다.
+    """
+    rows = []
+    for threshold in thresholds:
+        counts = confusion([{**r, "pred": r["p_true"] >= threshold} for r in records])
+        rows.append({
+            "threshold": threshold,
+            **{key: counts[key] for key in ("recall", "missed", "false_positive", "false_alarm_per_100")},
+            **({"either_lookup": counts["either_lookup"]} if "either_lookup" in counts else {}),
+        })
+    return rows
+
+
 def breakdown(records: list[dict]) -> dict:
     """묶음별·태그별로 문항 수와 틀린 수를 센다. 무엇을 놓치고 어디서 잘못 끼어드는지 본다.
     둘 다 허용인 문항은 문항 수에만 들어가고 틀린 수에는 들어가지 않는다"""

@@ -33,14 +33,16 @@
 
 ```bash
 cd be && uv run python app/ai/scripts/check_meeting_judge.py [--set query] [--json 결과.json]
-cd be && uv run --with laya==0.4.7 python app/ai/scripts/check_laya_judge.py [--model 체크포인트] [--threads 2] [--json 결과.json]
+cd be && uv run --with laya==0.4.7 python app/ai/scripts/check_laya_judge.py [--model 체크포인트] [--threads 2] [--threshold 0.5] [--json 결과.json]
 ```
 
 프롬프트·모델 비교와 판단 전용 모델 교체 결정은 [회의 판단 평가 세트](../tests/fixtures/eval/README.md#회의-판단-평가-세트) 200건(`meeting_judge_set.jsonl`, #115)으로 한다.
 두 스크립트 모두 `--eval-set`을 주면 이 세트의 개발용을 재고, `--holdout`을 더하면 홀드아웃도 재서 따로 낸다. 홀드아웃은 기록에 남길 측정에서만 켠다.
 
 - `check_meeting_judge.py`: luna 판단을 레포 코드 경로(`features/meeting`)로 잰다. 호출마다 토큰(입력·캐시·출력)을 세서 아래 단가로 판단 1,000회 비용을 낸다
-- `check_laya_judge.py`: 같은 입력 글(`build_judge_input`)과 판단 질문(`questions.py`)으로 Laya를 CPU에서 돌린다. P(true) 0.5 이상을 조회로 보고, AUROC(기준값과 관계없이 조회할 발화에 더 높은 확률을 줬는지)와 지연·최대 메모리를 낸다
+- `check_laya_judge.py`: 같은 입력 글(`build_judge_input`)과 판단 질문(`questions.py`)으로 Laya를 CPU에서 돌린다. P(true)가 임계값(`--threshold`, 기본 0.5) 이상이면 조회로 보고, AUROC(기준값과 관계없이 조회할 발화에 더 높은 확률을 줬는지)와 지연·최대 메모리를 낸다.
+  임계값 후보(`--sweep`, 기본 0.05~0.95를 0.05 간격)마다 재현율·놓침·오개입률·둘 다 허용에서 조회한 수를 표로 낸다. 같은 확률로 다시 셀 뿐이라 모델을 다시 돌리지 않는다.
+  이 표는 홀드아웃을 빼고 만든다. 임계값은 개발용에서 고르고 홀드아웃은 고른 값을 확인하는 데만 쓴다. 둘 다 허용인 문항은 AUROC에도 넣지 않는다
 - 단가 (100만 토큰당, ML API 모델 페이지 기준): `gpt-5.6-luna` 입력 ₩283, 캐시된 입력 ₩28, 출력 ₩1,701 (2026-10-19) / `gpt-6-luna` ₩141, ₩14, ₩708 / `claude-haiku-5-5` ₩152, ₩15, ₩761 (2026-10-20)
 - 다른 모델은 그 모델의 `AI_API_BASE_URL`·`AI_API_KEY`·`AI_MODEL`을 담은 파일을 `--env-file`로 준다. 게이트웨이는 모델마다 배포 주소가 다르다.
   회의 뒤 다시 판단할 모델처럼 실시간이 아닌 판단은 `--judge-timeout 60`으로 제한 시간을 늘려, 늦은 응답이 오류로 빠지지 않게 한다

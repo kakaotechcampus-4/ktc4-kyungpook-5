@@ -4,13 +4,16 @@
 laya와 torch는 BE 의존성에 넣지 않는다. 잴 때만 붙인다. 키는 필요 없다.
 
     cd be && uv run --with laya==0.4.7 python app/ai/scripts/check_laya_judge.py \\
-        [--model <저장소 또는 학습한 체크포인트 경로>] [--threads N] [--repeat 3] [--eval-set [--holdout]] [--json 결과.json]
+        [--model <저장소 또는 학습한 체크포인트 경로>] [--threads N] [--repeat 3] [--eval-set [--holdout]]
+        [--threshold 0.5] [--sweep 0.5 0.7 0.9] [--json 결과.json]
 
 - 문항: tests/fixtures/eval/meeting_judge.jsonl. luna(check_meeting_judge.py)와 같은 문항이다.
   이 문항은 학습 데이터에 넣지 않는다. 넣으면 학습 후 값이 의미가 없어진다.
   --eval-set이면 회의 판단 평가 세트(#115)를 같은 규칙(개발용만, --holdout이면 홀드아웃도)으로 고른다
 - 입력 글은 luna와 같은 build_judge_input, 질문은 questions.py의 record_lookup이다.
-  P(true)가 0.5 이상이면 조회로 본다. AUROC는 기준값과 관계없이 조회할 발화에 더 높은 확률을 줬는지 본다
+  P(true)가 임계값(--threshold, 기본 0.5) 이상이면 조회로 본다. AUROC는 기준값과 관계없이 조회할 발화에 더 높은 확률을 줬는지 본다
+- 임계값 표: 같은 확률로 임계값 후보(--sweep)마다 재현율·오개입률을 다시 센다. 홀드아웃은 넣지 않는다.
+  임계값은 개발용에서 고르고, 홀드아웃은 고른 값을 확인하는 데만 쓴다
 - CPU에서만 돈다. 배포 서버에 GPU가 없기 때문이다
 - 지연: 예열 1회 뒤 문항 전체를 --repeat번 판단한다. 판단 값은 첫 회를 쓰고, 회차마다 값이 같은지도 낸다
 - 모델은 Hugging Face 캐시에서 읽는다. 처음 한 번은 받는다(기본 모델 644MB)
@@ -43,6 +46,7 @@ from app.ai.scripts.check_meeting_judge import (
     confusion,
     eval_items,
     eval_record,
+    threshold_sweep,
 )
 from app.ai.scripts.eval_retrieval import _git
 
@@ -51,6 +55,8 @@ BASE_MODEL = "convaiinnovations/laya-multilingual"
 # laya 0.4.7이 검토한 커밋으로 고정한다(laya.PINNED_REVISIONS). 최신 main과 다를 수 있다
 BASE_REVISION = "e4e9ddf21a7b1903b7acffd8814ad4307bf63a67"
 THRESHOLD = 0.5
+# 임계값 표의 후보. 조회 비율이 높은 데이터로 배우면 확률이 조회 쪽으로 기울어 0.5보다 높은 값을 고를 수 있다
+SWEEP = tuple(round(0.05 * i, 2) for i in range(1, 20))
 
 
 def _max_rss_mb() -> float:
@@ -70,12 +76,14 @@ def auroc(scores: list[float], truths: list[bool]) -> float | None:
 
 
 def summarize(records: list[dict]) -> dict:
-    pos = [r for r in records if r["truth"]]
-    neg = [r for r in records if not r["truth"]]
+    # 둘 다 허용인 문항은 채점하지 않으므로 확률의 순서를 볼 때도 뺀다
+    scored = [r for r in records if not r.get("either")]
+    pos = [r for r in scored if r["truth"]]
+    neg = [r for r in scored if not r["truth"]]
     return {
         "items": len(records),
         **confusion(records),
-        "auroc": auroc([r["p_true"] for r in records], [r["truth"] for r in records]),
+        "auroc": auroc([r["p_true"] for r in scored], [r["truth"] for r in scored]),
         "p_true_mean": {
             "lookup": round(sum(r["p_true"] for r in pos) / len(pos), 3) if pos else None,
             "no_lookup": round(sum(r["p_true"] for r in neg) / len(neg), 3) if neg else None,
@@ -110,7 +118,7 @@ def run(args) -> dict:
     first = passes[0][0]
     records = []
     for (row, _), p in zip(items, first):
-        pred = p >= THRESHOLD
+        pred = p >= args.threshold
         records.append({**eval_record(row), "p_true": round(p, 4), "pred": pred})
         print(f"  {'O' if pred == row['needs_lookup'] else 'X'} {row['id']:6} P={p:.3f}  {row['heard']}")
 
@@ -125,7 +133,7 @@ def run(args) -> dict:
             "device": "cpu",
             "threads": torch.get_num_threads(),
             "questions_version": QUESTIONS_VERSION,
-            "threshold": THRESHOLD,
+            "threshold": args.threshold,
             "eval": path.name,
             key: groups,
             "repeat": args.repeat,
@@ -135,6 +143,8 @@ def run(args) -> dict:
         f"by_{key}": {name: summarize([r for r in records if r[key] == name]) for name in groups},
         **({"breakdown": {name: breakdown([r for r in records if r["split"] == name]) for name in groups}}
            if key == "split" else {}),
+        # 임계값은 홀드아웃을 보지 않고 고른다. 홀드아웃은 고른 값을 확인하는 데만 쓴다
+        "threshold_sweep": threshold_sweep([r for r in records if r.get("split") != "holdout"], args.sweep),
         "latency": {
             "load_s": load_s,
             "p50_ms": round(median(ms), 1),
@@ -156,6 +166,8 @@ def main() -> int:
     parser.add_argument("--revision", help=f"모델 커밋. 기본 모델이면 {BASE_REVISION[:7]}")
     parser.add_argument("--threads", type=int, help="torch CPU 스레드 수. 주지 않으면 torch 기본값")
     parser.add_argument("--repeat", type=int, default=3, help="지연을 재려고 문항 전체를 판단하는 횟수")
+    parser.add_argument("--threshold", type=float, default=THRESHOLD, help=f"P(true)가 이 값 이상이면 조회로 본다. 기본 {THRESHOLD}")
+    parser.add_argument("--sweep", type=float, nargs="+", default=SWEEP, help="임계값 표의 후보. 기본 0.05~0.95, 0.05 간격")
     add_eval_args(parser)
     parser.add_argument("--json", type=Path, help="결과를 저장할 파일")
     args = parser.parse_args()
@@ -163,6 +175,9 @@ def main() -> int:
         parser.error("--eval-set에는 --set을 함께 쓸 수 없다")
     if args.holdout and not args.eval_set:
         parser.error("--holdout은 --eval-set과 함께 쓴다")
+    if not 0 <= args.threshold <= 1 or not all(0 <= t <= 1 for t in args.sweep):
+        parser.error("임계값은 0과 1 사이다")
+    args.sweep = tuple(sorted(set(args.sweep)))
 
     report = run(args)
     print("\n설정", json.dumps({k: report["settings"][k] for k in ("model", "revision", "threads", "questions_version")}, ensure_ascii=False))
@@ -172,6 +187,12 @@ def main() -> int:
     for name, counts in report.get("breakdown", {}).items():
         print(f"  {name} 묶음별", json.dumps(counts["by_bundle"], ensure_ascii=False))
         print(f"  {name} 태그별", json.dumps(counts["by_tag"], ensure_ascii=False))
+    print("임계값별 (홀드아웃 제외)\n  임계값  재현율  놓침     오개입률  오탐        둘 다 허용에서 조회")
+    for row in report["threshold_sweep"]:
+        print(
+            f"  {row['threshold']:<6}  {row['recall']:<6}  {row['missed']:<7}  {row['false_alarm_per_100']!s:<8}"
+            f"  {row['false_positive']:<10}  {row.get('either_lookup', '')}"
+        )
     print("지연", json.dumps(report["latency"], ensure_ascii=False))
     print("메모리", json.dumps(report["memory"], ensure_ascii=False))
     if args.json:
