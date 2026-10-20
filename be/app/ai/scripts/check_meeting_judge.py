@@ -33,6 +33,7 @@ from statistics import mean, median, quantiles
 from dotenv import load_dotenv
 from langchain_core.callbacks import get_usage_metadata_callback
 
+from app.ai.config import get_settings
 from app.ai.errors import AIError
 from app.ai.features.meeting import nodes
 from app.ai.features.meeting.context import MEETING_TIMEZONE, PROMPT_VERSION
@@ -289,15 +290,12 @@ def eval_items(args) -> tuple[Path, str, tuple[str, ...], list[tuple[dict, Judge
     return EVAL_UTTERANCES, "set", groups, load_requests(EVAL_UTTERANCES, sets=groups)
 
 
-async def run(args) -> dict:
-    # eval_retrieval은 불러올 때 .env를 읽는다. 테스트가 이 파일을 불러와도 환경을 바꾸지 않게 여기서 불러온다
-    from app.ai.scripts.eval_retrieval import _git
-
+async def run(args, git: dict) -> dict:
     path, key, groups, items = eval_items(args)
-    print(f"① {path.name} 판단 · 프롬프트 {PROMPT_VERSION} · {', '.join(groups)}")
+    print(f"① {path.name} 판단 · {get_settings().model} · 프롬프트 {PROMPT_VERSION} · {', '.join(groups)}")
     records = await run_eval(items)
     report = {
-        "settings": {**_git(), "eval": path.name, key: groups},
+        "settings": {**git, "eval": path.name, key: groups},
         "prompt_version": PROMPT_VERSION,
         "summary": summarize(records),
         f"by_{key}": {name: summarize([r for r in records if r[key] == name]) for name in groups},
@@ -337,11 +335,15 @@ def main() -> int:
     if args.holdout and not args.eval_set:
         parser.error("--holdout은 --eval-set과 함께 쓴다")
 
+    # eval_retrieval은 불러올 때 be/.env를 덮어 읽는다. 테스트가 이 파일을 불러와도 환경을 바꾸지 않게 여기서,
+    # --env-file보다 먼저 불러온다. 나중에 불러오면 다른 모델을 재려 해도 be/.env의 모델로 잰다
+    from app.ai.scripts.eval_retrieval import _git
+
     load_dotenv(args.env_file.resolve(), override=True)
     if args.judge_timeout:
         nodes.JUDGE_TIMEOUT_SECONDS = args.judge_timeout
     # 한 이벤트 루프에서 모두 돈다. asyncio.run을 여러 번 부르면 공유 HTTP 연결이 깨진다
-    report = asyncio.run(run(args))
+    report = asyncio.run(run(args, _git()))
 
     print("\n요약", json.dumps(report["summary"], ensure_ascii=False))
     for name, summary in report.get("by_set", report.get("by_split", {})).items():
