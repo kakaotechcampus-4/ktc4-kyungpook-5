@@ -6,6 +6,8 @@
     cd be && uv run python app/ai/scripts/check_meeting_judge.py \\
         [--set query --set pipeline ...] [--baseline <측정폴더>/results/query_compare_v4.json] [--json 결과.json]
     cd be && uv run python app/ai/scripts/check_meeting_judge.py --eval-set [--holdout] [--json 결과.json]
+    cd be && uv run python app/ai/scripts/check_meeting_judge.py --eval-set --holdout \\
+        --env-file <모델별 AI_* 파일> --judge-timeout 60 --json 결과.json   # 회의 뒤 다시 판단할 모델(#117)
 
 ① 회의 판단 평가 문항(tests/fixtures/eval/meeting_judge.jsonl)을 회의 순서대로 판단한다.
    앞 발화는 같은 회의의 이전 발화다. 균형 정확도·재현율·특이도·정밀도·오탐·놓침·오개입률과 판단 지연(trace.judge_ms),
@@ -17,7 +19,7 @@
 
 검색은 부르지 않는다. 검색과 근거 판단은 eval_retrieval.py --queries로 회의 검색어를 넣어 잰다(#72).
 학습 전·후 Laya는 같은 문항을 check_laya_judge.py로 잰다.
-AI_* 는 --env-file(기본 be/.env)에서 읽고 키는 출력하지 않는다.
+AI_* 는 --env-file(기본 be/.env)에서 읽고 키는 출력하지 않는다. 모델은 AI_MODEL, 주소는 그 모델의 배포 주소다.
 """
 
 import argparse
@@ -32,6 +34,7 @@ from dotenv import load_dotenv
 from langchain_core.callbacks import get_usage_metadata_callback
 
 from app.ai.errors import AIError
+from app.ai.features.meeting import nodes
 from app.ai.features.meeting.context import MEETING_TIMEZONE, PROMPT_VERSION
 from app.ai.features.meeting.nodes import judge_utterance
 from app.ai.features.meeting.schemas import (
@@ -50,9 +53,14 @@ SPLITS = ("dev", "holdout")
 # 평가 문항에는 발화 시각이 없어 회의 날짜 오후 2시부터 10초 간격으로 둔다
 MEETING_START = time(14, 0)
 
-# 게이트웨이 단가(원/100만 토큰). ML API 모델 페이지 2026-10-19 기준이다. 바뀌면 고친다.
-# 캐시된 입력은 입력 토큰에 포함돼 오므로 입력 단가에서 빼고 캐시 단가로 센다
-PRICE_KRW_PER_M = {"gpt-5.6-luna": {"input": 283, "cached": 28, "output": 1701}}
+# 게이트웨이 단가(원/100만 토큰). ML API 모델 페이지 기준(5.6-luna 2026-10-19, 나머지 10-20)이다. 바뀌면 고친다.
+# 캐시된 입력은 입력 토큰에 포함돼 오므로 입력 단가에서 빼고 캐시 단가로 센다.
+# Haiku의 캐시 쓰기 할증(입력 단가의 1.25배)은 응답 토큰에 따로 오지 않아 넣지 않는다
+PRICE_KRW_PER_M = {
+    "gpt-5.6-luna": {"input": 283, "cached": 28, "output": 1701},
+    "gpt-6-luna": {"input": 141, "cached": 14, "output": 708},
+    "claude-haiku-5-5": {"input": 152, "cached": 15, "output": 761},
+}
 
 # 행사 정보가 검색어에 주는 영향. (행사 제목, 앞 발화, 방금 발화)
 EVENT_CASES: tuple[tuple[str, tuple[str, ...], str], ...] = (
@@ -318,7 +326,10 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     add_eval_args(parser)
     parser.add_argument("--baseline", type=Path, help="측정 폴더의 v4 결과 (query_compare_v4.json)")
-    parser.add_argument("--env-file", type=Path, default=Path(".env"))
+    parser.add_argument("--env-file", type=Path, default=Path(".env"), help="AI_* 를 읽을 파일. 모델을 바꿔 잴 때 그 모델의 파일을 준다")
+    parser.add_argument(
+        "--judge-timeout", type=float, help="판단 제한 시간(초). 회의 뒤 다시 판단할 모델처럼 실시간이 아닌 판단을 잴 때 늘린다"
+    )
     parser.add_argument("--json", type=Path, help="결과를 저장할 파일")
     args = parser.parse_args()
     if args.eval_set and (args.set or args.baseline):
@@ -327,6 +338,8 @@ def main() -> int:
         parser.error("--holdout은 --eval-set과 함께 쓴다")
 
     load_dotenv(args.env_file.resolve(), override=True)
+    if args.judge_timeout:
+        nodes.JUDGE_TIMEOUT_SECONDS = args.judge_timeout
     # 한 이벤트 루프에서 모두 돈다. asyncio.run을 여러 번 부르면 공유 HTTP 연결이 깨진다
     report = asyncio.run(run(args))
 
