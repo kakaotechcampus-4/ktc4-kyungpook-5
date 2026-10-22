@@ -16,6 +16,7 @@ from app.ai.scripts.check_meeting_judge import (
     breakdown,
     confusion,
     load_requests,
+    threshold_sweep,
 )
 
 ROWS = [
@@ -137,6 +138,29 @@ def test_either_items_are_not_scored_but_counted():
     assert result["false_positive"] == "0 / 1" and result["missed"] == "0 / 1"
     assert result["either_lookup"] == "1 / 2"
     assert breakdown(records[2:])["by_bundle"]["언급만"] == {"items": 2, "wrong": 0}
+
+
+def test_threshold_sweep_recounts_same_probabilities():
+    # 임계값을 올리면 오탐이 줄고 놓침이 는다. 모델을 다시 부르지 않고 같은 확률로 센다
+    records = [
+        {"truth": True, "p_true": 0.9},
+        {"truth": True, "p_true": 0.6},
+        {"truth": False, "p_true": 0.7},
+        {"truth": False, "p_true": 0.2},
+        {"truth": False, "p_true": 0.8, "either": True},
+    ]
+    low, high = threshold_sweep(records, (0.5, 0.75))
+    assert low == {
+        "threshold": 0.5, "recall": 1.0, "missed": "0 / 2", "false_positive": "1 / 2",
+        "false_alarm_per_100": 50.0, "either_lookup": "1 / 1",
+    }
+    assert (high["missed"], high["false_positive"], high["either_lookup"]) == ("1 / 2", "0 / 2", "1 / 1")
+
+
+def test_threshold_sweep_counts_probability_equal_to_threshold_as_lookup():
+    # 판단과 같은 규칙(P(true) >= 임계값)이어야 표에서 고른 값으로 다시 쟀을 때 같은 수가 나온다
+    [row] = threshold_sweep([{"truth": True, "p_true": 0.5}, {"truth": False, "p_true": 0.1}], (0.5,))
+    assert row["missed"] == "0 / 1"
 
 
 SET_ROWS = [
