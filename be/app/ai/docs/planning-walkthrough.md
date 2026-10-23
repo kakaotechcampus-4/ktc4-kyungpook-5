@@ -487,6 +487,72 @@ else:
 
 재실행: `be/`에서 `.venv/bin/python -m pytest app/ai/tests/test_planning_turn_flow.py -q`.
 
+### 7-7. 작업 5-3: 결과를 답변과 다음 턴의 기억으로 묶기
+
+핵심 함수는 [turn_assembly.py](../features/planning/turn_assembly.py)의 `assemble_planning_turn()`이다. 다음 순서로 동작하며 추가 모델 호출은 없다.
+
+```text
+5-2 중간 결과
+  → merge_pending: 아직 답을 못 받은 수정 메모를 갱신
+  → select_next_question: 질문 후보만 고름(아직 이력에 넣지 않음)
+  → 실제 표시 질문 하나 선택 후 그 질문만 이력에 반영
+  → assemble_planning_reply: 변경 확인·검색 안내·출처를 문장으로 만듦
+  → 생성 가능 판단 + PlanningTurnResult 일관성 검증
+```
+
+예를 들어 “인원 좀 줄이자”의 구체적인 답을 못 받았다면 인원 메모가 남는다. 다음에 “장소도 다시 정하자”고 하면 두 메모가 각각 관리된다. 인원을 40명으로 명확히 정하면 인원 메모만 정리한다. 기존 값이 이미 40명이어도 재확인은 유효하므로 `confirmed_fields`에 별도 기록한다. 값이 바뀐 목록인 `applied_operations`만으로는 이 경우를 알 수 없기 때문이다.
+
+질문 후보를 먼저 고른 뒤, 일정 충돌 → 조회 대상 확인 → 미해결 수정 → 일반 미정 순으로 표시할 질문을 정한다. 조회가 있는 턴은 일반 미정 질문을 생략한다. **후보로만 고르고 보여주지 않은 질문은 asked_fields에 넣지 않는다.**
+
+아래는 `be/`에서 실행 가능한 가상 중간 결과 예시다. API는 호출하지 않는다.
+
+```python
+from app.ai.features.planning.turn_schemas import PlanningTurnInput, RecordLookupState
+from app.ai.features.planning.schemas import ConditionExtractionOutput
+from app.ai.features.planning.nodes import validate_and_apply
+from app.ai.features.planning.lookup import RecordLookupDecision
+from app.ai.features.planning.turn_flow import PlanningTurnPreparation
+from app.ai.features.planning.turn_assembly import assemble_planning_turn
+
+request = PlanningTurnInput.model_validate({
+    "club_id": "club-1", "question_state": {"event_id": "e1"},
+    "extraction_input": {
+        "event_id": "e1", "request_id": "r1", "base_version": 0,
+        "conditions": {"event_type": "MT", "headcount": 60},
+        "current_message": {"id": "m1", "role": "user", "text": "40명으로 하고 작년 장소도 알려줘"},
+        "reference_date": "2026-10-23", "timezone": "Asia/Seoul",
+    },
+})
+extracted = validate_and_apply(request.extraction_input, ConditionExtractionOutput.model_validate({
+    "operations": [{"op": "SET", "change": {"field": "headcount", "value": 40},
+        "evidence": {"message_id": "m1", "quote": "40명으로"},
+        "offer_id": None, "context_evidence": []}], "unresolved": [],
+}))
+prepared = PlanningTurnPreparation(
+    extraction=extracted,
+    lookup_decision=RecordLookupDecision(action="SEARCH", query="작년 MT 장소", clarification=None,
+        evidence={"message_id": "m1", "quote": "작년 장소도 알려줘"}),
+    record_lookup=RecordLookupState(status="FAILED", error_code="TIMEOUT"),
+)
+result = assemble_planning_turn(request, prepared)
+assert result.collected.headcount == 40
+assert result.question is None
+assert result.next_question_state.asked_fields == ()
+assert request.extraction_input.conditions.headcount == 60
+print(result.reply)
+```
+
+출력:
+
+```text
+인원: 40명으로 반영했어요.
+과거 기록은 검색에 실패해 확인하지 못했어요.
+```
+
+입력의 60명을 직접 바꾼 것이 아니라 40명인 후보를 반환한다. DB에 저장됐다는 뜻은 아니다. 실제 내부 한 턴 호출은 `process_planning_turn(request, port=...)`이며, 이 함수가 5-2 준비와 5-3 조립을 연결한다. 공개 facade/BE 저장/FE 연결은 아직 별도다.
+
+검증은 테스트 대역 모델·port를 사용했다. 실제 모델의 분기·문장 품질 검증은 5-4에 남아 있다. 대상 불명의 수정 메모를 어떤 발화로 해결할지에 대한 해석은 아직 보수적으로 유지하며, 무관한 조건 변경으로 자동 삭제하지 않는다. 검색 평가셋 확대·실패 유형별 분석·검색 개선은 별도 후속 과제다.
+
 ## 8. LangGraph와 ReAct는 언제 등장하나?
 
 현재는 부품 함수가 있다. LangGraph는 이 부품을 어떤 순서로 실행하고 상태를 어떻게 이어갈지 연결할 예정인 실행 구조다. 지금 별도 그래프가 이미 돌고 있는 것은 아니다.

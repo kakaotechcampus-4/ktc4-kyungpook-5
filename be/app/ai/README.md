@@ -20,7 +20,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 
 ## 구조
 
-작업 5-1(#158)은 `turn_schemas.py`의 내부 한 턴 계약과 `turn_policy.py`의 초안 생성 가능 정책을 구현했습니다. 5-2(#159)는 `prepare_planning_turn`으로 추출·조회 판단·필요한 검색을 실행해 중간 결과를 반환합니다. 상태 병합·질문·최종 답변 조립은 5-3에서 연결합니다. 쉬운 설명과 실행 예시는 코드 따라가기 7-5절에 있습니다.
+작업 5-1(#158)은 `turn_schemas.py`의 내부 한 턴 계약과 `turn_policy.py`의 초안 생성 가능 정책을 구현했습니다. 5-2(#159)는 `prepare_planning_turn`으로 추출·조회 판단·필요한 검색을 실행해 중간 결과를 반환합니다. 5-3(#160)의 `assemble_planning_turn`이 미해결 수정·표시 질문·답변을 조립하고 `process_planning_turn`이 전체 내부 한 턴을 연결합니다. 실제 모델 평가는 5-4 예정이며 공개 facade는 미연결입니다. 쉬운 설명과 실행 예시는 코드 따라가기 7-5절에 있습니다.
 
 계획 기능은 내부 `PlanningConditions`, `extract_condition_changes`, `select_next_question`을 구현했습니다. 구조화 LLM 추출 뒤 코드가 변경을 검증하고 조건 후보를 반환하며, 질문 선택은 템플릿으로 한 주제만 묻고 보류·이미 질문한 항목을 추적합니다. 실제 모델 연결의 검증 범위와 한계는 [평가 기록](docs/planning-evaluation.md)에 있습니다. 작업 4-1은 [#153](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/153)에서 과거 기록 검색의 입력·출력 명세를 정리했습니다. 작업 4-2 [#154](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/154)는 `build_record_search_request`와 `search_planning_records`로 기존 검색을 호출하며 작업 4-3 [#155](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/155)의 `PlanningRecordSearchResult`로 변환해 반환합니다. 사실·출처·미확인 내용·충돌과 요청 식별 정보를 보존하며 추가 모델 호출은 없습니다. 전체 P1 응답 조립·계획 생성·BE 저장·LangGraph 통합·공개 API 승격은 미구현입니다.
 
