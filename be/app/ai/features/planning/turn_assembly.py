@@ -19,6 +19,7 @@ def merge_pending(request: PlanningTurnInput, prepared: PlanningTurnPreparation)
     """필드별 최신 미해결을 보존한다. 날짜는 하나의 주제로 정리한다."""
     extraction = prepared.extraction
     pending = {p.item.field: p for p in request.pending_clarifications}
+    # “40명으로”가 기존 값과 같아도 명확한 답이다. 실제 값 변경 여부와 별개로 메모를 푼다.
     resolved = set()
     for field in extraction.confirmed_fields:
         resolved.update(_topic(field))
@@ -29,12 +30,14 @@ def merge_pending(request: PlanningTurnInput, prepared: PlanningTurnPreparation)
             fields = _topic(item.field) if item.field is not None else set(request.question_state.last_question_fields)
             resolved.update(fields)
     pending = {field: p for field, p in pending.items() if field not in resolved}
+    # 기존 메모 중 해결된 대상만 제거하고, 이번에 새로 모호해진 대상은 최신 근거로 교체한다.
     for item in extraction.unresolved:
         if item.reason != "DEFERRED":
             pending[item.field] = PendingClarification(
                 id=f"{extraction.request_id}:{item.field or 'unknown'}", item=item,
             )
     if extraction.status == "VALIDATION_FAILED":
+        # 날짜 변경을 거절한 사실이 다음 턴에 잊히지 않도록 날짜 주제의 메모를 남긴다.
         pending["start_date"] = PendingClarification(
             id=f"{extraction.request_id}:start_date",
             item=UnresolvedCondition(field="start_date", reason="AMBIGUOUS_VALUE",
@@ -95,14 +98,17 @@ def assemble_planning_turn(request: PlanningTurnInput, prepared: PlanningTurnPre
                                     allow_missing=prepared.lookup_decision.action == "SKIP",
                                     record_question=False)
     question = candidate.question
+    # 조회 대상 확인이 우선이면 조건 질문 후보를 교체한다. 질문 이력은 아래에서 확정한다.
     if extraction.status != "VALIDATION_FAILED" and prepared.record_lookup.status == "NEEDS_CLARIFICATION":
         question = PlanningQuestion(fields=(), reason="CLARIFY", text=prepared.record_lookup.clarification)
     state = candidate.state
+    # 화면에 실제 표시하는 질문만 '물어본 항목'으로 기록한다. 숨긴 후보는 소비하지 않는다.
     state = state.model_copy(update={
         "asked_fields": tuple(sorted(set(state.asked_fields) | set(question.fields if question else ()))),
         "last_question_fields": question.fields if question else (),
     })
     parts = assemble_planning_reply(prepared)
+    # 같은 collected를 설명하는 변경 안내·검색 안내 뒤에 최종 질문을 한 번만 붙인다.
     if question:
         parts.append(question.text)
     if not parts:

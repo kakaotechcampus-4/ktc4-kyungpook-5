@@ -42,6 +42,7 @@ async def decide_record_lookup(
     request: ConditionExtractionInput, conditions: PlanningConditions, *,
     invoke: LookupDecider = call_lookup_model,
 ) -> RecordLookupDecision:
+    # ID·권한은 코드가 관리한다. 모델에는 발화와 해석에 필요한 문맥만 데이터로 보낸다.
     payload = {
         "current_message": request.current_message.model_dump(mode="json"),
         "context_messages": [m.model_dump(mode="json") for m in request.context_messages],
@@ -53,6 +54,7 @@ async def decide_record_lookup(
     if not isinstance(decision, RecordLookupDecision):
         raise AIInvalidResponseError("조회 판단이 정해진 타입이 아닙니다")
     evidence = decision.evidence
+    # 모델이 SEARCH라고 해도 이번 발화의 실제 인용이 없으면 검색을 실행하지 않는다.
     if evidence.message_id != request.current_message.id or evidence.quote not in request.current_message.text:
         raise AIInvalidResponseError("조회 판단의 근거가 이번 발화에 없습니다")
     return decision
