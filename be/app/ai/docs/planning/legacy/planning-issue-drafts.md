@@ -1,5 +1,7 @@
 # 행사계획 작업 1~3 이슈 초안
 
+> Legacy 참고 자료. 새 설계와 구현 안내는 [planning 문서](../README.md)를 읽습니다.
+
 작성·등록: 2026-10-22. 아래 초안을 바탕으로 GitHub 이슈 3개를 등록했다.
 
 | 작업 | 등록 이슈 |
@@ -76,7 +78,7 @@
 ### 참고 자료 · 관련 이슈
 
 - 상위 작업: https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/67
-- 설계: `be/app/ai/docs/plan_architecture.md`
+- 설계: `be/app/ai/docs/planning/legacy/plan_architecture.md`
 - 기존 공개 계약: `be/app/ai/docs/contracts.md`
 - 내부 필드와 BE 필드의 매핑·공개 함수 연결은 후속 작업에서 검증한다.
 
@@ -150,9 +152,9 @@
 
 - 선행: 초안 A — 조건 스키마가 추출 결과의 최종 검증 기준이다. 등록 시 실제 번호로 교체한다.
 - 상위 작업: https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/67
-- 평가: `be/app/ai/docs/planning-evaluation.md`
-- 실행 결과: `be/app/ai/docs/evaluation-results/planning-conditions-2026-10-22.json`
-- 흐름 설명: `be/app/ai/docs/planning-walkthrough.md`
+- 평가: `be/app/ai/docs/planning/legacy/planning-evaluation.md`
+- 실행 결과: `be/app/ai/docs/planning/legacy/evaluation-results/planning-conditions-2026-10-22.json`
+- 흐름 설명: `be/app/ai/docs/planning/legacy/planning-walkthrough.md`
 
 ---
 
@@ -222,9 +224,9 @@
 
 - 선행: 초안 B — 후보 조건, 적용 변경, 미해결 사유를 질문 정책에 전달한다. 등록 시 실제 번호로 교체한다.
 - 상위 작업: https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/67
-- 실행 결과: `be/app/ai/docs/evaluation-results/planning-questions-2026-10-22.json`
-- 설명: `be/app/ai/docs/planning-walkthrough.md`
-- 설계: `be/app/ai/docs/plan_architecture.md`
+- 실행 결과: `be/app/ai/docs/planning/legacy/evaluation-results/planning-questions-2026-10-22.json`
+- 설명: `be/app/ai/docs/planning/legacy/planning-walkthrough.md`
+- 설계: `be/app/ai/docs/planning/legacy/plan_architecture.md`
 
 ---
 

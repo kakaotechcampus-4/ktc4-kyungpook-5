@@ -1,7 +1,7 @@
 # 행사계획 대화 Agent — 아이디어와 설계 초안
 
 > 2026-10-24 · [#165](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/165) · 설계 초안, 실행 미구현.
-> 현재 개발 방향의 진입점이다. 기존 [단계별 설계](plan_architecture.md)와 [코드 따라가기](planning-walkthrough.md)는 legacy 구현 참고다. 명칭·상세 타입·반복 제한은 구현과 실제 대화 결과에 맞춰 조정한다.
+> 현재 개발 방향의 진입점이다. 기존 [단계별 설계](legacy/plan_architecture.md)와 [코드 따라가기](legacy/planning-walkthrough.md)는 legacy 구현 참고다. 명칭·상세 타입·반복 제한은 구현과 실제 대화 결과에 맞춰 조정한다.
 
 ## 1. 만들려는 경험
 
@@ -55,7 +55,7 @@ ReAct의 행동 선택 → 실행 → 결과 확인 형태를 작게 사용한�
 
 Tool이 필요 없는 설명은 모델 호출 한 번으로 끝날 수 있다. 조건 변경은 보통 판단 → Tool → 결과를 읽은 답변으로 이어진다. 검색 내부 호출까지 포함한 실제 호출 수·지연은 후속 구현에서 측정한다.
 
-이번 그래프의 종료는 **한 턴의 처리 종료**다. 전체 행사 Agent의 수명은 [architecture.md](architecture.md)의 상위 설계에 따른다. 상시 Agent의 대기·신호·운영 전환을 이번 P1 실험에 모두 구현하지 않는다.
+이번 그래프의 종료는 **한 턴의 처리 종료**다. 전체 행사 Agent의 수명은 [../architecture.md](architecture.md)의 상위 설계에 따른다. 상시 Agent의 대기·신호·운영 전환을 이번 P1 실험에 모두 구현하지 않는다.
 
 ## 4. Tool 설계: 행동 단위로 작게 시작한다
 

@@ -1,10 +1,12 @@
 # 계획 단계 카탈로그
 
+> Legacy 참고 자료. 새 설계와 구현 안내는 [planning 문서](../README.md)를 읽습니다.
+
 > 상태: 팀 검토용 초안. 단계 코드는 `app.core.enums.StepCode`와 같습니다.
 
 ## 범위
 
-계획안(AI-PLAN-05)을 구성하는 Step과 Action의 기준 목록입니다. AI는 이 목록에서 행사에 필요한 단계를 고르고, 새 단계를 만들지 않습니다. 저장·승인·실행의 책임 경계는 [아키텍처](architecture.md)를 따릅니다.
+계획안(AI-PLAN-05)을 구성하는 Step과 Action의 기준 목록입니다. AI는 이 목록에서 행사에 필요한 단계를 고르고, 새 단계를 만들지 않습니다. 저장·승인·실행의 책임 경계는 [아키텍처](../../architecture.md)를 따릅니다.
 
 ## 기본 원칙
 
@@ -111,7 +113,7 @@ Action 열의 `CONFIRMATION`은 운영 중 그 단계에서 생길 수 있는 �
 
 ## 관련 문서
 
-- [AI 기능 요구사항](requirements.md): AI-PLAN-05, AI-PLAN-07
-- [BE-AI 데이터 계약](contracts.md)
+- [AI 기능 요구사항](../../requirements.md): AI-PLAN-05, AI-PLAN-07
+- [BE-AI 데이터 계약](../../contracts.md)
 - [Figma v5](https://www.figma.com/design/DAIeI2ETmdQ5vjrPSZJ196?node-id=237-258): P2 흐름 만들기, 담당 범례
 - [Figma v6](https://www.figma.com/design/DAIeI2ETmdQ5vjrPSZJ196?node-id=417-2): P16 결정 상세, P17 게시 대기
