@@ -1,0 +1,575 @@
+{
+  "model": "gpt-5.6-luna",
+  "prompt_version": "planning-conditions-v1",
+  "commit": "4998d03a6782743d5591eb1a0e7e89bebc780016",
+  "working_tree_dirty": true,
+  "review_status": "AI-authored draft; human review pending",
+  "count": 18,
+  "fixture_sha256": "ec5da4725c56441a15fb076d4102879d186b5f08b9d8c1b2a3221b6c70a21b5f",
+  "exact_matches": 18,
+  "results": [
+    {
+      "id": "set_people",
+      "status": "APPLIED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 2523,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": 40,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [
+        {
+          "op": "SET",
+          "change": {
+            "field": "headcount",
+            "value": 40
+          },
+          "evidence": {
+            "message_id": "m1",
+            "quote": "40명으로 바꿔줘"
+          },
+          "offer_id": null,
+          "context_evidence": []
+        }
+      ],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "clear_place",
+      "status": "APPLIED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 1783,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [
+        {
+          "op": "CLEAR",
+          "field": "location",
+          "evidence": {
+            "message_id": "m1",
+            "quote": "장소는 다시 정하자"
+          }
+        }
+      ],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "free",
+      "status": "APPLIED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 2656,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": null,
+        "fee_per_person": 0,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [
+        {
+          "op": "SET",
+          "change": {
+            "field": "fee_per_person",
+            "value": 0
+          },
+          "evidence": {
+            "message_id": "m1",
+            "quote": "참가비 없이 하자"
+          },
+          "offer_id": null,
+          "context_evidence": []
+        }
+      ],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "clear_fee",
+      "status": "APPLIED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 1798,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [
+        {
+          "op": "CLEAR",
+          "field": "fee_per_person",
+          "evidence": {
+            "message_id": "m1",
+            "quote": "참가비는 미정으로 바꿔줘"
+          }
+        }
+      ],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "ambiguous",
+      "status": "NEEDS_CLARIFICATION",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 2372,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": 32,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [],
+      "unresolved": [
+        {
+          "field": "headcount",
+          "evidence": {
+            "message_id": "m1",
+            "quote": "인원을 좀 줄이자"
+          },
+          "reason": "AMBIGUOUS_VALUE"
+        }
+      ],
+      "validation_errors": []
+    },
+    {
+      "id": "correction",
+      "status": "APPLIED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 1928,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": 32,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [
+        {
+          "op": "SET",
+          "change": {
+            "field": "headcount",
+            "value": 32
+          },
+          "evidence": {
+            "message_id": "m1",
+            "quote": "32명으로 하자"
+          },
+          "offer_id": null,
+          "context_evidence": []
+        }
+      ],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "negation",
+      "status": "UNCHANGED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 1823,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": 32,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "past",
+      "status": "UNCHANGED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 1618,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "money",
+      "status": "APPLIED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 2486,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": null,
+        "fee_per_person": 45000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [
+        {
+          "op": "SET",
+          "change": {
+            "field": "fee_per_person",
+            "value": 45000
+          },
+          "evidence": {
+            "message_id": "m1",
+            "quote": "참가비는 4만 5천 원으로 하자"
+          },
+          "offer_id": null,
+          "context_evidence": []
+        }
+      ],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "multiple",
+      "status": "APPLIED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 2215,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": 40,
+        "fee_per_person": 0,
+        "start_date": null,
+        "end_date": null,
+        "location": "가평",
+        "budget_total": null
+      },
+      "applied_operations": [
+        {
+          "op": "SET",
+          "change": {
+            "field": "headcount",
+            "value": 40
+          },
+          "evidence": {
+            "message_id": "m1",
+            "quote": "인원은 40명"
+          },
+          "offer_id": null,
+          "context_evidence": []
+        },
+        {
+          "op": "SET",
+          "change": {
+            "field": "location",
+            "value": "가평"
+          },
+          "evidence": {
+            "message_id": "m1",
+            "quote": "장소는 가평으로 하자"
+          },
+          "offer_id": null,
+          "context_evidence": []
+        }
+      ],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "relative",
+      "status": "APPLIED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 2326,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": "2026-10-23",
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [
+        {
+          "op": "SET",
+          "change": {
+            "field": "start_date",
+            "value": "2026-10-23"
+          },
+          "evidence": {
+            "message_id": "m1",
+            "quote": "행사 시작은 내일로 하자"
+          },
+          "offer_id": null,
+          "context_evidence": []
+        }
+      ],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "incomplete",
+      "status": "NEEDS_CLARIFICATION",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 1922,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [],
+      "unresolved": [
+        {
+          "field": "start_date",
+          "evidence": {
+            "message_id": "m1",
+            "quote": "다음 달쯤"
+          },
+          "reason": "INCOMPLETE_DATE"
+        }
+      ],
+      "validation_errors": []
+    },
+    {
+      "id": "chitchat",
+      "status": "UNCHANGED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 1600,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": 32,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "conflict",
+      "status": "VALIDATION_FAILED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 2051,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": "2027-03-20",
+        "end_date": "2027-03-21",
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [],
+      "unresolved": [],
+      "validation_errors": [
+        "END_BEFORE_START"
+      ]
+    },
+    {
+      "id": "date_pair",
+      "status": "APPLIED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 2692,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": "2027-03-22",
+        "end_date": "2027-03-23",
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [
+        {
+          "op": "SET",
+          "change": {
+            "field": "start_date",
+            "value": "2027-03-22"
+          },
+          "evidence": {
+            "message_id": "m1",
+            "quote": "2027년 3월 22일부터"
+          },
+          "offer_id": null,
+          "context_evidence": []
+        },
+        {
+          "op": "SET",
+          "change": {
+            "field": "end_date",
+            "value": "2027-03-23"
+          },
+          "evidence": {
+            "message_id": "m1",
+            "quote": "3월 23일까지"
+          },
+          "offer_id": null,
+          "context_evidence": []
+        }
+      ],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "injection",
+      "status": "UNCHANGED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 2141,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": 32,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "accept_offer",
+      "status": "APPLIED",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 2601,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": null,
+        "fee_per_person": 45000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [
+        {
+          "op": "SET",
+          "change": {
+            "field": "fee_per_person",
+            "value": 45000
+          },
+          "evidence": {
+            "message_id": "m1",
+            "quote": "같게 할게요"
+          },
+          "offer_id": "o1",
+          "context_evidence": [
+            {
+              "message_id": "a1",
+              "quote": "참가비는 45000원으로 할까요?"
+            }
+          ]
+        }
+      ],
+      "unresolved": [],
+      "validation_errors": []
+    },
+    {
+      "id": "ambiguous_acceptance",
+      "status": "NEEDS_CLARIFICATION",
+      "match": true,
+      "wrong_fields": [],
+      "ms": 2423,
+      "candidate_conditions": {
+        "title": null,
+        "event_type": null,
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "applied_operations": [],
+      "unresolved": [
+        {
+          "field": "location",
+          "evidence": {
+            "message_id": "m1",
+            "quote": "그걸로 해"
+          },
+          "reason": "AMBIGUOUS_REFERENCE"
+        }
+      ],
+      "validation_errors": []
+    }
+  ],
+  "evaluation_date": "2026-10-22",
+  "source_sha256": {
+    "features/planning/nodes.py": "a9333bddd04b63788768aca13d0b3d70a19cace2488cc0849b89c942ca7a9192",
+    "features/planning/schemas.py": "a4023242b065c673ec128b2e3368d1e5510b6aa9f421df3838fde03d3ee291f8",
+    "features/planning/prompts/extract_conditions.md": "b4aaf9d1c66d57c7739526bb90dd6661224c1ed650fdede7ed30d00c8df8735b"
+  },
+  "latency": {
+    "unit": "ms",
+    "p50": 2178.0,
+    "p95_nearest_rank": 2692,
+    "max": 2692,
+    "note": "18 sequential requests, one run; extraction call only, no BE/UI latency"
+  }
+}
