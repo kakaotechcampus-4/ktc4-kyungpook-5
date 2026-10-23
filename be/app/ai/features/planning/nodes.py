@@ -97,6 +97,7 @@ def validate_and_apply(
     return ConditionExtractionResult(
         **common, status=status, candidate_conditions=candidate,
         applied_operations=changed, validation_errors=(),
+        confirmed_fields=tuple(op.change.field if isinstance(op, SetCondition) else op.field for op in output.operations),
     )
 
 # 현재 조건, 대화를 LLM에 전달, SET,CLEAR 목록을 받는다.

@@ -370,6 +370,203 @@ print(result.model_dump(mode="json"))
 
 예를 들어 두 문서가 가평/춘천으로 다르면 `cards=[]`, `conflicts=[각 장소와 출처]`, `status=AVAILABLE`일 수 있다. 이는 “장소가 확정됐다”가 아니라 “서로 다른 기록을 찾았다”는 뜻이다. 실제 호출 함수 `search_planning_records()`도 검색 후 이 변환 함수를 사용한다. 올해 조건을 수정하는 경로는 없다.
 
+## 7-4. 다음 작업 5: 부품을 한 턴의 답변으로 묶기
+
+아래는 구현 전 명세다. 상세 입력·출력·오류 정책은 [작업 5 설계](plan_architecture.md#작업-5--한-턴-응답-조립-명세-5-15-4)를 따른다.
+
+현재 부품은 조건을 바꾸거나 질문을 고르거나 기록을 찾을 수 있다. 작업 5는 이 결과들을 한 화면에서 일관되게 보여주도록 묶는다.
+
+```text
+“40명으로 바꾸고 작년 MT 장소도 알려줘”
+  → 기존 extract_condition_changes: 40명 조건 후보
+  → 새 decide_record_lookup(예정): 검색이 필요한 요청
+  → 기존 search_planning_records: 장소 사실과 출처
+  → 새 assemble_planning_reply(예정): 변경 확인 + 과거 장소 설명
+  → 조건 카드에는 올해 40명, 참고 카드에는 작년 장소
+```
+
+| 단계 | 쉽게 말하면 | 결과물 |
+| --- | --- | --- |
+| 5-1 | 무엇을 받고 무엇을 반환할지 약속 | 한 턴 입력·출력, 생성 가능 조건, 실패·질문 우선순위 |
+| 5-2 | 이번 말에 필요한 부품 실행 | 수정/조회/혼합 분기와 검색 호출 여부 |
+| 5-3 | 결과를 같은 상태를 설명하는 답변으로 묶기 | reply·조건·질문·참고 자료·다음 턴 상태 |
+| 5-4 | 대화를 이어가며 검증 | 여러 턴의 상태 보존·실패 처리·실제 모델 측정 |
+
+예를 들어 위 요청에서 검색만 타임아웃이면 “인원은 40명으로 반영했어요. 과거 장소는 검색에 실패해 확인하지 못했어요.”라고 설명한다. 반면 조건 추출 자체가 실패했다면 40명으로 바꿨다고 말하지 않는다. 실제 저장은 BE가 버전을 확인한 뒤 한다.
+
+“작년 장소는?”에 답하면서 “올해 인원은 몇 명인가요?”를 매번 덧붙이지 않는다. 질문을 화면에 보여주지 않았다면 이미 물었다는 이력도 추가하지 않는다. 이를 위해 현재 질문 부품의 후보 선택과 상태 확정을 분리할 예정이다.
+
+초안 생성 버튼은 행사 유형이 정해지고 미해결 수정·충돌이 없으면 허용하는 안이다. 장소·날짜가 미정이어도 초안을 만들 수 있게 하되, 실제 행사 시작 허용과는 다르다. 이 정책과 공개 응답 필드는 BE/FE 합의 전 제안이다.
+
+**검색 후속 과제는 별도로 유지한다:** 평가셋 확대 → 실패 유형 분석 → 한 요소씩 개선·재측정. 작업 5가 검색 누락을 자동으로 고치는 것은 아니다. 이번에는 실패·미확인·충돌을 사용자에게 정확하게 전달하는 연결을 만든다.
+
+### 7-5. 작업 5-1의 핵심 코드: 입력과 출력을 담는 그릇
+
+5-1은 내부 계약·생성 정책을 구현했다(#158). 실제 턴 실행 함수는 5-2 이후 연결한다. 아직 이 타입을 만들어도 자동으로 검색하거나 답변을 생성하지 않는다.
+
+| 코드 | 쉽게 이해하기 | 하는 일 |
+| --- | --- | --- |
+| `PlanningTurnInput` | 이번 턴의 재료 상자 | 기존 조건·이번 발화·질문 이력·미해결 수정을 함께 받음 |
+| `PendingClarification` | 아직 답을 못 받은 수정 메모 | 인원을 줄이자는 요청 등 근거와 대상을 보존. 단순 장소 미정과 다름 |
+| `RecordLookupState` | 검색 진행 결과 표지 | 생략·대상 확인 필요·성공·실패를 구분 |
+| `PlanningTurnResult` | 화면에 전달할 내부 결과 묶음 | 조건·답변·질문·참고 자료가 같은 행사/요청을 설명하는지 검사 |
+| `assess_generation_readiness()` | 초안 버튼 허용 기준 | 유형 없음·조건 충돌·미해결 수정 여부를 코드로 판단 |
+
+타입은 [turn_schemas.py](../features/planning/turn_schemas.py), 판단 코드는 [turn_policy.py](../features/planning/turn_policy.py)에 있다. 이번에 별도 모델 호출이나 프롬프트를 추가하지 않았다.
+
+#### 입력 → 핵심 코드 → 결과
+
+사용자가 “MT 할 거야”라고 말해 기존 추출 코드가 `event_type=MT`를 만들었다고 하자. 장소와 날짜는 아직 없다.
+
+```python
+from app.ai.features.planning.schemas import PlanningConditions
+from app.ai.features.planning.turn_policy import assess_generation_readiness
+from app.ai.features.planning.turn_schemas import RecordLookupState
+
+conditions = PlanningConditions(event_type="MT")
+ready = assess_generation_readiness(conditions)
+assert ready.ready_to_generate is True
+assert ready.reasons == ()
+
+# 다음 턴에 “인원을 좀 줄이자”라고 했으나 구체적인 숫자가 없다면
+blocked = assess_generation_readiness(conditions, has_pending_modification=True)
+assert blocked.ready_to_generate is False
+assert blocked.reasons == ("PENDING_MODIFICATION",)
+
+# 검색만 실패한 것은 별도의 상태다. 조건 판단을 대신하지 않는다.
+lookup = RecordLookupState(status="FAILED", error_code="TIMEOUT")
+assert lookup.result is None
+assert assess_generation_readiness(conditions).ready_to_generate is True
+print(ready.model_dump(), blocked.model_dump(), lookup.model_dump())
+```
+
+핵심 함수는 세 가지를 검사해 이유 목록에 넣는다. 행사 유형이 없으면 `MISSING_EVENT_TYPE`, 날짜 변경처럼 조건이 충돌하면 `CONDITION_CONFLICT`, 답을 기다리는 수정이 남으면 `PENDING_MODIFICATION`이다. **이유 목록이 비어 있으면 true**다. 날짜·장소 미정만으로 막지 않는다. 이것은 초안을 만들어 볼 수 있다는 내부 정책이며 행사 시작 허가나 BE/FE 합의 완료를 뜻하지 않는다.
+
+예시에서는 미해결 여부를 직접 넘겼다. 실제로는 5-3에서 pending 메모를 관리하고 이 함수에 전달한다. 반환 타입도 같은 정책을 다시 검사해서, pending이 있는데 ready=true인 모순된 결과를 막는다.
+
+`PlanningTurnResult`에는 추가 검사도 있다. 예를 들어 인원을 40명으로 추출해 놓고 표시 조건을 60명으로 넣으면 오류다. 검색 출처를 다른 요청 결과에서 가져와도 오류다. 질문을 답변에 넣었으면 질문 이력에도 반영해야 한다. 여기서 검사하는 것은 데이터 일관성이며 모델의 의미 해석이나 DB 최신 버전은 별도 검증이 필요하다.
+
+미해결 수정 메모는 최대 9개이며 같은 조건 대상과 ID를 중복 저장하지 않는다. 사용자의 “나중에 정할게”는 질문 이력의 보류로 관리한다. 메모의 실제 갱신·해결은 5-3에서 연결한다. 검색 평가셋 확대·실패 분석·품질 개선도 별도 후속 과제로 남아 있다.
+
+### 7-6. 작업 5-2: 필요한 부품만 실행하기
+
+내부 실행 함수 `prepare_planning_turn()`을 구현했다(#159). 최종 채팅 답변을 만드는 함수는 아니다. 5-3이 이어서 사용할 조건 추출 결과·조회 판단·검색 상태를 묶어 반환한다.
+
+```text
+입력: “40명으로 하고 작년 장소도 알려줘”
+  → extract_condition_changes(): SET headcount=40 검증·후보 적용
+  → decide_record_lookup(): SEARCH, query="작년 MT 장소"
+  → search_planning_records(): 기존 검색과 카드 변환
+  → PlanningTurnPreparation:
+      extraction.candidate_conditions.headcount=40
+      lookup_decision.action=SEARCH
+      record_lookup.status=SUCCEEDED
+      record_lookup.result=출처가 있는 참고 데이터 또는 NOT_FOUND
+```
+
+핵심 코드는 [turn_flow.py](../features/planning/turn_flow.py)의 다음 분기다. 아래는 설명을 위한 요약이다.
+
+```python
+if decision.action == "SKIP":
+    # 조건만 바꾸거나 보류하는 요청이면 검색을 실행하지 않는다.
+    lookup = RecordLookupState(status="SKIPPED")
+elif decision.action == "CLARIFY":
+    # 조회할 행사가 불명확하면 검색 대신 확인할 내용을 남긴다.
+    lookup = RecordLookupState(status="NEEDS_CLARIFICATION", clarification=decision.clarification)
+else:
+    # SEARCH인 경우에만 기존 검색 함수를 한 번 호출한다.
+    # 검색의 일시적 실패는 FAILED로 바꾸되 검증된 조건 후보는 유지한다.
+    ...
+```
+
+“인원은 40명으로”면 SKIP, “작년 MT 장소는?”이면 SEARCH, “그때 그 행사 비용은?”인데 앞선 문맥에도 대상이 없으면 CLARIFY가 기대 동작이다. 조회 여부는 [lookup.py](../features/planning/lookup.py)의 구조화 모델 호출이 판단한다. 코드는 SEARCH에 검색어가 있는지, CLARIFY에 확인 질문이 있는지, 근거 인용이 실제 이번 발화에 있는지 검사한다. 그 형식·인용 검사가 모델의 의미 해석까지 보장하지는 않는다.
+
+추출과 조회 판단은 각각 모델을 호출한다. SEARCH일 때는 기존 검색 내부 모델·임베딩 호출이 더해진다. 검색 함수 실행 한 번을 전체 LLM 호출 한 번으로 해석하지 않는다. 질문 선택·pending 병합·최종 reply는 아직 이 함수에서 실행하지 않는다.
+
+이번 테스트는 기대하는 모델 출력을 주입해 실제 추출 검증·분기·retrieval 경로를 실행했다. 검색 생략/확인에는 port 호출이 없고, 검색만 일시적으로 실패하면 조건 후보를 보존하며, 권한·설정 오류와 추출/조회 판단 실패는 전파하는지 확인했다. 실제 사용자 말의 분류 정확도는 5-4에서 별도로 평가한다.
+
+재실행: `be/`에서 `.venv/bin/python -m pytest app/ai/tests/test_planning_turn_flow.py -q`.
+
+### 7-7. 작업 5-3: 결과를 답변과 다음 턴의 기억으로 묶기
+
+핵심 함수는 [turn_assembly.py](../features/planning/turn_assembly.py)의 `assemble_planning_turn()`이다. 다음 순서로 동작하며 추가 모델 호출은 없다.
+
+```text
+5-2 중간 결과
+  → merge_pending: 아직 답을 못 받은 수정 메모를 갱신
+  → select_next_question: 질문 후보만 고름(아직 이력에 넣지 않음)
+  → 실제 표시 질문 하나 선택 후 그 질문만 이력에 반영
+  → assemble_planning_reply: 변경 확인·검색 안내·출처를 문장으로 만듦
+  → 생성 가능 판단 + PlanningTurnResult 일관성 검증
+```
+
+예를 들어 “인원 좀 줄이자”의 구체적인 답을 못 받았다면 인원 메모가 남는다. 다음에 “장소도 다시 정하자”고 하면 두 메모가 각각 관리된다. 인원을 40명으로 명확히 정하면 인원 메모만 정리한다. 기존 값이 이미 40명이어도 재확인은 유효하므로 `confirmed_fields`에 별도 기록한다. 값이 바뀐 목록인 `applied_operations`만으로는 이 경우를 알 수 없기 때문이다.
+
+질문 후보를 먼저 고른 뒤, 일정 충돌 → 조회 대상 확인 → 미해결 수정 → 일반 미정 순으로 표시할 질문을 정한다. 조회가 있는 턴은 일반 미정 질문을 생략한다. **후보로만 고르고 보여주지 않은 질문은 asked_fields에 넣지 않는다.**
+
+아래는 `be/`에서 실행 가능한 가상 중간 결과 예시다. API는 호출하지 않는다.
+
+```python
+from app.ai.features.planning.turn_schemas import PlanningTurnInput, RecordLookupState
+from app.ai.features.planning.schemas import ConditionExtractionOutput
+from app.ai.features.planning.nodes import validate_and_apply
+from app.ai.features.planning.lookup import RecordLookupDecision
+from app.ai.features.planning.turn_flow import PlanningTurnPreparation
+from app.ai.features.planning.turn_assembly import assemble_planning_turn
+
+request = PlanningTurnInput.model_validate({
+    "club_id": "club-1", "question_state": {"event_id": "e1"},
+    "extraction_input": {
+        "event_id": "e1", "request_id": "r1", "base_version": 0,
+        "conditions": {"event_type": "MT", "headcount": 60},
+        "current_message": {"id": "m1", "role": "user", "text": "40명으로 하고 작년 장소도 알려줘"},
+        "reference_date": "2026-10-23", "timezone": "Asia/Seoul",
+    },
+})
+extracted = validate_and_apply(request.extraction_input, ConditionExtractionOutput.model_validate({
+    "operations": [{"op": "SET", "change": {"field": "headcount", "value": 40},
+        "evidence": {"message_id": "m1", "quote": "40명으로"},
+        "offer_id": None, "context_evidence": []}], "unresolved": [],
+}))
+prepared = PlanningTurnPreparation(
+    extraction=extracted,
+    lookup_decision=RecordLookupDecision(action="SEARCH", query="작년 MT 장소", clarification=None,
+        evidence={"message_id": "m1", "quote": "작년 장소도 알려줘"}),
+    record_lookup=RecordLookupState(status="FAILED", error_code="TIMEOUT"),
+)
+result = assemble_planning_turn(request, prepared)
+assert result.collected.headcount == 40
+assert result.question is None
+assert result.next_question_state.asked_fields == ()
+assert request.extraction_input.conditions.headcount == 60
+print(result.reply)
+```
+
+출력:
+
+```text
+인원: 40명으로 반영했어요.
+과거 기록은 검색에 실패해 확인하지 못했어요.
+```
+
+입력의 60명을 직접 바꾼 것이 아니라 40명인 후보를 반환한다. DB에 저장됐다는 뜻은 아니다. 실제 내부 한 턴 호출은 `process_planning_turn(request, port=...)`이며, 이 함수가 5-2 준비와 5-3 조립을 연결한다. 공개 facade/BE 저장/FE 연결은 아직 별도다.
+
+검증은 테스트 대역 모델·port를 사용했다. 실제 모델의 분기·문장 품질 검증은 5-4에 남아 있다. 대상 불명의 수정 메모를 어떤 발화로 해결할지에 대한 해석은 아직 보수적으로 유지하며, 무관한 조건 변경으로 자동 삭제하지 않는다. 검색 평가셋 확대·실패 유형별 분석·검색 개선은 별도 후속 과제다.
+
+### 7-8. 작업 5-4: 실제 모델로 대화를 이어보면?
+
+합성 대화 5개·총 10턴을 실제 모델로 실행했고 복합 기대값은 9/10턴 일치했다. 예를 들어 “인원을 줄이자” → “40명으로” → “일정은 나중에 정할게”에서 인원 메모 해결·일정 보류·다음 질문이 이어졌다. 날짜가 충돌한 뒤 올바른 날짜 쌍을 알려주면 후보와 메모도 정상 갱신됐다.
+
+한 가지 문제도 드러났다. “그때 그 행사 비용은?”은 과거 조회의 대상만 모호한데, 추출 모델이 올해 예산 수정도 모호하다고 판단했다. 그러면 `merge_pending()`은 예산 메모를 보존하고 `assess_generation_readiness()`는 그 메모 때문에 초안을 보류한다. 즉 **각 코드의 규칙을 지켜도 앞선 모델이 잘못 분류하면 불필요한 보류가 생길 수 있다.** 현재 조건을 임의로 변경한 것은 아니며 후속 개선 대상으로 기록했다.
+
+핵심 코드의 주석은 이 경계를 따라 읽으면 된다.
+
+1. `turn_flow.py`: 먼저 조건 후보를 만들고, 조회 필요 여부를 판단한 뒤 SEARCH만 실행한다.
+2. `lookup.py`: 내부 ID·권한은 모델에게 넘기지 않고, 반환한 근거가 실제 발화에 있는지 검사한다.
+3. `turn_assembly.py`: 명시적으로 해결한 대상만 pending에서 빼고, 화면에 표시한 질문만 이력에 넣는다.
+
+평가 입력은 `tests/fixtures/eval/planning_turns.json`, 실행기는 `scripts/eval_planning_turns.py`다. 재실행 방법·전체 수치·한계는 [평가 기록](planning-evaluation.md), 실제 답변과 모델 중간 출력은 [결과 JSON](evaluation-results/planning-turns-2026-10-23.json)에 있다. 사람 검수 전의 작은 합성 세트이므로 9/10을 일반 정확도라고 부르지 않는다.
+
 ## 8. LangGraph와 ReAct는 언제 등장하나?
 
 현재는 부품 함수가 있다. LangGraph는 이 부품을 어떤 순서로 실행하고 상태를 어떻게 이어갈지 연결할 예정인 실행 구조다. 지금 별도 그래프가 이미 돌고 있는 것은 아니다.
