@@ -1,0 +1,2337 @@
+{
+  "state": "COMPLETED",
+  "started_at": "2026-10-23T10:37:45.894662+00:00",
+  "model": "gpt-5.6-luna",
+  "embedding_model": "text-embedding-3-small",
+  "reasoning": "provider default",
+  "cache": false,
+  "git_commit": "7103129c1ae90bf65c853a3b7771de83a6f3498e",
+  "git_dirty": true,
+  "review_status": "AI-authored synthetic draft; human review pending",
+  "prompt_versions": [
+    "planning-conditions-v1",
+    "planning-lookup-v1",
+    "records-rewrite-v1",
+    "records-assess-v1"
+  ],
+  "sha256": {
+    "features/planning/turn_flow.py": "63a946b801ba1166536e5516a8fd9702c417d76cf1236ed45ba5d312fbad6dc3",
+    "features/planning/turn_schemas.py": "f410e8dd718135b99d8f5c9420985738536a0eca7c81393809ffebe44aa9d824",
+    "features/planning/turn_assembly.py": "6789cc7014116c7bbb2a35e4289d45232550560783327b6d79b5539b7fa9c9cb",
+    "features/planning/records.py": "67bb27bd852352a843f2a133b5a8d5117bac97c7bd53eba686b1eef4e3a3ef18",
+    "features/planning/lookup.py": "21961cab140e091e4e79bfe31520a3b60138632868cf557f51ee001ec2806747",
+    "features/planning/questions.py": "ae303df4b6c53896be1369d8ae8d3ab7f75d1c19523d4d91ace0aa7a159ee859",
+    "features/planning/turn_policy.py": "b5e8890925a40059753403325906ccd87b3287c62ba9c41d6a106c790a73f276",
+    "features/planning/schemas.py": "414dd297215f83420fd3f8baf59f490802d1620e80ab561dad346314505583a4",
+    "features/planning/nodes.py": "3f5dc140eb6dc7b2179fe99f7a0fbb53faa4d782ad682547a4340babdbe88530",
+    "features/operations/schemas.py": "144fe428e5095ae6f338534d2ee871ce38b4b8a2a031c3332b9eecd754cb982e",
+    "features/operations/nodes.py": "d374dd390be0d8531489be86431eb690af2fd2b7b63fa0a516fb5229e4ef1cbe",
+    "features/retrieval/chunking.py": "51953ad13b73f9b053c77bfa18b166005c1e811ebc68da9206ee76eb858ce16a",
+    "features/retrieval/memory_port.py": "1662d8cd661ffaa2a38d8723630414683a9e52ad917657e68904fa8cbe864b1f",
+    "features/retrieval/schemas.py": "dddad514778edd0db445a14ec1e3cf77d81c007c6773a2186ee0f4ada44ed42f",
+    "features/retrieval/indexing.py": "808d6859e275bc0a2ce5d9f3503766272c7b4d01e1fddb013e0794812517d9dd",
+    "features/retrieval/nodes.py": "4da3399c6ea739d348e0ab0b8b921f07b326d3f42b5dd899e4756019c7bf6a4d",
+    "features/meeting/lookup.py": "bc4bc2a8fb50ee64b7f664bdda4e7ca662d87d8b90f0f2648f4b1b52e4871147",
+    "features/meeting/questions.py": "5bf90b52b41f744986c54c2dd1a5036d07d9361dc831023d58272dc31b1c7ef1",
+    "features/meeting/context.py": "c4ee69c3b7afb1549fc85c625ec50b224c654cc01e1e7d83b839af82acfb654f",
+    "features/meeting/schemas.py": "c27635ab9d8ececc56e6052b94936dc80486e51214aeecb59cafad1480290918",
+    "features/meeting/nodes.py": "3977ec331a87cc00a65e21e275d379e77d3467f84b5be9e719d3261c5ffaa03e",
+    "features/meeting/training.py": "7483b1017fe154f5d20745d22bd544e45e8dc6f282c149c02fba3e1bdc9666dc",
+    "features/meeting/prompts/judge.md": "ddc687c7be138658dda20c5d9381d592ba4a91cd7236c6cd5eca663d83e06166",
+    "features/meeting/prompts/query.md": "3e2e3a5dfe53f9192043166c198b208c6721b0418f047255459724bd697330d8",
+    "features/retrieval/prompts/assess_evidence.md": "0fd2a36a66901811c5936c71c47a08a3eb8fa28069867ebbcc5b2ac6b19e7738",
+    "features/retrieval/prompts/rewrite_query.md": "f883566c6015922ff5d23ac3ac1bc3c9aa9e7d8f387190264ec98e6dcd546e09",
+    "features/planning/prompts/decide_lookup.md": "3c2a3bbdfb7ba10f6fe7b3640431310db436d6bd42df213aa103406761658b82",
+    "features/planning/prompts/extract_conditions.md": "b4aaf9d1c66d57c7739526bb90dd6661224c1ed650fdede7ed30d00c8df8735b",
+    "tests/fixtures/records/feedback_2025_autumn_mt.json": "b507d6a04abcb08f95ca5f6b65dafb234cde2ac423a78ef2cb5a767bd7ac6d3c",
+    "tests/fixtures/records/ledger_2023.json": "8bb5e693e9504601120b33d0b3329d129345aff71db8c5942f7c7ceb6a3abb93",
+    "tests/fixtures/records/ledger_2024_h2.json": "41c45a379d893b340eff51d5e306b236ace705a723362b3c920f09ad86705652",
+    "tests/fixtures/records/ledger_2025_h1.json": "20c35a8ebeb7ef7a374bb511a6d191e11aab1b20ccf4b0ed46acae05784a33e3",
+    "tests/fixtures/records/ledger_2025_h2.json": "c361ec6200ef14c47df11d753dad0d84c5630b406f28b13ca70384098c1b5cfb",
+    "tests/fixtures/records/mt_2023_spring_report.json": "f31d779cadb955593943313c849b1c370c9d5b6c8de2e78f5091a935d8670543",
+    "tests/fixtures/records/mt_2024_autumn_report.json": "1f99620d8f72f445bdf828e20dc9ad2c8b4b4a298334d97397aa18b43958b8e5",
+    "tests/fixtures/records/mt_2025_autumn_report.json": "c05e60ed19c45631367026065e9b5007936cd866a5b05cfa38b9086ea1c8ec3d",
+    "tests/fixtures/records/mt_2025_spring_report.json": "df1bbd87c53679f69ee08246f40a13d1d01cd9385e06f1046ad1c0dfaf468620",
+    "tests/fixtures/records/notice_2025_spring_mt.json": "e346c337bcf2ee15395f4477d728ddea0aa2b62defb982501457b20ec1e9da3f",
+    "tests/fixtures/records/rules_2024.json": "6a7db08829a35dbd96a3be1d178f8711351d9f6aacd1184d1c6d343bed13c80e",
+    "tests/fixtures/records/welcome_2025_report.json": "4f0a54468725282ef02f40632d78eb8a7b65d75690ecbbd4cd0d87378625efec",
+    "tests/fixtures/eval/planning_turns.json": "2619310cac3f17f242635b02551b99b926604ab8441451db49b76d7cef39d2de",
+    "scripts/eval_planning_turns.py": "c099b0f082e49f7e2dc9efb70ecb0e37a234563202cd9430d68b9b27aa107c20"
+  },
+  "planned_turns": 10,
+  "turns": [
+    {
+      "dialog": "modify_defer",
+      "turn": 1,
+      "input": {
+        "club_id": "clb_keunnamu",
+        "extraction_input": {
+          "event_id": "eval-modify_defer",
+          "request_id": "eval-modify_defer-0",
+          "base_version": 0,
+          "conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 60,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "current_message": {
+            "id": "modify_defer-user-0",
+            "role": "user",
+            "text": "인원을 좀 줄이자"
+          },
+          "context_messages": [],
+          "reference_date": "2026-03-02",
+          "timezone": "Asia/Seoul",
+          "pending_offer": null
+        },
+        "question_state": {
+          "event_id": "eval-modify_defer",
+          "asked_fields": [],
+          "deferred_fields": [],
+          "last_question_fields": []
+        },
+        "pending_clarifications": []
+      },
+      "expected": {
+        "text": "인원을 좀 줄이자",
+        "action": "SKIP",
+        "updates": {},
+        "pending": [
+          "headcount"
+        ],
+        "question_fields": [
+          "headcount"
+        ],
+        "ready": false
+      },
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 60,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "state": "RETURNED",
+      "checks": {
+        "action": true,
+        "conditions": true,
+        "pending": true,
+        "question_fields": true,
+        "ready": true,
+        "input_unchanged": true,
+        "sources_retrieved": true,
+        "lookup_status": true
+      },
+      "passed": true,
+      "result": {
+        "event_id": "eval-modify_defer",
+        "request_id": "eval-modify_defer-0",
+        "base_version": 0,
+        "extraction": {
+          "event_id": "eval-modify_defer",
+          "request_id": "eval-modify_defer-0",
+          "base_version": 0,
+          "status": "NEEDS_CLARIFICATION",
+          "candidate_conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 60,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "applied_operations": [],
+          "confirmed_fields": [],
+          "unresolved": [
+            {
+              "field": "headcount",
+              "evidence": {
+                "message_id": "modify_defer-user-0",
+                "quote": "인원을 좀 줄이자"
+              },
+              "reason": "AMBIGUOUS_VALUE"
+            }
+          ],
+          "validation_errors": [],
+          "prompt_version": "planning-conditions-v1",
+          "extraction_ms": 1907
+        },
+        "collected": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 60,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "reply": "예상 인원을 몇 명으로 바꿀까요?",
+        "question": {
+          "fields": [
+            "headcount"
+          ],
+          "reason": "CLARIFY",
+          "text": "예상 인원을 몇 명으로 바꿀까요?",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "next_question_state": {
+          "event_id": "eval-modify_defer",
+          "asked_fields": [
+            "headcount"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "headcount"
+          ]
+        },
+        "pending_clarifications": [
+          {
+            "id": "eval-modify_defer-0:headcount",
+            "item": {
+              "field": "headcount",
+              "evidence": {
+                "message_id": "modify_defer-user-0",
+                "quote": "인원을 좀 줄이자"
+              },
+              "reason": "AMBIGUOUS_VALUE"
+            }
+          }
+        ],
+        "record_lookup": {
+          "status": "SKIPPED",
+          "result": null,
+          "clarification": null,
+          "error_code": null
+        },
+        "readiness": {
+          "ready_to_generate": false,
+          "reasons": [
+            "PENDING_MODIFICATION"
+          ],
+          "policy_version": "planning-readiness-v1"
+        }
+      },
+      "trace": [
+        {
+          "schema": "ConditionExtractionOutput",
+          "output": {
+            "operations": [],
+            "unresolved": [
+              {
+                "field": "headcount",
+                "evidence": {
+                  "message_id": "modify_defer-user-0",
+                  "quote": "인원을 좀 줄이자"
+                },
+                "reason": "AMBIGUOUS_VALUE"
+              }
+            ]
+          }
+        },
+        {
+          "schema": "RecordLookupDecision",
+          "output": {
+            "action": "SKIP",
+            "query": null,
+            "clarification": null,
+            "evidence": {
+              "message_id": "modify_defer-user-0",
+              "quote": "인원을 좀 줄이자"
+            }
+          }
+        }
+      ],
+      "ms": 3917,
+      "calls": {
+        "chat_http": 2,
+        "embedding_http": 0,
+        "port": 0
+      }
+    },
+    {
+      "dialog": "modify_defer",
+      "turn": 2,
+      "input": {
+        "club_id": "clb_keunnamu",
+        "extraction_input": {
+          "event_id": "eval-modify_defer",
+          "request_id": "eval-modify_defer-1",
+          "base_version": 1,
+          "conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 60,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "current_message": {
+            "id": "modify_defer-user-1",
+            "role": "user",
+            "text": "40명으로 하자"
+          },
+          "context_messages": [
+            {
+              "id": "modify_defer-user-0",
+              "role": "user",
+              "text": "인원을 좀 줄이자"
+            },
+            {
+              "id": "modify_defer-assistant-0",
+              "role": "assistant",
+              "text": "예상 인원을 몇 명으로 바꿀까요?"
+            }
+          ],
+          "reference_date": "2026-03-02",
+          "timezone": "Asia/Seoul",
+          "pending_offer": null
+        },
+        "question_state": {
+          "event_id": "eval-modify_defer",
+          "asked_fields": [
+            "headcount"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "headcount"
+          ]
+        },
+        "pending_clarifications": [
+          {
+            "id": "eval-modify_defer-0:headcount",
+            "item": {
+              "field": "headcount",
+              "evidence": {
+                "message_id": "modify_defer-user-0",
+                "quote": "인원을 좀 줄이자"
+              },
+              "reason": "AMBIGUOUS_VALUE"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "text": "40명으로 하자",
+        "action": "SKIP",
+        "updates": {
+          "headcount": 40
+        },
+        "pending": [],
+        "question_fields": [
+          "start_date",
+          "end_date"
+        ],
+        "ready": true
+      },
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 40,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "state": "RETURNED",
+      "checks": {
+        "action": true,
+        "conditions": true,
+        "pending": true,
+        "question_fields": true,
+        "ready": true,
+        "input_unchanged": true,
+        "sources_retrieved": true,
+        "lookup_status": true
+      },
+      "passed": true,
+      "result": {
+        "event_id": "eval-modify_defer",
+        "request_id": "eval-modify_defer-1",
+        "base_version": 1,
+        "extraction": {
+          "event_id": "eval-modify_defer",
+          "request_id": "eval-modify_defer-1",
+          "base_version": 1,
+          "status": "APPLIED",
+          "candidate_conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 40,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "applied_operations": [
+            {
+              "op": "SET",
+              "change": {
+                "field": "headcount",
+                "value": 40
+              },
+              "evidence": {
+                "message_id": "modify_defer-user-1",
+                "quote": "40명으로 하자"
+              },
+              "offer_id": null,
+              "context_evidence": []
+            }
+          ],
+          "confirmed_fields": [
+            "headcount"
+          ],
+          "unresolved": [],
+          "validation_errors": [],
+          "prompt_version": "planning-conditions-v1",
+          "extraction_ms": 2754
+        },
+        "collected": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 40,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "reply": "인원: 40명으로 반영했어요.\n행사 시작일과 종료일을 언제로 정할까요? 하루 행사라면 같은 날짜를 알려 주세요.",
+        "question": {
+          "fields": [
+            "start_date",
+            "end_date"
+          ],
+          "reason": "MISSING",
+          "text": "행사 시작일과 종료일을 언제로 정할까요? 하루 행사라면 같은 날짜를 알려 주세요.",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "next_question_state": {
+          "event_id": "eval-modify_defer",
+          "asked_fields": [
+            "end_date",
+            "headcount",
+            "start_date"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "start_date",
+            "end_date"
+          ]
+        },
+        "pending_clarifications": [],
+        "record_lookup": {
+          "status": "SKIPPED",
+          "result": null,
+          "clarification": null,
+          "error_code": null
+        },
+        "readiness": {
+          "ready_to_generate": true,
+          "reasons": [],
+          "policy_version": "planning-readiness-v1"
+        }
+      },
+      "trace": [
+        {
+          "schema": "ConditionExtractionOutput",
+          "output": {
+            "operations": [
+              {
+                "op": "SET",
+                "change": {
+                  "field": "headcount",
+                  "value": 40
+                },
+                "evidence": {
+                  "message_id": "modify_defer-user-1",
+                  "quote": "40명으로 하자"
+                },
+                "offer_id": null,
+                "context_evidence": []
+              }
+            ],
+            "unresolved": []
+          }
+        },
+        {
+          "schema": "RecordLookupDecision",
+          "output": {
+            "action": "SKIP",
+            "query": null,
+            "clarification": null,
+            "evidence": {
+              "message_id": "modify_defer-user-1",
+              "quote": "40명으로 하자"
+            }
+          }
+        }
+      ],
+      "ms": 4841,
+      "calls": {
+        "chat_http": 2,
+        "embedding_http": 0,
+        "port": 0
+      }
+    },
+    {
+      "dialog": "modify_defer",
+      "turn": 3,
+      "input": {
+        "club_id": "clb_keunnamu",
+        "extraction_input": {
+          "event_id": "eval-modify_defer",
+          "request_id": "eval-modify_defer-2",
+          "base_version": 2,
+          "conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 40,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "current_message": {
+            "id": "modify_defer-user-2",
+            "role": "user",
+            "text": "일정은 나중에 정할게"
+          },
+          "context_messages": [
+            {
+              "id": "modify_defer-user-0",
+              "role": "user",
+              "text": "인원을 좀 줄이자"
+            },
+            {
+              "id": "modify_defer-assistant-0",
+              "role": "assistant",
+              "text": "예상 인원을 몇 명으로 바꿀까요?"
+            },
+            {
+              "id": "modify_defer-user-1",
+              "role": "user",
+              "text": "40명으로 하자"
+            },
+            {
+              "id": "modify_defer-assistant-1",
+              "role": "assistant",
+              "text": "인원: 40명으로 반영했어요.\n행사 시작일과 종료일을 언제로 정할까요? 하루 행사라면 같은 날짜를 알려 주세요."
+            }
+          ],
+          "reference_date": "2026-03-02",
+          "timezone": "Asia/Seoul",
+          "pending_offer": null
+        },
+        "question_state": {
+          "event_id": "eval-modify_defer",
+          "asked_fields": [
+            "end_date",
+            "headcount",
+            "start_date"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "start_date",
+            "end_date"
+          ]
+        },
+        "pending_clarifications": []
+      },
+      "expected": {
+        "text": "일정은 나중에 정할게",
+        "action": "SKIP",
+        "updates": {},
+        "pending": [],
+        "question_fields": [
+          "location"
+        ],
+        "ready": true
+      },
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 40,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "state": "RETURNED",
+      "checks": {
+        "action": true,
+        "conditions": true,
+        "pending": true,
+        "question_fields": true,
+        "ready": true,
+        "input_unchanged": true,
+        "sources_retrieved": true,
+        "lookup_status": true
+      },
+      "passed": true,
+      "result": {
+        "event_id": "eval-modify_defer",
+        "request_id": "eval-modify_defer-2",
+        "base_version": 2,
+        "extraction": {
+          "event_id": "eval-modify_defer",
+          "request_id": "eval-modify_defer-2",
+          "base_version": 2,
+          "status": "NEEDS_CLARIFICATION",
+          "candidate_conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 40,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "applied_operations": [],
+          "confirmed_fields": [],
+          "unresolved": [
+            {
+              "field": null,
+              "evidence": {
+                "message_id": "modify_defer-user-2",
+                "quote": "일정은 나중에 정할게"
+              },
+              "reason": "DEFERRED"
+            }
+          ],
+          "validation_errors": [],
+          "prompt_version": "planning-conditions-v1",
+          "extraction_ms": 2786
+        },
+        "collected": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 40,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "reply": "행사 장소를 어디로 정할까요?",
+        "question": {
+          "fields": [
+            "location"
+          ],
+          "reason": "MISSING",
+          "text": "행사 장소를 어디로 정할까요?",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "next_question_state": {
+          "event_id": "eval-modify_defer",
+          "asked_fields": [
+            "end_date",
+            "headcount",
+            "location",
+            "start_date"
+          ],
+          "deferred_fields": [
+            "end_date",
+            "start_date"
+          ],
+          "last_question_fields": [
+            "location"
+          ]
+        },
+        "pending_clarifications": [],
+        "record_lookup": {
+          "status": "SKIPPED",
+          "result": null,
+          "clarification": null,
+          "error_code": null
+        },
+        "readiness": {
+          "ready_to_generate": true,
+          "reasons": [],
+          "policy_version": "planning-readiness-v1"
+        }
+      },
+      "trace": [
+        {
+          "schema": "ConditionExtractionOutput",
+          "output": {
+            "operations": [],
+            "unresolved": [
+              {
+                "field": null,
+                "evidence": {
+                  "message_id": "modify_defer-user-2",
+                  "quote": "일정은 나중에 정할게"
+                },
+                "reason": "DEFERRED"
+              }
+            ]
+          }
+        },
+        {
+          "schema": "RecordLookupDecision",
+          "output": {
+            "action": "SKIP",
+            "query": null,
+            "clarification": null,
+            "evidence": {
+              "message_id": "modify_defer-user-2",
+              "quote": "일정은 나중에 정할게"
+            }
+          }
+        }
+      ],
+      "ms": 4536,
+      "calls": {
+        "chat_http": 2,
+        "embedding_http": 0,
+        "port": 0
+      }
+    },
+    {
+      "dialog": "lookup_interrupt",
+      "turn": 1,
+      "input": {
+        "club_id": "clb_keunnamu",
+        "extraction_input": {
+          "event_id": "eval-lookup_interrupt",
+          "request_id": "eval-lookup_interrupt-0",
+          "base_version": 0,
+          "conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 60,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "current_message": {
+            "id": "lookup_interrupt-user-0",
+            "role": "user",
+            "text": "인원을 좀 줄이자"
+          },
+          "context_messages": [],
+          "reference_date": "2026-03-02",
+          "timezone": "Asia/Seoul",
+          "pending_offer": null
+        },
+        "question_state": {
+          "event_id": "eval-lookup_interrupt",
+          "asked_fields": [],
+          "deferred_fields": [],
+          "last_question_fields": []
+        },
+        "pending_clarifications": []
+      },
+      "expected": {
+        "text": "인원을 좀 줄이자",
+        "action": "SKIP",
+        "updates": {},
+        "pending": [
+          "headcount"
+        ],
+        "question_fields": [
+          "headcount"
+        ],
+        "ready": false
+      },
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 60,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "state": "RETURNED",
+      "checks": {
+        "action": true,
+        "conditions": true,
+        "pending": true,
+        "question_fields": true,
+        "ready": true,
+        "input_unchanged": true,
+        "sources_retrieved": true,
+        "lookup_status": true
+      },
+      "passed": true,
+      "result": {
+        "event_id": "eval-lookup_interrupt",
+        "request_id": "eval-lookup_interrupt-0",
+        "base_version": 0,
+        "extraction": {
+          "event_id": "eval-lookup_interrupt",
+          "request_id": "eval-lookup_interrupt-0",
+          "base_version": 0,
+          "status": "NEEDS_CLARIFICATION",
+          "candidate_conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 60,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "applied_operations": [],
+          "confirmed_fields": [],
+          "unresolved": [
+            {
+              "field": "headcount",
+              "evidence": {
+                "message_id": "lookup_interrupt-user-0",
+                "quote": "인원을 좀 줄이자"
+              },
+              "reason": "AMBIGUOUS_VALUE"
+            }
+          ],
+          "validation_errors": [],
+          "prompt_version": "planning-conditions-v1",
+          "extraction_ms": 2653
+        },
+        "collected": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 60,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "reply": "예상 인원을 몇 명으로 바꿀까요?",
+        "question": {
+          "fields": [
+            "headcount"
+          ],
+          "reason": "CLARIFY",
+          "text": "예상 인원을 몇 명으로 바꿀까요?",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "next_question_state": {
+          "event_id": "eval-lookup_interrupt",
+          "asked_fields": [
+            "headcount"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "headcount"
+          ]
+        },
+        "pending_clarifications": [
+          {
+            "id": "eval-lookup_interrupt-0:headcount",
+            "item": {
+              "field": "headcount",
+              "evidence": {
+                "message_id": "lookup_interrupt-user-0",
+                "quote": "인원을 좀 줄이자"
+              },
+              "reason": "AMBIGUOUS_VALUE"
+            }
+          }
+        ],
+        "record_lookup": {
+          "status": "SKIPPED",
+          "result": null,
+          "clarification": null,
+          "error_code": null
+        },
+        "readiness": {
+          "ready_to_generate": false,
+          "reasons": [
+            "PENDING_MODIFICATION"
+          ],
+          "policy_version": "planning-readiness-v1"
+        }
+      },
+      "trace": [
+        {
+          "schema": "ConditionExtractionOutput",
+          "output": {
+            "operations": [],
+            "unresolved": [
+              {
+                "field": "headcount",
+                "evidence": {
+                  "message_id": "lookup_interrupt-user-0",
+                  "quote": "인원을 좀 줄이자"
+                },
+                "reason": "AMBIGUOUS_VALUE"
+              }
+            ]
+          }
+        },
+        {
+          "schema": "RecordLookupDecision",
+          "output": {
+            "action": "SKIP",
+            "query": null,
+            "clarification": null,
+            "evidence": {
+              "message_id": "lookup_interrupt-user-0",
+              "quote": "인원을 좀 줄이자"
+            }
+          }
+        }
+      ],
+      "ms": 4326,
+      "calls": {
+        "chat_http": 2,
+        "embedding_http": 0,
+        "port": 0
+      }
+    },
+    {
+      "dialog": "lookup_interrupt",
+      "turn": 2,
+      "input": {
+        "club_id": "clb_keunnamu",
+        "extraction_input": {
+          "event_id": "eval-lookup_interrupt",
+          "request_id": "eval-lookup_interrupt-1",
+          "base_version": 1,
+          "conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 60,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "current_message": {
+            "id": "lookup_interrupt-user-1",
+            "role": "user",
+            "text": "작년 봄 MT 장소는 어디였어?"
+          },
+          "context_messages": [
+            {
+              "id": "lookup_interrupt-user-0",
+              "role": "user",
+              "text": "인원을 좀 줄이자"
+            },
+            {
+              "id": "lookup_interrupt-assistant-0",
+              "role": "assistant",
+              "text": "예상 인원을 몇 명으로 바꿀까요?"
+            }
+          ],
+          "reference_date": "2026-03-02",
+          "timezone": "Asia/Seoul",
+          "pending_offer": null
+        },
+        "question_state": {
+          "event_id": "eval-lookup_interrupt",
+          "asked_fields": [
+            "headcount"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "headcount"
+          ]
+        },
+        "pending_clarifications": [
+          {
+            "id": "eval-lookup_interrupt-0:headcount",
+            "item": {
+              "field": "headcount",
+              "evidence": {
+                "message_id": "lookup_interrupt-user-0",
+                "quote": "인원을 좀 줄이자"
+              },
+              "reason": "AMBIGUOUS_VALUE"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "text": "작년 봄 MT 장소는 어디였어?",
+        "action": "SEARCH",
+        "updates": {},
+        "pending": [
+          "headcount"
+        ],
+        "question_fields": [
+          "headcount"
+        ],
+        "ready": false
+      },
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 60,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "state": "RETURNED",
+      "checks": {
+        "action": true,
+        "conditions": true,
+        "pending": true,
+        "question_fields": true,
+        "ready": true,
+        "input_unchanged": true,
+        "sources_retrieved": true,
+        "lookup_status": true
+      },
+      "passed": true,
+      "result": {
+        "event_id": "eval-lookup_interrupt",
+        "request_id": "eval-lookup_interrupt-1",
+        "base_version": 1,
+        "extraction": {
+          "event_id": "eval-lookup_interrupt",
+          "request_id": "eval-lookup_interrupt-1",
+          "base_version": 1,
+          "status": "UNCHANGED",
+          "candidate_conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 60,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "applied_operations": [],
+          "confirmed_fields": [],
+          "unresolved": [],
+          "validation_errors": [],
+          "prompt_version": "planning-conditions-v1",
+          "extraction_ms": 1951
+        },
+        "collected": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 60,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "reply": "참고 기록: 2025년 봄 MT 장소는 가평 ○○펜션이다. (출처: 2025 봄 MT 결과보고.pdf · 1쪽 · 1. 행사 개요)\n예상 인원을 몇 명으로 바꿀까요?",
+        "question": {
+          "fields": [
+            "headcount"
+          ],
+          "reason": "CLARIFY",
+          "text": "예상 인원을 몇 명으로 바꿀까요?",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "next_question_state": {
+          "event_id": "eval-lookup_interrupt",
+          "asked_fields": [
+            "headcount"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "headcount"
+          ]
+        },
+        "pending_clarifications": [
+          {
+            "id": "eval-lookup_interrupt-0:headcount",
+            "item": {
+              "field": "headcount",
+              "evidence": {
+                "message_id": "lookup_interrupt-user-0",
+                "quote": "인원을 좀 줄이자"
+              },
+              "reason": "AMBIGUOUS_VALUE"
+            }
+          }
+        ],
+        "record_lookup": {
+          "status": "SUCCEEDED",
+          "result": {
+            "planning_event_id": "eval-lookup_interrupt",
+            "request_id": "eval-lookup_interrupt-1",
+            "base_version": 1,
+            "status": "AVAILABLE",
+            "cards": [
+              {
+                "content": "2025년 봄 MT 장소는 가평 ○○펜션이다.",
+                "sources": [
+                  {
+                    "record_id": "rec_mt_2025_report",
+                    "file_name": "2025 봄 MT 결과보고.pdf",
+                    "location": {
+                      "label": "1쪽 · 1. 행사 개요"
+                    }
+                  }
+                ]
+              }
+            ],
+            "not_found": [],
+            "conflicts": []
+          },
+          "clarification": null,
+          "error_code": null
+        },
+        "readiness": {
+          "ready_to_generate": false,
+          "reasons": [
+            "PENDING_MODIFICATION"
+          ],
+          "policy_version": "planning-readiness-v1"
+        }
+      },
+      "trace": [
+        {
+          "schema": "ConditionExtractionOutput",
+          "output": {
+            "operations": [],
+            "unresolved": []
+          }
+        },
+        {
+          "schema": "RecordLookupDecision",
+          "output": {
+            "action": "SEARCH",
+            "query": "작년 봄 MT 장소",
+            "clarification": null,
+            "evidence": {
+              "message_id": "lookup_interrupt-user-1",
+              "quote": "작년 봄 MT 장소는 어디였어?"
+            }
+          }
+        },
+        {
+          "schema": "SearchQueries",
+          "output": {
+            "queries": [
+              "2025 봄 MT 장소"
+            ]
+          }
+        },
+        {
+          "schema": "EvidenceAssessment",
+          "output": {
+            "sufficient": true,
+            "retry_queries": [],
+            "facts": [
+              {
+                "content": "2025년 봄 MT 장소는 가평 ○○펜션이다.",
+                "chunk_ids": [
+                  "c1"
+                ]
+              }
+            ],
+            "not_found": [],
+            "conflicts": []
+          }
+        }
+      ],
+      "ms": 7697,
+      "calls": {
+        "chat_http": 4,
+        "embedding_http": 1,
+        "port": 1
+      }
+    },
+    {
+      "dialog": "lookup_interrupt",
+      "turn": 3,
+      "input": {
+        "club_id": "clb_keunnamu",
+        "extraction_input": {
+          "event_id": "eval-lookup_interrupt",
+          "request_id": "eval-lookup_interrupt-2",
+          "base_version": 2,
+          "conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 60,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "current_message": {
+            "id": "lookup_interrupt-user-2",
+            "role": "user",
+            "text": "인원은 40명으로 정할게"
+          },
+          "context_messages": [
+            {
+              "id": "lookup_interrupt-user-0",
+              "role": "user",
+              "text": "인원을 좀 줄이자"
+            },
+            {
+              "id": "lookup_interrupt-assistant-0",
+              "role": "assistant",
+              "text": "예상 인원을 몇 명으로 바꿀까요?"
+            },
+            {
+              "id": "lookup_interrupt-user-1",
+              "role": "user",
+              "text": "작년 봄 MT 장소는 어디였어?"
+            },
+            {
+              "id": "lookup_interrupt-assistant-1",
+              "role": "assistant",
+              "text": "참고 기록: 2025년 봄 MT 장소는 가평 ○○펜션이다. (출처: 2025 봄 MT 결과보고.pdf · 1쪽 · 1. 행사 개요)\n예상 인원을 몇 명으로 바꿀까요?"
+            }
+          ],
+          "reference_date": "2026-03-02",
+          "timezone": "Asia/Seoul",
+          "pending_offer": null
+        },
+        "question_state": {
+          "event_id": "eval-lookup_interrupt",
+          "asked_fields": [
+            "headcount"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "headcount"
+          ]
+        },
+        "pending_clarifications": [
+          {
+            "id": "eval-lookup_interrupt-0:headcount",
+            "item": {
+              "field": "headcount",
+              "evidence": {
+                "message_id": "lookup_interrupt-user-0",
+                "quote": "인원을 좀 줄이자"
+              },
+              "reason": "AMBIGUOUS_VALUE"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "text": "인원은 40명으로 정할게",
+        "action": "SKIP",
+        "updates": {
+          "headcount": 40
+        },
+        "pending": [],
+        "question_fields": [
+          "start_date",
+          "end_date"
+        ],
+        "ready": true
+      },
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 40,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "state": "RETURNED",
+      "checks": {
+        "action": true,
+        "conditions": true,
+        "pending": true,
+        "question_fields": true,
+        "ready": true,
+        "input_unchanged": true,
+        "sources_retrieved": true,
+        "lookup_status": true
+      },
+      "passed": true,
+      "result": {
+        "event_id": "eval-lookup_interrupt",
+        "request_id": "eval-lookup_interrupt-2",
+        "base_version": 2,
+        "extraction": {
+          "event_id": "eval-lookup_interrupt",
+          "request_id": "eval-lookup_interrupt-2",
+          "base_version": 2,
+          "status": "APPLIED",
+          "candidate_conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 40,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "applied_operations": [
+            {
+              "op": "SET",
+              "change": {
+                "field": "headcount",
+                "value": 40
+              },
+              "evidence": {
+                "message_id": "lookup_interrupt-user-2",
+                "quote": "인원은 40명으로 정할게"
+              },
+              "offer_id": null,
+              "context_evidence": []
+            }
+          ],
+          "confirmed_fields": [
+            "headcount"
+          ],
+          "unresolved": [],
+          "validation_errors": [],
+          "prompt_version": "planning-conditions-v1",
+          "extraction_ms": 2264
+        },
+        "collected": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 40,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "reply": "인원: 40명으로 반영했어요.\n행사 시작일과 종료일을 언제로 정할까요? 하루 행사라면 같은 날짜를 알려 주세요.",
+        "question": {
+          "fields": [
+            "start_date",
+            "end_date"
+          ],
+          "reason": "MISSING",
+          "text": "행사 시작일과 종료일을 언제로 정할까요? 하루 행사라면 같은 날짜를 알려 주세요.",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "next_question_state": {
+          "event_id": "eval-lookup_interrupt",
+          "asked_fields": [
+            "end_date",
+            "headcount",
+            "start_date"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "start_date",
+            "end_date"
+          ]
+        },
+        "pending_clarifications": [],
+        "record_lookup": {
+          "status": "SKIPPED",
+          "result": null,
+          "clarification": null,
+          "error_code": null
+        },
+        "readiness": {
+          "ready_to_generate": true,
+          "reasons": [],
+          "policy_version": "planning-readiness-v1"
+        }
+      },
+      "trace": [
+        {
+          "schema": "ConditionExtractionOutput",
+          "output": {
+            "operations": [
+              {
+                "op": "SET",
+                "change": {
+                  "field": "headcount",
+                  "value": 40
+                },
+                "evidence": {
+                  "message_id": "lookup_interrupt-user-2",
+                  "quote": "인원은 40명으로 정할게"
+                },
+                "offer_id": null,
+                "context_evidence": []
+              }
+            ],
+            "unresolved": []
+          }
+        },
+        {
+          "schema": "RecordLookupDecision",
+          "output": {
+            "action": "SKIP",
+            "query": null,
+            "clarification": null,
+            "evidence": {
+              "message_id": "lookup_interrupt-user-2",
+              "quote": "인원은 40명으로 정할게"
+            }
+          }
+        }
+      ],
+      "ms": 4299,
+      "calls": {
+        "chat_http": 2,
+        "embedding_http": 0,
+        "port": 0
+      }
+    },
+    {
+      "dialog": "date_recovery",
+      "turn": 1,
+      "input": {
+        "club_id": "clb_keunnamu",
+        "extraction_input": {
+          "event_id": "eval-date_recovery",
+          "request_id": "eval-date_recovery-0",
+          "base_version": 0,
+          "conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": null,
+            "fee_per_person": null,
+            "start_date": "2027-03-20",
+            "end_date": "2027-03-21",
+            "location": null,
+            "budget_total": null
+          },
+          "current_message": {
+            "id": "date_recovery-user-0",
+            "role": "user",
+            "text": "시작일만 2027년 3월 22일로 바꿔줘"
+          },
+          "context_messages": [],
+          "reference_date": "2026-03-02",
+          "timezone": "Asia/Seoul",
+          "pending_offer": null
+        },
+        "question_state": {
+          "event_id": "eval-date_recovery",
+          "asked_fields": [],
+          "deferred_fields": [],
+          "last_question_fields": []
+        },
+        "pending_clarifications": []
+      },
+      "expected": {
+        "text": "시작일만 2027년 3월 22일로 바꿔줘",
+        "action": "SKIP",
+        "updates": {},
+        "pending": [
+          "start_date"
+        ],
+        "question_fields": [
+          "start_date",
+          "end_date"
+        ],
+        "ready": false
+      },
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": "2027-03-20",
+        "end_date": "2027-03-21",
+        "location": null,
+        "budget_total": null
+      },
+      "state": "RETURNED",
+      "checks": {
+        "action": true,
+        "conditions": true,
+        "pending": true,
+        "question_fields": true,
+        "ready": true,
+        "input_unchanged": true,
+        "sources_retrieved": true,
+        "lookup_status": true
+      },
+      "passed": true,
+      "result": {
+        "event_id": "eval-date_recovery",
+        "request_id": "eval-date_recovery-0",
+        "base_version": 0,
+        "extraction": {
+          "event_id": "eval-date_recovery",
+          "request_id": "eval-date_recovery-0",
+          "base_version": 0,
+          "status": "VALIDATION_FAILED",
+          "candidate_conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": null,
+            "fee_per_person": null,
+            "start_date": "2027-03-20",
+            "end_date": "2027-03-21",
+            "location": null,
+            "budget_total": null
+          },
+          "applied_operations": [],
+          "confirmed_fields": [],
+          "unresolved": [],
+          "validation_errors": [
+            "END_BEFORE_START"
+          ],
+          "prompt_version": "planning-conditions-v1",
+          "extraction_ms": 2266
+        },
+        "collected": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": null,
+          "start_date": "2027-03-20",
+          "end_date": "2027-03-21",
+          "location": null,
+          "budget_total": null
+        },
+        "reply": "요청하신 조건은 충돌이 있어 반영하지 않았어요.\n요청하신 일정은 종료일이 시작일보다 빨라 반영하지 않았어요. 시작일과 종료일을 다시 알려 주실래요?",
+        "question": {
+          "fields": [
+            "start_date",
+            "end_date"
+          ],
+          "reason": "CONFLICT",
+          "text": "요청하신 일정은 종료일이 시작일보다 빨라 반영하지 않았어요. 시작일과 종료일을 다시 알려 주실래요?",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "next_question_state": {
+          "event_id": "eval-date_recovery",
+          "asked_fields": [
+            "end_date",
+            "start_date"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "start_date",
+            "end_date"
+          ]
+        },
+        "pending_clarifications": [
+          {
+            "id": "eval-date_recovery-0:start_date",
+            "item": {
+              "field": "start_date",
+              "evidence": {
+                "message_id": "date_recovery-user-0",
+                "quote": "시작일만 2027년 3월 22일로 바꿔줘"
+              },
+              "reason": "AMBIGUOUS_VALUE"
+            }
+          }
+        ],
+        "record_lookup": {
+          "status": "SKIPPED",
+          "result": null,
+          "clarification": null,
+          "error_code": null
+        },
+        "readiness": {
+          "ready_to_generate": false,
+          "reasons": [
+            "CONDITION_CONFLICT",
+            "PENDING_MODIFICATION"
+          ],
+          "policy_version": "planning-readiness-v1"
+        }
+      },
+      "trace": [
+        {
+          "schema": "ConditionExtractionOutput",
+          "output": {
+            "operations": [
+              {
+                "op": "SET",
+                "change": {
+                  "field": "start_date",
+                  "value": "2027-03-22"
+                },
+                "evidence": {
+                  "message_id": "date_recovery-user-0",
+                  "quote": "시작일만 2027년 3월 22일로 바꿔줘"
+                },
+                "offer_id": null,
+                "context_evidence": []
+              }
+            ],
+            "unresolved": []
+          }
+        },
+        {
+          "schema": "RecordLookupDecision",
+          "output": {
+            "action": "SKIP",
+            "query": null,
+            "clarification": null,
+            "evidence": {
+              "message_id": "date_recovery-user-0",
+              "quote": "시작일만 2027년 3월 22일로 바꿔줘"
+            }
+          }
+        }
+      ],
+      "ms": 3952,
+      "calls": {
+        "chat_http": 2,
+        "embedding_http": 0,
+        "port": 0
+      }
+    },
+    {
+      "dialog": "date_recovery",
+      "turn": 2,
+      "input": {
+        "club_id": "clb_keunnamu",
+        "extraction_input": {
+          "event_id": "eval-date_recovery",
+          "request_id": "eval-date_recovery-1",
+          "base_version": 1,
+          "conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": null,
+            "fee_per_person": null,
+            "start_date": "2027-03-20",
+            "end_date": "2027-03-21",
+            "location": null,
+            "budget_total": null
+          },
+          "current_message": {
+            "id": "date_recovery-user-1",
+            "role": "user",
+            "text": "2027년 3월 22일부터 23일까지로 바꿔줘"
+          },
+          "context_messages": [
+            {
+              "id": "date_recovery-user-0",
+              "role": "user",
+              "text": "시작일만 2027년 3월 22일로 바꿔줘"
+            },
+            {
+              "id": "date_recovery-assistant-0",
+              "role": "assistant",
+              "text": "요청하신 조건은 충돌이 있어 반영하지 않았어요.\n요청하신 일정은 종료일이 시작일보다 빨라 반영하지 않았어요. 시작일과 종료일을 다시 알려 주실래요?"
+            }
+          ],
+          "reference_date": "2026-03-02",
+          "timezone": "Asia/Seoul",
+          "pending_offer": null
+        },
+        "question_state": {
+          "event_id": "eval-date_recovery",
+          "asked_fields": [
+            "end_date",
+            "start_date"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "start_date",
+            "end_date"
+          ]
+        },
+        "pending_clarifications": [
+          {
+            "id": "eval-date_recovery-0:start_date",
+            "item": {
+              "field": "start_date",
+              "evidence": {
+                "message_id": "date_recovery-user-0",
+                "quote": "시작일만 2027년 3월 22일로 바꿔줘"
+              },
+              "reason": "AMBIGUOUS_VALUE"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "text": "2027년 3월 22일부터 23일까지로 바꿔줘",
+        "action": "SKIP",
+        "updates": {
+          "start_date": "2027-03-22",
+          "end_date": "2027-03-23"
+        },
+        "pending": [],
+        "question_fields": [
+          "headcount"
+        ],
+        "ready": true
+      },
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": "2027-03-22",
+        "end_date": "2027-03-23",
+        "location": null,
+        "budget_total": null
+      },
+      "state": "RETURNED",
+      "checks": {
+        "action": true,
+        "conditions": true,
+        "pending": true,
+        "question_fields": true,
+        "ready": true,
+        "input_unchanged": true,
+        "sources_retrieved": true,
+        "lookup_status": true
+      },
+      "passed": true,
+      "result": {
+        "event_id": "eval-date_recovery",
+        "request_id": "eval-date_recovery-1",
+        "base_version": 1,
+        "extraction": {
+          "event_id": "eval-date_recovery",
+          "request_id": "eval-date_recovery-1",
+          "base_version": 1,
+          "status": "APPLIED",
+          "candidate_conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": null,
+            "fee_per_person": null,
+            "start_date": "2027-03-22",
+            "end_date": "2027-03-23",
+            "location": null,
+            "budget_total": null
+          },
+          "applied_operations": [
+            {
+              "op": "SET",
+              "change": {
+                "field": "start_date",
+                "value": "2027-03-22"
+              },
+              "evidence": {
+                "message_id": "date_recovery-user-1",
+                "quote": "2027년 3월 22일부터 23일까지"
+              },
+              "offer_id": null,
+              "context_evidence": []
+            },
+            {
+              "op": "SET",
+              "change": {
+                "field": "end_date",
+                "value": "2027-03-23"
+              },
+              "evidence": {
+                "message_id": "date_recovery-user-1",
+                "quote": "2027년 3월 22일부터 23일까지"
+              },
+              "offer_id": null,
+              "context_evidence": []
+            }
+          ],
+          "confirmed_fields": [
+            "start_date",
+            "end_date"
+          ],
+          "unresolved": [],
+          "validation_errors": [],
+          "prompt_version": "planning-conditions-v1",
+          "extraction_ms": 3247
+        },
+        "collected": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": null,
+          "start_date": "2027-03-22",
+          "end_date": "2027-03-23",
+          "location": null,
+          "budget_total": null
+        },
+        "reply": "시작일: 2027-03-22으로 반영했어요.\n종료일: 2027-03-23으로 반영했어요.\n예상 참가 인원은 몇 명인가요?",
+        "question": {
+          "fields": [
+            "headcount"
+          ],
+          "reason": "MISSING",
+          "text": "예상 참가 인원은 몇 명인가요?",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "next_question_state": {
+          "event_id": "eval-date_recovery",
+          "asked_fields": [
+            "end_date",
+            "headcount",
+            "start_date"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "headcount"
+          ]
+        },
+        "pending_clarifications": [],
+        "record_lookup": {
+          "status": "SKIPPED",
+          "result": null,
+          "clarification": null,
+          "error_code": null
+        },
+        "readiness": {
+          "ready_to_generate": true,
+          "reasons": [],
+          "policy_version": "planning-readiness-v1"
+        }
+      },
+      "trace": [
+        {
+          "schema": "ConditionExtractionOutput",
+          "output": {
+            "operations": [
+              {
+                "op": "SET",
+                "change": {
+                  "field": "start_date",
+                  "value": "2027-03-22"
+                },
+                "evidence": {
+                  "message_id": "date_recovery-user-1",
+                  "quote": "2027년 3월 22일부터 23일까지"
+                },
+                "offer_id": null,
+                "context_evidence": []
+              },
+              {
+                "op": "SET",
+                "change": {
+                  "field": "end_date",
+                  "value": "2027-03-23"
+                },
+                "evidence": {
+                  "message_id": "date_recovery-user-1",
+                  "quote": "2027년 3월 22일부터 23일까지"
+                },
+                "offer_id": null,
+                "context_evidence": []
+              }
+            ],
+            "unresolved": []
+          }
+        },
+        {
+          "schema": "RecordLookupDecision",
+          "output": {
+            "action": "SKIP",
+            "query": null,
+            "clarification": null,
+            "evidence": {
+              "message_id": "date_recovery-user-1",
+              "quote": "2027년 3월 22일부터 23일까지로 바꿔줘"
+            }
+          }
+        }
+      ],
+      "ms": 5073,
+      "calls": {
+        "chat_http": 2,
+        "embedding_http": 0,
+        "port": 0
+      }
+    },
+    {
+      "dialog": "unclear_lookup",
+      "turn": 1,
+      "input": {
+        "club_id": "clb_keunnamu",
+        "extraction_input": {
+          "event_id": "eval-unclear_lookup",
+          "request_id": "eval-unclear_lookup-0",
+          "base_version": 0,
+          "conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": null,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "current_message": {
+            "id": "unclear_lookup-user-0",
+            "role": "user",
+            "text": "그때 그 행사 비용은 얼마였어?"
+          },
+          "context_messages": [],
+          "reference_date": "2026-03-02",
+          "timezone": "Asia/Seoul",
+          "pending_offer": null
+        },
+        "question_state": {
+          "event_id": "eval-unclear_lookup",
+          "asked_fields": [],
+          "deferred_fields": [],
+          "last_question_fields": []
+        },
+        "pending_clarifications": []
+      },
+      "expected": {
+        "text": "그때 그 행사 비용은 얼마였어?",
+        "action": "CLARIFY",
+        "updates": {},
+        "pending": [],
+        "question_fields": [],
+        "ready": true
+      },
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "state": "RETURNED",
+      "checks": {
+        "action": true,
+        "conditions": true,
+        "pending": false,
+        "question_fields": true,
+        "ready": false,
+        "input_unchanged": true,
+        "sources_retrieved": true,
+        "lookup_status": true
+      },
+      "passed": false,
+      "result": {
+        "event_id": "eval-unclear_lookup",
+        "request_id": "eval-unclear_lookup-0",
+        "base_version": 0,
+        "extraction": {
+          "event_id": "eval-unclear_lookup",
+          "request_id": "eval-unclear_lookup-0",
+          "base_version": 0,
+          "status": "NEEDS_CLARIFICATION",
+          "candidate_conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": null,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "applied_operations": [],
+          "confirmed_fields": [],
+          "unresolved": [
+            {
+              "field": "budget_total",
+              "evidence": {
+                "message_id": "unclear_lookup-user-0",
+                "quote": "그때 그 행사 비용은 얼마였어?"
+              },
+              "reason": "AMBIGUOUS_REFERENCE"
+            }
+          ],
+          "validation_errors": [],
+          "prompt_version": "planning-conditions-v1",
+          "extraction_ms": 1766
+        },
+        "collected": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "reply": "어느 MT 행사의 비용을 조회할까요?",
+        "question": {
+          "fields": [],
+          "reason": "CLARIFY",
+          "text": "어느 MT 행사의 비용을 조회할까요?",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "next_question_state": {
+          "event_id": "eval-unclear_lookup",
+          "asked_fields": [],
+          "deferred_fields": [],
+          "last_question_fields": []
+        },
+        "pending_clarifications": [
+          {
+            "id": "eval-unclear_lookup-0:budget_total",
+            "item": {
+              "field": "budget_total",
+              "evidence": {
+                "message_id": "unclear_lookup-user-0",
+                "quote": "그때 그 행사 비용은 얼마였어?"
+              },
+              "reason": "AMBIGUOUS_REFERENCE"
+            }
+          }
+        ],
+        "record_lookup": {
+          "status": "NEEDS_CLARIFICATION",
+          "result": null,
+          "clarification": "어느 MT 행사의 비용을 조회할까요?",
+          "error_code": null
+        },
+        "readiness": {
+          "ready_to_generate": false,
+          "reasons": [
+            "PENDING_MODIFICATION"
+          ],
+          "policy_version": "planning-readiness-v1"
+        }
+      },
+      "trace": [
+        {
+          "schema": "ConditionExtractionOutput",
+          "output": {
+            "operations": [],
+            "unresolved": [
+              {
+                "field": "budget_total",
+                "evidence": {
+                  "message_id": "unclear_lookup-user-0",
+                  "quote": "그때 그 행사 비용은 얼마였어?"
+                },
+                "reason": "AMBIGUOUS_REFERENCE"
+              }
+            ]
+          }
+        },
+        {
+          "schema": "RecordLookupDecision",
+          "output": {
+            "action": "CLARIFY",
+            "query": null,
+            "clarification": "어느 MT 행사의 비용을 조회할까요?",
+            "evidence": {
+              "message_id": "unclear_lookup-user-0",
+              "quote": "그때 그 행사 비용은 얼마였어?"
+            }
+          }
+        }
+      ],
+      "ms": 3973,
+      "calls": {
+        "chat_http": 2,
+        "embedding_http": 0,
+        "port": 0
+      }
+    },
+    {
+      "dialog": "mixed",
+      "turn": 1,
+      "input": {
+        "club_id": "clb_keunnamu",
+        "extraction_input": {
+          "event_id": "eval-mixed",
+          "request_id": "eval-mixed-0",
+          "base_version": 0,
+          "conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 60,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "current_message": {
+            "id": "mixed-user-0",
+            "role": "user",
+            "text": "인원은 40명으로 하고 작년 봄 MT 장소도 알려줘"
+          },
+          "context_messages": [],
+          "reference_date": "2026-03-02",
+          "timezone": "Asia/Seoul",
+          "pending_offer": null
+        },
+        "question_state": {
+          "event_id": "eval-mixed",
+          "asked_fields": [],
+          "deferred_fields": [],
+          "last_question_fields": []
+        },
+        "pending_clarifications": []
+      },
+      "expected": {
+        "text": "인원은 40명으로 하고 작년 봄 MT 장소도 알려줘",
+        "action": "SEARCH",
+        "updates": {
+          "headcount": 40
+        },
+        "pending": [],
+        "question_fields": null,
+        "ready": true
+      },
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 40,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "state": "RETURNED",
+      "checks": {
+        "action": true,
+        "conditions": true,
+        "pending": true,
+        "question_fields": true,
+        "ready": true,
+        "input_unchanged": true,
+        "sources_retrieved": true,
+        "lookup_status": true
+      },
+      "passed": true,
+      "result": {
+        "event_id": "eval-mixed",
+        "request_id": "eval-mixed-0",
+        "base_version": 0,
+        "extraction": {
+          "event_id": "eval-mixed",
+          "request_id": "eval-mixed-0",
+          "base_version": 0,
+          "status": "APPLIED",
+          "candidate_conditions": {
+            "title": null,
+            "event_type": "MT",
+            "headcount": 40,
+            "fee_per_person": null,
+            "start_date": null,
+            "end_date": null,
+            "location": null,
+            "budget_total": null
+          },
+          "applied_operations": [
+            {
+              "op": "SET",
+              "change": {
+                "field": "headcount",
+                "value": 40
+              },
+              "evidence": {
+                "message_id": "mixed-user-0",
+                "quote": "인원은 40명으로 하고"
+              },
+              "offer_id": null,
+              "context_evidence": []
+            }
+          ],
+          "confirmed_fields": [
+            "headcount"
+          ],
+          "unresolved": [],
+          "validation_errors": [],
+          "prompt_version": "planning-conditions-v1",
+          "extraction_ms": 2871
+        },
+        "collected": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 40,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "reply": "인원: 40명으로 반영했어요.\n참고 기록: 2025년 봄 MT 장소는 가평 ○○펜션이다. (출처: 2025 봄 MT 결과보고.pdf · 1쪽 · 1. 행사 개요; 2025 봄 MT 참가 신청 안내.pdf · 1쪽)",
+        "question": null,
+        "next_question_state": {
+          "event_id": "eval-mixed",
+          "asked_fields": [],
+          "deferred_fields": [],
+          "last_question_fields": []
+        },
+        "pending_clarifications": [],
+        "record_lookup": {
+          "status": "SUCCEEDED",
+          "result": {
+            "planning_event_id": "eval-mixed",
+            "request_id": "eval-mixed-0",
+            "base_version": 0,
+            "status": "AVAILABLE",
+            "cards": [
+              {
+                "content": "2025년 봄 MT 장소는 가평 ○○펜션이다.",
+                "sources": [
+                  {
+                    "record_id": "rec_mt_2025_report",
+                    "file_name": "2025 봄 MT 결과보고.pdf",
+                    "location": {
+                      "label": "1쪽 · 1. 행사 개요"
+                    }
+                  },
+                  {
+                    "record_id": "rec_notice_2025_spring_mt",
+                    "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+                    "location": {
+                      "label": "1쪽"
+                    }
+                  }
+                ]
+              }
+            ],
+            "not_found": [],
+            "conflicts": []
+          },
+          "clarification": null,
+          "error_code": null
+        },
+        "readiness": {
+          "ready_to_generate": true,
+          "reasons": [],
+          "policy_version": "planning-readiness-v1"
+        }
+      },
+      "trace": [
+        {
+          "schema": "ConditionExtractionOutput",
+          "output": {
+            "operations": [
+              {
+                "op": "SET",
+                "change": {
+                  "field": "headcount",
+                  "value": 40
+                },
+                "evidence": {
+                  "message_id": "mixed-user-0",
+                  "quote": "인원은 40명으로 하고"
+                },
+                "offer_id": null,
+                "context_evidence": []
+              }
+            ],
+            "unresolved": []
+          }
+        },
+        {
+          "schema": "RecordLookupDecision",
+          "output": {
+            "action": "SEARCH",
+            "query": "작년 봄 MT 장소",
+            "clarification": null,
+            "evidence": {
+              "message_id": "mixed-user-0",
+              "quote": "인원은 40명으로 하고 작년 봄 MT 장소도 알려줘"
+            }
+          }
+        },
+        {
+          "schema": "SearchQueries",
+          "output": {
+            "queries": [
+              "2025 봄 MT 장소"
+            ]
+          }
+        },
+        {
+          "schema": "EvidenceAssessment",
+          "output": {
+            "sufficient": true,
+            "retry_queries": [],
+            "facts": [
+              {
+                "content": "2025년 봄 MT 장소는 가평 ○○펜션이다.",
+                "chunk_ids": [
+                  "c1",
+                  "c3"
+                ]
+              }
+            ],
+            "not_found": [],
+            "conflicts": []
+          }
+        }
+      ],
+      "ms": 10856,
+      "calls": {
+        "chat_http": 4,
+        "embedding_http": 1,
+        "port": 1
+      }
+    }
+  ],
+  "indexing": {
+    "records": 12,
+    "chunks": 36,
+    "ms": 12882,
+    "calls": {
+      "chat_http": 0,
+      "embedding_http": 12,
+      "port": 0
+    }
+  },
+  "calls": {
+    "chat_http": 24,
+    "embedding_http": 14,
+    "port": 2
+  },
+  "summary": {
+    "planned": 10,
+    "executed": 10,
+    "passed": 9,
+    "errors": 0,
+    "skipped": 0,
+    "median_ms": 4431.0,
+    "max_ms": 10856
+  }
+}
