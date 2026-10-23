@@ -60,6 +60,7 @@ def _question_text(field: ConditionField | None, *, changing: bool) -> str:
 
 def select_next_question(
     extraction: ConditionExtractionResult, state: PlanningQuestionState,
+    *, allow_missing: bool = True, record_question: bool = True,
 ) -> PlanningQuestionResult:
     """질문 상태는 반환만 한다. 응답과 함께 저장할 책임은 호출자에게 있다."""
     if extraction.event_id != state.event_id:
@@ -96,7 +97,7 @@ def select_next_question(
                 text=_question_text(item.field, changing=item.field is not None and getattr(conditions, item.field) is not None),
             )
             break
-        if question is None:
+        if question is None and allow_missing:
             for field in FIELD_ORDER:
                 fields = _topic(field)
                 if getattr(conditions, field) is not None or (set(fields) & (asked | deferred)):
@@ -110,13 +111,13 @@ def select_next_question(
                 question = PlanningQuestion(fields=fields, reason="MISSING", text=text)
                 break
 
-    if question is not None:
+    if question is not None and record_question:
         asked.update(question.fields)
     return PlanningQuestionResult(
         event_id=extraction.event_id, request_id=extraction.request_id, base_version=extraction.base_version,
         question=question,
         state=PlanningQuestionState(
             event_id=state.event_id, asked_fields=tuple(sorted(asked)), deferred_fields=tuple(sorted(deferred)),
-            last_question_fields=question.fields if question else (),
+            last_question_fields=question.fields if question and record_question else (),
         ),
     )

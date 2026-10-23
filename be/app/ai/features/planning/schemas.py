@@ -235,6 +235,8 @@ class ConditionExtractionResult(ContractModel):
     status: Literal["APPLIED", "UNCHANGED", "NEEDS_CLARIFICATION", "VALIDATION_FAILED"]
     candidate_conditions: PlanningConditions
     applied_operations: tuple[ConditionOperation, ...]
+    # 같은 값을 재확인한 SET/CLEAR도 미해결 수정을 해소할 수 있다.
+    confirmed_fields: tuple[ConditionField, ...] = ()
     unresolved: tuple[UnresolvedCondition, ...]
     validation_errors: tuple[str, ...]
     prompt_version: str
