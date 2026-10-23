@@ -12,9 +12,9 @@
 
 P1 큰 틀 잡기 → P2 흐름 만들기 → 단계 편집 → 저장·복원 → 행사 시작까지 설계한다. Discord, 회의 어시스턴트, 행사 시작 이후 operations 구현은 제외한다.
 
-- 사용자 경험과 요구사항 ID: [../../requirements.md](requirements.md)의 AI-PLAN-01~09.
-- 행사별 Agent 수명과 BE 책임: [../../architecture.md](architecture.md). 이 문서는 planning 내부 설계를 구체화한다.
-- 현재 구현된 타입: [contracts.py](../../../contracts.py), 공개 경계 설명: [../../contracts.md](contracts.md).
+- 사용자 경험과 요구사항 ID: [requirements.md](../../requirements.md)의 AI-PLAN-01~09.
+- 행사별 Agent 수명과 BE 책임: [architecture.md](../../architecture.md). 이 문서는 planning 내부 설계를 구체화한다.
+- 현재 구현된 타입: [contracts.py](../../../contracts.py), 공개 경계 설명: [contracts.md](../../contracts.md).
 - 화면 기준: [Figma v12](https://www.figma.com/design/DAIeI2ETmdQ5vjrPSZJ196?node-id=1130-2). P1 `1130:1933`, P2 `1130:2393`, 단계 수정 `1130:4315`, 행사 상세 `1130:3766`.
 - 축소 범위: [#112](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/112). 예산안 자동 작성·수납 대조·미납자 판정·송금·환급은 생성 대상에서 제외한다.
 
