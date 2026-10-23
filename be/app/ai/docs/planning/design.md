@@ -1,6 +1,6 @@
 # 행사계획 대화 Agent — 아이디어와 설계 초안
 
-> 2026-10-24 · [#165](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/165) · 설계 초안. 1단계 초안 State·조건 변경 처리기 구현(#166), LLM·그래프 연결은 다음 단계.
+> 2026-10-24 · [#165](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/165) · 1단계 초안 State·조건 변경 처리기(#166), 2단계 LLM·그래프(#167) 내부 구현. UI·저장·검색 연결은 후속 단계.
 > 현재 개발 방향의 진입점이다. 기존 [단계별 설계](legacy/plan_architecture.md)와 [코드 따라가기](legacy/planning-walkthrough.md)는 legacy 구현 참고다. 명칭·상세 타입·반복 제한은 구현과 실제 대화 결과에 맞춰 조정한다.
 
 ## 1. 만들려는 경험
@@ -144,7 +144,7 @@ LLM에는 “무엇을 할 수 있는가”와 “언제 사용하면 안 되는
 | 순서 | 작업 단위 | 완료를 확인하는 방법 |
 | --- | --- | --- |
 | 1 | 최소 State + 조건 변경 Tool 처리기: 구현 | SET/CLEAR/잠정/보류와 여러 조건 동시 변경을 코드로 확인. [명세](step-01-state-tool.md), [코드 예시](walkthrough.md) |
-| 2 | agent/tools 그래프 + 대화 지침: 예정 | 실제 모델로 Tool 사용·미사용, 상담 뒤 수락, “왜?” 설명을 확인 |
+| 2 | agent/tools 그래프 + 대화 지침: 내부 구현 | [명세](step-02-agent-graph.md), [실제 대화 평가](evaluation.md). 상담·수락 등 10턴의 상태·Tool 확인, 답변 추측성 표현 과제 있음 |
 | 3 | 기존 P1 테스트 UI 연결: 예정 | 대화와 조건 카드가 일치하고, 자유롭게 대화가 이어지는지 직접 확인 |
 | 4 | 과거 기록 Tool 연결: 예정 | 출처 유지, 현재 조건 보호, 검색 실패에도 대화 지속 |
 
