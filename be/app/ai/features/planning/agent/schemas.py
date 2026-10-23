@@ -10,6 +10,7 @@ from pydantic import Field, field_validator, model_validator
 from ....contracts import ContractModel, NonBlankStr
 from ..schemas import CalendarDate, PlanningMessage
 from .state import PlanningDraft
+from .record_tool import RecordLookupResult
 from .tools import ConditionUpdateResult
 
 
@@ -63,7 +64,7 @@ class PlanningAgentTurnInput(ContractModel):
 class ToolExecution(ContractModel):
     tool_call_id: NonBlankStr
     name: NonBlankStr
-    result: ConditionUpdateResult
+    result: ConditionUpdateResult | RecordLookupResult
 
 
 class PlanningAgentState(TypedDict):
@@ -74,6 +75,7 @@ class PlanningAgentState(TypedDict):
     tool_calls: int
     model_calls: int
     limit_reached: bool
+    record_lookup: RecordLookupResult | None
 
 
 class PlanningAgentTurnResult(ContractModel):
@@ -84,3 +86,4 @@ class PlanningAgentTurnResult(ContractModel):
     model_calls: int
     limit_reached: bool
     prompt_version: NonBlankStr
+    record_lookup: RecordLookupResult | None = None

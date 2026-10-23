@@ -11,13 +11,15 @@ from pydantic import ValidationError
 from ....errors import AIInvalidResponseError
 from ....llm import ainvoke_with_tools
 from .schemas import PlanningAgentState, PlanningAgentTurnInput, ToolExecution
+from .record_tool import RecordLookupResult, RecordSearcher, SearchPastEventsInput
 from .tools import ConditionUpdateResult, UpdateEventConditionsInput, update_event_conditions
 
 
-PROMPT_VERSION = "planning-agent-v1"
+PROMPT_VERSION = "planning-agent-v2"
 MAX_TOOL_CALLS = 3
 PROMPT = (Path(__file__).parent / "prompts/chat.md").read_text()
 TOOL_NAME = "update_event_conditions"
+SEARCH_TOOL_NAME = "search_past_events"
 
 
 def condition_tool_schema() -> dict:
@@ -36,17 +38,33 @@ class AgentInvoker(Protocol):
     async def __call__(self, messages: list[AnyMessage], *, allow_tools: bool) -> AIMessage: ...
 
 
-async def call_agent_model(messages: list[AnyMessage], *, allow_tools: bool) -> AIMessage:
-    return await ainvoke_with_tools(messages, tools=[condition_tool_schema()], allow_tools=allow_tools)
+def agent_tool_schemas(*, search_enabled: bool) -> list[dict]:
+    tools = [condition_tool_schema()]
+    if search_enabled:
+        schema = convert_to_openai_tool(SearchPastEventsInput)
+        schema["function"].update(name=SEARCH_TOOL_NAME, description=(
+            "동아리의 과거 행사 기록에서 질문의 근거를 찾는다. "
+            "연도·계절·행사와 무엇을 알고 싶은지 query에 명확히 적는다. "
+            "현재 행사 조건을 변경하지 않는다. 결과는 과거 사실·실제 출처·미확인·자료 차이를 포함한다."
+        ))
+        tools.append(schema)
+    return tools
+
+
+async def call_agent_model(messages: list[AnyMessage], *, allow_tools: bool,
+                           search_enabled: bool = False) -> AIMessage:
+    return await ainvoke_with_tools(messages, tools=agent_tool_schemas(search_enabled=search_enabled),
+                                   allow_tools=allow_tools)
 
 
 async def agent_node(
     state: PlanningAgentState, *, request: PlanningAgentTurnInput, invoke: AgentInvoker,
+    search_available: bool = False,
 ) -> dict:
     # “그렇게 하자”는 messages에서, 현재 금액은 최신 draft에서 확인한다.
     context = dict(current_message_id=request.current_message.id,
                    reference_date=request.reference_date.isoformat(), timezone=request.timezone,
-                   draft=state["draft"].model_dump(mode="json"))
+                   draft=state["draft"].model_dump(mode="json"), search_available=search_available)
     allow_tools = state["tool_calls"] < MAX_TOOL_CALLS
     instruction = PROMPT + "\n\n현재 실행 문맥(JSON 데이터):\n" + json.dumps(context, ensure_ascii=False)
     if not allow_tools:
@@ -66,21 +84,39 @@ async def agent_node(
     return {"messages": [response], "model_calls": state["model_calls"] + 1}
 
 
-def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInput) -> dict:
+async def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInput,
+                     search: RecordSearcher | None = None) -> dict:
     draft = state["draft"]
     executions = list(state["executions"])
     messages = []
     count = state["tool_calls"]
     limited = state["limit_reached"]
+    lookup = state["record_lookup"]
+    def reject(call, reason):
+        if call["name"] == SEARCH_TOOL_NAME:
+            query = call["args"].get("query")
+            return RecordLookupResult(status="rejected", query=query if isinstance(query, str) else None, reason=reason)
+        return ConditionUpdateResult(status="rejected", draft=draft, reason=reason)
     # 모델이 여러 호출을 내더라도 앞 Tool의 결과를 다음 Tool의 입력 상태로 사용한다.
     for call in state["messages"][-1].tool_calls:
         if count >= MAX_TOOL_CALLS:
             limited = True
-            result = ConditionUpdateResult(status="rejected", draft=draft, reason="이번 턴의 Tool 실행 한도에 도달했어요.")
+            result = reject(call, "이번 턴의 Tool 실행 한도에 도달했어요.")
         else:
             count += 1
-            if call["name"] != TOOL_NAME:
-                result = ConditionUpdateResult(status="rejected", draft=draft, reason="지원하지 않는 Tool이에요.")
+            if call["name"] == SEARCH_TOOL_NAME:
+                if search is None:
+                    result = reject(call, "기록 검색이 연결되지 않았어요.")
+                else:
+                    try:
+                        arguments = SearchPastEventsInput.model_validate(call["args"])
+                    except ValidationError:
+                        result = reject(call, "검색 질문 query만 전달해 주세요. 질문은 비어 있지 않은 4000자 이하의 글이어야 해요.")
+                    else:
+                        # 기존 검색 결과만 돌려받는다. 검색 Tool에는 현재 초안을 바꿀 권한이 없다.
+                        result = await search(arguments, draft, request.reference_date)
+            elif call["name"] != TOOL_NAME:
+                result = reject(call, "지원하지 않는 Tool이에요.")
             else:
                 try:
                     arguments = UpdateEventConditionsInput.model_validate(call["args"])
@@ -92,9 +128,12 @@ def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInput) ->
                         reason="Tool 인자 형식을 확인해 주세요: " + json.dumps(issues, ensure_ascii=False))
                 else:
                     result = update_event_conditions(draft, arguments, current_message=request.current_message)
-        draft = result.draft
+        if isinstance(result, ConditionUpdateResult):
+            draft = result.draft
+        else:
+            lookup = result
         executions.append(ToolExecution(tool_call_id=call["id"], name=call["name"], result=result))
         # 호출 ID와 연결한 결과를 LLM에 전달한다. '반영했어요' 문장을 코드가 만들지 않는다.
         messages.append(ToolMessage(content=result.model_dump_json(), tool_call_id=call["id"], name=call["name"]))
     return dict(messages=messages, draft=draft, executions=executions, tool_calls=count,
-                limit_reached=limited or count >= MAX_TOOL_CALLS)
+                limit_reached=limited or count >= MAX_TOOL_CALLS, record_lookup=lookup)
