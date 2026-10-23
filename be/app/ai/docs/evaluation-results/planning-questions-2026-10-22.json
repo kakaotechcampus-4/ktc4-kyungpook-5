@@ -1,0 +1,438 @@
+{
+  "model": "gpt-5.6-luna",
+  "prompt_version": "planning-conditions-v1",
+  "question_policy": "planning-questions-v1",
+  "review_status": "AI-authored draft, human review pending",
+  "matched": 6,
+  "count": 6,
+  "results": [
+    {
+      "case": "defer_people",
+      "turn": 0,
+      "input": "인원을 좀 줄이자",
+      "pass": true,
+      "expected_fields": [
+        "headcount"
+      ],
+      "extraction": {
+        "event_id": "defer_people",
+        "request_id": "defer_people-0",
+        "base_version": 0,
+        "status": "NEEDS_CLARIFICATION",
+        "candidate_conditions": {
+          "title": null,
+          "event_type": null,
+          "headcount": 32,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "applied_operations": [],
+        "unresolved": [
+          {
+            "field": "headcount",
+            "evidence": {
+              "message_id": "u0",
+              "quote": "인원을 좀 줄이자"
+            },
+            "reason": "AMBIGUOUS_VALUE"
+          }
+        ],
+        "validation_errors": [],
+        "prompt_version": "planning-conditions-v1",
+        "extraction_ms": 3019
+      },
+      "question_result": {
+        "event_id": "defer_people",
+        "request_id": "defer_people-0",
+        "base_version": 0,
+        "question": {
+          "fields": [
+            "headcount"
+          ],
+          "reason": "CLARIFY",
+          "text": "예상 인원을 몇 명으로 바꿀까요?",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "state": {
+          "event_id": "defer_people",
+          "asked_fields": [
+            "headcount"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "headcount"
+          ]
+        },
+        "policy_version": "planning-questions-v1"
+      }
+    },
+    {
+      "case": "defer_people",
+      "turn": 1,
+      "input": "아직 모르겠어",
+      "pass": true,
+      "expected_fields": [
+        "event_type"
+      ],
+      "extraction": {
+        "event_id": "defer_people",
+        "request_id": "defer_people-1",
+        "base_version": 1,
+        "status": "NEEDS_CLARIFICATION",
+        "candidate_conditions": {
+          "title": null,
+          "event_type": null,
+          "headcount": 32,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "applied_operations": [],
+        "unresolved": [
+          {
+            "field": "headcount",
+            "evidence": {
+              "message_id": "u1",
+              "quote": "아직 모르겠어"
+            },
+            "reason": "DEFERRED"
+          }
+        ],
+        "validation_errors": [],
+        "prompt_version": "planning-conditions-v1",
+        "extraction_ms": 7168
+      },
+      "question_result": {
+        "event_id": "defer_people",
+        "request_id": "defer_people-1",
+        "base_version": 1,
+        "question": {
+          "fields": [
+            "event_type"
+          ],
+          "reason": "MISSING",
+          "text": "어떤 종류의 행사를 준비하시나요?",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "state": {
+          "event_id": "defer_people",
+          "asked_fields": [
+            "event_type",
+            "headcount"
+          ],
+          "deferred_fields": [
+            "headcount"
+          ],
+          "last_question_fields": [
+            "event_type"
+          ]
+        },
+        "policy_version": "planning-questions-v1"
+      }
+    },
+    {
+      "case": "answer_people",
+      "turn": 0,
+      "input": "인원을 좀 줄이자",
+      "pass": true,
+      "expected_fields": [
+        "headcount"
+      ],
+      "extraction": {
+        "event_id": "answer_people",
+        "request_id": "answer_people-0",
+        "base_version": 0,
+        "status": "NEEDS_CLARIFICATION",
+        "candidate_conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 32,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "applied_operations": [],
+        "unresolved": [
+          {
+            "field": "headcount",
+            "evidence": {
+              "message_id": "u0",
+              "quote": "인원을 좀 줄이자"
+            },
+            "reason": "AMBIGUOUS_VALUE"
+          }
+        ],
+        "validation_errors": [],
+        "prompt_version": "planning-conditions-v1",
+        "extraction_ms": 2091
+      },
+      "question_result": {
+        "event_id": "answer_people",
+        "request_id": "answer_people-0",
+        "base_version": 0,
+        "question": {
+          "fields": [
+            "headcount"
+          ],
+          "reason": "CLARIFY",
+          "text": "예상 인원을 몇 명으로 바꿀까요?",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "state": {
+          "event_id": "answer_people",
+          "asked_fields": [
+            "headcount"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "headcount"
+          ]
+        },
+        "policy_version": "planning-questions-v1"
+      }
+    },
+    {
+      "case": "answer_people",
+      "turn": 1,
+      "input": "40명으로 하자",
+      "pass": true,
+      "expected_fields": [
+        "start_date",
+        "end_date"
+      ],
+      "extraction": {
+        "event_id": "answer_people",
+        "request_id": "answer_people-1",
+        "base_version": 1,
+        "status": "APPLIED",
+        "candidate_conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 40,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "applied_operations": [
+          {
+            "op": "SET",
+            "change": {
+              "field": "headcount",
+              "value": 40
+            },
+            "evidence": {
+              "message_id": "u1",
+              "quote": "40명으로 하자"
+            },
+            "offer_id": null,
+            "context_evidence": []
+          }
+        ],
+        "unresolved": [],
+        "validation_errors": [],
+        "prompt_version": "planning-conditions-v1",
+        "extraction_ms": 2334
+      },
+      "question_result": {
+        "event_id": "answer_people",
+        "request_id": "answer_people-1",
+        "base_version": 1,
+        "question": {
+          "fields": [
+            "start_date",
+            "end_date"
+          ],
+          "reason": "MISSING",
+          "text": "행사 시작일과 종료일을 언제로 정할까요? 하루 행사라면 같은 날짜를 알려 주세요.",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "state": {
+          "event_id": "answer_people",
+          "asked_fields": [
+            "end_date",
+            "headcount",
+            "start_date"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "start_date",
+            "end_date"
+          ]
+        },
+        "policy_version": "planning-questions-v1"
+      }
+    },
+    {
+      "case": "defer_dates",
+      "turn": 0,
+      "input": "일정은 다음 달쯤으로 하자",
+      "pass": true,
+      "expected_fields": [
+        "start_date",
+        "end_date"
+      ],
+      "extraction": {
+        "event_id": "defer_dates",
+        "request_id": "defer_dates-0",
+        "base_version": 0,
+        "status": "NEEDS_CLARIFICATION",
+        "candidate_conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "applied_operations": [],
+        "unresolved": [
+          {
+            "field": "start_date",
+            "evidence": {
+              "message_id": "u0",
+              "quote": "다음 달쯤"
+            },
+            "reason": "INCOMPLETE_DATE"
+          }
+        ],
+        "validation_errors": [],
+        "prompt_version": "planning-conditions-v1",
+        "extraction_ms": 2121
+      },
+      "question_result": {
+        "event_id": "defer_dates",
+        "request_id": "defer_dates-0",
+        "base_version": 0,
+        "question": {
+          "fields": [
+            "start_date",
+            "end_date"
+          ],
+          "reason": "CLARIFY",
+          "text": "행사 시작일과 종료일을 언제로 정할까요? 하루 행사라면 같은 날짜를 알려 주세요.",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "state": {
+          "event_id": "defer_dates",
+          "asked_fields": [
+            "end_date",
+            "start_date"
+          ],
+          "deferred_fields": [],
+          "last_question_fields": [
+            "start_date",
+            "end_date"
+          ]
+        },
+        "policy_version": "planning-questions-v1"
+      }
+    },
+    {
+      "case": "defer_dates",
+      "turn": 1,
+      "input": "일정은 나중에 정할게",
+      "pass": true,
+      "expected_fields": [
+        "headcount"
+      ],
+      "extraction": {
+        "event_id": "defer_dates",
+        "request_id": "defer_dates-1",
+        "base_version": 1,
+        "status": "NEEDS_CLARIFICATION",
+        "candidate_conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "applied_operations": [],
+        "unresolved": [
+          {
+            "field": null,
+            "evidence": {
+              "message_id": "u1",
+              "quote": "일정은 나중에 정할게"
+            },
+            "reason": "DEFERRED"
+          }
+        ],
+        "validation_errors": [],
+        "prompt_version": "planning-conditions-v1",
+        "extraction_ms": 2935
+      },
+      "question_result": {
+        "event_id": "defer_dates",
+        "request_id": "defer_dates-1",
+        "base_version": 1,
+        "question": {
+          "fields": [
+            "headcount"
+          ],
+          "reason": "MISSING",
+          "text": "예상 참가 인원은 몇 명인가요?",
+          "quick_replies": [
+            "아직 모르겠어요"
+          ],
+          "allow_free_text": true
+        },
+        "state": {
+          "event_id": "defer_dates",
+          "asked_fields": [
+            "end_date",
+            "headcount",
+            "start_date"
+          ],
+          "deferred_fields": [
+            "end_date",
+            "start_date"
+          ],
+          "last_question_fields": [
+            "headcount"
+          ]
+        },
+        "policy_version": "planning-questions-v1"
+      }
+    }
+  ],
+  "commit": "4998d03a6782743d5591eb1a0e7e89bebc780016",
+  "working_tree_dirty": true,
+  "date": "2026-10-22",
+  "source_note": "Live run before partial-date wording adjustment; partial-date behavior covered by unit tests afterwards.",
+  "current_source_sha256": {
+    "features/planning/questions.py": "1455f9bb131f469f665b64a9d80005babc66238b914531884447f50e030785b8",
+    "features/planning/nodes.py": "155c474dd0c1ef957dc8ba775af0179d332e93a88aa12b470b53dd4cf07ef332",
+    "features/planning/schemas.py": "a4023242b065c673ec128b2e3368d1e5510b6aa9f421df3838fde03d3ee291f8",
+    "features/planning/prompts/extract_conditions.md": "b4aaf9d1c66d57c7739526bb90dd6661224c1ed650fdede7ed30d00c8df8735b"
+  }
+}

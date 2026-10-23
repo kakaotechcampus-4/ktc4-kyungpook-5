@@ -20,7 +20,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 
 ## 구조
 
-계획 기능은 내부 `PlanningConditions`, `extract_condition_changes`를 구현했습니다. 구조화 LLM 추출 뒤 코드가 변경을 검증하고 조건 후보를 반환합니다. 실제 모델 검증 범위와 한계는 [평가 기록](docs/planning-evaluation.md)에 있습니다. 질문 선택·P1 응답 조립·BE 저장·LangGraph 통합은 후속 작업입니다.
+계획 기능은 내부 `PlanningConditions`, `extract_condition_changes`, `select_next_question`을 구현했습니다. 구조화 LLM 추출 뒤 코드가 변경을 검증하고 조건 후보를 반환하며, 질문 선택은 템플릿으로 한 주제만 묻고 보류·이미 질문한 항목을 추적합니다. 실제 모델 연결의 검증 범위와 한계는 [평가 기록](docs/planning-evaluation.md)에 있습니다. 전체 P1 응답 조립·계획 생성·BE 저장·LangGraph 통합·공개 API 승격은 미구현입니다.
 
 ```text
 be/app/ai/
