@@ -9,6 +9,7 @@ from pydantic import BeforeValidator, Field, field_validator, model_validator
 
 from app.ai.contracts import ContractModel, NonBlankStr
 from app.core.enums import EventType
+from ..retrieval.schemas import RecordConflict, RecordFact
 
 
 def _require_calendar_date(value: object) -> object:
@@ -60,6 +61,44 @@ class PlanningConditions(ContractModel):
             and self.end_date < self.start_date
         ):
             raise ValueError("종료일은 시작일보다 빠를 수 없습니다")
+        return self
+
+
+class PlanningRecordSearchInput(ContractModel):
+    """검색 의도가 정해진 뒤 사용하는 내부 입력. ID의 권한 검증은 BE 책임이다.
+
+    planning_event_id는 현재 계획 식별용이고 target_event_id만 검색 필터다.
+    기준 날짜는 호출자가 시간대를 고려해 제공한다. DB 저장·버전 검사는 하지 않는다.
+    """
+
+    club_id: NonBlankStr
+    planning_event_id: NonBlankStr
+    request_id: NonBlankStr
+    base_version: Annotated[int, Field(strict=True, ge=0)]
+    query: Annotated[NonBlankStr, Field(max_length=4000)]
+    reference_date: CalendarDate
+    conditions: PlanningConditions
+    target_event_id: NonBlankStr | None = None
+
+
+class PlanningRecordSearchResult(ContractModel):
+    """검색 근거를 보존한 계획용 내부 결과. AVAILABLE은 완전한 답변을 뜻하지 않는다."""
+
+    planning_event_id: NonBlankStr
+    request_id: NonBlankStr
+    base_version: Annotated[int, Field(strict=True, ge=0)]
+    status: Literal["AVAILABLE", "NOT_FOUND"]
+    cards: tuple[RecordFact, ...] = ()
+    not_found: tuple[NonBlankStr, ...] = ()
+    conflicts: tuple[RecordConflict, ...] = ()
+
+    @model_validator(mode="after")
+    def _require_consistent_status(self) -> Self:
+        has_evidence = bool(self.cards or self.conflicts)
+        if (self.status == "AVAILABLE") != has_evidence:
+            raise ValueError("AVAILABLE은 카드 또는 충돌 근거가 있을 때만 사용합니다")
+        if not has_evidence and not self.not_found:
+            raise ValueError("근거가 없으면 확인하지 못한 내용을 남겨야 합니다")
         return self
 
 
