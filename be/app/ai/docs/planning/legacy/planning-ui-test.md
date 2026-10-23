@@ -1,6 +1,6 @@
 # 행사계획 P1 · FE-AI 로컬 테스트
 
-> 2026-10-24: 현재 화면은 legacy 계획 채팅을 호출합니다. [새 대화 Agent 설계](../design.md) (#165)의 실제 그래프·Tool·잠정 표시가 연결된 상태는 아닙니다. 후속 작업에서 같은 화면으로 새 흐름을 확인합니다.
+> Legacy UI 구현 기록입니다. 현재 화면은 새 Agent를 호출합니다. 최신 실행·잠정 표시·검증 결과는 [3단계 UI 안내](../step-03-ui.md) (#168)를 읽습니다. 아래 계약과 샘플 기록 버튼은 이전 흐름의 참고 자료입니다.
 
 2026-10-23 / [#164](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/164). Figma [P1 초기 화면 1130:1938](https://www.figma.com/design/DAIeI2ETmdQ5vjrPSZJ196?node-id=1130-1938)과 기존 FE의 PlanChat/PlanFacts·공용 토리/색상 토큰을 활용했다. Figma 파일은 수정하지 않았다.
 
