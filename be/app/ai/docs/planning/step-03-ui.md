@@ -1,0 +1,62 @@
+# 3단계 — 새 대화 Agent를 P1 테스트 UI에 연결
+
+2026-10-24 · #168 · AI-PLAN-01·02·03. 2단계(#167)의 `run_planning_agent_turn()`을 기존 Figma P1 기반 테스트 화면에서 호출한다. 저장·공개 API·P2·검색 Tool은 후속 범위다.
+
+## 사용 예시와 흐름
+
+“MT이고 참가비는 25,000원” → 카드에 MT·25,000원 → “3만 원이면 어때?” → 상담, 카드 유지 → “일단 그렇게 잡자” → Tool 실행 → 카드에 30,000원과 잠정 표시.
+
+```text
+PlanningPlaygroundPage의 임시 draft/history + 이번 발화
+  → POST /__planning-test/agent/turn
+  → PlanningAgentTurnInput → run_planning_agent_turn
+  → agent → 필요한 경우 tools → agent
+  → reply + draft + history + executions
+  → 채팅은 reply, 조건 카드는 draft로 갱신
+```
+
+채팅 본문에서 숫자를 추출해 카드를 바꾸지 않는다. 상담 답변에 3만 원이 등장해도 실제 반환 draft가 25,000원이면 그대로 표시한다.
+
+## 테스트 전용 계약
+
+- 요청: `draft`, `current_message`, `history`, `reference_date`, `timezone`.
+- 응답: `{result: PlanningAgentTurnResult, elapsed_ms}`.
+- `history`는 AI가 반환한 메시지 목록을 FE가 그대로 다시 전달하는 불투명 데이터다. 화면에 표시하는 사용자/AI 말풍선과 별도로 보관하며 Tool 메시지를 삭제하거나 재작성하지 않는다.
+- `draft.conditions`의 값과 `condition_meta`의 잠정 여부, `deferred_topics`를 함께 채택한다. 잠정값도 표시하되 잠정임을 밝힌다. 무료(0원)와 미정(null)을 구분한다.
+- 성공 응답만 다음 턴의 기준으로 사용한다. 실패 시 기존 draft/history를 유지하며 같은 요청을 재시도할 수 있다.
+- 서버는 대화 세션을 저장하지 않는다. 새 대화/새로고침은 FE 메모리를 초기화한다. DB 저장 완료나 행사 최종 승인으로 표시하지 않는다.
+
+기존 `/__planning-test/turn`, `/records`는 legacy 검증용으로 보존하지만 새 화면에서는 호출하지 않는다. health에 `agent_version`을 포함해 새 API가 없는 오래된 서버를 구분한다.
+
+## 화면과 확인 기준
+
+기존 PlanChat/PlanFacts를 활용한다. 잠정 항목에는 잠정 표시, 보류 주제에는 사람이 이해할 이름을 보여준다. 기존 4/6 필수 조건·legacy 생성 가능 정책으로 새 대화를 제한하지 않는다. P2와 검색이 아직 실행 가능한 것처럼 버튼을 제공하지 않는다.
+
+전송 중 입력/초기화를 잠그고 상태를 안내한다. 모델/API 오류는 안전한 문구로 표시한다. 실패한 요청을 재시도할 때 사용자 말풍선은 한 번만 남긴다. 이력 60개 제한은 임의로 잘라 보내지 않고 새 대화를 안내한다.
+
+## 실행과 검증 계획
+
+프로젝트 루트의 터미널 두 개에서 실행한다.
+
+```sh
+cd be
+.venv/bin/python -m app.ai.scripts.planning_playground
+```
+
+```sh
+cd fe
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+[테스트 UI](http://127.0.0.1:5173/dev/planning)에서 새 대화를 시작한다. 현재 서버가 이미 실행 중이면 코드 반영을 위해 AI 서버를 재시작한다. `be/.env`의 모델 설정을 사용하며 FE에는 키를 넣지 않는다.
+
+실제 브라우저에서 상담→수락, 잠정 인원·참가비→날짜 보류, 설명 요청, 무료→미정, 오류/재시도, 초기화를 확인한다. API 없는 테스트로 서버의 전달·오류 비노출을 확인하고 FE 빌드·변경 파일 lint를 실행한다.
+
+## BE·FE 합의할 내용
+
+- 공개 API에 사용할 초안·잠정/보류·대화 이력 계약과 버전.
+- 실제 서비스에서 이력을 FE가 그대로 전달할지 BE가 세션으로 관리할지.
+- 요청 식별·동시 요청·늦은 응답 처리, 저장·승인 책임.
+- P2 진입 가능 판단과 검색 출처 UI는 후속 단계에서 합의.
+
+이 문서의 API는 로컬 테스트 전용이며 공개 BE 계약을 이미 확정한 것이 아니다.
