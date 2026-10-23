@@ -1,0 +1,168 @@
+{
+  "review_status": "AI-authored synthetic draft; human review pending",
+  "reference_date": "2026-03-02",
+  "timezone": "Asia/Seoul",
+  "dialogs": [
+    {
+      "id": "modify_defer",
+      "initial": {
+        "event_type": "MT",
+        "headcount": 60
+      },
+      "turns": [
+        {
+          "text": "인원을 좀 줄이자",
+          "action": "SKIP",
+          "updates": {},
+          "pending": [
+            "headcount"
+          ],
+          "question_fields": [
+            "headcount"
+          ],
+          "ready": false
+        },
+        {
+          "text": "40명으로 하자",
+          "action": "SKIP",
+          "updates": {
+            "headcount": 40
+          },
+          "pending": [],
+          "question_fields": [
+            "start_date",
+            "end_date"
+          ],
+          "ready": true
+        },
+        {
+          "text": "일정은 나중에 정할게",
+          "action": "SKIP",
+          "updates": {},
+          "pending": [],
+          "question_fields": [
+            "location"
+          ],
+          "ready": true
+        }
+      ]
+    },
+    {
+      "id": "lookup_interrupt",
+      "initial": {
+        "event_type": "MT",
+        "headcount": 60
+      },
+      "turns": [
+        {
+          "text": "인원을 좀 줄이자",
+          "action": "SKIP",
+          "updates": {},
+          "pending": [
+            "headcount"
+          ],
+          "question_fields": [
+            "headcount"
+          ],
+          "ready": false
+        },
+        {
+          "text": "작년 봄 MT 장소는 어디였어?",
+          "action": "SEARCH",
+          "updates": {},
+          "pending": [
+            "headcount"
+          ],
+          "question_fields": [
+            "headcount"
+          ],
+          "ready": false
+        },
+        {
+          "text": "인원은 40명으로 정할게",
+          "action": "SKIP",
+          "updates": {
+            "headcount": 40
+          },
+          "pending": [],
+          "question_fields": [
+            "start_date",
+            "end_date"
+          ],
+          "ready": true
+        }
+      ]
+    },
+    {
+      "id": "date_recovery",
+      "initial": {
+        "event_type": "MT",
+        "start_date": "2027-03-20",
+        "end_date": "2027-03-21"
+      },
+      "turns": [
+        {
+          "text": "시작일만 2027년 3월 22일로 바꿔줘",
+          "action": "SKIP",
+          "updates": {},
+          "pending": [
+            "start_date"
+          ],
+          "question_fields": [
+            "start_date",
+            "end_date"
+          ],
+          "ready": false
+        },
+        {
+          "text": "2027년 3월 22일부터 23일까지로 바꿔줘",
+          "action": "SKIP",
+          "updates": {
+            "start_date": "2027-03-22",
+            "end_date": "2027-03-23"
+          },
+          "pending": [],
+          "question_fields": [
+            "headcount"
+          ],
+          "ready": true
+        }
+      ]
+    },
+    {
+      "id": "unclear_lookup",
+      "initial": {
+        "event_type": "MT"
+      },
+      "turns": [
+        {
+          "text": "그때 그 행사 비용은 얼마였어?",
+          "action": "CLARIFY",
+          "updates": {},
+          "pending": [],
+          "question_fields": [],
+          "ready": true
+        }
+      ]
+    },
+    {
+      "id": "mixed",
+      "initial": {
+        "event_type": "MT",
+        "headcount": 60
+      },
+      "turns": [
+        {
+          "text": "인원은 40명으로 하고 작년 봄 MT 장소도 알려줘",
+          "action": "SEARCH",
+          "updates": {
+            "headcount": 40
+          },
+          "pending": [],
+          "question_fields": null,
+          "ready": true
+        }
+      ]
+    }
+  ]
+}
