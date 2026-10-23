@@ -12,7 +12,7 @@ from .lookup import LOOKUP_PROMPT_VERSION, LookupDecider, RecordLookupDecision, 
 from .nodes import Extractor, call_extraction_model, extract_condition_changes
 from .records import search_planning_records
 from .schemas import ConditionExtractionResult, PlanningRecordSearchInput
-from .turn_schemas import PlanningTurnInput, RecordLookupState
+from .turn_schemas import PlanningTurnInput, PlanningTurnResult, RecordLookupState
 
 
 class PlanningTurnPreparation(ContractModel):
@@ -72,3 +72,16 @@ async def prepare_planning_turn(
         else:
             lookup = RecordLookupState(status="SUCCEEDED", result=result)
     return PlanningTurnPreparation(extraction=extraction, lookup_decision=decision, record_lookup=lookup)
+
+
+async def process_planning_turn(
+    request: PlanningTurnInput, *, port: RecordSearchPort,
+    extract: Extractor = call_extraction_model, decide: LookupDecider = call_lookup_model,
+    embed: Embed = aembed_texts, invoke: Invoke = ainvoke_structured,
+) -> PlanningTurnResult:
+    """내부 한 턴 실행. 후보의 버전 검사·DB 저장은 BE 책임이다."""
+    from .turn_assembly import assemble_planning_turn
+
+    prepared = await prepare_planning_turn(request, port=port, extract=extract, decide=decide,
+                                           embed=embed, invoke=invoke)
+    return assemble_planning_turn(request, prepared)
