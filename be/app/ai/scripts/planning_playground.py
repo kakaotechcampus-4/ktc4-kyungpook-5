@@ -77,7 +77,8 @@ async def turn(request: PlanningTurnInput):
         except Exception as error:
             raise safe_failure(error) from None
         return {"result": result.model_dump(mode="json"),
-                "elapsed_ms": round((time.perf_counter() - started) * 1000)}
+                "elapsed_ms": round((time.perf_counter() - started) * 1000),
+                "fixture_count": fixture_count}
 
 
 if __name__ == "__main__":
