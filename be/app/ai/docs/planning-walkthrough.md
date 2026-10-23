@@ -1,6 +1,6 @@
 # 행사계획 코드 따라가기 — 한 문장이 조건과 질문이 되기까지
 
-> 현재 범위: 작업 1~3 내부 구현. 작업 4 이후는 연결 예정이다. 단계가 진행될 때 이 문서도 갱신한다.
+> 현재 범위: 작업 1~3 내부 구현. 작업 4-1 명세(#153)·4-2 검색 호출 연결(#154, 2026-10-23). 4-3 참고 결과 변환(#155)까지 구현했다. 단계가 진행될 때 이 문서도 갱신한다.
 
 오랜만에 돌아왔다면 **1절의 그림 → 3절의 한 턴 예시 → 7절의 다음 단계** 순서로 읽는다. 상세 제약·설계 결정은 [plan_architecture.md](plan_architecture.md), 실제 측정은 [planning-evaluation.md](planning-evaluation.md)를 참고한다.
 
@@ -27,7 +27,7 @@ flowchart TD
 | 1 | 조건을 담을 그릇과 입력 규칙 | `PlanningConditions` | 내부 구현 |
 | 2 | 말에서 변경할 부분을 찾고 검증 | `extract_condition_changes`, `validate_and_apply` | 내부 구현·실제 모델 연결 확인 |
 | 3 | 다음 질문 하나를 고름 | `select_next_question` | 내부 구현·2턴 통합 확인 |
-| 4 | 과거 기록을 찾아 근거 카드로 연결 | 기존 `search_records` 활용 예정 | planning 연결 미구현 |
+| 4 | 과거 기록을 찾아 근거 카드로 연결 | `build_record_search_request`, `search_planning_records` | 4-3까지 내부 구현, 실제 모델 평가는 별도 범위 |
 | 5 | 채팅·조건 카드·참고 카드를 한 응답으로 조립 | 공개 응답/facade 설계 예정 | 미구현 |
 | 6~13 | 계획 초안·편집·저장·행사 시작 | 설계 문서의 작업표 | 미구현 |
 
@@ -265,9 +265,9 @@ asyncio.run(main())
 
 질문이 `None`이어도 “모든 준비 완료”는 아니다. 더 자동으로 물을 항목이 없다는 뜻이며 계획 생성/행사 시작 조건은 다른 작업에서 판정한다. 오류를 변경 없음이나 성공으로 바꾸지 않는다.
 
-## 7. 다음 작업 4: 과거 기록은 어디에 연결되나?
+## 7. 작업 4: 과거 기록은 어디에 연결되나?
 
-작업 4는 기존 검색 기능을 **계획 대화의 참고 정보**로 연결하는 작업이다. 아래는 아직 구현 전인 흐름이다.
+작업 4는 기존 검색 기능을 **계획 대화의 참고 정보**로 연결하는 작업이다. 아래 전체 흐름 중 4-3의 검색 요청·호출·참고 결과 변환까지 구현했다. 검색 필요 판단과 화면 답변 조립은 아직 연결 전이다.
 
 ```text
 사용자: “작년 MT는 몇 명이었어?”
@@ -288,15 +288,87 @@ asyncio.run(main())
 - [retrieval/nodes.py](../features/retrieval/nodes.py): `search_records`의 검색어 정리 → 검색 → 근거 확인.
 - [ports.py](../ports.py): AI가 BE의 검색 기능을 호출하는 약속. 동아리 접근 범위는 BE 구현체가 보장한다.
 
-작업 4에서 새로 정할 작은 단위:
+작업 4-1에서 정리한 명세는 [설계 문서의 검색 연결 계약](plan_architecture.md#작업-4-1--과거-기록-연결-계약)에 있다. 아래 표는 구현된 요청·호출·카드 데이터 변환과 다음 화면 응답 조립 단계를 구분한다.
 
-1. 계획 대화에서 검색할 내용과 검색하지 않을 요청을 구분한다.
-2. `PlanningConditions`와 기존 검색용 `EventConditions` 사이의 필요한 필드만 변환한다. 현재 행사 ID를 과거 기록 검색 필터에 무조건 넣으면 과거 자료가 제외되므로 구분한다.
-3. facts/출처를 참고 카드용 결과로 변환하고, 기록 없음·서로 다른 기록·검색 실패를 나눈다.
-4. 같은 문맥에서 반복 검색하지 않는 범위와 갱신 조건을 정한다. 캐시/상태의 실제 저장은 BE와 합의한다.
-5. 검색해도 올해 조건이 자동으로 바뀌지 않는지 검증한다.
+| 순서 | 입력 → 거칠 코드 → 출력 |
+| --- | --- |
+| 1. 검색 요청 만들기 | 현재 유형 MT·40명 + “작년 MT 장소와 교통비” → `build_record_search_request()` → 유형·시기만 검색 맥락으로 전달. 올해 40명은 자동 검색 조건에 넣지 않음 |
+| 2. 기존 검색 호출 | `search_planning_records()` → 기존 `search_records()` → 사실·미확인 내용·충돌 |
+| 3. 카드 데이터 만들기 | `facts` → `build_planning_record_result()`의 `cards` → 내용과 문서명·원문 위치를 그대로 보존 |
+| 4. 화면 응답에 연결 | 참고 데이터 → 작업 5(예정) → 답변·조건 카드·참고 카드 조립 |
+
+현재 `search_planning_records()`는 검색의 `RecordSearchResult`를 `PlanningRecordSearchResult`로 변환한다. 장소는 찾았지만 교통비를 못 찾았다면 `status=AVAILABLE`, 장소 카드, `not_found=[교통비]`를 함께 반환한다. 여기서 AVAILABLE은 모든 질문에 답했다는 뜻이 아니라 참고할 근거가 있다는 뜻이다. 두 자료가 서로 다른 장소를 말하면 `conflicts`에 각각의 값과 출처를 남긴다. 어댑터가 승자를 고르지 않는다.
+
+아무 근거도 확인하지 못하면 빈 cards/conflicts와 not_found를 반환하며 `status=NOT_FOUND`가 된다. 반면 모델·임베딩·검색 port 호출 실패는 예외를 그대로 전달한다. “찾았지만 없음”과 “실패해서 확인 못 함”을 구분하기 위해서다. 실패 안내와 대화를 계속하는 정책은 작업 5에서 정한다.
+
+**주의할 ID가 두 개 있다.** `planning_event_id`는 지금 만드는 올해 행사, `target_event_id`는 검색할 특정 과거 행사다. 과거 행사 ID를 모르면 검색 필터는 null로 두고 같은 동아리 기록에서 찾는다. 올해 행사 ID를 무조건 넣으면 작년 기록이 검색 대상에서 빠진다. 동아리·행사 접근 권한은 BE가 확인한다.
+
+이번 연결에서는 기존 함수의 검색어 정리와 근거 판단을 활용한다. 외부 ReAct 반복·자동 검색 판단·캐시는 추가하지 않는다. 검색 함수 한 번도 내부에서 여러 검색어와 모델 호출을 사용할 수 있다. 4-3까지 타입·요청 매핑·호출·결과 변환을 구현했다. 실제 모델 연결 평가는 작업 4-4의 별도 범위다. 검색을 실행할지 선택하는 정책은 작업 5에서 연결한다.
 
 질문과 검색을 최종 화면에서 어떤 순서로 보여줄지는 작업 5의 책임이다. 단순 조회 질문에 무관한 조건 질문이 먼저 튀어나오지 않도록 조립 순서를 정해야 한다.
+
+### 7-1. 실제 코드로 입력이 어떻게 바뀌는지 보기
+
+아래 예시는 `be/`에서 Python으로 실행할 수 있다. 요청 변환만 하므로 API를 호출하지 않는다.
+
+```python
+from app.ai.features.planning.records import build_record_search_request
+from app.ai.features.planning.schemas import PlanningRecordSearchInput
+
+request = PlanningRecordSearchInput.model_validate({
+    "club_id": "club-1",
+    "planning_event_id": "event-2026",
+    "request_id": "turn-7",
+    "base_version": 3,
+    "query": "작년 MT 장소를 알려줘",
+    "reference_date": "2026-10-23",
+    "conditions": {"event_type": "MT", "headcount": 40},
+})
+search_request = build_record_search_request(request)
+assert search_request.event_id is None
+assert search_request.conditions.model_dump(exclude_none=True) == {"event_type": "MT"}
+assert request.conditions.headcount == 40
+print(search_request.model_dump(mode="json", exclude_none=True))
+```
+
+출력은 `club_id`, 원래 `query`, `today="2026-10-23"`, `conditions={"event_type": "MT"}`, `limit=5`다. `headcount=40`과 현재 행사 ID는 검색 요청에서 빠지지만 원래 입력에 남아 있다. `target_event_id="event-2025"`를 명시하면 검색 요청의 `event_id`는 그 값이 된다.
+
+실제 호출은 `await search_planning_records(request, port=권한이_적용된_검색_port)`다. 이 함수는 위 변환 함수를 거쳐 기존 `search_records(..., rewrite=True, max_rounds=1)`을 호출한다. `embed`와 `invoke`는 실제 API가 기본값이며 테스트에서는 가짜 구현을 주입할 수 있다. 별도의 검색 엔진이나 자유 답변 생성 모델을 추가한 것은 아니다.
+
+입력 타입은 [schemas.py](../features/planning/schemas.py), 두 함수는 [records.py](../features/planning/records.py), 연결 검증 사례는 [test_planning_records.py](../tests/test_planning_records.py)에 있다. 이번 검증은 실제 retrieval 경로와 가짜 외부 의존성을 사용했으며, 실제 모델 검색 품질·BE 권한 격리·FE 표시를 검증한 것은 아니다.
+
+### 7-2. 검색 결과가 참고 카드가 되는 실제 코드
+
+7-1 예시를 실행한 뒤 아래를 이어 실행할 수 있다. 검색 결과는 가상 자료이며 API를 호출하지 않는다.
+
+```python
+from app.ai.features.retrieval.schemas import RecordSearchResult
+from app.ai.features.planning.records import build_planning_record_result
+
+retrieved = RecordSearchResult.model_validate({
+    "facts": [{
+        "content": "2025년 MT 장소는 가평이었다",
+        "sources": [{"record_id": "report-2025", "file_name": "2025 MT.pdf",
+                     "location": {"label": "2쪽 · 장소"}}],
+    }],
+    "not_found": ["교통비"],
+})
+result = build_planning_record_result(request, retrieved)
+assert result.status == "AVAILABLE"
+assert result.cards == retrieved.facts
+assert result.not_found == ("교통비",)
+assert result.request_id == "turn-7"
+assert request.conditions.location is None
+print(result.model_dump(mode="json"))
+```
+
+`build_planning_record_result()`는 다음 세 가지를 코드로 처리한다.
+
+1. 입력에서 `planning_event_id`, `request_id`, `base_version`을 복사한다. 모델에게 ID를 만들게 하지 않는다.
+2. 검색 결과의 `facts`를 `cards`로 옮기고, `not_found`와 `conflicts`도 그대로 옮긴다. 사실·문서명·원문 위치를 다시 요약하지 않는다.
+3. 카드 또는 충돌이 있으면 `AVAILABLE`, 둘 다 없으면 `NOT_FOUND`로 정한다. 결과 타입도 이 관계를 검증한다. 출처 없는 카드, 근거 없는 AVAILABLE, 미확인 내용조차 없는 NOT_FOUND는 거절한다.
+
+예를 들어 두 문서가 가평/춘천으로 다르면 `cards=[]`, `conflicts=[각 장소와 출처]`, `status=AVAILABLE`일 수 있다. 이는 “장소가 확정됐다”가 아니라 “서로 다른 기록을 찾았다”는 뜻이다. 실제 호출 함수 `search_planning_records()`도 검색 후 이 변환 함수를 사용한다. 올해 조건을 수정하는 경로는 없다.
 
 ## 8. LangGraph와 ReAct는 언제 등장하나?
 

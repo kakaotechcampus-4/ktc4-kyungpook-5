@@ -1,6 +1,6 @@
 # 행사계획 설계 초안
 
-> 상태: 설계 초안 / 작업 1~3 내부 구현, 2026-10-22. 작업 순서는 합의한 출발점이며 세부 명칭·스키마·노드 분리는 구현과 측정 과정에서 바뀔 수 있다. BE·FE 공동 계약은 아직 합의되지 않았다. 이 문서의 타입은 현재 공개 API가 아니다.
+> 상태: 설계 초안 / 작업 1~3 내부 구현, 작업 4-1~4-3 검색 연결·참고 결과 변환 구현, 2026-10-23. 작업 순서는 합의한 출발점이며 세부 명칭·스키마·노드 분리는 구현과 측정 과정에서 바뀔 수 있다. BE·FE 공동 계약은 아직 합의되지 않았다. 이 문서의 타입은 현재 공개 API가 아니다.
 
 작업 1의 내부 조건 타입, 작업 2의 구조화 추출·검증·후보 적용, 작업 3의 단일 질문 선택·반복 방지를 구현했다. 실제 모델 연결 검증 결과는 [평가 현황](planning-evaluation.md)에 기록한다. BE 저장 연결과 LangGraph 통합은 아직 구현하지 않았다. 이후 실행 흐름은 설계 초안이다.
 
@@ -176,6 +176,140 @@ SET은 `change` 안에서 field별 union으로 값을 검증하고 CLEAR는 fiel
 - 날짜 충돌은 후보가 반영되지 않았음을 설명하고 새 일정만 묻는다. 기존 일정이 있더라도 충돌한 요청은 별도로 확인한다. 미지원 validation_errors는 예외로 올려 질문 없음으로 숨기지 않는다.
 
 예: 기존 32명 → 사용자 “인원을 좀 줄이자” → 작업 2의 headcount/AMBIGUOUS_VALUE → `select_next_question`의 현재 미해결 분기 → “예상 인원을 몇 명으로 바꿀까요?” → 다음 사용자 “아직 모르겠어” → 작업 2의 DEFERRED → 직전 headcount를 보류 → 다른 빈 항목으로 이동. 이 다중 턴 흐름은 실제 추출 모델과 별도 통합 검증한다.
+
+## 작업 4-1 — 과거 기록 연결 계약
+
+관련 이슈: [#153](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/153). 관련 요구사항: AI-PLAN-04, AI-RET-02·03. **작업 4-2에서 PlanningRecordSearchInput과 요청·호출 어댑터를 구현했다. 작업 4-3에서 PlanningRecordSearchResult와 카드 변환까지 구현했다.** 기존 retrieval 계약과 공개 contracts.py는 이번 작업에서 변경하지 않는다.
+
+### 목적과 책임
+
+사용자가 “작년 MT 장소를 참고하고 싶어”라고 말하면, 같은 동아리에서 관련 기록을 찾아 사실과 원문 위치를 참고 카드 데이터로 돌려준다. 검색 결과는 올해 조건에 자동 적용하지 않는다. 기록에 없는 비용·장소·인원을 추정해서 사실로 채우지 않는다.
+
+- 기존 코드: `retrieval.nodes.search_records`, `RecordSearchRequest/Result`, `RecordFact`, `RecordConflict`, `RecordSource`, `RecordSearchPort`.
+- 추가할 부분: planning 입력을 검색 요청으로 변환하고, 검색 결과를 planning 참고 데이터로 감싸는 어댑터. 별도 요약 LLM 호출은 추가하지 않는다.
+- 작업 5: 검색할지 결정하는 정책, 모호한 검색 대상 확인, 자유 답변·질문·조건·참고 카드 조립. 작업 4는 호출자가 이미 정한 검색 의도를 실행하는 부품이다.
+- BE: 사용자와 동아리·행사의 접근 권한 검증, 신뢰할 수 있는 ID·기준 날짜 제공, port 주입, 데이터 저장.
+- FE: 최종 응답 계약 합의 후 카드 표시와 원문 열기. AI가 접근 URL을 생성하지 않는다.
+
+### 작업 4-2 구현 범위
+
+[#154](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/154)는 입력 타입과 검색 호출까지만 구현한다. `schemas.py`에 `PlanningRecordSearchInput`, `records.py`에 `build_record_search_request()`와 `search_planning_records()`를 둔다. 현재 반환값은 작업 4-3에서 추가한 `PlanningRecordSearchResult`이며 계획 요청 ID·버전도 포함한다. 공개 API로 내보내지 않는다.
+
+테스트는 검색 함수 전체를 가짜로 바꾸지 않고 실제 retrieval 경로에 모델·임베딩·port를 주입한다. 실제 모델의 의미 정확도·지연은 작업 4-4의 별도 평가이며 단위 테스트 결과로 대체하지 않는다.
+
+### 입력: PlanningRecordSearchInput
+
+| 필드 | 타입·규칙 | 검색에 전달하는 방법 |
+| --- | --- | --- |
+| club_id | 비어 있지 않은 문자열, BE가 권한 확인 | `RecordSearchRequest.club_id` |
+| planning_event_id | 비어 있지 않은 문자열, 지금 계획 중인 행사 | 결과 식별용. 검색 필터에 자동 전달하지 않음 |
+| request_id | 비어 있지 않은 문자열 | 결과 식별용. 모델이 만들지 않음 |
+| base_version | 0 이상 엄격한 정수 | 기준 조건 버전. 전달만 하며 DB 충돌 검사는 BE 책임 |
+| query | 비어 있지 않은 문자열, 최대 4000자 제안 | 찾을 내용. 조회 대상·연도·질문을 보존해서 전달 |
+| reference_date | date, 호출자가 명시 | `today`. “작년” 해석에 서버의 암묵적 오늘을 사용하지 않음 |
+| conditions | 검증된 `PlanningConditions` | 아래 맥락 필드만 새 `EventConditions`로 변환 |
+| target_event_id | 비어 있지 않은 문자열 또는 null | 검색할 과거 행사가 명확하게 식별되고 권한 확인된 경우만 `event_id`로 전달 |
+
+`planning_event_id`와 `target_event_id`가 같다는 이유만으로 타입 오류로 만들지는 않는다. 같은 행사의 기존 자료를 명시적으로 조회할 수도 있다. 단, “작년”이라는 말에서 임의의 DB ID를 만들어서는 안 된다. 특정 과거 행사 ID를 모르면 `target_event_id=null`로 두고 같은 동아리 범위에서 검색한다. 이것이 다른 동아리까지 검색한다는 뜻은 아니다.
+
+기준 날짜는 BE가 정한 동아리/사용자 시간대 기준 날짜를 받는다. 날짜로 이미 정규화했으므로 이 어댑터에 별도 timezone 변환은 넣지 않는다. 입력 상한은 초기 제안이며 초과 입력은 거절하고 조용히 자르지 않는다.
+
+### 조건 → 기존 검색 요청 매핑
+
+기존 retrieval의 `_request_context()`는 `event_type`, `start_date`만 사용한다. 어댑터도 이 두 필드만 명시적으로 복사한다. 둘 다 없으면 `conditions=None`을 전달한다.
+
+```python
+# 실제 build_record_search_request의 흐름을 요약한 의사 코드.
+context = EventConditions(
+    event_type=request.conditions.event_type,
+    start_date=request.conditions.start_date,
+)
+search_request = RecordSearchRequest(
+    club_id=request.club_id,
+    query=request.query,
+    today=request.reference_date,
+    conditions=context,  # 두 값 모두 None이면 context 대신 None
+    event_id=request.target_event_id,
+    category=None,
+    limit=5,
+)
+```
+
+현재 인원·장소·참가비·예산·종료일·제목은 자동 전달하지 않는다. 예를 들어 올해 인원 40명을 검색 조건으로 넣어 작년 28명 기록을 놓치지 않도록 한다. 사용자가 “40명 규모였던 행사”를 명시적으로 찾는 경우에는 그 표현이 `query`에 남는다. 현재 시작일은 계획 맥락이며 과거 행사 날짜 필터가 아니다. “작년” 해석의 기준은 `reference_date`이고, 다른 연도 자료를 질문한 연도의 사실처럼 반환하지 않는지 연결 평가에서 확인한다.
+
+첫 연결은 `category=None`, 청크 수 `limit=5`, `rewrite=True`, `max_rounds=1`을 사용한다. 현재 retrieval은 검색어를 최대 3개로 제한하므로 **검색 함수 1회가 청크 검색 1회나 LLM 호출 1회를 뜻하지 않는다.** 검색어 정리·근거 판단·임베딩과 공급자 재시도도 비용·지연 측정에 포함한다. planning 외부 재검색, 세션 캐시, 자동 ReAct 루프는 추가하지 않는다. 이 값은 서비스 성능 보장이 아니라 기존 기본 동작을 유지하는 시작점이다.
+
+### 작업 4-3 구현 범위
+
+[#155](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/155)에서 아래 결과 타입과 `build_planning_record_result(request, result)`를 구현한다. `search_planning_records`의 내부 반환 타입을 기존 `RecordSearchResult`에서 `PlanningRecordSearchResult`로 변경한다. 기존 retrieval 반환 타입과 공개 API는 변경하지 않는다. cards/conflicts 존재 여부와 status가 일치해야 하며, NOT_FOUND는 not_found를 최소 하나 포함해야 한다. 식별 정보는 모델 출력이 아닌 입력에서 복사한다.
+
+### 출력: PlanningRecordSearchResult
+
+| 필드 | 의미·불변 조건 |
+| --- | --- |
+| planning_event_id, request_id, base_version | 입력에서 코드가 복사하는 식별 정보 |
+| status | `AVAILABLE` 또는 `NOT_FOUND`. 호출 성공 시에만 결과 반환 |
+| cards | `tuple[RecordFact, ...]`. 사실 하나와 해당 사실의 출처 묶음을 카드 데이터 하나로 사용 |
+| not_found | 기존 결과의 미확인 내용 전체. 확인된 사실이 있어도 함께 보존 |
+| conflicts | `tuple[RecordConflict, ...]`. 충돌 설명과 출처별 값 전체 보존 |
+
+기존 `RecordFact`를 재사용한다. 새 카드 ID·추천값·URL·별도의 요약 텍스트는 만들지 않는다. 카드 문장은 `RecordFact.content`, 출처는 `sources[].record_id/file_name/location.label`을 그대로 사용한다. 이 형태는 내부 데이터이며 FE 디자인의 카드 개수·문구 길이·렌더링 규칙을 확정하지 않는다. 원문 인용 문자열이나 페이지 번호는 현재 출처 계약에 없으므로 만들어 넣지 않는다.
+
+| 검색 결과/상황 | 어댑터 동작 | 후속 응답의 의미 |
+| --- | --- | --- |
+| facts 있음 | AVAILABLE + cards | 출처를 붙여 확인된 사실 표시 |
+| facts + not_found | AVAILABLE + cards + not_found | 확인된 부분과 미확인 부분을 함께 표시 |
+| conflicts 있음, facts는 없을 수 있음 | AVAILABLE + conflicts | 서로 다른 기록을 함께 제시하고 확정하지 않음 |
+| facts/conflicts 없음, not_found 있음 | NOT_FOUND + 빈 cards/conflicts | 이번 검색에서 확인하지 못함. 동아리에 자료가 전혀 없다고 단정하지 않음 |
+| 세 목록 모두 비어 있음 | 기존 RecordSearchResult에서 검증 실패 | 정상적인 기록 없음으로 포장하지 않음 |
+| 모델·임베딩 실패 | 기존 AIError 계열을 그대로 전파 | NOT_FOUND로 바꾸지 않음 |
+| 권한·port 실패 또는 예상 밖 오류 | 상위로 전파 | 필터를 풀어 재검색하거나 빈 성공 결과를 반환하지 않음 |
+
+`PARTIAL`/`CONFLICT`를 배타적인 status로 만들지 않는다. 한 검색에서 확인된 사실·미확인 항목·충돌이 동시에 있을 수 있으므로 세 목록으로 표현한다. `AVAILABLE`은 참고 근거가 있다는 뜻이며 완전하거나 충돌 없이 확정됐다는 뜻이 아니다. 원본 결과를 임의로 잘라 충돌·출처를 잃지 않도록 한다.
+
+작업 4의 실패 계약은 예외 전파다. 검색 실패 시에도 이미 수집한 조건으로 대화를 계속할지와 사용자 안내 방식은 작업 5의 명시적 오류 분기에서 정한다. 과거 검색 결과를 이번 검색 성공인 것처럼 재사용하지 않는다.
+
+### 한 턴 예시: 입력 → 변환 → 출력
+
+아래 자료·값은 명세 설명용 가상 예시이며 실제 검색 측정값이 아니다.
+
+```text
+입력:
+  club_id=club-1, planning_event_id=event-2026, target_event_id=null
+  request_id=turn-7, base_version=3, reference_date=2026-10-23
+  query="작년 MT 장소와 교통비를 알려줘"
+  conditions={event_type: MT, headcount: 40, location: null}
+변환:
+  RecordSearchRequest(event_id=None, today=2026-10-23,
+                      conditions=EventConditions(event_type=MT), ...)
+  → search_records(..., port=BE가 주입한 검색 기능)
+가상의 검색 결과:
+  facts=[{content: "2025년 MT 장소는 가평 ○○펜션이었다",
+          sources: [{record_id: "record-2025-mt", file_name: "2025 MT 결과보고.pdf",
+                     location: {label: "2쪽 · 장소"}}]}]
+  not_found=["2025년 MT 교통비"], conflicts=[]
+planning 출력:
+  status=AVAILABLE, cards=facts, not_found 그대로, conflicts=[]
+  planning_event_id=event-2026, request_id=turn-7, base_version=3
+올해 조건:
+  headcount=40, location=null 유지
+```
+
+반환 타입에는 `candidate_conditions`나 `SET/CLEAR`를 넣지 않는다. 참고 내용을 올해 조건으로 반영하려면 다음 턴의 명시적 요청을 작업 2가 해석해야 한다. “거기로 하자”처럼 짧은 수락을 처리하려면 작업 5에서 단일 제안과 문맥 근거를 연결해야 하며, 카드가 있다는 이유만으로 `pending_offer`를 자동 생성하지 않는다.
+
+### 구현 단위와 검증 기준
+
+| 단계 | 작은 작업 범위 | 확인할 결과 |
+| --- | --- | --- |
+| 4-2 (내부 구현) | 입력 타입, 조건 매핑, 기존 search_records 호출 어댑터 | 현재 행사 ID가 필터로 새지 않음, 주입된 port 사용, 조건 불변 |
+| 4-3 (내부 구현) | facts → cards 변환, not_found/conflicts 보존, 오류 전파 | 출처 값 보존, 일부 확인·충돌·없음·실패를 구별 |
+| 4-4 (후속 범위) | 실제 retrieval과 연결한 테스트·모델 평가·설명 갱신 | 호출 경로와 출력 검증, 지연·검색 호출 수·원본 조건 변경 여부 기록 |
+
+4-2(#154)는 요청 변환·호출, 4-3(#155)은 결과 타입·카드 변환을 담당한다. 현재 내부 호출은 두 단계를 연결한다. 실제 모델 평가(#156)는 별도 작업 범위이며 FE 표시와 공개 API 승격도 별도다.
+
+후속 검증 사례: (1) 다른 행사의 과거 자료 검색, (2) 같은 동아리/명시적 대상 필터 전달, (3) 검색용 조건에 올해 인원·장소가 들어가지 않음, (4) 사실+미확인 동시 존재, (5) 충돌만 존재, (6) 기록 없음, (7) 타임아웃·잘못된 모델 응답·port 오류 전파, (8) 성공/실패 모두 원본 조건 불변, (9) 기준 날짜에 따른 작년 해석과 다른 연도 혼동 방지, (10) 출처 문서명·위치 보존. 가짜 port 테스트는 필터 전달만 검증하므로 실제 BE 저장소의 동아리 격리 검증과 구분한다.
+
+공동 계약 합의가 필요한 항목은 작업 5 및 BE/FE 연결 이슈에서 다룬다: `club_id/reference_date/port` 공급 경로, planning_event_id와 조회 대상의 권한 검증, 공개 응답의 참고 카드 필드, 원문 열기 경로, 검색 실패 중 대화 지속 정책, 요청 버전별 결과 표시·저장. 이들이 남아 있으므로 AI-PLAN-04 전체를 완료 처리하지 않는다. 이번 작업 4-1에서는 문서와 기존 코드의 일치를 검토하며 모델을 호출하거나 새 성능 수치를 주장하지 않는다.
 
 ## LangGraph 노드 설계
 
