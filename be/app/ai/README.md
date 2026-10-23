@@ -5,8 +5,10 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 
 ## 관련 문서
 
+- [행사계획 코드 따라가기](docs/planning-walkthrough.md): 처음/오랜만에 읽을 때 보는 흐름 → 코드 → 입력·출력 예시 안내
 - [기능 요구사항](docs/requirements.md): 제공할 사용자 경험과 확인 기준
 - [아키텍처](docs/architecture.md): 기능별 역할과 AI·BE 책임 경계
+- [행사계획 설계 초안](docs/plan_architecture.md): 작은 작업 단위, 작업 1~2 조건·변경 추출 명세, LangGraph와 제한된 ReAct 구성
 - [BE-AI 데이터 계약](docs/contracts.md): 계약의 목적, 계획 대화·기록 색인 연동 예시, 회의 발화 처리 초안
 - [AI 오류 타입](docs/errors.md): 오류 분류와 모델 호출 오류 변환 기준
 - [기록 색인·검색 평가 기록](docs/retrieval-evaluation.md): 청킹·임베딩 측정값과 관찰
@@ -16,6 +18,8 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 - [이전 기록](docs/migration.md): 모듈 이전 내역과 BE 팀 후속 작업
 
 ## 구조
+
+계획 기능은 내부 `PlanningConditions`와 값 검증을 구현했습니다. LLM 조건 추출·질문 선택·P1 응답 조립·BE 저장·LangGraph 통합은 후속 작업입니다.
 
 ```text
 be/app/ai/
