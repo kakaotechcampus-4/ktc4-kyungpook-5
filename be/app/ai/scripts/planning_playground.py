@@ -7,6 +7,7 @@ be/에서 .venv/bin/python -m app.ai.scripts.planning_playground
 import asyncio
 import json
 import time
+from functools import partial
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -17,6 +18,7 @@ from app.ai.errors import AIConfigError, AIRetryableError
 from app.ai.features.planning.agent.graph import run_planning_agent_turn
 from app.ai.features.planning.agent.nodes import PROMPT_VERSION
 from app.ai.features.planning.agent.schemas import PlanningAgentTurnInput
+from app.ai.features.planning.agent.record_tool import search_past_events
 from app.ai.features.planning.turn_flow import process_planning_turn
 from app.ai.features.planning.turn_schemas import PlanningTurnInput
 from app.ai.features.retrieval.indexing import index_record_chunks
@@ -42,7 +44,7 @@ def safe_failure(error):
 async def health():
     settings = AISettings()
     return {"model": settings.model, "fixture_count": fixture_count, "storage": "memory-only",
-            "agent_version": PROMPT_VERSION}
+            "agent_version": PROMPT_VERSION, "record_search": True}
 
 
 @app.post("/__planning-test/agent/turn")
@@ -51,11 +53,13 @@ async def agent_turn(request: PlanningAgentTurnInput):
     async with lock:
         started = time.perf_counter()
         try:
-            result = await run_planning_agent_turn(request)
+            # 요청마다 현재 메모리를 주입한다. 샘플 색인으로 저장소가 교체돼도 이전 port에 묶이지 않는다.
+            result = await run_planning_agent_turn(request,
+                search=partial(search_past_events, club_id="clb_keunnamu", port=memory))
         except Exception as error:
             raise safe_failure(error) from None
         return {"result": result.model_dump(mode="json"),
-                "elapsed_ms": round((time.perf_counter() - started) * 1000)}
+                "elapsed_ms": round((time.perf_counter() - started) * 1000), "fixture_count": fixture_count}
 
 
 @app.post("/__planning-test/records")

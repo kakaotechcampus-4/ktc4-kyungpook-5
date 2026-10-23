@@ -17,8 +17,10 @@ def payload():
 
 def test_agent_api_forwards_draft_and_history_without_legacy_call(monkeypatch):
     calls=[]
-    async def process(request):
+    async def process(request, *, search):
         calls.append(request)
+        assert search.keywords["club_id"]=="clb_keunnamu"
+        assert search.keywords["port"] is playground.memory
         return SimpleNamespace(model_dump=lambda **_: {"reply":"3만 원을 기준으로 잡아둘게요.",
             "draft":{"conditions":{"fee_per_person":30000}},"history":[]})
     async def legacy(*args, **kwargs):
@@ -54,3 +56,4 @@ def test_health_reports_new_agent_version():
     response=call("GET","/__planning-test/health")
     assert response.status_code==200
     assert response.json()["agent_version"]==playground.PROMPT_VERSION
+    assert response.json()["record_search"] is True

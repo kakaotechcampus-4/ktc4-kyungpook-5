@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
+import { AgentReferences } from '@/features/planning/components/AgentReferences'
 import type { ChatMessage } from '@/features/planning/types'
 import { testApi, toAgentFacts, TOPIC_LABELS } from '@/features/planning/agent-playground'
-import type { AgentDraft, AgentHealth, AgentResult } from '@/features/planning/agent-playground'
+import type {
+  AgentDraft,
+  AgentHealth,
+  AgentResult,
+  RecordLookup,
+} from '@/features/planning/agent-playground'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
@@ -15,12 +21,21 @@ const greeting: ChatMessage = {
   quickReplies: ['MT', '워크숍', '신환회'],
 }
 const emptyDraft: AgentDraft = { conditions: {}, condition_meta: {}, deferred_topics: [] }
-const executionLabels = { applied: '반영', unchanged: '유지', rejected: '미반영' }
+const executionLabels: Record<string, string> = {
+  applied: '반영',
+  unchanged: '유지',
+  rejected: '미반영',
+  available: '조회 성공',
+  not_found: '근거 없음',
+  failed: '조회 실패',
+}
 
 async function connect() {
   const health = await testApi<AgentHealth>('health')
-  if (!health.agent_version)
-    throw new Error('새 Agent API를 사용하려면 AI 테스트 서버를 재시작해 주세요.')
+  if (!health.record_search)
+    throw new Error(
+      '검색 Tool이 연결된 새 Agent API를 사용하려면 AI 테스트 서버를 재시작해 주세요.',
+    )
   return health
 }
 
@@ -33,6 +48,9 @@ export default function PlanningPlaygroundPage() {
   const [retryRequest, setRetryRequest] = useState<{ id: string; text: string } | null>(null)
   const [health, setHealth] = useState<AgentHealth | null>(null)
   const [elapsed, setElapsed] = useState<number | null>(null)
+  const [reference, setReference] = useState<RecordLookup | null>(null)
+  const [preparingRecords, setPreparingRecords] = useState(false)
+  const [notice, setNotice] = useState('')
   const [referenceDate, setReferenceDate] = useState(() =>
     new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }),
   )
@@ -74,6 +92,8 @@ export default function PlanningPlaygroundPage() {
     setError('')
     setRetryRequest(null)
     setElapsed(null)
+    setReference(null)
+    setNotice('')
   }
 
   const send = async (text: string, retry = false) => {
@@ -84,10 +104,15 @@ export default function PlanningPlaygroundPage() {
     }
     setBusy(true)
     setError('')
+    setNotice('')
     const id = retry && retryRequest ? retryRequest.id : crypto.randomUUID()
     if (!retry) setMessages((previous) => [...previous, { id, from: '나', text }])
     try {
-      const response = await testApi<{ result: AgentResult; elapsed_ms: number }>('agent/turn', {
+      const response = await testApi<{
+        result: AgentResult
+        elapsed_ms: number
+        fixture_count: number
+      }>('agent/turn', {
         draft,
         history,
         current_message: { id, role: 'user', text },
@@ -95,6 +120,11 @@ export default function PlanningPlaygroundPage() {
         timezone: 'Asia/Seoul',
       })
       setLast(response.result)
+      // 조회하지 않은 턴에는 마지막 참고 자료를 유지한다. 새 실패/빈 결과는 이전 자료를 대체한다.
+      if (response.result.record_lookup) setReference(response.result.record_lookup)
+      setHealth((current) =>
+        current ? { ...current, fixture_count: response.fixture_count } : current,
+      )
       setElapsed(response.elapsed_ms)
       setMessages((previous) => [
         ...previous,
@@ -111,6 +141,26 @@ export default function PlanningPlaygroundPage() {
       setRetryRequest({ id, text })
     } finally {
       setBusy(false)
+    }
+  }
+
+  const loadRecords = async () => {
+    setBusy(true)
+    setPreparingRecords(true)
+    setError('')
+    setNotice('샘플 기록을 준비하고 있어요…')
+    try {
+      const result = await testApi<{ fixture_count: number }>('records', {})
+      setHealth((current) =>
+        current ? { ...current, fixture_count: result.fixture_count } : current,
+      )
+      setNotice(`샘플 기록 ${result.fixture_count}종을 준비했어요. 과거 행사에 관해 물어보세요.`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '기록 준비에 실패했어요.')
+      setNotice('')
+    } finally {
+      setBusy(false)
+      setPreparingRecords(false)
     }
   }
 
@@ -143,7 +193,20 @@ export default function PlanningPlaygroundPage() {
             onChange={(e) => setReferenceDate(e.target.value)}
           />
         </label>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={busy || !health || !!retryRequest || !!health?.fixture_count}
+          onClick={() => void loadRecords()}
+        >
+          {health?.fixture_count ? `샘플 ${health.fixture_count}종 준비됨` : '샘플 기록 준비'}
+        </Button>
       </div>
+      {notice && (
+        <p role="status" className="text-caption text-blue-700">
+          {notice}
+        </p>
+      )}
       {error && (
         <div
           role="alert"
@@ -178,7 +241,9 @@ export default function PlanningPlaygroundPage() {
           onSend={(text) => void send(text)}
           busy={busy}
           disabled={!health || !!retryRequest || history.length > 60}
-          busyLabel="토리가 이야기를 읽고 있어요…"
+          busyLabel={
+            preparingRecords ? '샘플 기록을 준비하고 있어요…' : '토리가 이야기를 읽고 있어요…'
+          }
           placeholder="자유롭게 이야기해 주세요"
         />
         <aside className="flex w-full flex-col gap-4 lg:w-[360px] lg:shrink-0">
@@ -218,6 +283,7 @@ export default function PlanningPlaygroundPage() {
               </p>
             )}
           </Card>
+          <AgentReferences lookup={reference} />
           <details className="rounded-xl border border-line bg-card p-4 text-caption">
             <summary className="cursor-pointer text-mute">
               처리 흐름 보기 · {elapsed == null ? '대기' : `${(elapsed / 1000).toFixed(2)}초`}

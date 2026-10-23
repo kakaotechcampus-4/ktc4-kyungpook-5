@@ -1,6 +1,7 @@
 // 로컬 테스트 계약. history는 AI가 반환한 형태 그대로 다음 요청에 전달한다.
 import { toFacts } from './playground'
 import type { Conditions } from './playground'
+import type { Fact } from './playground'
 import type { PlanFactKey } from './types'
 
 export { testApi } from './playground'
@@ -18,6 +19,16 @@ export interface AgentDraft {
   >
   deferred_topics: string[]
 }
+export interface RecordLookup {
+  status: 'available' | 'not_found' | 'failed' | 'rejected'
+  query: string | null
+  reason: string | null
+  result: {
+    facts: Fact[]
+    not_found: string[]
+    conflicts: { description: string; values: Fact[] }[]
+  } | null
+}
 export interface AgentResult {
   reply: string
   draft: AgentDraft
@@ -25,19 +36,24 @@ export interface AgentResult {
   executions: {
     tool_call_id: string
     name: string
-    result: {
-      status: 'applied' | 'unchanged' | 'rejected'
-      changed_fields: string[]
-      reason: string | null
-    }
+    result:
+      | RecordLookup
+      | {
+          status: 'applied' | 'unchanged' | 'rejected'
+          changed_fields: string[]
+          reason: string | null
+        }
   }[]
   model_calls: number
   limit_reached: boolean
   prompt_version: string
+  record_lookup: RecordLookup | null
 }
 export interface AgentHealth {
   model: string
   agent_version: string
+  fixture_count: number
+  record_search: boolean
 }
 
 export const TOPIC_LABELS: Record<string, string> = {
