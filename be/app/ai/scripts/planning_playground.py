@@ -14,6 +14,9 @@ from fastapi import FastAPI, HTTPException
 from app.ai.config import AISettings
 from app.ai.contracts import IndexRecordRequest
 from app.ai.errors import AIConfigError, AIRetryableError
+from app.ai.features.planning.agent.graph import run_planning_agent_turn
+from app.ai.features.planning.agent.nodes import PROMPT_VERSION
+from app.ai.features.planning.agent.schemas import PlanningAgentTurnInput
 from app.ai.features.planning.turn_flow import process_planning_turn
 from app.ai.features.planning.turn_schemas import PlanningTurnInput
 from app.ai.features.retrieval.indexing import index_record_chunks
@@ -38,7 +41,21 @@ def safe_failure(error):
 @app.get("/__planning-test/health")
 async def health():
     settings = AISettings()
-    return {"model": settings.model, "fixture_count": fixture_count, "storage": "memory-only"}
+    return {"model": settings.model, "fixture_count": fixture_count, "storage": "memory-only",
+            "agent_version": PROMPT_VERSION}
+
+
+@app.post("/__planning-test/agent/turn")
+async def agent_turn(request: PlanningAgentTurnInput):
+    # 새 화면은 초안·Tool 이력을 그대로 왕복한다. 서버에 대화 상태를 보관하지 않는다.
+    async with lock:
+        started = time.perf_counter()
+        try:
+            result = await run_planning_agent_turn(request)
+        except Exception as error:
+            raise safe_failure(error) from None
+        return {"result": result.model_dump(mode="json"),
+                "elapsed_ms": round((time.perf_counter() - started) * 1000)}
 
 
 @app.post("/__planning-test/records")
