@@ -1,5 +1,5 @@
 // P1 왼쪽: 토리와 주고받는 대화. 저장하지 않는 임시 대화라 새로고침하면 사라진다.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '@/features/planning/types'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
@@ -10,14 +10,19 @@ import { Tori } from '@/shared/ui/Tori'
 interface PlanChatProps {
   messages: ChatMessage[]
   onSend: (text: string) => void
+  busy?: boolean
 }
 
-export function PlanChat({ messages, onSend }: PlanChatProps) {
+export function PlanChat({ messages, onSend, busy = false }: PlanChatProps) {
   const [draft, setDraft] = useState('')
+  const end = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'nearest' })
+  }, [messages, busy])
 
   const send = (text: string) => {
     const trimmed = text.trim()
-    if (!trimmed) return
+    if (!trimmed || busy) return
     onSend(trimmed)
     setDraft('')
   }
@@ -26,36 +31,43 @@ export function PlanChat({ messages, onSend }: PlanChatProps) {
   const lastToriId = [...messages].reverse().find((m) => m.from === '토리')?.id
 
   return (
-    <Card className="flex min-w-0 flex-1 flex-col">
+    <Card className="flex w-full min-w-0 flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-line px-[24px] py-[18px]">
         <h2 className="text-h2 text-ink">토리와 계획 잡기</h2>
         <span className="text-[11px] text-mute">저장되지 않는 임시 대화</span>
       </header>
 
-      <div className="flex min-h-[420px] flex-col gap-[14px] px-[24px] pt-[20px] pb-[18px]">
+      <div
+        role="log"
+        aria-live="polite"
+        className="flex min-h-[420px] max-h-[60vh] flex-col gap-[14px] overflow-y-auto px-[24px] pt-[20px] pb-[18px]"
+      >
         {messages.map((message) =>
           message.from === '토리' ? (
             <div key={message.id} className="flex flex-col gap-[9px]">
               <div className="flex items-start gap-[10px]">
                 <Tori size={26} className="mt-[4px] shrink-0" />
-                <p className="rounded-[12px] border border-line bg-bg px-[15px] py-[12px] text-[12.5px] leading-[19px] text-ink">
+                <p className="whitespace-pre-wrap break-words rounded-[12px] border border-line bg-bg px-[15px] py-[12px] text-[12.5px] leading-[19px] text-ink">
                   {message.text}
                 </p>
               </div>
-              {message.id === lastToriId && message.quickReplies && (
-                <div className="flex flex-wrap gap-[8px] pl-[36px]">
-                  {message.quickReplies.map((reply) => (
-                    <button
-                      key={reply}
-                      type="button"
-                      onClick={() => send(reply)}
-                      className="rounded-[9px] border border-blue-200 bg-card px-[13px] py-[8px] text-[11.5px] font-bold text-blue-700 hover:bg-blue-50"
-                    >
-                      {reply}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {message.id === lastToriId &&
+                messages.at(-1)?.id === message.id &&
+                message.quickReplies && (
+                  <div className="flex flex-wrap gap-[8px] pl-[36px]">
+                    {message.quickReplies.map((reply) => (
+                      <button
+                        key={reply}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => send(reply)}
+                        className="rounded-[9px] border border-blue-200 bg-card px-[13px] py-[8px] text-[11.5px] font-bold text-blue-700 hover:bg-blue-50"
+                      >
+                        {reply}
+                      </button>
+                    ))}
+                  </div>
+                )}
             </div>
           ) : (
             <p
@@ -69,6 +81,12 @@ export function PlanChat({ messages, onSend }: PlanChatProps) {
             </p>
           ),
         )}
+        {busy && (
+          <p role="status" className="text-caption text-mute">
+            토리가 조건과 기록을 확인하고 있어요…
+          </p>
+        )}
+        <div ref={end} />
       </div>
 
       <form
@@ -81,11 +99,16 @@ export function PlanChat({ messages, onSend }: PlanChatProps) {
         <div className="flex-1">
           <Input
             placeholder="답을 입력하세요"
+            aria-label="계획 대화 입력"
+            disabled={busy}
+            maxLength={4000}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
           />
         </div>
-        <Button type="submit">보내기</Button>
+        <Button type="submit" disabled={busy || !draft.trim()}>
+          보내기
+        </Button>
       </form>
     </Card>
   )
