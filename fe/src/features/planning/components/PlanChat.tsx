@@ -11,18 +11,29 @@ interface PlanChatProps {
   messages: ChatMessage[]
   onSend: (text: string) => void
   busy?: boolean
+  disabled?: boolean
+  busyLabel?: string
+  placeholder?: string
 }
 
-export function PlanChat({ messages, onSend, busy = false }: PlanChatProps) {
+export function PlanChat({
+  messages,
+  onSend,
+  busy = false,
+  disabled = false,
+  busyLabel = '토리가 조건과 기록을 확인하고 있어요…',
+  placeholder = '답을 입력하세요',
+}: PlanChatProps) {
   const [draft, setDraft] = useState('')
   const end = useRef<HTMLDivElement>(null)
+  const locked = busy || disabled
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'nearest' })
   }, [messages, busy])
 
   const send = (text: string) => {
     const trimmed = text.trim()
-    if (!trimmed || busy) return
+    if (!trimmed || locked) return
     onSend(trimmed)
     setDraft('')
   }
@@ -59,7 +70,7 @@ export function PlanChat({ messages, onSend, busy = false }: PlanChatProps) {
                       <button
                         key={reply}
                         type="button"
-                        disabled={busy}
+                        disabled={locked}
                         onClick={() => send(reply)}
                         className="rounded-[9px] border border-blue-200 bg-card px-[13px] py-[8px] text-[11.5px] font-bold text-blue-700 hover:bg-blue-50"
                       >
@@ -83,7 +94,7 @@ export function PlanChat({ messages, onSend, busy = false }: PlanChatProps) {
         )}
         {busy && (
           <p role="status" className="text-caption text-mute">
-            토리가 조건과 기록을 확인하고 있어요…
+            {busyLabel}
           </p>
         )}
         <div ref={end} />
@@ -98,15 +109,15 @@ export function PlanChat({ messages, onSend, busy = false }: PlanChatProps) {
       >
         <div className="flex-1">
           <Input
-            placeholder="답을 입력하세요"
+            placeholder={placeholder}
             aria-label="계획 대화 입력"
-            disabled={busy}
+            disabled={locked}
             maxLength={4000}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
           />
         </div>
-        <Button type="submit" disabled={busy || !draft.trim()}>
+        <Button type="submit" disabled={locked || !draft.trim()}>
           보내기
         </Button>
       </form>
