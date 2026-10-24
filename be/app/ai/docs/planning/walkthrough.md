@@ -1,6 +1,6 @@
 # 행사계획 코드 따라가기
 
-오랜만에 읽을 때는 [전체 설계](design.md)의 Node 흐름을 먼저 보고, 아래 단계별 입력 → 코드 → 결과를 따라간다. 1단계는 Tool 처리기, 2단계는 LLM과 LangGraph, 3단계는 실제 UI, 4단계는 기존 기록 검색 Tool 연결이다.
+오랜만에 읽을 때는 [전체 설계](design.md)의 Node 흐름을 먼저 보고, 아래 단계별 입력 → 코드 → 결과를 따라간다. 1단계는 Tool 처리기, 2단계는 LLM과 LangGraph, 3단계는 실제 UI, 4단계는 기존 기록 검색 Tool 연결이다. 5단계는 권유·계획 생성과 채팅/버튼 HTTP·P2 테스트 화면까지 연결했다.
 
 ## 1단계: 말을 반영할 수 있는 작업 노트와 처리기
 
@@ -189,7 +189,7 @@ asyncio.run(main())
 
 [PlanningPlaygroundPage.tsx](../../tests/ui/planning/src/pages/PlanningPlaygroundPage.tsx)의 `send()`가 `draft + history + current_message`를 `/__planning-test/agent/turn`에 보낸다. 서버의 [agent_turn()](../../scripts/planning_playground.py)이 이를 검증해 2단계의 `run_planning_agent_turn()`을 호출한다. 서버에는 대화 세션을 저장하지 않는다.
 
-성공하면 테스트 UI는 `setLast(response.result)` 한 번으로 **초안과 이력을 함께** 바꾼다. 채팅창은 `reply`를 표시하고, [toAgentFacts()](../../tests/ui/planning/src/features/planning/agent-playground.ts)는 `draft.conditions`와 `condition_meta`로 카드를 만든다. 그래서 상담 문장에 3만 원이 등장해도 카드 값이 바뀌지 않는다. 실제 Tool이 30,000원을 반영한 다음 응답에서 값과 잠정 표시가 함께 바뀐다.
+성공하면 테스트 UI는 응답을 한 번에 채택해 **초안과 이력을 함께** 바꾼다. 채팅창은 `reply`를 표시하고, [toAgentFacts()](../../tests/ui/planning/src/features/planning/agent-playground.ts)는 `draft.conditions`와 `condition_meta`로 카드를 만든다. 그래서 상담 문장에 3만 원이 등장해도 카드 값이 바뀌지 않는다. 실제 Tool이 30,000원을 반영한 다음 응답에서 값과 잠정 표시가 함께 바뀐다.
 
 화면의 말풍선은 사용자/AI 대화만 보여준다. 다음 요청에 보내는 `history`에는 Tool 호출·결과도 포함된다. 테스트 UI가 이를 단순 말풍선 목록으로 다시 만들면 “왜 반영이 안 됐어?”를 설명할 근거가 없어지므로 반환된 이력을 그대로 전달한다.
 
@@ -234,6 +234,182 @@ agent: search_past_events(query="2025 봄 MT 참가비") 선택
 실제 UI에서도 조회 후 현재 25,000원 유지 → “올해도 그 금액으로 하자” 후 45,000원 반영을 확인했다. 수락 턴의 `record_lookup`은 `null`이다. 재검색하지 않았기 때문이며, FE는 이전 조회 자료를 별도로 보관해 출처 카드를 유지한다. [조회 직후](ui-tests/agent-records-lookup-2026-10-24.png)와 [수락 후](ui-tests/agent-records-applied-2026-10-24.png)를 비교하면 답변에 나온 숫자와 현재 조건이 언제 달라지는지 볼 수 있다.
 
 직접 테스트하는 방법·BE/FE 전달 사항·남은 작업은 [4단계 명세](step-04-record-tool.md)를 참고한다.
+
+## 5-1에서 정한 흐름: '이 정도면 만들어볼까요?'에서 계획 초안으로
+
+**아래는 5-1에서 잡은 설계 흐름이며 실제 내부 구현과 UI 연결은 뒤의 5-2·5-3 설명으로 이어진다.** [5단계 명세](step-05-generation.md)에 상세 계약을 정리했다.
+
+사용자가 'MT고 약 50명, 인당 25,000원. 날짜는 나중에'라고 했다고 하자. 기존 코드가 이미 하는 일과 앞으로 붙일 일을 나누어 읽으면 쉽다.
+
+| 순서 | 입력 → 거칠 코드 → 결과 |
+| --- | --- |
+| 1. 조건 모으기 — 구현됨 | 현재 발화 → `agent_node()`가 `update_event_conditions` 요청 → MT·잠정 50명·참가비, dates 보류 |
+| 2. 먼저 권하기 — 내부 구현 | 반영된 draft와 대화 → 같은 agent가 권유 판단 → `update_generation_offer(action=offer)`로 기준 조건 기록 → '날짜는 비우고 준비 순서를 먼저 잡아볼까요?' |
+| 3. 수락하기 — 내부 구현 | '응, 만들어줘' → agent가 직전 권유와 연결 → `generate_event_plan` 요청. Tool에는 이번 수락 근거와 제안 ID를 전달 |
+| 4. 생성 입력 준비 — 내부 구현 | Tool 처리기가 최신 draft·제안 상태 확인 → 현재 조건/사용자 요구/카탈로그/실제 참고 근거로 `PlanGenerationInput` 구성 |
+| 5. 초안 만들기 — 내부 구현 | 별도 생성 graph의 `compose_plan`이 구조화 출력 → `validate_plan`이 단계·날짜·출처 등 확인 → 검증된 `EventPlanPreview` |
+| 6. 설명·화면 — 로컬 연결 | Tool 결과 → 대화 agent가 초안 설명 → 테스트 UI가 성공 결과를 P2에 표시. 날짜 미정·50명 잠정 유지 |
+
+즉, **대화 Agent는 '지금 무엇을 할까', 생성 graph는 '어떤 계획을 만들까'를 맡는다.** 화면이 P2로 바뀌어도 대화 상대와 행사 조건을 버리지 않는다.
+
+왜 권유 상태를 하나 더 둘까? '응'이 수락한 대상과 그때의 조건을 알기 위해서다. 50명일 때 권했다가 지금 40명으로 바뀌었으면, 옛 제안을 그대로 실행하지 않는다. 반면 '40명으로 바꾸고 바로 만들어줘'라면 조건 변경 성공 후 최신 40명으로 만들 수 있다.
+
+'아직 만들지 말자'에는 보류를 기록하고 같은 조건으로 반복 권하지 않는다. 생성 권유는 빈칸 개수로 강제하지 않으며, 유형만 정해졌더라도 사용자가 기본 준비 순서를 직접 요청하면 일반 초안을 만들 수 있다. 유형도 없으면 어떤 행사인지 먼저 확인한다.
+
+예정된 두 데이터의 차이도 기억하면 좋다. **`PlanningDraft`는 MT·50명 같은 행사 조건**, **`EventPlanPreview`는 장소 알아보기·모집 공지 같은 준비 단계**다. 생성하면서 조건을 임의로 채우지 않고, 단계에 필요한 미정 항목을 따로 알려준다. 생성 실패 시 기존 조건과 이전 성공 초안은 유지한다.
+
+5-2에서 위 내부 Tool·생성 graph를 구현했고 [schemas.py](../../features/planning/agent/schemas.py)에 generation 상태를 추가했다. 바깥 [graph.py](../../features/planning/agent/graph.py)는 `agent`와 `tools`를 유지한다. 5-3에서 화면도 연결했다.
+
+## 5-2①: 채팅과 버튼은 다른 요청, 생성에는 같은 입력
+
+현재 [generation/schemas.py](../../features/planning/generation/schemas.py)에 생성 입력·결과와 권유 상태를 구현했다. 아직 화면 버튼에 연결한 코드는 아니다.
+
+```python
+# 버튼: 클릭 ID만 필요. 가짜 사용자 메시지를 만들지 않는다.
+ButtonGenerationTrigger(request_id="click-1")
+# 채팅: 이번 메시지 ID와 실제 수락/요청 문구가 필요하다.
+ChatGenerationTrigger(request_id="u1", quote="만들어줘")
+# 둘은 공통 PlanGenerationInput의 trigger에 들어간다.
+```
+
+`PlanGenerationInput`은 `basis_draft + trigger + messages + reference_date + timezone + reference_facts`다. 날짜 없는 MT·50명 입력이면 basis_draft의 날짜는 그대로 null이다. 모델이 요청의 출처를 선택하는 것이 아니라 각 진입점이 정해진 trigger를 만든다.
+
+[generation/offers.py](../../features/planning/generation/offers.py)의 `update_generation_offer()`는 `offer`일 때 조건 복사본과 ID를 만들고, `defer`일 때 이번 발화 근거를 확인해 보류를 기록한다. `same_basis()`는 값·잠정 여부·보류 주제를 비교한다. 같은 50명을 다시 말해 근거 ID만 바뀌었다면 같은 기준이고, 40명으로 바뀌거나 잠정에서 명시로 바뀌면 다른 기준이다.
+
+권유/보류 상태와 마지막 성공 초안은 `PlanningGenerationState`로 묶는다. `condition_change_pending`은 변경이 거절된 뒤 옛 조건으로 조용히 생성하는 것을 막기 위한 표시다. 이 상태는 저장·행사 승인 레코드가 아니다. 테스트 5개에서 요청 구분, JSON 왕복, 기준 비교, 보류 후 재권유 거절과 카탈로그 13개 경계를 확인했다.
+
+## 5-2②: 버튼 진입점에서 공통 생성 graph까지
+
+[generation/entrypoints.py](../../features/planning/generation/entrypoints.py)의 `run_button_plan_generation()`은 클릭 요청을 공통 생성 입력으로 바꾼다. Agent를 호출하지 않으며 권유 ID나 사용자 문구도 만들지 않는다.
+
+```text
+ButtonPlanGenerationRequest(request_id="click-1", draft=MT·50명·날짜 미정)
+  → ButtonGenerationTrigger(source="button", request_id="click-1")
+  → generate_with_context(): 유형·미해결 변경·같은 성공 요청 확인
+  → run_plan_generation(): compose_plan → validate_plan
+  ← GenerationUpdate(result.status="generated", generation.preview=검증된 초안)
+```
+
+[generation/graph.py](../../features/planning/generation/graph.py)의 핵심은 두 Node다. `compose_plan()`은 현재 조건·최근 대화·13개 카탈로그를 JSON 데이터로 전달해 `PlanComposition` 구조화 출력을 받는다. 모델은 code·purpose·일정·예정 행동을 작성하며 현재 조건을 다시 쓰지 않는다.
+
+`validate_plan()`은 포함/제외한 단계가 카탈로그 전체를 빠짐없이 나누는지, 묶음 순서·날짜·허용 행동이 맞는지 검사한다. 그 뒤 코드가 카탈로그의 이름·담당을 붙여 `EventPlanPreview`로 만든다. 과거 자료를 참고한 가정의 `fact_ids=["f1"]`은 전달한 실제 사실의 출처로 바꾼다. 모델이 출처 객체·URL을 새로 쓰지 않는다.
+
+입력의 행사 날짜가 null인데 출력에 날짜가 있으면 `failed`다. null을 유지하면 생성 성공이며 `open_questions`에 행사 날짜가 남는다. 이 목록은 지금 모두 답하라는 채팅 질문이 아니다. `basis_draft`는 입력과 같고 인원 잠정 여부도 유지한다.
+
+`generate_with_context()`는 성공한 preview만 상태에 채택한다. 같은 클릭 ID·같은 기준으로 성공 요청을 다시 보내면 모델 호출 없이 같은 preview를 반환한다. 같은 ID에 다른 조건을 넣으면 재확인을 요구한다. 아직 마지막 성공 한 건만 보관하므로 임의의 오래된 요청 전체를 중복 제거하는 서버 저장소는 아니다. 별도 버튼 HTTP/FE 연결은 아래 5-3 절을 따른다.
+
+## 5-2③: 채팅의 권유 → 수락 → 생성 결과를 따라가기
+
+예시의 시작 상태는 `MT / 약 50명 / 참가비 25,000원 / 날짜 미정`이다. 실제 테스트에서 대화 모델의 선택을 아래 순서로 대체하고 두 LangGraph를 실행했다. **실제 LLM을 쓴 5-3 관찰은 아래 절과 평가 기록에 별도로 남겼다.**
+
+```text
+1. AIMessage.tool_calls: update_generation_offer(action="offer", reason="날짜 없이 준비 순서 가능")
+2. tools_node → update_generation_offer()
+   generation.offer = { id: 코드가 생성, status: pending, basis_draft: 현재 조건 복사 }
+3. agent가 결과를 읽고 "날짜를 비우고 준비 순서를 먼저 잡아볼까요?"로 이번 턴 종료
+4. 다음 입력: "응, 만들어줘" + 이전 draft/history/generation
+5. AIMessage.tool_calls: generate_event_plan(quote="응, 만들어줘", offer_id=직전 ID)
+```
+
+[agent/generation_tools.py](../../features/planning/agent/generation_tools.py)의 `generate_event_plan()`이 실제로 검사하는 핵심 부분은 다음과 같다. 설명용으로 줄인 코드다.
+
+```python
+evidence = MessageEvidence(message_id=request.current_message.id, quote=arguments.quote)
+if not valid_evidence(evidence, request.current_message):
+    return clarify("이번 사용자 발화 근거가 필요해요")
+if arguments.offer_id is not None:
+    # 존재·pending·ID를 확인한 다음
+    if not same_basis(offer.basis_draft, draft):
+        return clarify("권유 뒤 조건이 바뀌었어요")
+shared = PlanGenerationInput(basis_draft=draft, trigger=ChatGenerationTrigger(...), ...)
+return await generate_with_context(shared, state, generate=generate)
+```
+
+`quote`는 모델이 원문에서 선택하고, 메시지 ID는 코드가 현재 요청에서 붙인다. ID를 복사하게 하지 않으므로 모델의 한 글자 오타가 유효한 수락을 막지 않는다. 원문에 없는 문구와 오래된 권유 검사는 유지한다.
+
+근거 검사에 통과하면 버튼과 동일한 `generate_with_context()` → 생성 graph로 이어진다. Tool 결과에는 `status=generated`와 실제 preview가 들어가고 다시 대화 Agent에 전달된다. 마지막 답변은 그 결과를 읽고 작성한다. 코드가 '만들었어요'를 고정 문구로 붙이지 않는다.
+
+현재 결과의 두 필드를 구분하면 이해하기 쉽다.
+
+```text
+generation_result = 이번 턴 생성 시도의 결과. 새 시도가 없으면 null
+generation.preview = 마지막 성공 계획. 실패하거나 상담만 한 턴에도 유지
+preview_is_current = 마지막 계획이 지금 조건과 맞고 미해결 변경도 없는가
+model_calls = 대화 Agent 호출 수 / generation_model_calls = 생성 내부 호출 수
+```
+
+테스트의 수락 턴은 대화 모델 2회(선택·답변), 생성 모델 1회였다. 실제 HTTP 재시도와 응답 시간 측정값은 아니다. 한 턴 Tool 시도 3회 상한은 조건·검색·권유·생성에 공통으로 적용하고, 생성 graph 안에서는 자동 수정 반복을 하지 않는다.
+
+### 수정·실패는 어떻게 다루나
+
+사용자가 '40명으로 바꾸고 바로 만들어줘'라고 하면 같은 tools Node에서 조건 변경을 먼저 실행하고 다음 생성 Tool이 최신 40명을 읽는다. 직접 요청이므로 offer_id를 요구하지 않는다. 반면 50명일 때의 권유 ID를 40명으로 바뀐 뒤 수락하면 확인을 요구한다.
+
+'시작일을 종료일보다 뒤로 바꾸고 만들어줘'의 날짜 변경은 거절된다. `condition_generation_state()`가 `condition_change_pending=True`, `pending_condition_fields=("start_date",)`를 남기고 생성은 확인을 요구한다. 이후 참가비만 바꿔도 start_date 문제는 남는다. 같은 필드를 유효하게 고치거나, 사용자가 현재 남은 날짜로 만들겠다고 명시해야 해결된다.
+
+40명으로 바꾼 뒤 생성 호출만 실패하면 40명은 보존하고 이전 성공 preview도 유지한다. 이때 `preview_is_current=False`로 오래된 기준임을 구분한다. 원본 입력 객체는 바꾸지 않는다. 설정·권한·예상하지 못한 예외는 정상 실패로 숨기지 않고 위로 전달한다.
+
+### 내부 진입점과 직접 검증
+
+- 채팅: `run_planning_agent_turn(request, generate=run_plan_generation)`. 생성 기능을 주입하지 않으면 새 두 Tool은 모델에 공개하지 않는다.
+- 버튼: `run_button_plan_generation(ButtonPlanGenerationRequest(...))`. 대화 Agent의 의도 해석과 가짜 HumanMessage를 거치지 않는다.
+- 둘 다 내부 함수다. 5-3 로컬 HTTP·테스트 FE 버튼은 아래처럼 연결했고, `app.ai` 공개 facade·실서비스 API는 미연결이다. 요청 상태를 서비스에서 저장·검증하는 책임은 BE와 합의해야 한다.
+
+`be/`에서 API 없이 확인할 수 있다.
+
+```sh
+.venv/bin/python -m pytest app/ai/tests/test_plan_generation_contracts.py app/ai/tests/test_plan_generation_graph.py app/ai/tests/test_planning_agent_generation.py -q
+```
+
+신규 39개(요청/권유 5, 생성/버튼 22, 대화 연결 12)와 이번 커밋 대상의 AI 회귀 680개가 통과했다. 테스트는 모델 응답을 대체한 실제 graph 실행이며, 생성 품질·친근함·자율 선택의 정확도 검증은 아니다. 실제 모델과 P2 UI 검증은 아래 5-3 절과 평가 기록을 따른다.
+
+## 5-3: 두 API의 실제 응답이 같은 P2에 표시된다
+
+[PlanningPlaygroundPage.tsx](../../tests/ui/planning/src/pages/PlanningPlaygroundPage.tsx)의 `session`은 `draft + history + generation`이다. `messages`는 화면 말풍선 목록이며 SDK Tool 이력인 history와 구분한다.
+
+```text
+send("초안 만들어줘")
+  → execute({source: "chat", body: 세션 + current_message})
+  → POST /__planning-test/agent/turn
+  → 대화 Agent → 생성 Tool → 생성 graph
+  ← reply + draft/history/generation
+  → 세션 전체 채택 + AI 말풍선 추가 + generated이면 P2
+
+generate() — '다음: 흐름 만들기' 클릭
+  → execute({source: "button", body: 세션 + request_id})
+  → POST /__planning-test/agent/generate
+  → 버튼 내부 함수 → 생성 graph
+  ← generation + 생성 결과
+  → generation만 채택, history/말풍선 유지 + generated이면 P2
+```
+
+이 경로에서 버튼 요청은 current_message가 없다. 로컬 API는 `validate_planning_history()`로 채팅과 같은 이력 검사를 하고, `plan_messages()`와 `latest_reference_facts()`로 실제 문맥·최근 근거만 준비한다. 클릭을 사용자 말풍선으로 만들지 않는다.
+
+[AgentPlanPreview.tsx](../../tests/ui/planning/src/features/planning/components/AgentPlanPreview.tsx)가 검증된 preview를 테스트 앱 안의 StepFlow에 전달한다. [generation-playground.ts](../../tests/ui/planning/src/features/planning/generation-playground.ts)의 `toPreviewSteps()`는 서버 이름·묶음·담당·목적·예정 행동을 표시 타입으로 바꾼다. 미정 날짜는 '미정'이다. 수정 콜백을 전달하지 않아 수정 버튼도 보이지 않는다. 제외 단계의 FE/BE 코드 차이는 명시적인 변환표로 이름을 찾는다.
+
+버튼 활성화는 행사 유형이 있고 미해결 변경이 없는지 확인한다. 권유 상태가 deferred여도 사용자가 직접 누르면 요청할 수 있다. 전송 중에는 입력·초기화·다음 버튼을 잠그고, 버튼 요청에는 별도 생성 중 화면을 표시한다. 단계별 진행률을 알 수 없는 상태에서 가짜 퍼센트는 표시하지 않는다.
+
+네트워크 실패는 이전 세션·preview를 유지하고 요청 전체의 스냅샷을 보관한다. '같은 요청 재시도'는 같은 ID·조건·이력을 보내고, 재시도 중 다른 요청은 잠근다. 정상 응답 안의 생성 실패는 채팅의 유효한 조건 변경을 유지한 채 설명하며 새 요청으로 다시 생성할 수 있다. 대화로 돌아가 조건을 바꾸면 `previewIsCurrent()`가 이전 초안의 기준 차이를 표시한다.
+
+진단 JSON은 반환된 초안·이번 사용자 메시지 ID/텍스트·이번 턴 Tool 인자와 실행·호출 수만 선별한다. SDK 이력은 다음 요청에 그대로 전달하지만 화면에 응답 메타정보·비텍스트 블록을 덤프하지 않는다. 실제 브라우저·모델 검증 결과와 제한은 [평가 기록](evaluation.md)에 남긴다.
+
+실제 UI에서 50명·25,000원 잠정 조건 → 버튼 생성(20.21초, 이력 8개 유지) → 40명 변경/생성 보류 → 채팅 생성(20.04초, trigger=chat)을 확인했다. 전송 실패 때는 같은 preview ID가 보존됐고 같은 클릭 요청 재시도에 성공했다. [화면 개요](ui-tests/agent-generation-chat-overview-2026-10-24.jpg)와 [입력·상태 기록](ui-tests/agent-generation-trace-2026-10-24.json)을 함께 보면 상태가 언제 바뀌는지 확인할 수 있다.
+
+실제 모델에서 '날짜와 장소는 나중에'의 근거를 재작성해 거절된 사례도 있었다. 검사 규칙을 느슨하게 하지 않고 원문 복사·재시도 지침만 보완했다. 동일 6턴의 복합 기대 기준은 1/6→4/6이었지만, 작은 합성 표본이며 권유 타이밍과 JSON 파싱의 불일치가 남아 있다. 연결이 동작한다는 것과 모든 모델 답변이 올바르다는 것은 구분한다.
+
+
+### 짧은 수락의 실제 실패 → 코드 보완 → 같은 문장으로 생성
+
+```text
+이전 권유: “날짜는 미정으로 두고 준비 순서 초안을 만들까요?” (pending)
+입력: “응, 그 초안 만들어줘.”
+v4: 모델이 이번 메시지 UUID를 한 글자 잘못 복사 → 원문 근거 검사 거절 → P1 유지
+v5: 모델은 quote와 offer_id 선택 → 코드가 현재 메시지 ID 주입 → 검사 → 생성 → P2
+결과: 약 50명·25,000원 잠정, 날짜·장소 미정, 12단계 초안 (23.74초)
+```
+
+여기서 바꾼 것은 **생성 Tool의 입력 경계**다. 생성 요청인지와 어떤 제안을 수락했는지는 여전히 LLM이 해석한다. 메시지 ID는 이미 요청에 있으므로 모델이 다시 쓸 이유가 없다. `GenerateEventPlanInput.quote` → `MessageEvidence(current_message.id, quote)` → `valid_evidence()` → `PlanGenerationInput`으로 흐른다. 조건 변경 Tool·권유 보류 Tool의 기존 `MessageEvidence` 계약까지 바꾼 것은 아니다.
+
+실제 Tool 인자는 `{quote: "응, 그 초안 만들어줘.", offer_id: 직전 pending ID, use_current_conditions: false}`였다. 생성된 preview의 `trigger.request_id`는 이번 사용자 메시지 ID와 일치했다. 실패 뒤 같은 세션에서 같은 문장을 새 턴으로 보낸 1회 관찰이며, 성공률 일반화는 하지 않는다. [전후 근거](ui-tests/agent-generation-acceptance-2026-10-24.json)와 [완료 화면](ui-tests/agent-generation-acceptance-2026-10-24.jpg)을 보존했다.
 
 
 ## 테스트 화면의 위치와 FE 전달 경계 (#174)
