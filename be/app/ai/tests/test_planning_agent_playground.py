@@ -17,10 +17,11 @@ def payload():
 
 def test_agent_api_forwards_draft_and_history_without_legacy_call(monkeypatch):
     calls=[]
-    async def process(request, *, search):
+    async def process(request, *, search, generate):
         calls.append(request)
         assert search.keywords["club_id"]=="clb_keunnamu"
         assert search.keywords["port"] is playground.memory
+        assert generate is playground.run_plan_generation
         return SimpleNamespace(model_dump=lambda **_: {"reply":"3만 원을 기준으로 잡아둘게요.",
             "draft":{"conditions":{"fee_per_person":30000}},"history":[]})
     async def legacy(*args, **kwargs):
@@ -57,3 +58,37 @@ def test_health_reports_new_agent_version():
     assert response.status_code==200
     assert response.json()["agent_version"]==playground.PROMPT_VERSION
     assert response.json()["record_search"] is True
+    assert response.json()["plan_generation"] is True
+
+
+def test_button_api_uses_own_entrypoint_and_only_real_history_text(monkeypatch):
+    calls=[]
+    async def button(request, *, generate):
+        calls.append(request)
+        assert request.messages[-1].content=="비용을 함께 검토해봐요."
+        assert len(request.messages)==2
+        assert generate is playground.run_plan_generation
+        return SimpleNamespace(model_dump=lambda **_: {"generation":{},"result":{"status":"failed","reason":"재시도"}})
+    async def no_agent(*args, **kwargs): raise AssertionError("버튼에서 Agent가 호출됨")
+    monkeypatch.setattr(playground,"run_button_plan_generation",button)
+    monkeypatch.setattr(playground,"run_planning_agent_turn",no_agent)
+    data=payload();data.pop("current_message");data["request_id"]="click-1"
+    response=call("POST","/__planning-test/agent/generate",data)
+    assert response.status_code==200 and response.json()["source"]=="button"
+    assert response.json()["result"]["result"]["status"]=="failed"
+    assert calls[0].request_id=="click-1" and calls[0].draft.conditions.fee_per_person==25000
+
+
+def test_button_api_rejects_orphan_tool_and_fake_chat_payload():
+    data=payload();data.pop("current_message");data["request_id"]="click-1"
+    data["history"]=[{"type":"tool","content":"missing-call","tool_call_id":"none"}]
+    assert call("POST","/__planning-test/agent/generate",data).status_code==422
+    assert call("POST","/__planning-test/agent/generate",payload()).status_code==422
+
+
+def test_button_transport_error_does_not_expose_provider_details(monkeypatch):
+    async def fail(*args, **kwargs): raise AIRetryableError("secret-provider-details")
+    monkeypatch.setattr(playground,"run_button_plan_generation",fail)
+    data=payload();data.pop("current_message");data["request_id"]="click-1"
+    response=call("POST","/__planning-test/agent/generate",data)
+    assert response.status_code==503 and "secret-provider" not in response.text

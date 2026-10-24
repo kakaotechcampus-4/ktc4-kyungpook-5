@@ -1,0 +1,619 @@
+{
+  "state": "COMPLETED",
+  "started_at": "2026-10-24T05:56:48.081651+00:00",
+  "model": "gpt-5.6-luna",
+  "reasoning": "provider default",
+  "prompt_version": "planning-agent-v3",
+  "generation_prompt_version": "planning-generation-v1",
+  "review_status": "AI 작성 소규모 합성 사례, 사람 정답 검수 전. 실행 전 기대값 고정",
+  "reference_date": "2026-10-24",
+  "dialog_filter": "dated-button",
+  "git_commit": "968dfa2f30ed4cc453786a77596755b0b27cbec9",
+  "git_dirty": true,
+  "sha256": {
+    "features/planning/agent/generation_tools.py": "ffda5794ca4f0be1dedb344d3825d2da653397711a9289c7ac797928352bfbdd",
+    "features/planning/agent/graph.py": "7c56f1963f4ecb2d75ab1828de300499825e1e71180db2fb4b1dca8fe9f812f0",
+    "features/planning/agent/nodes.py": "0be009c8417eebca8a62bc66394216b4c421cd287ec020582dafebf2bf8eaf64",
+    "features/planning/agent/record_tool.py": "da05eca341026f3fd3bc2a57831a220287858a150d5e23402e6451543088e016",
+    "features/planning/agent/schemas.py": "98a149880147d89b018ca3aed23f3f6e6fedcdbaee0892d0a2699b07e687199d",
+    "features/planning/agent/state.py": "5e58e643b7d1a87c82e163faad520578dc25c9cbdff54a1ee5bcb639a35ad364",
+    "features/planning/agent/tools.py": "a7af857e94efc4619a9a021dbb57b2a59ae4f6672a66648daf869aa733fc2c6a",
+    "features/planning/agent/prompts/chat.md": "f49b0e43e8eba3cc9718f9475b166fb10903492b4466be6d54c8f63cf517e12f",
+    "features/planning/generation/__init__.py": "d64c4710852440e504ea0b350647283c050637a2fbafa6864c0b81feeba87f26",
+    "features/planning/generation/catalog.py": "9728dd2591ab6d648e60e921917a49fd3159261ff735b8e020e71b2151a74927",
+    "features/planning/generation/entrypoints.py": "bb67f87ececc070b242a2e0742bbeafbfd1e174723e89a9cd3050495955494c8",
+    "features/planning/generation/graph.py": "ef41a097393006937ca906f1f8b8ed2b6e769a9ee5a674cffec5e4c95f9d6655",
+    "features/planning/generation/offers.py": "820ccd8a32b644d2bfdb219cf010536493f87ab443782e76e9ff594d4a99bec7",
+    "features/planning/generation/schemas.py": "6478e089b36d5614133f654722eebc6dfd6b1906311938bd00c371dbd17c951e",
+    "features/planning/generation/prompts/compose.md": "57b54f2ab15a4fbd775aac42a06c63e0cbbf33a380dcff10b177bd0d3fb94902",
+    "llm.py": "2f06c0f9e9a1ad1d061e92605e07bb3d83a836e9175c7ae8b09fbc930bfa2afd",
+    "tests/fixtures/eval/planning_generation.json": "3a03ea4c7d6432cf529e5d10e57207f486fe312e087d60c187ae0379dee48017",
+    "scripts/eval_plan_generation.py": "e78db52c0d5f3ed20734e437935ea47ab1fa1a91c53709850a4ca062b8fad536"
+  },
+  "turns": [
+    {
+      "dialog": "dated-button",
+      "turn": 1,
+      "case": {
+        "source": "button",
+        "updates": {},
+        "generation": "generated"
+      },
+      "agent_calls": 0,
+      "generation_calls": 1,
+      "limit_reached": false,
+      "checks": {
+        "input_preserved": true,
+        "history_unchanged": true,
+        "conditions": true,
+        "generation": true,
+        "basis": true,
+        "source": true,
+        "unknown_dates": true
+      },
+      "passed": true,
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "PICNIC",
+          "headcount": 20,
+          "fee_per_person": 0,
+          "start_date": "2027-04-10",
+          "end_date": "2027-04-10",
+          "location": "교내 잔디밭",
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "generation": {
+        "offer": null,
+        "preview": {
+          "id": "89a73bd9-7be2-497a-a4e5-fa65dc7b5c90",
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "PICNIC",
+              "headcount": 20,
+              "fee_per_person": 0,
+              "start_date": "2027-04-10",
+              "end_date": "2027-04-10",
+              "location": "교내 잔디밭",
+              "budget_total": null
+            },
+            "condition_meta": {},
+            "deferred_topics": []
+          },
+          "trigger": {
+            "source": "button",
+            "request_id": "dated-button-1"
+          },
+          "steps": [
+            {
+              "code": "ASSIGN_ROLES",
+              "purpose": "행사 준비와 당일 진행에 필요한 담당 범위를 정하기 위해 필요합니다.",
+              "starts_at": "2026-11-01T10:00:00+09:00",
+              "deadline": "2026-11-07T18:00:00+09:00",
+              "actions": [],
+              "name": "담당 인원 배치",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "RESEARCH_VENUE",
+              "purpose": "교내 잔디밭의 사용 가능 여부, 이용 규정, 우천 시 대체 가능성을 확인하기 위해 필요합니다.",
+              "starts_at": "2026-11-02T10:00:00+09:00",
+              "deadline": "2026-11-20T18:00:00+09:00",
+              "actions": [],
+              "name": "장소·교통 알아보기",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "RECRUIT_NOTICE",
+              "purpose": "20명 규모의 참가 의사를 확인하고 행사 세부 준비에 필요한 참여 정보를 모으기 위해 필요합니다.",
+              "starts_at": "2027-02-01T10:00:00+09:00",
+              "deadline": "2027-02-12T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가 모집 공지 준비 및 게시",
+                  "due_date": "2027-02-01"
+                }
+              ],
+              "name": "모집 공지",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CHECK_RESPONSES",
+              "purpose": "모집 응답을 확인하여 참석 인원과 추가 확인이 필요한 사항을 정리하기 위해 필요합니다.",
+              "starts_at": "2027-02-13T10:00:00+09:00",
+              "deadline": "2027-02-17T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "응답 확인 및 추가 확인 요청",
+                  "due_date": "2027-02-17"
+                }
+              ],
+              "name": "응답 확인",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CONFIRM_DETAILS",
+              "purpose": "참가 인원과 행사 일정을 최종 준비 기준으로 정리하기 위해 필요합니다.",
+              "starts_at": "2027-02-18T10:00:00+09:00",
+              "deadline": "2027-02-20T18:00:00+09:00",
+              "actions": [],
+              "name": "인원·일정 확정",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "BOOK_VENUE",
+              "purpose": "교내 잔디밭 사용 승인 또는 예약이 필요한 경우 행사 장소를 확보하기 위해 필요합니다.",
+              "starts_at": "2027-02-22T10:00:00+09:00",
+              "deadline": "2027-03-05T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "CONTRACT",
+                  "title": "교내 잔디밭 사용 승인 또는 예약 절차 검토",
+                  "due_date": "2027-03-05"
+                }
+              ],
+              "name": "예약",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "PRE_EVENT_NOTICE",
+              "purpose": "확정된 행사 일정과 참가자 준비사항을 행사 전에 안내하기 위해 필요합니다.",
+              "starts_at": "2027-04-03T10:00:00+09:00",
+              "deadline": "2027-04-07T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "행사 전 준비사항 안내",
+                  "due_date": "2027-04-03"
+                }
+              ],
+              "name": "사전 안내",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "EVENT_DAY",
+              "purpose": "2027년 4월 10일에 교내 잔디밭에서 예정된 피크닉을 진행하기 위해 필요합니다.",
+              "starts_at": "2027-04-10T00:00:00+09:00",
+              "deadline": "2027-04-10T23:59:59+09:00",
+              "actions": [],
+              "name": "행사 당일",
+              "phase": "EXECUTION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "SETTLE_EXPENSES",
+              "purpose": "행사 후 실제 발생한 지출을 정리하고 비용 처리를 검토하기 위해 필요합니다.",
+              "starts_at": "2027-04-11T10:00:00+09:00",
+              "deadline": "2027-04-17T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "EXPENSE",
+                  "title": "행사 관련 지출 정리",
+                  "due_date": "2027-04-17"
+                }
+              ],
+              "name": "지출 정산",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "RECORD_FEEDBACK",
+              "purpose": "행사 운영에 대한 참가자 의견과 개선사항을 기록하기 위해 필요합니다.",
+              "starts_at": "2027-04-11T10:00:00+09:00",
+              "deadline": "2027-04-24T18:00:00+09:00",
+              "actions": [],
+              "name": "피드백 기록",
+              "phase": "EXECUTION",
+              "actor": "AI"
+            }
+          ],
+          "excluded_steps": [
+            {
+              "code": "DEMAND_SURVEY",
+              "reason": "행사 유형과 참가 인원 20명이 이미 조건으로 제시되어 별도의 수요 조사는 우선 필요하지 않습니다."
+            },
+            {
+              "code": "COLLECT_FEES",
+              "reason": "1인 참가비가 0원으로 제시되어 참가비 수금 단계는 제외합니다."
+            },
+            {
+              "code": "REFUND_FEES",
+              "reason": "참가비가 0원으로 제시되어 환급할 참가비가 없습니다."
+            }
+          ],
+          "assumptions": [
+            {
+              "content": "교내 잔디밭은 별도 사용 승인, 예약 또는 이용 규정 확인이 필요할 수 있다고 보고 장소 확인 및 예약 단계를 포함했습니다.",
+              "sources": []
+            },
+            {
+              "content": "행사 시작 시각과 종료 시각은 정해지지 않았으므로 행사 당일 단계는 날짜 전체를 포괄하는 시간 범위로 제안했습니다.",
+              "sources": []
+            }
+          ],
+          "open_questions": [
+            "행사 제목을 정해야 합니다.",
+            "2027년 4월 10일의 정확한 행사 시작·종료 시각을 정해야 합니다.",
+            "교내 잔디밭 사용 승인 또는 예약이 필요한지 확인해야 합니다.",
+            "우천 또는 잔디밭 사용 불가 시 대체 장소와 진행 기준을 정해야 합니다.",
+            "담당 인원과 역할을 정해야 합니다.",
+            "준비물, 음식, 안전관리 등 운영 세부사항과 총예산을 정해야 합니다.",
+            "모집 결과에 따라 최종 참석 인원을 확인해야 합니다."
+          ],
+          "warnings": [
+            "행사 날짜까지 준비 기간은 충분하지만, 교내 잔디밭의 사용 승인 여부와 우천 대책이 확인되지 않으면 장소 확보 및 행사 진행에 제약이 생길 수 있습니다.",
+            "총예산과 행사 시각이 정해지지 않아 물품 준비와 당일 운영 계획은 추가 조정이 필요합니다."
+          ]
+        },
+        "condition_change_pending": false,
+        "pending_condition_fields": []
+      },
+      "outcome": {
+        "status": "generated",
+        "preview": {
+          "id": "89a73bd9-7be2-497a-a4e5-fa65dc7b5c90",
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "PICNIC",
+              "headcount": 20,
+              "fee_per_person": 0,
+              "start_date": "2027-04-10",
+              "end_date": "2027-04-10",
+              "location": "교내 잔디밭",
+              "budget_total": null
+            },
+            "condition_meta": {},
+            "deferred_topics": []
+          },
+          "trigger": {
+            "source": "button",
+            "request_id": "dated-button-1"
+          },
+          "steps": [
+            {
+              "code": "ASSIGN_ROLES",
+              "purpose": "행사 준비와 당일 진행에 필요한 담당 범위를 정하기 위해 필요합니다.",
+              "starts_at": "2026-11-01T10:00:00+09:00",
+              "deadline": "2026-11-07T18:00:00+09:00",
+              "actions": [],
+              "name": "담당 인원 배치",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "RESEARCH_VENUE",
+              "purpose": "교내 잔디밭의 사용 가능 여부, 이용 규정, 우천 시 대체 가능성을 확인하기 위해 필요합니다.",
+              "starts_at": "2026-11-02T10:00:00+09:00",
+              "deadline": "2026-11-20T18:00:00+09:00",
+              "actions": [],
+              "name": "장소·교통 알아보기",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "RECRUIT_NOTICE",
+              "purpose": "20명 규모의 참가 의사를 확인하고 행사 세부 준비에 필요한 참여 정보를 모으기 위해 필요합니다.",
+              "starts_at": "2027-02-01T10:00:00+09:00",
+              "deadline": "2027-02-12T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가 모집 공지 준비 및 게시",
+                  "due_date": "2027-02-01"
+                }
+              ],
+              "name": "모집 공지",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CHECK_RESPONSES",
+              "purpose": "모집 응답을 확인하여 참석 인원과 추가 확인이 필요한 사항을 정리하기 위해 필요합니다.",
+              "starts_at": "2027-02-13T10:00:00+09:00",
+              "deadline": "2027-02-17T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "응답 확인 및 추가 확인 요청",
+                  "due_date": "2027-02-17"
+                }
+              ],
+              "name": "응답 확인",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CONFIRM_DETAILS",
+              "purpose": "참가 인원과 행사 일정을 최종 준비 기준으로 정리하기 위해 필요합니다.",
+              "starts_at": "2027-02-18T10:00:00+09:00",
+              "deadline": "2027-02-20T18:00:00+09:00",
+              "actions": [],
+              "name": "인원·일정 확정",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "BOOK_VENUE",
+              "purpose": "교내 잔디밭 사용 승인 또는 예약이 필요한 경우 행사 장소를 확보하기 위해 필요합니다.",
+              "starts_at": "2027-02-22T10:00:00+09:00",
+              "deadline": "2027-03-05T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "CONTRACT",
+                  "title": "교내 잔디밭 사용 승인 또는 예약 절차 검토",
+                  "due_date": "2027-03-05"
+                }
+              ],
+              "name": "예약",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "PRE_EVENT_NOTICE",
+              "purpose": "확정된 행사 일정과 참가자 준비사항을 행사 전에 안내하기 위해 필요합니다.",
+              "starts_at": "2027-04-03T10:00:00+09:00",
+              "deadline": "2027-04-07T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "행사 전 준비사항 안내",
+                  "due_date": "2027-04-03"
+                }
+              ],
+              "name": "사전 안내",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "EVENT_DAY",
+              "purpose": "2027년 4월 10일에 교내 잔디밭에서 예정된 피크닉을 진행하기 위해 필요합니다.",
+              "starts_at": "2027-04-10T00:00:00+09:00",
+              "deadline": "2027-04-10T23:59:59+09:00",
+              "actions": [],
+              "name": "행사 당일",
+              "phase": "EXECUTION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "SETTLE_EXPENSES",
+              "purpose": "행사 후 실제 발생한 지출을 정리하고 비용 처리를 검토하기 위해 필요합니다.",
+              "starts_at": "2027-04-11T10:00:00+09:00",
+              "deadline": "2027-04-17T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "EXPENSE",
+                  "title": "행사 관련 지출 정리",
+                  "due_date": "2027-04-17"
+                }
+              ],
+              "name": "지출 정산",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "RECORD_FEEDBACK",
+              "purpose": "행사 운영에 대한 참가자 의견과 개선사항을 기록하기 위해 필요합니다.",
+              "starts_at": "2027-04-11T10:00:00+09:00",
+              "deadline": "2027-04-24T18:00:00+09:00",
+              "actions": [],
+              "name": "피드백 기록",
+              "phase": "EXECUTION",
+              "actor": "AI"
+            }
+          ],
+          "excluded_steps": [
+            {
+              "code": "DEMAND_SURVEY",
+              "reason": "행사 유형과 참가 인원 20명이 이미 조건으로 제시되어 별도의 수요 조사는 우선 필요하지 않습니다."
+            },
+            {
+              "code": "COLLECT_FEES",
+              "reason": "1인 참가비가 0원으로 제시되어 참가비 수금 단계는 제외합니다."
+            },
+            {
+              "code": "REFUND_FEES",
+              "reason": "참가비가 0원으로 제시되어 환급할 참가비가 없습니다."
+            }
+          ],
+          "assumptions": [
+            {
+              "content": "교내 잔디밭은 별도 사용 승인, 예약 또는 이용 규정 확인이 필요할 수 있다고 보고 장소 확인 및 예약 단계를 포함했습니다.",
+              "sources": []
+            },
+            {
+              "content": "행사 시작 시각과 종료 시각은 정해지지 않았으므로 행사 당일 단계는 날짜 전체를 포괄하는 시간 범위로 제안했습니다.",
+              "sources": []
+            }
+          ],
+          "open_questions": [
+            "행사 제목을 정해야 합니다.",
+            "2027년 4월 10일의 정확한 행사 시작·종료 시각을 정해야 합니다.",
+            "교내 잔디밭 사용 승인 또는 예약이 필요한지 확인해야 합니다.",
+            "우천 또는 잔디밭 사용 불가 시 대체 장소와 진행 기준을 정해야 합니다.",
+            "담당 인원과 역할을 정해야 합니다.",
+            "준비물, 음식, 안전관리 등 운영 세부사항과 총예산을 정해야 합니다.",
+            "모집 결과에 따라 최종 참석 인원을 확인해야 합니다."
+          ],
+          "warnings": [
+            "행사 날짜까지 준비 기간은 충분하지만, 교내 잔디밭의 사용 승인 여부와 우천 대책이 확인되지 않으면 장소 확보 및 행사 진행에 제약이 생길 수 있습니다.",
+            "총예산과 행사 시각이 정해지지 않아 물품 준비와 당일 운영 계획은 추가 조정이 필요합니다."
+          ]
+        },
+        "reason": null,
+        "model_calls": 1
+      },
+      "compositions": [
+        {
+          "steps": [
+            {
+              "code": "ASSIGN_ROLES",
+              "purpose": "행사 준비와 당일 진행에 필요한 담당 범위를 정하기 위해 필요합니다.",
+              "starts_at": "2026-11-01T10:00:00+09:00",
+              "deadline": "2026-11-07T18:00:00+09:00",
+              "actions": []
+            },
+            {
+              "code": "RESEARCH_VENUE",
+              "purpose": "교내 잔디밭의 사용 가능 여부, 이용 규정, 우천 시 대체 가능성을 확인하기 위해 필요합니다.",
+              "starts_at": "2026-11-02T10:00:00+09:00",
+              "deadline": "2026-11-20T18:00:00+09:00",
+              "actions": []
+            },
+            {
+              "code": "RECRUIT_NOTICE",
+              "purpose": "20명 규모의 참가 의사를 확인하고 행사 세부 준비에 필요한 참여 정보를 모으기 위해 필요합니다.",
+              "starts_at": "2027-02-01T10:00:00+09:00",
+              "deadline": "2027-02-12T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가 모집 공지 준비 및 게시",
+                  "due_date": "2027-02-01"
+                }
+              ]
+            },
+            {
+              "code": "CHECK_RESPONSES",
+              "purpose": "모집 응답을 확인하여 참석 인원과 추가 확인이 필요한 사항을 정리하기 위해 필요합니다.",
+              "starts_at": "2027-02-13T10:00:00+09:00",
+              "deadline": "2027-02-17T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "응답 확인 및 추가 확인 요청",
+                  "due_date": "2027-02-17"
+                }
+              ]
+            },
+            {
+              "code": "CONFIRM_DETAILS",
+              "purpose": "참가 인원과 행사 일정을 최종 준비 기준으로 정리하기 위해 필요합니다.",
+              "starts_at": "2027-02-18T10:00:00+09:00",
+              "deadline": "2027-02-20T18:00:00+09:00",
+              "actions": []
+            },
+            {
+              "code": "BOOK_VENUE",
+              "purpose": "교내 잔디밭 사용 승인 또는 예약이 필요한 경우 행사 장소를 확보하기 위해 필요합니다.",
+              "starts_at": "2027-02-22T10:00:00+09:00",
+              "deadline": "2027-03-05T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "CONTRACT",
+                  "title": "교내 잔디밭 사용 승인 또는 예약 절차 검토",
+                  "due_date": "2027-03-05"
+                }
+              ]
+            },
+            {
+              "code": "PRE_EVENT_NOTICE",
+              "purpose": "확정된 행사 일정과 참가자 준비사항을 행사 전에 안내하기 위해 필요합니다.",
+              "starts_at": "2027-04-03T10:00:00+09:00",
+              "deadline": "2027-04-07T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "행사 전 준비사항 안내",
+                  "due_date": "2027-04-03"
+                }
+              ]
+            },
+            {
+              "code": "EVENT_DAY",
+              "purpose": "2027년 4월 10일에 교내 잔디밭에서 예정된 피크닉을 진행하기 위해 필요합니다.",
+              "starts_at": "2027-04-10T00:00:00+09:00",
+              "deadline": "2027-04-10T23:59:59+09:00",
+              "actions": []
+            },
+            {
+              "code": "SETTLE_EXPENSES",
+              "purpose": "행사 후 실제 발생한 지출을 정리하고 비용 처리를 검토하기 위해 필요합니다.",
+              "starts_at": "2027-04-11T10:00:00+09:00",
+              "deadline": "2027-04-17T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "EXPENSE",
+                  "title": "행사 관련 지출 정리",
+                  "due_date": "2027-04-17"
+                }
+              ]
+            },
+            {
+              "code": "RECORD_FEEDBACK",
+              "purpose": "행사 운영에 대한 참가자 의견과 개선사항을 기록하기 위해 필요합니다.",
+              "starts_at": "2027-04-11T10:00:00+09:00",
+              "deadline": "2027-04-24T18:00:00+09:00",
+              "actions": []
+            }
+          ],
+          "excluded_steps": [
+            {
+              "code": "DEMAND_SURVEY",
+              "reason": "행사 유형과 참가 인원 20명이 이미 조건으로 제시되어 별도의 수요 조사는 우선 필요하지 않습니다."
+            },
+            {
+              "code": "COLLECT_FEES",
+              "reason": "1인 참가비가 0원으로 제시되어 참가비 수금 단계는 제외합니다."
+            },
+            {
+              "code": "REFUND_FEES",
+              "reason": "참가비가 0원으로 제시되어 환급할 참가비가 없습니다."
+            }
+          ],
+          "assumptions": [
+            {
+              "content": "교내 잔디밭은 별도 사용 승인, 예약 또는 이용 규정 확인이 필요할 수 있다고 보고 장소 확인 및 예약 단계를 포함했습니다.",
+              "fact_ids": []
+            },
+            {
+              "content": "행사 시작 시각과 종료 시각은 정해지지 않았으므로 행사 당일 단계는 날짜 전체를 포괄하는 시간 범위로 제안했습니다.",
+              "fact_ids": []
+            }
+          ],
+          "open_questions": [
+            "행사 제목을 정해야 합니다.",
+            "2027년 4월 10일의 정확한 행사 시작·종료 시각을 정해야 합니다.",
+            "교내 잔디밭 사용 승인 또는 예약이 필요한지 확인해야 합니다.",
+            "우천 또는 잔디밭 사용 불가 시 대체 장소와 진행 기준을 정해야 합니다.",
+            "담당 인원과 역할을 정해야 합니다.",
+            "준비물, 음식, 안전관리 등 운영 세부사항과 총예산을 정해야 합니다.",
+            "모집 결과에 따라 최종 참석 인원을 확인해야 합니다."
+          ],
+          "warnings": [
+            "행사 날짜까지 준비 기간은 충분하지만, 교내 잔디밭의 사용 승인 여부와 우천 대책이 확인되지 않으면 장소 확보 및 행사 진행에 제약이 생길 수 있습니다.",
+            "총예산과 행사 시각이 정해지지 않아 물품 준비와 당일 운영 계획은 추가 조정이 필요합니다."
+          ]
+        }
+      ],
+      "validation_reasons": [],
+      "provider_errors": [],
+      "schema_errors": [],
+      "ms": 24005,
+      "http_calls": 1
+    }
+  ],
+  "http_calls": 1,
+  "summary": {
+    "turns": 1,
+    "passed": 1,
+    "expected_turns": 1,
+    "median_ms": 24005,
+    "max_ms": 24005,
+    "agent_calls": 0,
+    "generation_calls": 1
+  }
+}

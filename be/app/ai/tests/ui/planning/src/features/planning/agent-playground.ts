@@ -3,6 +3,7 @@ import { toFacts } from './playground'
 import type { Conditions } from './playground'
 import type { Fact } from './playground'
 import type { PlanFactKey } from './types'
+import type { GenerationResult, GenerationState } from './generation-playground'
 
 export { testApi } from './playground'
 
@@ -40,20 +41,26 @@ export interface AgentResult {
       | RecordLookup
       | {
           status: 'applied' | 'unchanged' | 'rejected'
-          changed_fields: string[]
+          changed_fields?: string[]
           reason: string | null
         }
+      | GenerationResult
   }[]
   model_calls: number
   limit_reached: boolean
   prompt_version: string
   record_lookup: RecordLookup | null
+  generation: GenerationState
+  generation_result: GenerationResult | null
+  generation_model_calls: number
+  preview_is_current: boolean
 }
 export interface AgentHealth {
   model: string
   agent_version: string
   fixture_count: number
   record_search: boolean
+  plan_generation: boolean
 }
 
 export const TOPIC_LABELS: Record<string, string> = {
