@@ -1,6 +1,6 @@
 # 운영해 · AI 모듈
 
-> **행사계획의 현재 개발 방향:** [대화 Agent 아이디어·명세 초안](docs/planning/design.md) (#165, 2026-10-24). 사용자 발화·현재 행사 초안·최근 대화를 읽은 LLM이 대화하거나 Tool을 선택하는 LangGraph의 1~4단계(초안·그래프·테스트 UI·기록 검색 Tool)를 내부 구현했습니다. 실제 검증과 흐름은 [planning 안내](docs/planning/README.md)에서 읽습니다. 아래 계획 채팅 구현 설명과 기존 시각 안내서는 legacy 참고이며, 현재 테스트 UI는 새 Agent를 호출합니다.
+> **행사계획의 현재 개발 방향:** [대화 Agent 아이디어·명세 초안](docs/planning/design.md) (#165, 2026-10-24). 사용자 발화·현재 행사 초안·최근 대화를 읽은 LLM이 대화하거나 Tool을 선택하는 LangGraph의 1~4단계(초안·그래프·테스트 UI·기록 검색 Tool)를 내부 구현했습니다. 실제 검증과 흐름은 [planning 안내](docs/planning/README.md)에서 읽습니다. 아래 계획 채팅 구현 설명과 기존 시각 안내서는 legacy 참고이며, 현재 테스트 UI는 새 Agent를 호출합니다. 테스트 화면은 `tests/ui/planning/`의 독립 앱이며 제품 `fe/`를 수정·참조하지 않습니다(#174).
 
 AI 팀이 담당하는 BE 내부 모듈입니다. 
 행사 계획·수정, 과거 기록 검색, 운영 중 변경에 대한 대응안 제안, 회의 중 기록 조회를 담당합니다.
@@ -45,7 +45,7 @@ be/app/ai/
 ├── workflow/            # 행사 Agent 실행 흐름·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
 ├── scripts/             # 실제 모델 확인·측정 스크립트 (CI 제외. 대부분 키 필요, Laya는 uv run --with로 잴 때만 붙임)
-├── tests/               # AI 테스트 (fixtures/records: 예시 기록, fixtures/eval: 기록 검색 평가 질문·회의 판단 평가 문항·평가 세트)
+├── tests/               # AI 테스트 (fixtures/records: 예시 기록, fixtures/eval: 기록 검색 평가 질문·회의 판단 평가 문항·평가 세트, ui/planning: 독립 계획 테스트 UI)
 ├── docs/
 │   ├── architecture.md
 │   ├── contracts.md     # BE-AI 데이터 계약 설명

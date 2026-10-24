@@ -27,16 +27,6 @@ export const router = createBrowserRouter([
       { path: 'events/:eventId/cancel', element: <EventCancelPage /> },
       { path: 'mypage', element: <MyPage /> },
       { path: 'dev/ui', element: <DevUiPage /> },
-      ...(import.meta.env.DEV
-        ? [
-            {
-              path: 'dev/planning',
-              lazy: async () => ({
-                Component: (await import('@/pages/PlanningPlaygroundPage')).default,
-              }),
-            },
-          ]
-        : []),
       { path: '*', element: <NotFoundPage /> },
     ],
   },

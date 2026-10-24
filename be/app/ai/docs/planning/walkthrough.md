@@ -176,7 +176,7 @@ asyncio.run(main())
 
 ## 3단계: 화면의 카드가 바뀌는 순간까지 따라가기
 
-브라우저에서 [테스트 화면](http://127.0.0.1:5173/dev/planning)을 열고 이야기한다. 실제 확인한 예시:
+브라우저에서 [테스트 화면](http://127.0.0.1:5174/)을 열고 이야기한다. 실제 확인한 예시:
 
 ```text
 “MT이고 참가비는 25,000원으로 잡자”
@@ -187,11 +187,11 @@ asyncio.run(main())
   → Tool로 변경, 카드: 30,000원·잠정
 ```
 
-[PlanningPlaygroundPage.tsx](../../../../../fe/src/pages/PlanningPlaygroundPage.tsx)의 `send()`가 `draft + history + current_message`를 `/__planning-test/agent/turn`에 보낸다. 서버의 [agent_turn()](../../scripts/planning_playground.py)이 이를 검증해 2단계의 `run_planning_agent_turn()`을 호출한다. 서버에는 대화 세션을 저장하지 않는다.
+[PlanningPlaygroundPage.tsx](../../tests/ui/planning/src/pages/PlanningPlaygroundPage.tsx)의 `send()`가 `draft + history + current_message`를 `/__planning-test/agent/turn`에 보낸다. 서버의 [agent_turn()](../../scripts/planning_playground.py)이 이를 검증해 2단계의 `run_planning_agent_turn()`을 호출한다. 서버에는 대화 세션을 저장하지 않는다.
 
-성공하면 FE는 `setLast(response.result)` 한 번으로 **초안과 이력을 함께** 바꾼다. 채팅창은 `reply`를 표시하고, [toAgentFacts()](../../../../../fe/src/features/planning/agent-playground.ts)는 `draft.conditions`와 `condition_meta`로 카드를 만든다. 그래서 상담 문장에 3만 원이 등장해도 카드 값이 바뀌지 않는다. 실제 Tool이 30,000원을 반영한 다음 응답에서 값과 잠정 표시가 함께 바뀐다.
+성공하면 테스트 UI는 `setLast(response.result)` 한 번으로 **초안과 이력을 함께** 바꾼다. 채팅창은 `reply`를 표시하고, [toAgentFacts()](../../tests/ui/planning/src/features/planning/agent-playground.ts)는 `draft.conditions`와 `condition_meta`로 카드를 만든다. 그래서 상담 문장에 3만 원이 등장해도 카드 값이 바뀌지 않는다. 실제 Tool이 30,000원을 반영한 다음 응답에서 값과 잠정 표시가 함께 바뀐다.
 
-화면의 말풍선은 사용자/AI 대화만 보여준다. 다음 요청에 보내는 `history`에는 Tool 호출·결과도 포함된다. FE가 이를 단순 말풍선 목록으로 다시 만들면 “왜 반영이 안 됐어?”를 설명할 근거가 없어지므로 반환된 이력을 그대로 전달한다.
+화면의 말풍선은 사용자/AI 대화만 보여준다. 다음 요청에 보내는 `history`에는 Tool 호출·결과도 포함된다. 테스트 UI가 이를 단순 말풍선 목록으로 다시 만들면 “왜 반영이 안 됐어?”를 설명할 근거가 없어지므로 반환된 이력을 그대로 전달한다.
 
 “날짜는 아직 모르겠고, 약 50명에 인당 25,000원 생각 중”에는 인원·참가비 잠정 표시와 `나중에 정할 내용: 일정`이 나타났다. “왜 반영이 안 됐을까?”에는 새 조건 질문을 붙이는 대신 실제 반영 상태를 설명했다. 이번 UI에서는 설명에 내부 상태 코드 `applied`가 노출되는 표현이 있었으며, 답변 문체 보완 과제로 남겼다.
 
@@ -234,3 +234,16 @@ agent: search_past_events(query="2025 봄 MT 참가비") 선택
 실제 UI에서도 조회 후 현재 25,000원 유지 → “올해도 그 금액으로 하자” 후 45,000원 반영을 확인했다. 수락 턴의 `record_lookup`은 `null`이다. 재검색하지 않았기 때문이며, FE는 이전 조회 자료를 별도로 보관해 출처 카드를 유지한다. [조회 직후](ui-tests/agent-records-lookup-2026-10-24.png)와 [수락 후](ui-tests/agent-records-applied-2026-10-24.png)를 비교하면 답변에 나온 숫자와 현재 조건이 언제 달라지는지 볼 수 있다.
 
 직접 테스트하는 방법·BE/FE 전달 사항·남은 작업은 [4단계 명세](step-04-record-tool.md)를 참고한다.
+
+
+## 테스트 화면의 위치와 FE 전달 경계 (#174)
+
+```text
+AI 테스트 앱: be/app/ai/tests/ui/planning/ (포트 5174)
+ → 자체 Vite 프록시 /__planning-test
+ → AI 로컬 API (포트 8011)
+ → Agent 결과를 테스트 화면에 표시
+ → 상태·실패 사례·필요 계약을 BE/FE 전달 자료로 정리
+```
+
+화면·타입·스타일·package/lockfile은 모두 AI 테스트 폴더에 있다. 초기 FE 화면 조각을 참고한 복사본을 보관하지만 제품 `fe/`를 import하거나 빌드에 사용하지 않는다. 제품 FE의 라우트·공용 컴포넌트·타입·프록시에 추가했던 테스트 변경은 제거했다. 실제 UI 구현은 FE팀의 역할이며 이 테스트 앱을 제품 코드로 자동 반영하지 않는다. [독립 실행 안내](../../tests/ui/planning/README.md)를 따른다.

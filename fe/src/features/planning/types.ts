@@ -13,9 +13,7 @@ export const PLAN_FACT_KEYS = ['행사 이름', '종류', '예상 인원', '참�
 export type PlanFactKey = (typeof PLAN_FACT_KEYS)[number]
 
 // 아직 안 정한 항목은 값을 비운다. note는 「후보 2곳」처럼 반쯤 정해진 경우에 쓴다.
-export type PlanFacts = Partial<
-  Record<PlanFactKey, { value: string; decided: boolean; note?: string }>
->
+export type PlanFacts = Partial<Record<PlanFactKey, { value: string; decided: boolean }>>
 
 // ── 2단계(흐름 만들기) ──
 // 단계는 13개 고정 목록에서 고른 것만 나온다. 묶음도 셋으로 고정이다.

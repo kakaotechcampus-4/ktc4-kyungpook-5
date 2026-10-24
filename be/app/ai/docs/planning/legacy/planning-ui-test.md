@@ -1,5 +1,7 @@
 # 행사계획 P1 · FE-AI 로컬 테스트
 
+> 이 문서의 FE 경로·실행법은 당시 구현 기록이다. #174에서 제품 `fe/`의 테스트 변경을 제거했다. 현재 실행은 [AI 전용 테스트 UI 안내](../step-03-ui.md)를 따른다.
+
 > Legacy UI 구현 기록입니다. 현재 화면은 새 Agent를 호출합니다. 최신 실행·잠정 표시·검증 결과는 [3단계 UI 안내](../step-03-ui.md) (#168)를 읽습니다. 아래 계약과 샘플 기록 버튼은 이전 흐름의 참고 자료입니다.
 
 2026-10-23 / [#164](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/164). Figma [P1 초기 화면 1130:1938](https://www.figma.com/design/DAIeI2ETmdQ5vjrPSZJ196?node-id=1130-1938)과 기존 FE의 PlanChat/PlanFacts·공용 토리/색상 토큰을 활용했다. Figma 파일은 수정하지 않았다.

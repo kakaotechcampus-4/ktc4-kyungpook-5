@@ -179,7 +179,7 @@ export default function PlanningPlaygroundPage() {
         </Button>
       </header>
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-caption text-blue-700">
-        <span className="font-bold">FE · AI 대화 테스트</span>
+        <span className="font-bold">AI 전용 계획 테스트</span>
         <span>브라우저 임시 상태 · 새로고침 시 초기화 · 저장 없음</span>
         <span>{health ? `모델 ${health.model}` : 'AI 연결 확인 중'}</span>
         <label>
