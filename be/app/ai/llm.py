@@ -11,6 +11,7 @@ from typing import Any
 
 import openai
 from langchain_core.language_models import LanguageModelInput
+from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import BaseModel, ValidationError
 
@@ -166,6 +167,33 @@ async def ainvoke_structured[T: BaseModel](
     if output["parsing_error"] is not None or parsed is None:
         raise _invalid_response(schema) from output["parsing_error"]
     return parsed
+
+
+async def ainvoke_with_tools(
+    messages: LanguageModelInput,
+    *,
+    tools: Sequence[dict[str, Any]],
+    allow_tools: bool = True,
+    model: ChatOpenAI | None = None,
+) -> AIMessage:
+    """Tool 요청 또는 자연어 답변을 받는다. 실제 Tool 실행은 Node가 담당한다."""
+    model = model or get_chat_model()
+    bound = model.bind_tools(
+        list(tools), parallel_tool_calls=False,
+        tool_choice="auto" if allow_tools else "none",
+    )
+    try:
+        response = await bound.ainvoke(messages)
+    except (openai.APIConnectionError, openai.APIStatusError) as error:
+        converted = _convert_api_error(error)
+        if converted is None:
+            raise
+        raise converted from error
+    if not isinstance(response, AIMessage) or response.invalid_tool_calls:
+        raise AIInvalidResponseError("모델의 답변 또는 Tool 요청 형식을 읽을 수 없습니다")
+    if not allow_tools and response.tool_calls:
+        raise AIInvalidResponseError("Tool 사용이 끝난 뒤에도 모델이 Tool을 요청했습니다")
+    return response
 
 
 async def aembed_texts(

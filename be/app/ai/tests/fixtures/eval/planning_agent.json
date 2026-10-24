@@ -1,0 +1,40 @@
+{
+  "review_status": "AI가 작성한 소규모 합성 초안, 사람의 정답 검수 전",
+  "reference_date": "2026-10-24",
+  "dialogs": [
+    {
+      "id": "tentative-explain",
+      "initial": {"event_type": "MT"},
+      "turns": [
+        {"text": "날짜는 아직 확실하진 않아. 일단 인원은 대략 50명, 인당 25,000원정도르르 생각하고 있어", "updates": {"headcount": 50, "fee_per_person": 25000}, "meta": {"headcount": "tentative", "fee_per_person": "tentative"}, "deferred": ["dates"], "tool": "yes"},
+        {"text": "왜 반영이 안됐을까?", "updates": {}, "meta": {"headcount": "tentative", "fee_per_person": "tentative"}, "deferred": ["dates"], "tool": "no"},
+        {"text": "인원은 50명으로 정할게.", "updates": {}, "meta": {"headcount": "specified", "fee_per_person": "tentative"}, "deferred": ["dates"], "tool": "yes"}
+      ]
+    },
+    {
+      "id": "advice-accept",
+      "initial": {"event_type": "MT", "fee_per_person": 25000},
+      "turns": [
+        {"text": "참가비 3만 원이면 어때?", "updates": {}, "tool": "no"},
+        {"text": "일단 그렇게 잡자.", "updates": {"fee_per_person": 30000}, "meta": {"fee_per_person": "tentative"}, "tool": "yes"}
+      ]
+    },
+    {
+      "id": "dates-recover",
+      "initial": {"event_type": "MT", "start_date": "2027-03-20", "end_date": "2027-03-21"},
+      "turns": [
+        {"text": "시작일을 2027년 4월 20일로 바꿔줘.", "updates": {}, "tool": "any"},
+        {"text": "그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘.", "updates": {"start_date": "2027-04-20", "end_date": "2027-04-21"}, "tool": "yes"}
+      ]
+    },
+    {
+      "id": "free-clear",
+      "initial": {"event_type": "MT", "headcount": 50, "fee_per_person": 25000},
+      "turns": [
+        {"text": "참가비는 무료로 하자.", "updates": {"fee_per_person": 0}, "tool": "yes"},
+        {"text": "아니다. 참가비는 다시 미정으로 두자.", "updates": {"fee_per_person": null}, "meta_absent": ["fee_per_person"], "tool": "yes"},
+        {"text": "고마워. 나중에 이어서 하자.", "updates": {}, "tool": "no"}
+      ]
+    }
+  ]
+}

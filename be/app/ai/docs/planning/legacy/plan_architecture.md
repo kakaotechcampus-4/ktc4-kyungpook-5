@@ -1,5 +1,7 @@
 # 행사계획 설계 초안
 
+> **Legacy 참고 문서 (2026-10-24):** 현재 개발 방향은 [행사계획 대화 Agent 초안](../design.md) (#165)입니다. 아래 작업 1~13과 고정 추출·질문 조립 구조는 기존 설계·구현을 이해하기 위한 기록입니다. 새 구현의 작업 순서나 계약으로 자동 적용하지 않습니다.
+
 > 상태: 설계 초안 / 작업 1~3 내부 구현, 작업 4-1~4-3 검색 연결·참고 결과 변환 구현, 2026-10-23. 작업 순서는 합의한 출발점이며 세부 명칭·스키마·노드 분리는 구현과 측정 과정에서 바뀔 수 있다. BE·FE 공동 계약은 아직 합의되지 않았다. 이 문서의 타입은 현재 공개 API가 아니다.
 
 작업 1의 내부 조건 타입, 작업 2의 구조화 추출·검증·후보 적용, 작업 3의 단일 질문 선택·반복 방지를 구현했다. 실제 모델 연결 검증 결과는 [평가 현황](planning-evaluation.md)에 기록한다. BE 저장 연결과 LangGraph 통합은 아직 구현하지 않았다. 이후 실행 흐름은 설계 초안이다.
@@ -10,9 +12,9 @@
 
 P1 큰 틀 잡기 → P2 흐름 만들기 → 단계 편집 → 저장·복원 → 행사 시작까지 설계한다. Discord, 회의 어시스턴트, 행사 시작 이후 operations 구현은 제외한다.
 
-- 사용자 경험과 요구사항 ID: [requirements.md](requirements.md)의 AI-PLAN-01~09.
-- 행사별 Agent 수명과 BE 책임: [architecture.md](architecture.md). 이 문서는 planning 내부 설계를 구체화한다.
-- 현재 구현된 타입: [contracts.py](../contracts.py), 공개 경계 설명: [contracts.md](contracts.md).
+- 사용자 경험과 요구사항 ID: [requirements.md](../../requirements.md)의 AI-PLAN-01~09.
+- 행사별 Agent 수명과 BE 책임: [architecture.md](../../architecture.md). 이 문서는 planning 내부 설계를 구체화한다.
+- 현재 구현된 타입: [contracts.py](../../../contracts.py), 공개 경계 설명: [contracts.md](../../contracts.md).
 - 화면 기준: [Figma v12](https://www.figma.com/design/DAIeI2ETmdQ5vjrPSZJ196?node-id=1130-2). P1 `1130:1933`, P2 `1130:2393`, 단계 수정 `1130:4315`, 행사 상세 `1130:3766`.
 - 축소 범위: [#112](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/112). 예산안 자동 작성·수납 대조·미납자 판정·송금·환급은 생성 대상에서 제외한다.
 

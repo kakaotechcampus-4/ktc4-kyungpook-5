@@ -1,20 +1,24 @@
 # 운영해 · AI 모듈
 
+> **행사계획의 현재 개발 방향:** [대화 Agent 아이디어·명세 초안](docs/planning/design.md) (#165, 2026-10-24). 사용자 발화·현재 행사 초안·최근 대화를 읽은 LLM이 대화하거나 Tool을 선택하는 LangGraph의 1~4단계(초안·그래프·테스트 UI·기록 검색 Tool)를 내부 구현했습니다. 실제 검증과 흐름은 [planning 안내](docs/planning/README.md)에서 읽습니다. 아래 계획 채팅 구현 설명과 기존 시각 안내서는 legacy 참고이며, 현재 테스트 UI는 새 Agent를 호출합니다. 테스트 화면은 `tests/ui/planning/`의 독립 앱이며 제품 `fe/`를 수정·참조하지 않습니다(#174).
+
 AI 팀이 담당하는 BE 내부 모듈입니다. 
 행사 계획·수정, 과거 기록 검색, 운영 중 변경에 대한 대응안 제안, 회의 중 기록 조회를 담당합니다.
 
 ## 관련 문서
 
-- [행사계획 코드 따라가기](docs/planning-walkthrough.md): 처음/오랜만에 읽을 때 보는 흐름 → 코드 → 입력·출력 예시 안내
+- [행사계획 개발 안내](docs/planning/README.md): 새 설계·단계별 명세·코드 흐름과 legacy 자료의 진입점
+
+- [행사계획 코드 따라가기](docs/planning/legacy/planning-walkthrough.md): 처음/오랜만에 읽을 때 보는 흐름 → 코드 → 입력·출력 예시 안내
 - [기능 요구사항](docs/requirements.md): 제공할 사용자 경험과 확인 기준
 - [아키텍처](docs/architecture.md): 기능별 역할과 AI·BE 책임 경계
-- [행사계획 설계 초안](docs/plan_architecture.md): 작업 1~3 조건·추출·질문, 작업 4-1 명세·4-2 검색 호출·4-3 참고 결과 변환, LangGraph와 제한된 ReAct 구성
-- [행사 조건 추출 평가](docs/planning-evaluation.md): 검증 범위, 실제 모델 평가 실행 방법과 미측정 항목
+- [행사계획 설계 초안](docs/planning/legacy/plan_architecture.md): 작업 1~3 조건·추출·질문, 작업 4-1 명세·4-2 검색 호출·4-3 참고 결과 변환, LangGraph와 제한된 ReAct 구성
+- [행사 조건 추출 평가](docs/planning/legacy/planning-evaluation.md): 검증 범위, 실제 모델 평가 실행 방법과 미측정 항목
 - [BE-AI 데이터 계약](docs/contracts.md): 계약의 목적, 계획 대화·기록 색인 연동 예시, 회의 발화 처리 초안
 - [AI 오류 타입](docs/errors.md): 오류 분류와 모델 호출 오류 변환 기준
 - [기록 색인·검색 평가 기록](docs/retrieval-evaluation.md): 청킹·임베딩 측정값과 관찰
 - [회의 어시스턴트 측정 기록](docs/meeting-evaluation.md): 판단 모델·Whisper·지연 측정값과 관찰
-- [계획 단계 카탈로그](docs/step-catalog.md): 계획안의 단계·행동 기준 목록
+- [계획 단계 카탈로그](docs/planning/legacy/step-catalog.md): 계획안의 단계·행동 기준 목록
 - [작업 규칙](AGENTS.md): 요구사항 → Issue → 구현 → PR 협업 절차
 - [이전 기록](docs/migration.md): 모듈 이전 내역과 BE 팀 후속 작업
 
@@ -22,7 +26,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 
 작업 5-1(#158)은 `turn_schemas.py`의 내부 한 턴 계약과 `turn_policy.py`의 초안 생성 가능 정책을 구현했습니다. 5-2(#159)는 `prepare_planning_turn`으로 추출·조회 판단·필요한 검색을 실행해 중간 결과를 반환합니다. 5-3(#160)의 `assemble_planning_turn`이 미해결 수정·표시 질문·답변을 조립하고 `process_planning_turn`이 전체 내부 한 턴을 연결합니다. 5-4(#161)는 실제 모델로 합성 10턴을 실행해 복합 기대값 9턴 일치와 불필요한 생성 보류 1건을 기록했습니다. 공개 facade는 미연결입니다. 쉬운 설명과 실행 예시는 코드 따라가기 7-5절에 있습니다.
 
-계획 기능은 내부 `PlanningConditions`, `extract_condition_changes`, `select_next_question`을 구현했습니다. 구조화 LLM 추출 뒤 코드가 변경을 검증하고 조건 후보를 반환하며, 질문 선택은 템플릿으로 한 주제만 묻고 보류·이미 질문한 항목을 추적합니다. 실제 모델 연결의 검증 범위와 한계는 [평가 기록](docs/planning-evaluation.md)에 있습니다. 작업 4-1은 [#153](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/153)에서 과거 기록 검색의 입력·출력 명세를 정리했습니다. 작업 4-2 [#154](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/154)는 `build_record_search_request`와 `search_planning_records`로 기존 검색을 호출하며 작업 4-3 [#155](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/155)의 `PlanningRecordSearchResult`로 변환해 반환합니다. 사실·출처·미확인 내용·충돌과 요청 식별 정보를 보존하며 추가 모델 호출은 없습니다. 전체 P1 응답 조립·계획 생성·BE 저장·LangGraph 통합·공개 API 승격은 미구현입니다.
+계획 기능은 내부 `PlanningConditions`, `extract_condition_changes`, `select_next_question`을 구현했습니다. 구조화 LLM 추출 뒤 코드가 변경을 검증하고 조건 후보를 반환하며, 질문 선택은 템플릿으로 한 주제만 묻고 보류·이미 질문한 항목을 추적합니다. 실제 모델 연결의 검증 범위와 한계는 [평가 기록](docs/planning/legacy/planning-evaluation.md)에 있습니다. 작업 4-1은 [#153](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/153)에서 과거 기록 검색의 입력·출력 명세를 정리했습니다. 작업 4-2 [#154](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/154)는 `build_record_search_request`와 `search_planning_records`로 기존 검색을 호출하며 작업 4-3 [#155](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/155)의 `PlanningRecordSearchResult`로 변환해 반환합니다. 사실·출처·미확인 내용·충돌과 요청 식별 정보를 보존하며 추가 모델 호출은 없습니다. 전체 P1 응답 조립·계획 생성·BE 저장·LangGraph 통합·공개 API 승격은 미구현입니다.
 
 ```text
 be/app/ai/
@@ -41,7 +45,7 @@ be/app/ai/
 ├── workflow/            # 행사 Agent 실행 흐름·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
 ├── scripts/             # 실제 모델 확인·측정 스크립트 (CI 제외. 대부분 키 필요, Laya는 uv run --with로 잴 때만 붙임)
-├── tests/               # AI 테스트 (fixtures/records: 예시 기록, fixtures/eval: 기록 검색 평가 질문·회의 판단 평가 문항·평가 세트)
+├── tests/               # AI 테스트 (fixtures/records: 예시 기록, fixtures/eval: 기록 검색 평가 질문·회의 판단 평가 문항·평가 세트, ui/planning: 독립 계획 테스트 UI)
 ├── docs/
 │   ├── architecture.md
 │   ├── contracts.md     # BE-AI 데이터 계약 설명
@@ -49,7 +53,7 @@ be/app/ai/
 │   ├── retrieval-evaluation.md # 기록 색인·검색 측정 기록
 │   ├── meeting-evaluation.md # 회의 판단·음성 인식·지연 측정 기록
 │   ├── requirements.md  # 사용자 경험 중심 AI 기능 요구사항 초안
-│   ├── step-catalog.md  # 계획안 단계·행동 기준 목록
+│   ├── planning/        # 새 설계·단계별 명세·코드 안내, legacy/에 이전 자료 보관
 │   ├── migration.md     # 파일 대응표·BE 팀 후속 작업
 │   └── legacy-dependencies/ # 이전 서비스 의존성 원본, 설치 대상 아님
 ├── AGENTS.md
