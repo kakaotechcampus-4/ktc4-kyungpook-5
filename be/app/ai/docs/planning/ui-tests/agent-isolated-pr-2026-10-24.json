@@ -1,0 +1,156 @@
+{
+  "date": "2026-10-24",
+  "issue": 174,
+  "scope": "PR #170 P1·검색. 생성 기능 없음.",
+  "url": "http://127.0.0.1:5175/",
+  "api": "127.0.0.1:8012",
+  "model": "gpt-5.6-luna",
+  "agent_prompt": "planning-agent-v2",
+  "condition_turn_ms": 6420,
+  "search_turn_ms": 14810,
+  "note": "SDK history·응답 메타정보를 제외한 화면 진단 필드.",
+  "observed": {
+    "reply": "2025년 봄 MT 참가비는 **1인 45,000원**이었어요.\n\n- 「2025 봄 MT 결과보고.pdf」 1쪽 ‘행사 개요’\n- 「2025 봄 MT 결과보고.pdf」 2쪽 ‘정산’\n- 「2025 봄 MT 참가 신청 안내.pdf」 1쪽",
+    "draft": {
+      "conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": 25000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "condition_meta": {
+        "event_type": {
+          "status": "specified",
+          "evidence": {
+            "message_id": "7a910931-966a-4bc8-b596-8f488a7e03b2",
+            "quote": "MT를 준비해."
+          }
+        },
+        "headcount": {
+          "status": "tentative",
+          "evidence": {
+            "message_id": "7a910931-966a-4bc8-b596-8f488a7e03b2",
+            "quote": "인원은 대략 50명"
+          }
+        },
+        "fee_per_person": {
+          "status": "specified",
+          "evidence": {
+            "message_id": "7a910931-966a-4bc8-b596-8f488a7e03b2",
+            "quote": "참가비는 인당 25,000원으로 잡자."
+          }
+        }
+      },
+      "deferred_topics": [
+        "dates"
+      ]
+    },
+    "executions": [
+      {
+        "tool_call_id": "call_Pzqc38ApWlSLmtgaPbrHNMSy",
+        "name": "search_past_events",
+        "result": {
+          "status": "available",
+          "query": "2025년 봄에 진행한 MT의 참가비가 얼마였는지, 공식 행사 기록에 기재된 금액과 실제 출처(문서명·위치)를 확인해 주세요. 기록이 없거나 대상이 불명확한지도 알려 주세요.",
+          "result": {
+            "facts": [
+              {
+                "content": "2025년 봄 MT의 1인 참가비(1인 회비)는 45,000원이다. 출처: 「2025 봄 MT 결과보고.pdf」 1쪽 ‘1. 행사 개요’.",
+                "sources": [
+                  {
+                    "record_id": "rec_mt_2025_report",
+                    "file_name": "2025 봄 MT 결과보고.pdf",
+                    "location": {
+                      "label": "1쪽 · 1. 행사 개요"
+                    }
+                  }
+                ]
+              },
+              {
+                "content": "2025년 봄 MT 정산에는 회비 수입이 45,000원 × 28명으로 기재되어 있다. 출처: 「2025 봄 MT 결과보고.pdf」 2쪽 ‘3. 정산’.",
+                "sources": [
+                  {
+                    "record_id": "rec_mt_2025_report",
+                    "file_name": "2025 봄 MT 결과보고.pdf",
+                    "location": {
+                      "label": "2쪽 · 3. 정산"
+                    }
+                  }
+                ]
+              },
+              {
+                "content": "2025년 봄 MT 참가 신청 안내에도 1인 회비가 45,000원으로 기재되어 있다. 출처: 「2025 봄 MT 참가 신청 안내.pdf」 1쪽.",
+                "sources": [
+                  {
+                    "record_id": "rec_notice_2025_spring_mt",
+                    "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+                    "location": {
+                      "label": "1쪽"
+                    }
+                  }
+                ]
+              }
+            ],
+            "not_found": [],
+            "conflicts": []
+          },
+          "reason": null
+        }
+      }
+    ],
+    "model_calls": 2,
+    "limit_reached": false,
+    "prompt_version": "planning-agent-v2",
+    "record_lookup": {
+      "status": "available",
+      "query": "2025년 봄에 진행한 MT의 참가비가 얼마였는지, 공식 행사 기록에 기재된 금액과 실제 출처(문서명·위치)를 확인해 주세요. 기록이 없거나 대상이 불명확한지도 알려 주세요.",
+      "result": {
+        "facts": [
+          {
+            "content": "2025년 봄 MT의 1인 참가비(1인 회비)는 45,000원이다. 출처: 「2025 봄 MT 결과보고.pdf」 1쪽 ‘1. 행사 개요’.",
+            "sources": [
+              {
+                "record_id": "rec_mt_2025_report",
+                "file_name": "2025 봄 MT 결과보고.pdf",
+                "location": {
+                  "label": "1쪽 · 1. 행사 개요"
+                }
+              }
+            ]
+          },
+          {
+            "content": "2025년 봄 MT 정산에는 회비 수입이 45,000원 × 28명으로 기재되어 있다. 출처: 「2025 봄 MT 결과보고.pdf」 2쪽 ‘3. 정산’.",
+            "sources": [
+              {
+                "record_id": "rec_mt_2025_report",
+                "file_name": "2025 봄 MT 결과보고.pdf",
+                "location": {
+                  "label": "2쪽 · 3. 정산"
+                }
+              }
+            ]
+          },
+          {
+            "content": "2025년 봄 MT 참가 신청 안내에도 1인 회비가 45,000원으로 기재되어 있다. 출처: 「2025 봄 MT 참가 신청 안내.pdf」 1쪽.",
+            "sources": [
+              {
+                "record_id": "rec_notice_2025_spring_mt",
+                "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+                "location": {
+                  "label": "1쪽"
+                }
+              }
+            ]
+          }
+        ],
+        "not_found": [],
+        "conflicts": []
+      },
+      "reason": null
+    }
+  }
+}

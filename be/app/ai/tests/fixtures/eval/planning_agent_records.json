@@ -1,0 +1,19 @@
+{
+  "review_status": "AI가 작성한 검색 연결 확인용 합성 초안, 사람의 정답 검수 전",
+  "reference_date": "2026-10-24",
+  "dialogs": [
+    {"id":"search-accept","initial":{"event_type":"MT","fee_per_person":25000},"turns":[
+      {"text":"2025년 봄 MT 참가비는 얼마였어?","updates":{},"tool":"yes","lookup":"available","terms":["45000"],"source_records":["rec_mt_2025_report"]},
+      {"text":"올해도 그 금액으로 하자.","updates":{"fee_per_person":45000},"tool":"yes"}
+    ]},
+    {"id":"reference-only","initial":{"event_type":"MT","location":"올해 희망지","headcount":50},"turns":[
+      {"text":"2024년 가을 MT 장소와 참가비를 알려줘.","updates":{},"tool":"yes","lookup":"available","terms":["양평","40000"],"source_records":["rec_mt_2024_autumn_report"]}
+    ]},
+    {"id":"mixed","initial":{"event_type":"MT","headcount":50,"fee_per_person":25000},"turns":[
+      {"text":"인원은 40명으로 바꾸고, 2025년 봄 MT 참가비도 찾아줘.","updates":{"headcount":40},"tool":"yes","lookup":"available","terms":["45000"],"source_records":["rec_mt_2025_report"]}
+    ]},
+    {"id":"empty-records","empty_records":true,"initial":{"event_type":"MT","fee_per_person":25000},"turns":[
+      {"text":"2025년 봄 MT 참가비를 찾아줘.","updates":{},"tool":"yes","lookup":"not_found"}
+    ]}
+  ]
+}

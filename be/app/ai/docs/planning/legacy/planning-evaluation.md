@@ -1,5 +1,7 @@
 # 행사 조건 추출 평가
 
+> Legacy 참고 자료. 새 설계와 구현 안내는 [planning 문서](../README.md)를 읽습니다.
+
 ## 작업 5-4 실제 모델 다중 턴 평가 (2026-10-23, #161)
 
 5-1~5-3 내부 한 턴 함수를 실제 모델로 실행했다. 실행 전 커밋 `7103129`에 합성 대화 5개·10턴의 기대값을 고정했다. 기대 정답은 AI 작성 초안으로 사람 검수 전이다. 상태를 기대값으로 교정하지 않고 실제 출력의 조건·질문 이력·pending·대화를 다음 턴에 전달했다. 예외 발생 시 해당 대화의 남은 턴은 SKIPPED로 기록하도록 했지만 이번에는 예외가 없었다.
@@ -40,7 +42,7 @@
 
 ```sh
 # be/에서 실행. 실제 API 사용. 불일치가 있으면 종료 코드 1.
-.venv/bin/python -m app.ai.scripts.eval_planning_turns --json app/ai/docs/evaluation-results/planning-turns-새실행일.json
+.venv/bin/python -m app.ai.scripts.eval_planning_turns --json app/ai/docs/planning/legacy/evaluation-results/planning-turns-새실행일.json
 ```
 
 평가 스크립트 import는 환경변수를 변경하지 않고 실제 실행의 AISettings만 .env를 읽는다. 키·내부 주소·예외 원문은 결과에 저장하지 않는다. 핵심 코드에 입력·분기·상태 보존 이유의 주석을 추가했고 AI 전체 566개 테스트가 통과했다. 평가셋 확대·실패 유형별 분석·검색 품질 개선은 별도 후속 과제로 유지한다.
