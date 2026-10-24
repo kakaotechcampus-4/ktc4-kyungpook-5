@@ -13,6 +13,7 @@ HTTP 상태 코드나 API 응답 코드로 변환하는 책임은 BE에 있다.
     └── AIRetryableError    같은 요청을 다시 시도하면 성공할 수 있다
         ├── AITimeoutError
         └── AIInvalidResponseError
+            └── AIOutputLimitError
 
 모델 호출 예외는 `llm.ainvoke_structured`가 이 타입으로 바꾼다(기준: docs/errors.md).
 예상하지 못한 예외는 AIError로 변환X
@@ -89,4 +90,12 @@ class AIInvalidResponseError(AIRetryableError):
 
     같은 입력이라도 다시 생성하면 정상적인 응답이 나올 수 있으므로
     재시도 가능한 오류로 분류한다.
+    """
+
+
+class AIOutputLimitError(AIInvalidResponseError):
+    """공급자가 출력 한도 도달로 미완성 응답임을 명시한 경우.
+
+    잘린 JSON의 구문만 보고 추측하지 않는다. 한도를 조정하지 않으면 같은
+    실패가 반복될 수 있으므로 일반 형식 오류와 구분한다.
     """

@@ -18,6 +18,7 @@ AIError
 └── AIRetryableError
     ├── AITimeoutError
     └── AIInvalidResponseError
+        └── AIOutputLimitError
 ```
 
 | 타입 | 뜻 | BE 처리 |
@@ -27,6 +28,7 @@ AIError
 | `AIRetryableError` | 다시 시도하면 성공할 수 있는 오류 | 이 타입 하나로 재시도 안내 대상을 모두 잡는다 |
 | `AITimeoutError` | 제한 시간 안에 응답을 받지 못함 | 모델 쪽 처리가 끝났을 수 있어 실행되지 않았다고 단정하지 않는다 |
 | `AIInvalidResponseError` | 응답이 기대한 형식·계약 검증을 통과하지 못함 | 다시 생성하면 정상 응답이 나올 수 있다 |
+| `AIOutputLimitError` | 공급자가 `incomplete / max_output_tokens`를 명시함 | `AIInvalidResponseError`의 하위 타입. 반복되면 출력 한도·전송 방식 점검이 필요하다 |
 
 예상하지 못한 예외는 `AIError`로 감싸지 않는다. 그대로 올려 BE가 서버 오류로 처리한다.
 회의 판단(`judge_utterance`)이 올린 `AIError`는 `trace`에 실패하기 전까지의 판단 기록을 담는다. 실패한 판단도 판단 기록에 남기기 위해서다([회의 발화 처리 초안](contracts.md#비동기와-실패), #117). 다른 기능에서는 `None`이다.
@@ -42,10 +44,12 @@ BE는 이 타입들을 `app.ai`에서 가져온다.
 | 연결 실패·429·5xx | `AIRetryableError` |
 | 401·403·404 (주소·키·모델명), 모델명 오류 400 | `AIConfigError` |
 | 응답 형식 불일치·거절·빈 응답 | `AIInvalidResponseError` |
+| 응답 메타정보에 출력 한도 도달이 명시됨 | `AIOutputLimitError` |
 | 임베딩 벡터 개수·차원이 요청과 다름 | `AIInvalidResponseError` |
 | 그 밖 (모델명 외 400 등) | 감싸지 않고 그대로 |
 
 - 일시적 오류는 `DEFAULT_MAX_RETRIES`만큼 재시도한 뒤에 변환한다.
+- 구조화 스트리밍은 완성본을 모은 뒤 검증한다. 최종 완료 상태가 없거나 미완성이라고 명시된 응답은 JSON 파싱 여부와 무관하게 거절한다. 구문 오류만 보고 출력 한도 도달로 추정하지 않는다. 일반 응답은 SDK 파싱이 먼저 실패해 메타정보를 얻지 못하면 기존 `AIInvalidResponseError`로 남는다.
 - 게이트웨이는 허용하지 않은 모델명에 404가 아니라 400으로 답한다. 본문의 `type`·`code`로는 다른 400과 구분되지 않아 문구(`MODEL_NOT_ALLOWED`)로 판별한다.
 - 오류 메시지에는 고정 문구와 HTTP 코드만 넣는다. 응답 본문에 키나 요청 원문이 섞일 수 있어 원인 예외는 `__cause__`로만 연결한다.
 

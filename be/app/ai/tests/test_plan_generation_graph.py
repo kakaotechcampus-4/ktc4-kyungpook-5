@@ -7,7 +7,7 @@ from functools import partial
 import pytest
 
 from app.ai.contracts import RecordSource, SourceLocation
-from app.ai.errors import AIConfigError, AITimeoutError
+from app.ai.errors import AIConfigError, AIInvalidResponseError, AIOutputLimitError, AIRetryableError, AITimeoutError
 from app.ai.features.planning.agent.state import PlanningDraft
 from app.ai.features.planning.generation.catalog import CATALOG
 from app.ai.features.planning.generation.entrypoints import ButtonPlanGenerationRequest, run_button_plan_generation
@@ -113,6 +113,26 @@ def test_missing_type_skips_model_and_timeout_has_no_provider_detail():
     assert result.status=="needs_clarification" and not model.calls
     result=asyncio.run(run_plan_generation(request(),invoke=Model(AITimeoutError("provider-detail"))))
     assert result.status=="failed" and "provider-detail" not in result.model_dump_json()
+
+
+@pytest.mark.parametrize("error, code, phrase", [
+    (AIOutputLimitError("secret-provider"), "output_limit", "출력 한도"),
+    (AIInvalidResponseError("secret-provider"), "invalid_output", "출력 형식"),
+    (AITimeoutError("secret-provider"), "timeout", "초과"),
+    (AIRetryableError("secret-provider"), "temporarily_unavailable", "일시적"),
+])
+def test_failure_reason_and_log_distinguish_safe_error_categories(error, code, phrase, caplog):
+    result = asyncio.run(run_plan_generation(request(), invoke=Model(error)))
+    assert result.status == "failed" and phrase in result.reason
+    assert f"stage=compose_plan code={code}" in caplog.text
+    assert "secret-provider" not in result.model_dump_json() + caplog.text
+
+
+def test_plan_validation_failure_is_distinct_from_model_output_failure(caplog):
+    invalid = composition(excluded_steps=[])
+    result = asyncio.run(run_plan_generation(request(), invoke=Model(invalid)))
+    assert result.status == "failed" and "검증" in result.reason
+    assert "stage=validate_plan code=invalid_plan" in caplog.text
 
 
 @pytest.mark.parametrize("error",[AIConfigError("configuration"),PermissionError("denied"),RuntimeError("unexpected")])

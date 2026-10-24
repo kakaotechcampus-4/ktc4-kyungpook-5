@@ -5,6 +5,7 @@ from app.ai.errors import (
     AIEmptyRecordError,
     AIError,
     AIInvalidResponseError,
+    AIOutputLimitError,
     AIRetryableError,
     AITimeoutError,
 )
@@ -14,6 +15,7 @@ def test_재시도할_수_있는_실패는_한_타입으로_잡힌다():
     """BE가 AIRetryableError 하나만 잡으면 재시도 안내 대상이 모두 걸린다."""
     assert issubclass(AITimeoutError, AIRetryableError)
     assert issubclass(AIInvalidResponseError, AIRetryableError)
+    assert issubclass(AIOutputLimitError, AIInvalidResponseError)
 
 
 def test_설정_오류는_재시도_대상이_아니다():

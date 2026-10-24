@@ -1,6 +1,7 @@
 """작은 생성 graph: 구조화 초안 작성 → 카탈로그·날짜·출처 검증."""
 
 import json
+import logging
 from pathlib import Path
 from typing import Protocol, TypedDict
 from uuid import uuid4
@@ -10,9 +11,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
 
-from ....errors import AIInvalidResponseError, AIRetryableError
-from ....llm import ainvoke_structured
+from ....errors import AIInvalidResponseError, AIOutputLimitError, AIRetryableError, AITimeoutError
 from .catalog import BY_CODE, CATALOG, PHASE_ORDER
+from .model import invoke_plan_composition
 from .schemas import (
     EventPlanPreview, PlanAssumption, PlanComposition, PlanGenerationInput,
     PlanGenerationResult, PreviewStep,
@@ -21,6 +22,7 @@ from .schemas import (
 
 PROMPT_VERSION = "planning-generation-v1"
 PROMPT = (Path(__file__).parent / "prompts/compose.md").read_text()
+logger = logging.getLogger(__name__)
 
 
 class CompositionInvoker(Protocol):
@@ -117,21 +119,37 @@ def validate_plan(state: GenerationGraphState) -> dict:
         assumptions=tuple(assumptions), open_questions=tuple(questions), warnings=composition.warnings)}
 
 
-async def run_plan_generation(request: PlanGenerationInput, *, invoke: CompositionInvoker = ainvoke_structured) -> PlanGenerationResult:
+async def run_plan_generation(request: PlanGenerationInput, *, invoke: CompositionInvoker = invoke_plan_composition) -> PlanGenerationResult:
     """원본 조건을 바꾸지 않고 검증된 초안만 반환한다. 저장·외부 실행은 없다."""
     if request.basis_draft.conditions.event_type is None:
         return PlanGenerationResult(status="needs_clarification", reason="어떤 행사인지 먼저 정해 주세요.")
     graph = StateGraph(GenerationGraphState)
+    stage = "compose_plan"
     async def compose(state):
         return await compose_plan(state, invoke=invoke)
+    def validate(state):
+        nonlocal stage
+        stage = "validate_plan"
+        return validate_plan(state)
     graph.add_node("compose_plan", compose)
-    graph.add_node("validate_plan", validate_plan)
+    graph.add_node("validate_plan", validate)
     graph.add_edge(START, "compose_plan")
     graph.add_edge("compose_plan", "validate_plan")
     graph.add_edge("validate_plan", END)
     try:
         result = await graph.compile().ainvoke(dict(request=request.model_copy(deep=True), composition=None, preview=None))
-    except AIRetryableError:
-        # 원문 오류에는 provider 정보가 있을 수 있다. 일시 실패·검증 실패만 안전하게 정규화한다.
-        return PlanGenerationResult(status="failed", reason="계획 초안을 만들거나 검증하지 못했어요. 다시 시도해 주세요.", model_calls=1)
+    except AIRetryableError as error:
+        # 단계·분류만 남긴다. 공급자 오류 원문/traceback/사용자 대화는 로깅하지 않는다.
+        if isinstance(error, AIOutputLimitError):
+            code, reason = "output_limit", "모델 응답이 출력 한도에서 끊겨 초안을 완성하지 못했어요."
+        elif isinstance(error, AITimeoutError):
+            code, reason = "timeout", "계획 생성 응답을 기다리는 시간이 초과됐어요. 다시 시도해 주세요."
+        elif isinstance(error, AIInvalidResponseError):
+            code = "invalid_plan" if stage == "validate_plan" else "invalid_output"
+            reason = ("생성된 초안이 단계·날짜·근거 검증을 통과하지 못했어요. 다시 시도해 주세요."
+                      if stage == "validate_plan" else "모델의 초안 출력 형식을 읽지 못했어요. 다시 시도해 주세요.")
+        else:
+            code, reason = "temporarily_unavailable", "계획 생성 모델에 일시적으로 연결하지 못했어요. 다시 시도해 주세요."
+        logger.warning("plan_generation_failed stage=%s code=%s", stage, code)
+        return PlanGenerationResult(status="failed", reason=reason, model_calls=1)
     return PlanGenerationResult(status="generated", preview=result["preview"], model_calls=1)

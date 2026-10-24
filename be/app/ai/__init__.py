@@ -18,6 +18,7 @@ from .errors import (
     AIEmptyRecordError,
     AIError,
     AIInvalidResponseError,
+    AIOutputLimitError,
     AIRetryableError,
     AITimeoutError,
 )
@@ -70,4 +71,5 @@ __all__ = (
     "AIRetryableError",
     "AITimeoutError",
     "AIInvalidResponseError",
+    "AIOutputLimitError",
 )
