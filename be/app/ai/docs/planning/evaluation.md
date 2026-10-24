@@ -1,5 +1,42 @@
 # 행사계획 대화 Agent 검증 기록
 
+## 생성 수락 후 반복 실패 — 출력·전송 한도 진단 (#176, 2026-10-24)
+
+현재 UI에서 워크숍·약 40명·참가비 25,000원·10/31~11/2를 정리한 뒤 권유를 수락했으나 생성이 실패했고, 재요청도 실패했다. 화면의 처리 흐름에서 생성 Tool 실행과 모델 1회 호출을 확인했다. 수락 해석을 통과한 뒤의 실패이며, 원래 UI 두 실패의 공급자 응답은 수집하지 못했으므로 그 두 응답의 원인을 소급해 단정하지 않는다.
+
+같은 워크숍 조건을 별도로 재현하자 **응답이 `incomplete / max_output_tokens`, 출력 2,000토큰에서 종료**됐다. JSON은 문자열 중간에서 끊겼다. 추론에 쓴 648/516토큰도 같은 출력 한도에 포함돼 단계·일정·행동 JSON을 마치지 못했다. 날짜 미정 MT·날짜 있는 소풍을 포함한 고정 4회에서 생성 1/4 성공, 출력 한도 중단 3/4이었다.
+
+한도만 8,192로 높인 일반 응답 요청은 HTTP 400으로 거절됐다. 게이트웨이가 일반 응답의 2,000토큰 상한과 더 긴 출력의 스트리밍 필요를 명시했다. 따라서 생성 전용 모델에 `streaming=True`, `max_output_tokens=8192`를 함께 설정했다. 생성/대화 프롬프트·모델·reasoning 기본값·카탈로그·스키마·계획 검증은 유지했다. 스트림을 완성본으로 모아 기존 구조화 검증을 하므로 UI 계약이나 제품 `fe/`는 바꾸지 않았다.
+
+| 고정 사례 | 기존 일반 응답·한도 미지정 | 생성 전용 스트리밍·한도 8,192 |
+| --- | --- | --- |
+| 워크숍 1 | 출력 중단, 2,000토큰 | 생성 성공, 2,148토큰 |
+| 워크숍 2 (동일 조건 재실행) | 출력 중단, 2,000토큰 | 생성 성공, 2,445토큰 |
+| MT·날짜 미정 | 생성 성공, 1,268토큰 | 생성 성공, 1,354토큰 |
+| 소풍·날짜 있음 | 출력 중단, 2,000토큰 | 생성 성공, 2,231토큰 |
+
+모델 gpt-5.6-luna, planning-generation-v1, 같은 프롬프트 SHA-256. [이전 원본](evaluation-results/planning-generation-limits-baseline-2026-10-24.json)·[조정 후 원본](evaluation-results/planning-generation-limits-stream8192-2026-10-24.json)·[고정 입력](../../tests/fixtures/eval/planning_generation_limits.json)을 보존했다. 당시 임시 진단 실행기를 [재실행 스크립트](../../scripts/diagnose_plan_generation.py)로 정리했다. 원본의 전체 코드 해시는 당시 미수집이며 HEAD·dirty 상태·프롬프트 해시·원래 결과를 남겼다. 진단은 생성 graph만 호출해 대화 해석과 분리했고, HTTP 응답을 버퍼링해 종료 상태를 관찰했다. 같은 입력의 순차 4회 비교이지 전체 서비스 성공률·통계적 개선율·지연 성능 비교가 아니다. 8,192는 상한이며 항상 그만큼 소비하는 값이 아니다.
+
+추가로 다음을 확인했다.
+
+- 기존 UI의 상태·대화를 유지하고 서버만 재시작한 뒤 “다시 시도해줘” → **13단계 P2 성공, 26.68초**. 조건·잠정 여부가 이전과 같고 source=chat, 대화 모델 2회·생성 모델 1회였다. [UI 복구 기록](ui-tests/agent-generation-recovery-2026-10-24.json).
+- 새 합성 대화에서 먼저 권유를 요청 → pending 제안 기록(6.15초) → “그렇게하자” → 같은 offer ID 수락·초안 성공(25.30초), 2/2턴 기대 기준 일치. [입력과 실제 결과](evaluation-results/planning-workshop-acceptance-2026-10-24.json). 먼저 권유를 요청한 사례이므로 자발적 권유 품질의 평가가 아니다.
+- API 없는 AI 회귀 **698개 통과**. 기존 미커밋 legacy 평가 1개는 제외했다. 실제 SDK의 스트림 조립·출력 한도 전송·미완성/종료 신호 누락 거절·진단 비밀정보 제외를 검증했다. 조건·기존 초안 보존 회귀도 유지했다.
+
+출력 한도 미완성을 일반 형식 오류와 구분하는 `AIOutputLimitError`를 추가했다. 생성 실패는 `compose_plan / output_limit|invalid_output|timeout|temporarily_unavailable`, `validate_plan / invalid_plan`처럼 단계·분류만 로그에 남기고 고정된 안전한 사유를 전달한다. 공급자 원문·SDK 메타정보 전체·대화·키는 로그/UI에 넣지 않는다. JSON이 파싱돼도 공급자가 미완성이라고 알렸거나 스트림의 최종 완료 신호가 없으면 채택하지 않는다. 일반 응답에서 SDK 파싱이 먼저 실패해 종료 메타정보를 얻지 못한 경우는 출력 한도로 단정하지 않고 기존 형식 오류로 남긴다.
+
+자동 생성 반복, JSON 덧붙이기 보정, 모델·reasoning·프롬프트 교체는 하지 않았다. 같은 낮은 한도로 반복 호출하거나, 출력 내용을 억지로 축약해 검증 요구를 바꾸는 방안보다 확인한 전송 제약을 바로잡는 쪽을 택했다. 시간 초과·8,192 초과·잘못된 날짜/단계/근거·수락 해석 오류가 모두 해소됐다는 뜻은 아니다. 실제 사례 확대와 실패 유형별 누적 관찰은 계속 필요하다.
+
+재실행(`be/`, 실제 모델 호출·새 결과 파일 사용):
+
+```sh
+# 기존 일반 응답과 현재 생성 전용 전송을 같은 입력으로 비교
+.venv/bin/python -m app.ai.scripts.diagnose_plan_generation --transport regular --max-output-tokens 0 --json /tmp/planning-limit-before-new.json
+.venv/bin/python -m app.ai.scripts.diagnose_plan_generation --json /tmp/planning-limit-after-new.json
+# 실제 Agent의 권유 → 짧은 수락 → 생성
+.venv/bin/python -m app.ai.scripts.eval_plan_generation --dialog workshop-offer-acceptance --json /tmp/planning-acceptance-new.json
+```
+
 ## 테스트 UI 소유 범위 정정 — 독립 앱 (#174, 2026-10-24)
 
 AI 테스트 UI를 제품 `fe/`에서 `tests/ui/planning/`으로 옮겼다. 자체 package/lockfile·설정·node_modules로 설치·빌드하며 제품 FE를 import하지 않는다. 초기 화면 조각은 참고용 복사본으로 보존했다. 제품 FE의 라우트·공용 컴포넌트·타입·프록시에 넣었던 AI 테스트 변경은 제거했다. Agent·생성 프롬프트와 API 로직은 이번 정정에서 바꾸지 않았다.
