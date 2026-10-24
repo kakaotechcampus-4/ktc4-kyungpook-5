@@ -5,6 +5,7 @@ description = "운영해 백엔드 — 동아리 행사 보조 에이전트"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.14",
+    "email-validator>=2.3.0",
     "fastapi>=0.115",
     "langchain-openai>=1.0",
     "langgraph>=1.2",
@@ -14,6 +15,7 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
     "pypdf>=6.19.0",
+    "python-multipart>=0.0.32",
     "sqlalchemy>=2.0.36",
     "uvicorn[standard]>=0.32",
 ]

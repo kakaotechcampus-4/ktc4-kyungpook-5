@@ -30,6 +30,20 @@ def upgrade() -> None:
     sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('accounts',
+    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('password_hash', sa.String(length=255), nullable=True),
+    sa.Column('kakao_user_id', sa.String(length=255), nullable=True),
+    sa.Column('email_verified', sa.Boolean(), nullable=False),
+    sa.Column('email_verification_token_hash', sa.String(length=255), nullable=True),
+    sa.Column('email_verification_expires_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('email'),
+    sa.UniqueConstraint('kakao_user_id')
+    )
     op.create_table('events',
     sa.Column('club_id', sa.String(length=26), nullable=False),
     sa.Column('title', sa.String(length=100), nullable=False),
@@ -54,22 +68,23 @@ def upgrade() -> None:
     op.create_index('ix_events_club_status', 'events', ['club_id', 'status'], unique=False)
     op.create_table('members',
     sa.Column('club_id', sa.String(length=26), nullable=False),
+    sa.Column('account_id', sa.String(length=26), nullable=True),
     sa.Column('name', sa.String(length=50), nullable=False),
     sa.Column('role', sa.Enum('OWNER', 'MANAGER', 'MEMBER', name='memberrole', native_enum=False, length=32), nullable=False),
     sa.Column('status', sa.Enum('PENDING', 'ACTIVE', name='memberstatus', native_enum=False, length=32), nullable=False),
     sa.Column('student_no', sa.String(length=20), nullable=True),
     sa.Column('phone', sa.String(length=20), nullable=True),
-    sa.Column('email', sa.String(length=255), nullable=True),
-    sa.Column('password_hash', sa.String(length=255), nullable=True),
     sa.Column('notify_approval_pending', sa.Boolean(), nullable=False),
     sa.Column('notify_step_delay', sa.Boolean(), nullable=False),
     sa.Column('id', sa.String(length=26), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['account_id'], ['accounts.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('club_id', 'email', name='uq_members_club_email')
+    sa.UniqueConstraint('club_id', 'account_id', name='uq_members_club_account')
     )
+    op.create_index(op.f('ix_members_account_id'), 'members', ['account_id'], unique=False)
     op.create_index(op.f('ix_members_club_id'), 'members', ['club_id'], unique=False)
     op.create_table('agent_log',
     sa.Column('club_id', sa.String(length=26), nullable=False),
@@ -90,19 +105,61 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_agent_log_club_id'), 'agent_log', ['club_id'], unique=False)
     op.create_table('auth',
-    sa.Column('member_id', sa.String(length=26), nullable=False),
-    sa.Column('provider', sa.Enum('LOCAL', 'GOOGLE', 'KAKAO', name='authprovider', native_enum=False, length=32), nullable=False),
-    sa.Column('provider_user_id', sa.String(length=255), nullable=True),
+    sa.Column('account_id', sa.String(length=26), nullable=False),
+    sa.Column('access_token_hash', sa.String(length=255), nullable=False),
+    sa.Column('access_token_expires_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('refresh_token_hash', sa.String(length=255), nullable=False),
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('id', sa.String(length=26), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.ForeignKeyConstraint(['member_id'], ['members.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['account_id'], ['accounts.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_auth_member_id'), 'auth', ['member_id'], unique=False)
+    op.create_index(op.f('ix_auth_account_id'), 'auth', ['account_id'], unique=False)
+    op.create_table('meetings',
+    sa.Column('club_id', sa.String(length=26), nullable=False),
+    sa.Column('event_id', sa.String(length=26), nullable=True),
+    sa.Column('title', sa.String(length=200), nullable=True),
+    sa.Column('language', sa.String(length=10), nullable=False),
+    sa.Column('status', sa.Enum('RECORDING', 'FINALIZING', 'COMPLETED', 'FAILED', name='meetingstatus', native_enum=False, length=32), nullable=False),
+    sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('ended_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('recording_consent_confirmed_by', sa.String(length=26), nullable=True),
+    sa.Column('recording_consent_confirmed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_by', sa.String(length=26), nullable=False),
+    sa.Column('version', sa.Integer(), nullable=False),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['created_by'], ['members.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['event_id'], ['events.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['recording_consent_confirmed_by'], ['members.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_meetings_club_id'), 'meetings', ['club_id'], unique=False)
+    op.create_table('transcript_segments',
+    sa.Column('meeting_id', sa.String(length=26), nullable=False),
+    sa.Column('seq', sa.Integer(), nullable=False),
+    sa.Column('text', sa.Text(), nullable=False),
+    sa.Column('is_final', sa.Boolean(), nullable=False),
+    sa.Column('version', sa.Integer(), nullable=False),
+    sa.Column('route', sa.Enum('RAG', 'NONE', name='judgeroute', native_enum=False, length=32), nullable=True),
+    sa.Column('kind', sa.Enum('NO_LOOKUP', 'ANSWER', 'NOT_FOUND', name='judgekind', native_enum=False, length=32), nullable=True),
+    sa.Column('question', sa.Text(), nullable=True),
+    sa.Column('answer', sa.Text(), nullable=True),
+    sa.Column('sources', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('trace', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['meeting_id'], ['meetings.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('meeting_id', 'seq', name='uq_transcript_segments_meeting_seq')
+    )
+    op.create_index(op.f('ix_transcript_segments_meeting_id'), 'transcript_segments', ['meeting_id'], unique=False)
     op.create_table('conversations',
     sa.Column('member_id', sa.String(length=26), nullable=False),
     sa.Column('event_id', sa.String(length=26), nullable=False),
@@ -133,7 +190,7 @@ def upgrade() -> None:
     sa.Column('event_id', sa.String(length=26), nullable=True),
     sa.Column('file_name', sa.String(length=255), nullable=False),
     sa.Column('file_type', sa.Enum('XLSX', 'CSV', 'HWP', 'PDF', 'IMAGE', name='recordfiletype', native_enum=False, length=32), nullable=False),
-    sa.Column('category', sa.Enum('LEDGER', 'ETC', 'RULES', 'EVENT_HISTORY', name='recordcategory', native_enum=False, length=32), nullable=False),
+    sa.Column('category', sa.Enum('LEDGER', 'ETC', 'RULES', 'EVENT_HISTORY', 'RECEIPT', name='recordcategory', native_enum=False, length=32), nullable=False),
     sa.Column('storage_key', sa.String(length=512), nullable=False),
     sa.Column('size', sa.BigInteger(), nullable=False),
     sa.Column('parse_status', sa.Enum('QUEUED', 'PARSING', 'NEEDS_REVIEW', 'COMPLETED', 'INDEXED', 'FAILED', name='recordparsestatus', native_enum=False, length=32), nullable=False),
@@ -148,6 +205,75 @@ def upgrade() -> None:
     comment='동아리 기록 원본 메타데이터'
     )
     op.create_index('ix_records_club_category', 'records', ['club_id', 'category'], unique=False)
+    op.create_table('expenses',
+    sa.Column('club_id', sa.String(length=26), nullable=False),
+    sa.Column('event_id', sa.String(length=26), nullable=True),
+    sa.Column('spent_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('merchant', sa.String(length=200), nullable=True),
+    sa.Column('amount', sa.Integer(), nullable=False),
+    sa.Column('currency', sa.Enum('KRW', name='currencycode', native_enum=False, length=32), nullable=False),
+    sa.Column('category', sa.String(length=50), nullable=True),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('source', sa.Enum('MANUAL', 'CSV_IMPORT', 'OCR_IMPORT', name='expensesource', native_enum=False, length=32), nullable=False),
+    sa.Column('receipt_record_id', sa.String(length=26), nullable=True),
+    sa.Column('created_by', sa.String(length=26), nullable=False),
+    sa.Column('version', sa.Integer(), nullable=False),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['created_by'], ['members.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['event_id'], ['events.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['receipt_record_id'], ['records.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_expenses_club_id'), 'expenses', ['club_id'], unique=False)
+    op.create_table('receipt_imports',
+    sa.Column('club_id', sa.String(length=26), nullable=False),
+    sa.Column('event_id', sa.String(length=26), nullable=True),
+    sa.Column('record_id', sa.String(length=26), nullable=True),
+    sa.Column('type', sa.Enum('EXPENSE_CSV', 'RECEIPT_IMAGE', name='receiptimporttype', native_enum=False, length=32), nullable=False),
+    sa.Column('status', sa.Enum('QUEUED', 'PROCESSING', 'NEEDS_REVIEW', 'CONFIRMED', 'FAILED', name='receiptimportstatus', native_enum=False, length=32), nullable=False),
+    sa.Column('version', sa.Integer(), nullable=False),
+    sa.Column('extraction_result', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('file_sha256', sa.String(length=64), nullable=True),
+    sa.Column('error', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('confirmed_by', sa.String(length=26), nullable=True),
+    sa.Column('confirmed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_by', sa.String(length=26), nullable=False),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['confirmed_by'], ['members.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['created_by'], ['members.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['event_id'], ['events.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['record_id'], ['records.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_receipt_imports_club_id'), 'receipt_imports', ['club_id'], unique=False)
+    op.create_table('receipt_import_rows',
+    sa.Column('receipt_import_id', sa.String(length=26), nullable=False),
+    sa.Column('row_no', sa.Integer(), nullable=False),
+    sa.Column('spent_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('merchant', sa.String(length=200), nullable=True),
+    sa.Column('amount', sa.Integer(), nullable=True),
+    sa.Column('currency', sa.Enum('KRW', name='currencycode', native_enum=False, length=32), nullable=False),
+    sa.Column('category', sa.String(length=50), nullable=True),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('raw_fields', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('draft_fields', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('field_confidence', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('validation_errors', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('confirmed_expense_id', sa.String(length=26), nullable=True),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['confirmed_expense_id'], ['expenses.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['receipt_import_id'], ['receipt_imports.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('receipt_import_id', 'row_no', name='uq_receipt_rows_import_rowno')
+    )
     op.create_table('steps',
     sa.Column('event_id', sa.String(length=26), nullable=False),
     sa.Column('step_order', sa.Integer(), nullable=False),
@@ -210,30 +336,80 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('conversation_id', 'seq', name='uq_messages_conversation_seq')
     )
+    op.create_table('invitations',
+    sa.Column('club_id', sa.String(length=26), nullable=False),
+    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('role', sa.Enum('OWNER', 'MANAGER', 'MEMBER', name='memberrole', native_enum=False, length=32), nullable=False),
+    sa.Column('token_hash', sa.String(length=255), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'ACCEPTED', 'EXPIRED', name='invitationstatus', native_enum=False, length=32), nullable=False),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('invited_by', sa.String(length=26), nullable=False),
+    sa.Column('accepted_by', sa.String(length=26), nullable=True),
+    sa.Column('accepted_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['accepted_by'], ['accounts.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['invited_by'], ['members.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('ix_invitations_club_email_status', 'invitations', ['club_id', 'email', 'status'], unique=False)
+    op.create_table('idempotency_keys',
+    sa.Column('club_id', sa.String(length=26), nullable=True),
+    sa.Column('member_id', sa.String(length=26), nullable=False),
+    sa.Column('endpoint', sa.String(length=200), nullable=False),
+    sa.Column('idempotency_key', sa.String(length=255), nullable=False),
+    sa.Column('request_body_hash', sa.String(length=64), nullable=False),
+    sa.Column('status', sa.String(length=50), nullable=False),
+    sa.Column('response_status', sa.Integer(), nullable=True),
+    sa.Column('response_body', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=True),
+    sa.Column('id', sa.String(length=26), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['club_id'], ['clubs.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['member_id'], ['members.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('member_id', 'endpoint', 'idempotency_key', name='uq_idempotency_member_endpoint_key')
+    )
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_table('idempotency_keys')
+    op.drop_index('ix_invitations_club_email_status', table_name='invitations')
+    op.drop_table('invitations')
     op.drop_table('messages')
     op.drop_index(op.f('ix_actions_step_id'), table_name='actions')
     op.drop_index('ix_actions_event_status', table_name='actions')
     op.drop_table('actions')
     op.drop_table('steps')
+    op.drop_table('receipt_import_rows')
+    op.drop_index(op.f('ix_receipt_imports_club_id'), table_name='receipt_imports')
+    op.drop_table('receipt_imports')
+    op.drop_index(op.f('ix_expenses_club_id'), table_name='expenses')
+    op.drop_table('expenses')
     op.drop_index('ix_records_club_category', table_name='records')
     op.drop_table('records')
     op.drop_table('participants')
     op.drop_index(op.f('ix_conversations_member_id'), table_name='conversations')
     op.drop_index(op.f('ix_conversations_event_id'), table_name='conversations')
     op.drop_table('conversations')
-    op.drop_index(op.f('ix_auth_member_id'), table_name='auth')
+    op.drop_index(op.f('ix_transcript_segments_meeting_id'), table_name='transcript_segments')
+    op.drop_table('transcript_segments')
+    op.drop_index(op.f('ix_meetings_club_id'), table_name='meetings')
+    op.drop_table('meetings')
+    op.drop_index(op.f('ix_auth_account_id'), table_name='auth')
     op.drop_table('auth')
     op.drop_index(op.f('ix_agent_log_club_id'), table_name='agent_log')
     op.drop_table('agent_log')
     op.drop_index(op.f('ix_members_club_id'), table_name='members')
+    op.drop_index(op.f('ix_members_account_id'), table_name='members')
     op.drop_table('members')
     op.drop_index('ix_events_club_status', table_name='events')
     op.drop_table('events')
+    op.drop_table('accounts')
     op.drop_table('clubs')
     # ### end Alembic commands ###

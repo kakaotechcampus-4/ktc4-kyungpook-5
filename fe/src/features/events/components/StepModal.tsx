@@ -27,6 +27,8 @@ interface StepModalProps {
   onClose: () => void
   // Action 카드의 [게시했습니다] 등
   onCompleteAction: (action: EventAction) => void
+  // 승인 대기 Action의 [검토하기]. 결정 검토 모달은 화면 쪽에서 띄운다.
+  onReviewAction: (action: EventAction) => void
   onCompleteStep: (step: EventStep) => void
 }
 
@@ -38,6 +40,7 @@ export function StepModal({
   onRetryActions,
   onClose,
   onCompleteAction,
+  onReviewAction,
   onCompleteStep,
 }: StepModalProps) {
   const chip = STATE_CHIP[step.state]
@@ -125,7 +128,12 @@ export function StepModal({
             <Chip tone="approved">{todo.length}건</Chip>
           </div>
           {todo.map((action) => (
-            <ActionCard key={action.id} action={action} onComplete={onCompleteAction} />
+            <ActionCard
+              key={action.id}
+              action={action}
+              onComplete={onCompleteAction}
+              onReview={onReviewAction}
+            />
           ))}
         </>
       ) : (
