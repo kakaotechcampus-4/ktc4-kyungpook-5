@@ -197,8 +197,12 @@ def test_eval_set_splits_by_meeting():
     for row in SET_ROWS:
         meetings.setdefault(row["meeting"], set()).add((row["split"], row["audio"]))
     assert all(len(kinds) == 1 for kinds in meetings.values())
-    holdout = [m for m, kinds in meetings.items() if next(iter(kinds))[0] == "holdout"]
-    assert len(holdout) * 4 == len(meetings)
+    holdout = {m for m, kinds in meetings.items() if next(iter(kinds))[0] == "holdout"}
+    # j01~j16은 대본을 다 쓴 뒤 회의 4개를 홀드아웃으로 뽑았다(#115).
+    # j17~j28은 홀드아웃을 키우려고 다른 모델·다른 회의 종류로 따로 쓴 회의라 모두 홀드아웃이다(#117)
+    first = {m for m in meetings if m <= "j16"}
+    assert len(holdout & first) * 4 == len(first)
+    assert meetings.keys() - first <= holdout
 
 
 def test_eval_set_does_not_repeat_laya_comparison_items():
