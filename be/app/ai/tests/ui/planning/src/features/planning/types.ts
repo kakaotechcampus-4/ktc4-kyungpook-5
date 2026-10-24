@@ -33,21 +33,3 @@ export interface PlanStep {
   date: string
   desc: string
 }
-
-// 오른쪽 요약. 일곱 줄로 고정이라 계획이 바뀌어도 자리가 흔들리지 않는다.
-export interface PlanSummary {
-  totalSteps: number
-  aiSteps: number
-  approvalSteps: number
-  manualSteps: number
-  collect: string
-  notice: string
-  period: string
-}
-
-// 시작하기 전에 짚어줄 것. 일정이 비었거나 단계가 겹칠 때만 생긴다.
-export interface PlanWarning {
-  title: string
-  body: string
-  actionLabel: string
-}

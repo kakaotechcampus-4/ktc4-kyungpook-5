@@ -11,14 +11,22 @@ from functools import partial
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from langchain_core.messages import AnyMessage
+from pydantic import Field, field_validator, model_validator
 
 from app.ai.config import AISettings
-from app.ai.contracts import IndexRecordRequest
+from app.ai.contracts import ContractModel, IndexRecordRequest, NonBlankStr
 from app.ai.errors import AIConfigError, AIRetryableError
 from app.ai.features.planning.agent.graph import run_planning_agent_turn
 from app.ai.features.planning.agent.nodes import PROMPT_VERSION
-from app.ai.features.planning.agent.schemas import PlanningAgentTurnInput
+from app.ai.features.planning.agent.schemas import PlanningAgentTurnInput, validate_planning_history
 from app.ai.features.planning.agent.record_tool import search_past_events
+from app.ai.features.planning.agent.state import PlanningDraft
+from app.ai.features.planning.agent.generation_tools import latest_reference_facts, plan_messages
+from app.ai.features.planning.generation.entrypoints import ButtonPlanGenerationRequest, run_button_plan_generation
+from app.ai.features.planning.generation.graph import run_plan_generation
+from app.ai.features.planning.generation.schemas import PlanningGenerationState, valid_timezone
+from app.ai.features.planning.schemas import CalendarDate
 from app.ai.features.planning.turn_flow import process_planning_turn
 from app.ai.features.planning.turn_schemas import PlanningTurnInput
 from app.ai.features.retrieval.indexing import index_record_chunks
@@ -29,6 +37,23 @@ app = FastAPI(title="Planning local playground", docs_url=None, redoc_url=None)
 memory = InMemoryRecordSearch()
 fixture_count = 0
 lock = asyncio.Lock()
+
+
+class PlaygroundButtonRequest(ContractModel):
+    request_id: NonBlankStr
+    draft: PlanningDraft
+    generation: PlanningGenerationState = Field(default_factory=PlanningGenerationState)
+    history: tuple[AnyMessage, ...] = Field(default=(), max_length=60)
+    reference_date: CalendarDate
+    timezone: NonBlankStr = "Asia/Seoul"
+    use_current_conditions: bool = False
+
+    _timezone = field_validator("timezone")(valid_timezone)
+
+    @model_validator(mode="after")
+    def _history(self):
+        validate_planning_history(self.history)
+        return self
 
 
 def safe_failure(error):
@@ -44,7 +69,7 @@ def safe_failure(error):
 async def health():
     settings = AISettings()
     return {"model": settings.model, "fixture_count": fixture_count, "storage": "memory-only",
-            "agent_version": PROMPT_VERSION, "record_search": True}
+            "agent_version": PROMPT_VERSION, "record_search": True, "plan_generation": True}
 
 
 @app.post("/__planning-test/agent/turn")
@@ -55,10 +80,27 @@ async def agent_turn(request: PlanningAgentTurnInput):
         try:
             # 요청마다 현재 메모리를 주입한다. 샘플 색인으로 저장소가 교체돼도 이전 port에 묶이지 않는다.
             result = await run_planning_agent_turn(request,
-                search=partial(search_past_events, club_id="clb_keunnamu", port=memory))
+                search=partial(search_past_events, club_id="clb_keunnamu", port=memory), generate=run_plan_generation)
         except Exception as error:
             raise safe_failure(error) from None
         return {"result": result.model_dump(mode="json"),
+                "elapsed_ms": round((time.perf_counter() - started) * 1000), "fixture_count": fixture_count}
+
+
+@app.post("/__planning-test/agent/generate")
+async def button_generate(request: PlaygroundButtonRequest):
+    # 클릭을 채팅으로 위장하지 않는다. 검증한 실제 이력에서 생성 문맥·최근 기록 사실만 준비한다.
+    async with lock:
+        started = time.perf_counter()
+        try:
+            result = await run_button_plan_generation(ButtonPlanGenerationRequest(
+                request_id=request.request_id, draft=request.draft, generation=request.generation,
+                messages=plan_messages(request.history), reference_facts=latest_reference_facts(request.history),
+                reference_date=request.reference_date, timezone=request.timezone,
+                use_current_conditions=request.use_current_conditions), generate=run_plan_generation)
+        except Exception as error:
+            raise safe_failure(error) from None
+        return {"result": result.model_dump(mode="json"), "source": "button",
                 "elapsed_ms": round((time.perf_counter() - started) * 1000), "fixture_count": fixture_count}
 
 
