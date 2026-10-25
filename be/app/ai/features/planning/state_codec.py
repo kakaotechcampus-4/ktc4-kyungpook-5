@@ -1,15 +1,19 @@
 """SDK 메시지 ↔ JSON 계약 변환. DB와 모델 호출 없이 상태를 보관/복원한다."""
+
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from pydantic import ValidationError
 
-from ...planning_contracts import (
+from ...errors import PlanningStateError
+
+from ...contracts import (
     MAX_PLANNING_HISTORY, PlanningChatRequest, PlanningRequestContext, PlanningResumeState,
-    PlanningStateError, PlanningStatePayload, PlanningStoredMessage, PlanningStoredToolCall,
+    PlanningStatePayload, PlanningStoredMessage, PlanningStoredToolCall,
 )
 from .agent.schemas import PlanningAgentTurnInput, PlanningAgentTurnResult, validate_planning_history
 from .schemas import PlanningMessage
 
 
+# BE가 저장했던 JSON 복원
 def parse_resume_state(raw: str) -> PlanningResumeState:
     """저장 JSON의 미지원 버전과 손상을 구분한다. 임의 초기화하지 않는다."""
     import json
@@ -60,6 +64,7 @@ def to_agent_input(request: PlanningChatRequest) -> PlanningAgentTurnInput:
     )
 
 
+# 대화와 Tool 이력을 저장 가능한 상태로 변환 (BE가 보관)
 def capture_turn_state(request: PlanningRequestContext, result: PlanningAgentTurnResult) -> PlanningResumeState:
     """다음 입력에서 복원할 수 없는 결과를 정상 저장 상태로 반환하지 않는다."""
     if len(result.history) > MAX_PLANNING_HISTORY:

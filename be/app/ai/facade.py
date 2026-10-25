@@ -15,7 +15,7 @@ from .features.meeting.schemas import (
 )
 from .features.retrieval.indexing import index_record_chunks
 from .ports import RecordSearchPort
-from .planning_contracts import PlanningChatRequest, PlanningPreviewRequest, PlanningPublicResult
+from .contracts import PlanningChatRequest, PlanningPreviewRequest, PlanningPublicResult
 
 
 async def index_record(request: IndexRecordRequest) -> IndexRecordResult:

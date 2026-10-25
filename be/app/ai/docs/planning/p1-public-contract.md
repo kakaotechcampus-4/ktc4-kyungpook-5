@@ -2,7 +2,7 @@
 
 상태: **1번 명세와 2번 데이터 타입/상태 변환 구현. 3번 공개 실행 함수까지 연결했다. 제품 BE 연동은 미구현이며 팀 합의 전이다.**
 
-구현 이슈: [#180](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/180). 코드의 기준은 `planning_contracts.py`이며 저장 JSON 형식 버전은 1이다.
+구현 이슈: [#180](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/180). 코드의 기준은 루트 `contracts.py`이며 저장 JSON 형식 버전은 1이다.
 
 관련: [협업 이슈 #179](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/179), [P1 인계 안내](p1-handoff.md). 요구사항: AI-PLAN-01~05, AI-PLAN-08, AI-COMMON-02.
 
@@ -213,7 +213,7 @@ PlanningChatRequest                  ← BE가 만드는 입력
   → 앞선 상담과 생성 권유를 이어서 사용
 ```
 
-공개 타입은 [planning_contracts.py](../../planning_contracts.py), 내부 변환 함수는 [state_codec.py](../../features/planning/state_codec.py)에 있다. BE는 내부 변환 함수를 직접 호출하는 제품 코드를 만들지 않는다. 3번에서 공개 facade가 이 순서를 묶었다.
+공개 타입은 [contracts.py](../../contracts.py), 내부 변환 함수는 [state_codec.py](../../features/planning/state_codec.py)에 있다. BE는 내부 변환 함수를 직접 호출하는 제품 코드를 만들지 않는다. 3번에서 공개 facade가 이 순서를 묶었다.
 
 `PlanningPublicResult`는 화면용 `view`와 보관용 `next_state`를 나눈다. 두 조건이 다르면 검증 오류가 난다. 3번에서 화면용 결과 구성, 공통 생성 가능 판정, 버튼 실행을 연결했다. 대화 턴은 capture_turn_state를 쓰고, 버튼은 이력을 유지하며 생성 상태만 갱신한다.
 
@@ -299,3 +299,16 @@ preview_result = await generate_planning_preview(click)
 공개 함수에서 조건 변경 후 저장/복원, 권유 수락 생성, 버튼 생성과 성공 요청 재사용, 행사 유형 누락, 미해결 변경 확인, 검색 범위 전달, 검색 근거 복원 후 버튼 생성, 부분 실패와 전체 실패를 검증한다. 기존 Graph는 실제 실행하고 모델 응답과 검색 결과를 고정한다. 실제 공급자 모델이나 제품 DB 연결 검증은 아니다.
 
 검증 기록: 2026-10-25, 새 공개 실행 테스트 11개 포함 AI 테스트 729개 통과. 별도 작업인 `test_planning_records_evaluation.py`는 회귀 실행에서 제외했다.
+
+## 12. 공개 계약 정의 위치 정리 (#183)
+
+공개 데이터 정의는 루트 `contracts.py`, 공개 오류는 `errors.py`, 실행 진입점은 `facade.py`로 통일한다. `__init__.py`는 이 이름들을 재공개한다. 내부 Graph 상태, Tool 인자, 모델 전용 출력은 features 아래에 유지한다. 공개 계약이 내부 모델 타입을 import하는 역방향 의존은 제거한다.
+
+기존 공개 이름과 JSON 형식은 유지한다. 내부의 옛 import 경로는 필요하면 루트 타입을 재공개하되 별도의 정의를 두지 않는다. 영역별 한 줄 주석으로 공통, 검색, P1 조건, 초안, 이어가기 상태, 요청/결과를 구분한다.
+
+
+정리 결과: 공개 요청/결과뿐 아니라 중첩된 조건, 초안, 검색 결과도 `contracts.py`가 소유한다. 모델 전용 `ModelStep`과 공개 `PreviewStep`은 루트 `PlanStepFields`만 공유하므로 공개 계약이 모델 출력 클래스에 의존하지 않는다. 기존 내부 import 경로는 같은 루트 클래스를 재공개한다. `planning_contracts.py` 역시 호환용 파일이며 새 코드에서는 사용하지 않는다.
+
+검증: 공개 계약 4종과 모델 출력 `PlanComposition`의 JSON Schema를 이동 전후 비교해 동일함을 확인했다. AI 테스트 733개 통과(별도 작업인 `test_planning_records_evaluation.py` 제외). 공개 모델의 중첩 타입까지 루트 소유인지, contracts가 features를 import하지 않는지, 이전 경로가 같은 클래스를 가리키는지도 테스트한다. 실제 모델 호출은 수행하지 않았다.
+
+`PlanningStateError`는 위치만 `errors.py`로 옮기고 기존 ValueError 상속을 유지한다. 입력 검증과 JSON 복원에서 처리되는 방식이나 오류 코드는 바꾸지 않는다.

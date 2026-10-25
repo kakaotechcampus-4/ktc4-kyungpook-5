@@ -99,3 +99,13 @@ class AIOutputLimitError(AIInvalidResponseError):
     잘린 JSON의 구문만 보고 추측하지 않는다. 한도를 조정하지 않으면 같은
     실패가 반복될 수 있으므로 일반 형식 오류와 구분한다.
     """
+
+
+# P1 저장 상태 복원 오류
+
+class PlanningStateError(ValueError):
+    """복원 실패를 빈 대화로 숨기지 않도록 구분하는 공개 오류."""
+
+    def __init__(self, code: str, message: str):
+        self.code = code
+        super().__init__(message)

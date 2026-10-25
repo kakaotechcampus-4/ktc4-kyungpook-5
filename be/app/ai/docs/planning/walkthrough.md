@@ -1,5 +1,7 @@
 # 행사계획 코드 따라가기
 
+공개 경계의 정의 위치는 #183에서 통일했다. **contracts.py(무엇을 주고받는가) → facade.py(무엇을 호출하는가) → features/planning(어떻게 처리하는가)** 순서로 읽으면 된다. 예를 들어 “50명으로 잡자”는 루트 `PlanningChatRequest`로 들어와 `chat_planning`과 기존 Graph/Tool을 거친 뒤 루트 `PlanningPublicResult`로 돌아온다. 오류는 `errors.py`에서 찾는다. 기존 `planning_contracts.py`는 호환용 재공개만 남았다.
+
 오랜만에 읽을 때는 [전체 설계](design.md)의 Node 흐름을 먼저 보고, 아래 단계별 입력 → 코드 → 결과를 따라간다. 1단계는 Tool 처리기, 2단계는 LLM과 LangGraph, 3단계는 실제 UI, 4단계는 기존 기록 검색 Tool 연결이다. 5단계는 권유·계획 생성과 채팅/버튼 HTTP·P2 테스트 화면까지 연결했다.
 
 ## 1단계: 말을 반영할 수 있는 작업 노트와 처리기

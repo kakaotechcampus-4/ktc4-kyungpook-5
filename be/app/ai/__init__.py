@@ -5,6 +5,7 @@
 enum은 재공개하지 않는다. `app.core.enums`에서 가져온다.
 """
 
+
 from .contracts import (
     IndexedChunk,
     IndexRecordRequest,
@@ -14,6 +15,7 @@ from .contracts import (
     SourceLocation,
 )
 from .errors import (
+    PlanningStateError,
     AIConfigError,
     AIEmptyRecordError,
     AIError,
@@ -75,10 +77,10 @@ __all__ = (
 )
 
 # P1 공개 데이터 계약 초안 (#180). 실행 함수는 아래 #181에서 연결한다.
-from .planning_contracts import (
+from .contracts import (
     PlanningChatRequest, PlanningPreviewRequest, PlanningUserMessage,
     PlanningResumeState, PlanningPublicResult, PlanningView,
-    PlanningGenerationReadiness, PlanningStateError, PlanningDraft, PlanningConditions,
+    PlanningGenerationReadiness, PlanningDraft, PlanningConditions,
 )
 from .features.planning.state_codec import parse_resume_state
 

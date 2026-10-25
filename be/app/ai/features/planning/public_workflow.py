@@ -1,7 +1,7 @@
 """P1 공개 경계: 복원 → 기존 실행 → 화면/보관 결과. 저장은 BE가 한다."""
 from functools import partial
 
-from ...planning_contracts import (
+from ...contracts import (
     PlanningChatRequest, PlanningPreviewRequest, PlanningPublicResult,
     PlanningView, PlanningGenerationReadiness, PlanningResumeState, PlanningStatePayload,
 )
