@@ -9,6 +9,7 @@ from ....contracts import ContractModel, NonBlankStr
 from ..agent.state import PlanningDraft
 from ..schemas import MessageEvidence, PlanningMessage
 from .schemas import GenerationOffer, PlanningGenerationState
+from .readiness import generation_blocks
 
 
 def same_basis(left: PlanningDraft, right: PlanningDraft) -> bool:
@@ -53,7 +54,7 @@ def update_generation_offer(
         if not valid_evidence(arguments.evidence, current_message):
             return reject("보류에는 이번 사용자 발화의 실제 문구가 필요해요.")
     else:
-        if draft.conditions.event_type is None or state.condition_change_pending:
+        if generation_blocks(draft, state):
             return reject("행사 유형이나 반영하지 못한 조건 변경을 먼저 확인해 주세요.")
         if state.offer and same_basis(state.offer.basis_draft, draft):
             if state.offer.status == "deferred":

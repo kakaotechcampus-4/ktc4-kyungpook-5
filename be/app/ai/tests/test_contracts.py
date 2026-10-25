@@ -10,17 +10,11 @@ import pytest
 from pydantic import ValidationError
 
 from app.ai.contracts import (
-    ChatTurn,
-    EventConditions,
-    PlanChatRequest,
-    PlanChatResult,
     PlanDraft,
     PlannedStep,
 )
-from app.core.enums import MessageRole, StepActor, StepPhase
-
-USER_TURN = ChatTurn(role=MessageRole.USER, content="다음 달에 MT를 가고 싶어")
-ASSISTANT_TURN = ChatTurn(role=MessageRole.ASSISTANT, content="며칠로 생각하세요?")
+from app.ai import PlanningDraft, PlanningGenerationReadiness, PlanningUserMessage, PlanningView
+from app.core.enums import StepActor, StepPhase
 
 STEP = PlannedStep(
     phase=StepPhase.PREPARATION,
@@ -30,35 +24,21 @@ STEP = PlannedStep(
 )
 
 
-def _request(messages: tuple[ChatTurn, ...]) -> PlanChatRequest:
-    return PlanChatRequest(
-        event_id="evt_test", conditions=EventConditions(), messages=messages
-    )
+def _result(reply: str) -> PlanningView:
+    return PlanningView(reply=reply, draft=PlanningDraft(),
+        generation_readiness=PlanningGenerationReadiness(can_generate=False, reasons=('event_type_missing',)))
 
 
-def _result(reply: str) -> PlanChatResult:
-    return PlanChatResult(
-        reply=reply, collected=EventConditions(), ready_to_generate=False
-    )
-
-
-def test_대화는_이번_사용자_발화로_끝난다():
-    request = _request((ASSISTANT_TURN, USER_TURN))
-
-    assert request.messages[-1].role is MessageRole.USER
-
-
-def test_마지막이_AI_답변인_대화는_거부한다():
-    """이번 발화를 빠뜨리고 이력만 넘긴 호출을 잡는다."""
-    with pytest.raises(ValidationError) as error:
-        _request((USER_TURN, ASSISTANT_TURN))
-
-    assert "사용자 발화" in str(error.value)
-
-
-def test_대화가_없으면_거부한다():
+def test_이번_발화는_사용자_메시지_타입으로_받는다():
+    assert PlanningUserMessage(id="u1", content="50명으로 잡자").content == "50명으로 잡자"
     with pytest.raises(ValidationError):
-        _request(())
+        PlanningUserMessage(id="u1", content="50명으로 잡자", role="assistant")
+
+
+@pytest.mark.parametrize("content", ["", "   ", "\n\t"])
+def test_빈_사용자_발화는_거부한다(content):
+    with pytest.raises(ValidationError):
+        PlanningUserMessage(id="u1", content=content)
 
 
 def test_답변에_내용이_있어야_한다():
@@ -71,7 +51,7 @@ def test_비어_있거나_공백뿐인_답변은_거부한다(reply: str):
     with pytest.raises(ValidationError) as error:
         _result(reply)
 
-    assert "답변 내용" in str(error.value)
+    assert "reply" in str(error.value)
 
 
 def test_답변의_공백을_임의로_다듬지_않는다():
@@ -100,9 +80,8 @@ def test_계약_객체는_만든_뒤_바꿀_수_없다():
 def test_계약에_없는_필드는_거부한다():
     """이름이 바뀐 필드가 조용히 버려지지 않게 한다."""
     with pytest.raises(ValidationError):
-        PlanChatResult(
-            reply="정리했습니다.",
-            collected=EventConditions(),
-            ready_to_generate=False,
+        PlanningView(
+            reply="정리했습니다.", draft=PlanningDraft(),
+            generation_readiness=PlanningGenerationReadiness(can_generate=False, reasons=('event_type_missing',)),
             readyToGenerate=True,
         )

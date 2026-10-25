@@ -1,5 +1,9 @@
 # 행사계획 코드 따라가기
 
+#184에서 공개 함수로 실제 모델을 확인했다. 25,000원 → 30,000원 상담(값 유지) → JSON 저장/복원 → “일단 그렇게 잡자”(30,000원 잠정 반영) → 권유 수락 생성 순서다. [실측 결과](evaluation.md#공개-함수-실제-모델-연결-검증-184-2026-10-25)와 [BE 저장 예시](p1-public-contract.md#13-be-호출과-저장-순서-184)를 함께 읽으면 호출부터 저장까지 연결된다.
+
+공개 경계의 정의 위치는 #183에서 통일했다. **contracts.py(무엇을 주고받는가) → facade.py(무엇을 호출하는가) → features/planning(어떻게 처리하는가)** 순서로 읽으면 된다. 예를 들어 “50명으로 잡자”는 루트 `PlanningChatRequest`로 들어와 `chat_planning`과 기존 Graph/Tool을 거친 뒤 루트 `PlanningPublicResult`로 돌아온다. 오류는 `errors.py`에서 찾는다. 기존 `planning_contracts.py`는 호환용 재공개만 남았다.
+
 오랜만에 읽을 때는 [전체 설계](design.md)의 Node 흐름을 먼저 보고, 아래 단계별 입력 → 코드 → 결과를 따라간다. 1단계는 Tool 처리기, 2단계는 LLM과 LangGraph, 3단계는 실제 UI, 4단계는 기존 기록 검색 Tool 연결이다. 5단계는 권유·계획 생성과 채팅/버튼 HTTP·P2 테스트 화면까지 연결했다.
 
 ## 1단계: 말을 반영할 수 있는 작업 노트와 처리기
@@ -297,6 +301,30 @@ ButtonPlanGenerationRequest(request_id="click-1", draft=MT·50명·날짜 미정
 입력의 행사 날짜가 null인데 출력에 날짜가 있으면 `failed`다. null을 유지하면 생성 성공이며 `open_questions`에 행사 날짜가 남는다. 이 목록은 지금 모두 답하라는 채팅 질문이 아니다. `basis_draft`는 입력과 같고 인원 잠정 여부도 유지한다.
 
 `generate_with_context()`는 성공한 preview만 상태에 채택한다. 같은 클릭 ID·같은 기준으로 성공 요청을 다시 보내면 모델 호출 없이 같은 preview를 반환한다. 같은 ID에 다른 조건을 넣으면 재확인을 요구한다. 아직 마지막 성공 한 건만 보관하므로 임의의 오래된 요청 전체를 중복 제거하는 서버 저장소는 아니다. 별도 버튼 HTTP/FE 연결은 아래 5-3 절을 따른다.
+
+### 생성 호출이 긴 JSON을 끝까지 받는 방법 (#176)
+
+입력이 `워크숍 / 약 40명 / 25,000원 / 10월 31일~11월 2일`이면 모델은 여러 준비 단계·일정·행동을 JSON 한 덩어리로 작성한다. 짧은 채팅 답변보다 출력이 길다.
+
+```text
+“그렇게하자”
+  → agent가 generate_event_plan Tool 선택
+  → Tool이 권유·원문·현재 조건 확인
+  → run_plan_generation → compose_plan
+  → invoke_plan_composition: 생성 전용 모델로 구조화 출력 요청
+       max_output_tokens=8192, streaming=True
+       조각 수신 → 완성본 조립 → PlanComposition 검증
+  → validate_plan: 단계·날짜·행동·실제 출처 검사
+  → EventPlanPreview → Agent의 설명 + UI의 P2 화면
+```
+
+핵심 설정은 [generation/model.py](../../features/planning/generation/model.py)에 있다. `build_plan_model()`이 공통 `build_chat_model()`에 `max_tokens=8192`, `streaming=True`를 넘긴다. SDK가 실제 Responses 요청의 `max_output_tokens`로 변환한다. `invoke_plan_composition()`은 이 모델을 `ainvoke_structured()`에 주입한다. 생성 graph의 기본 호출과 실제 모델 평가 실행기 모두 같은 생성 전용 설정을 쓴다.
+
+왜 둘 다 필요한가? 현재 게이트웨이는 일반 응답을 2,000토큰에서 끝내고, 그보다 큰 한도의 일반 응답은 거절한다. 추론 토큰도 출력 예산에 포함돼 날짜·행동이 붙은 초안 JSON이 중간에서 끊겼다. 스트리밍으로 길게 받을 수 있게 하되, UI에는 조각을 표시하지 않고 검증된 완성본만 반환한다. LLM의 대화·Tool 선택 방식을 바꾸거나 FE 스트리밍 UI를 요구하는 변경은 아니다.
+
+`ainvoke_structured()`는 최종 완료 상태도 확인한다. 출력 한도로 끝나면 `AIOutputLimitError`, 완료 신호 없이 끊기거나 형식이 틀리면 `AIInvalidResponseError`다. JSON이 우연히 읽혀도 미완성은 실패다. `run_plan_generation()`은 생성/검증 단계와 안전한 실패 분류만 기록한다. 성공한 결과만 `generate_with_context()`가 채택하므로 실패해도 현재 조건과 이전 초안은 유지된다.
+
+실제 관찰은 기존 UI의 “다시 시도해줘” → 13단계 P2 성공(26.68초), 별도 새 대화의 권유 → “그렇게하자” → 생성 성공(25.30초)이었다. 고정 생성 입력 4회는 1/4 → 4/4 성공이었지만 작은 진단 표본이다. 전후 원본·재실행·남은 제한은 [평가 기록](evaluation.md)을 읽는다.
 
 ## 5-2③: 채팅의 권유 → 수락 → 생성 결과를 따라가기
 

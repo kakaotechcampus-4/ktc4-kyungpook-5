@@ -5,6 +5,7 @@
 enum은 재공개하지 않는다. `app.core.enums`에서 가져온다.
 """
 
+
 from .contracts import (
     IndexedChunk,
     IndexRecordRequest,
@@ -14,10 +15,12 @@ from .contracts import (
     SourceLocation,
 )
 from .errors import (
+    PlanningStateError,
     AIConfigError,
     AIEmptyRecordError,
     AIError,
     AIInvalidResponseError,
+    AIOutputLimitError,
     AIRetryableError,
     AITimeoutError,
 )
@@ -70,4 +73,24 @@ __all__ = (
     "AIRetryableError",
     "AITimeoutError",
     "AIInvalidResponseError",
+    "AIOutputLimitError",
 )
+
+# P1 공개 데이터 계약 초안 (#180). 실행 함수는 아래 #181에서 연결한다.
+from .contracts import (
+    PlanningChatRequest, PlanningPreviewRequest, PlanningUserMessage,
+    PlanningResumeState, PlanningPublicResult, PlanningView,
+    PlanningGenerationReadiness, PlanningDraft, PlanningConditions,
+)
+from .features.planning.state_codec import parse_resume_state
+
+__all__ += (
+    "PlanningChatRequest", "PlanningPreviewRequest", "PlanningUserMessage",
+    "PlanningResumeState", "PlanningPublicResult", "PlanningView",
+    "PlanningGenerationReadiness", "PlanningStateError", "PlanningDraft",
+    "PlanningConditions", "parse_resume_state",
+)
+
+# P1 실행 계약 초안 (#181). 제품 저장/HTTP는 BE가 연결한다.
+from .facade import chat_planning, generate_planning_preview
+__all__ += ('chat_planning', 'generate_planning_preview')

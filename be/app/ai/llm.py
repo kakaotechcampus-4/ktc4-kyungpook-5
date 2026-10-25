@@ -20,6 +20,7 @@ from .errors import (
     AIConfigError,
     AIError,
     AIInvalidResponseError,
+    AIOutputLimitError,
     AIRetryableError,
     AITimeoutError,
 )
@@ -162,6 +163,18 @@ async def ainvoke_structured[T: BaseModel](
         if error.title != schema.__name__:
             raise
         raise _invalid_response(schema) from error
+
+    raw = output.get("raw")
+    metadata = raw.response_metadata if isinstance(raw, AIMessage) else {}
+    # 파서가 우연히 일부 JSON을 읽더라도 공급자가 미완성이라면 채택하지 않는다.
+    # 원문·전체 메타정보 대신 고정된 오류 타입만 기능 코드에 전달한다.
+    if metadata.get("status") == "incomplete":
+        if (metadata.get("incomplete_details") or {}).get("reason") == "max_output_tokens":
+            raise AIOutputLimitError("모델이 출력 한도에 도달해 응답을 끝내지 못했습니다") from output["parsing_error"]
+        raise _invalid_response(schema) from output["parsing_error"]
+    if model.streaming and model.use_responses_api and metadata.get("status") != "completed":
+        # 연결이 중간에 닫힌 스트림의 일부를 완성본으로 사용하지 않는다.
+        raise _invalid_response(schema) from output["parsing_error"]
 
     parsed = output["parsed"]
     if output["parsing_error"] is not None or parsed is None:

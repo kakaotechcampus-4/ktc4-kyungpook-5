@@ -16,6 +16,7 @@ from app.ai.errors import (
     AIConfigError,
     AIError,
     AIInvalidResponseError,
+    AIOutputLimitError,
     AIRetryableError,
     AITimeoutError,
 )
@@ -77,7 +78,7 @@ def _raise(error: Exception):
     return handler
 
 
-def _call(handler, messages="다음 달에 MT를 가고 싶어"):
+def _call(handler, messages="다음 달에 MT를 가고 싶어", *, streaming=False):
     settings = AISettings(
         api_base_url="https://example.test/v1", api_key=API_KEY, model="gpt-5.6-terra"
     )
@@ -85,6 +86,7 @@ def _call(handler, messages="다음 달에 MT를 가고 싶어"):
     model = build_chat_model(
         settings,
         max_retries=0,
+        streaming=streaming,
         http_async_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
     )
     return asyncio.run(ainvoke_structured(messages, Draft, model=model))
@@ -133,6 +135,44 @@ def test_본문이_없는_응답은_AIInvalidResponseError():
 
     with pytest.raises(AIInvalidResponseError):
         _call(lambda request: empty)
+
+
+def _stream(text, *, status="completed", reason=None, terminal=True):
+    final = _response([{"type": "output_text", "text": text, "annotations": []}])
+    final.update(status=status, text={"format": {"type": "json_schema", "name": "Draft",
+        "schema": Draft.model_json_schema(), "strict": True}})
+    if reason:
+        final["incomplete_details"] = {"reason": reason}
+    events = [dict(type="response.created", response={**final, "status": "in_progress", "output": []}),
+              dict(type="response.output_text.delta", output_index=0, content_index=0,
+                   item_id="msg_test", delta=text)]
+    if terminal:
+        events.append(dict(type=f"response.{status}", response=final))
+    body = "".join(f"event: {e['type']}\ndata: {json.dumps(dict(e, sequence_number=i))}\n\n"
+                   for i, e in enumerate(events))
+    return httpx.Response(200, text=body, headers={"content-type": "text/event-stream"})
+
+
+def test_스트림을_완성본으로_모아서_검증한다():
+    result = _call(lambda request: _stream(json.dumps(VALID)), streaming=True)
+    assert result == Draft.model_validate(VALID)
+
+
+@pytest.mark.parametrize("text", [json.dumps(VALID), '{"title": "끊김'])
+def test_출력한도_미완성은_JSON_파싱_여부와_무관하게_거절한다(text):
+    with pytest.raises(AIOutputLimitError) as error:
+        _call(lambda request: _stream(text, status="incomplete", reason="max_output_tokens"), streaming=True)
+    assert text not in str(error.value) and API_KEY not in str(error.value)
+
+
+@pytest.mark.parametrize("response", [
+    _stream(json.dumps(VALID), status="incomplete", reason="content_filter"),
+    _stream(json.dumps(VALID), terminal=False),
+])
+def test_다른_미완성이나_종료신호_없는_스트림은_출력한도로_추측하지_않는다(response):
+    with pytest.raises(AIInvalidResponseError) as error:
+        _call(lambda request: response, streaming=True)
+    assert not isinstance(error.value, AIOutputLimitError)
 
 
 def test_응답_시간_초과는_AITimeoutError():

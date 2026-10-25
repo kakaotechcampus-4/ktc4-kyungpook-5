@@ -8,6 +8,7 @@ from ..agent.state import PlanningDraft
 from ..schemas import CalendarDate
 from .graph import run_plan_generation
 from .offers import same_basis
+from .readiness import BLOCK_MESSAGES, generation_blocks
 from .schemas import (
     ButtonGenerationTrigger, PlanGenerationInput, PlanGenerationResult, PlanGenerator,
     PlanningGenerationState, valid_timezone,
@@ -26,10 +27,9 @@ async def generate_with_context(
     """두 진입점의 공통 검증. 거절/실패 때 이전 성공 초안을 유실하지 않는다."""
     def clarify(reason):
         return GenerationUpdate(generation=state, result=PlanGenerationResult(status="needs_clarification", reason=reason))
-    if request.basis_draft.conditions.event_type is None:
-        return clarify("어떤 행사인지 먼저 정해 주세요.")
-    if state.condition_change_pending and not use_current_conditions:
-        return clarify("반영하지 못한 조건 변경이 있어요. 현재 남은 조건으로 만들지 먼저 확인해 주세요.")
+    blocks = generation_blocks(request.basis_draft, state, use_current_conditions=use_current_conditions)
+    if blocks:
+        return clarify(BLOCK_MESSAGES[blocks[0]])
     previous = state.preview
     if previous and previous.trigger.source == request.trigger.source and previous.trigger.request_id == request.trigger.request_id:
         # 같은 성공 요청의 재전송은 모델을 다시 부르지 않는다. 변경된 조건에 ID를 재사용하지 않는다.

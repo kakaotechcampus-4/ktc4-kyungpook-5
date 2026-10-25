@@ -1,0 +1,230 @@
+{
+  "model": "gpt-5.6-luna",
+  "prompt": "planning-generation-v1",
+  "prompt_sha256": "57b54f2ab15a4fbd775aac42a06c63e0cbbf33a380dcff10b177bd0d3fb94902",
+  "cases": [
+    {
+      "id": "workshop-1",
+      "conditions": {
+        "title": "2026년 워크숍",
+        "event_type": "WORKSHOP",
+        "headcount": 40,
+        "fee_per_person": 25000,
+        "start_date": "2026-10-31",
+        "end_date": "2026-11-02"
+      },
+      "status": "failed",
+      "ms": 20119,
+      "model_calls": 1,
+      "errors": [
+        {
+          "type": "AIInvalidResponseError"
+        },
+        {
+          "type": "ValidationError",
+          "fields": [
+            {
+              "type": "json_invalid",
+              "loc": [],
+              "message": "Invalid JSON: EOF while parsing a string at line 1 column 4736"
+            }
+          ]
+        }
+      ],
+      "validation_reason": null,
+      "http": [
+        {
+          "http_status": 200,
+          "status": "incomplete",
+          "incomplete_reason": "max_output_tokens",
+          "text_chars": 3188,
+          "usage": {
+            "input_tokens": 2257,
+            "input_tokens_details": {
+              "cache_write_tokens": 704,
+              "cached_tokens": 1374
+            },
+            "output_tokens": 2000,
+            "output_tokens_details": {
+              "reasoning_tokens": 648
+            },
+            "total_tokens": 4257,
+            "prompt_tokens": 2257,
+            "completion_tokens": 2000,
+            "cached_prompt_tokens": 1374,
+            "cache_write_tokens": 704
+          },
+          "valid_json": false,
+          "json_error": "Unterminated string starting at",
+          "json_error_pos": 3179
+        }
+      ]
+    },
+    {
+      "id": "workshop-2",
+      "conditions": {
+        "title": "2026년 워크숍",
+        "event_type": "WORKSHOP",
+        "headcount": 40,
+        "fee_per_person": 25000,
+        "start_date": "2026-10-31",
+        "end_date": "2026-11-02"
+      },
+      "status": "failed",
+      "ms": 18441,
+      "model_calls": 1,
+      "errors": [
+        {
+          "type": "AIInvalidResponseError"
+        },
+        {
+          "type": "ValidationError",
+          "fields": [
+            {
+              "type": "json_invalid",
+              "loc": [],
+              "message": "Invalid JSON: EOF while parsing a string at line 1 column 4933"
+            }
+          ]
+        }
+      ],
+      "validation_reason": null,
+      "http": [
+        {
+          "http_status": 200,
+          "status": "incomplete",
+          "incomplete_reason": "max_output_tokens",
+          "text_chars": 3449,
+          "usage": {
+            "input_tokens": 2081,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 2078
+            },
+            "output_tokens": 2000,
+            "output_tokens_details": {
+              "reasoning_tokens": 516
+            },
+            "total_tokens": 4081,
+            "prompt_tokens": 2081,
+            "completion_tokens": 2000,
+            "cached_prompt_tokens": 2078,
+            "cache_write_tokens": 0
+          },
+          "valid_json": false,
+          "json_error": "Unterminated string starting at",
+          "json_error_pos": 3433
+        }
+      ]
+    },
+    {
+      "id": "mt-undated",
+      "conditions": {
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": 25000
+      },
+      "status": "generated",
+      "ms": 12691,
+      "model_calls": 1,
+      "errors": [],
+      "validation_reason": null,
+      "http": [
+        {
+          "http_status": 200,
+          "status": "completed",
+          "incomplete_reason": null,
+          "text_chars": 2556,
+          "usage": {
+            "input_tokens": 2232,
+            "input_tokens_details": {
+              "cache_write_tokens": 684,
+              "cached_tokens": 1374
+            },
+            "output_tokens": 1268,
+            "output_tokens_details": {
+              "reasoning_tokens": 352
+            },
+            "total_tokens": 3500,
+            "prompt_tokens": 2232,
+            "completion_tokens": 1268,
+            "cached_prompt_tokens": 1374,
+            "cache_write_tokens": 684
+          },
+          "valid_json": true
+        }
+      ]
+    },
+    {
+      "id": "picnic-dated",
+      "conditions": {
+        "event_type": "PICNIC",
+        "headcount": 20,
+        "fee_per_person": 0,
+        "start_date": "2027-04-10",
+        "end_date": "2027-04-10",
+        "location": "교내 잔디밭"
+      },
+      "status": "failed",
+      "ms": 19898,
+      "model_calls": 1,
+      "errors": [
+        {
+          "type": "AIInvalidResponseError"
+        },
+        {
+          "type": "ValidationError",
+          "fields": [
+            {
+              "type": "json_invalid",
+              "loc": [],
+              "message": "Invalid JSON: EOF while parsing a string at line 1 column 3534"
+            }
+          ]
+        }
+      ],
+      "validation_reason": null,
+      "http": [
+        {
+          "http_status": 200,
+          "status": "incomplete",
+          "incomplete_reason": "max_output_tokens",
+          "text_chars": 2574,
+          "usage": {
+            "input_tokens": 2256,
+            "input_tokens_details": {
+              "cache_write_tokens": 703,
+              "cached_tokens": 1374
+            },
+            "output_tokens": 2000,
+            "output_tokens_details": {
+              "reasoning_tokens": 905
+            },
+            "total_tokens": 4256,
+            "prompt_tokens": 2256,
+            "completion_tokens": 2000,
+            "cached_prompt_tokens": 1374,
+            "cache_write_tokens": 703
+          },
+          "valid_json": false,
+          "json_error": "Unterminated string starting at",
+          "json_error_pos": 2573
+        }
+      ]
+    }
+  ],
+  "measured_date": "2026-10-24",
+  "reference_date": "2026-10-24",
+  "git_commit": "0b0faf9c56d2cd8a03a2cd4265dffc4b6694457b",
+  "git_dirty": true,
+  "max_output_tokens": null,
+  "streaming": false,
+  "reasoning": "provider default",
+  "provenance": "당시 임시 진단 실행기의 원본 결과. 동일한 고정 입력과 응답 메타정보 수집 방식은 scripts/diagnose_plan_generation.py에 정리. 전체 코드 해시는 당시 미수집.",
+  "review_status": "출력 한도 재현용 4회. 전체 서비스 성공률·성능 점수가 아님",
+  "summary": {
+    "cases": 4,
+    "generated": 1,
+    "output_limited": 3
+  }
+}

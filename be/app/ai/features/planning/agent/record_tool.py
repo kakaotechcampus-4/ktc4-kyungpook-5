@@ -1,9 +1,11 @@
 """검색 Tool의 얇은 어댑터. 기존 retrieval을 재사용하고 현재 초안은 바꾸지 않는다."""
 
-from datetime import date
-from typing import Annotated, Literal, Protocol, Self
+from ....contracts import RecordLookupResult
 
-from pydantic import Field, model_validator
+from datetime import date
+from typing import Annotated, Protocol
+
+from pydantic import Field
 
 from ....contracts import ContractModel, EventConditions, NonBlankStr
 from ....errors import AIRetryableError
@@ -17,25 +19,6 @@ from .state import PlanningDraft
 
 class SearchPastEventsInput(ContractModel):
     query: Annotated[NonBlankStr, Field(max_length=4000)]
-
-
-class RecordLookupResult(ContractModel):
-    status: Literal["available", "not_found", "failed", "rejected"]
-    query: str | None = None
-    result: RecordSearchResult | None = None
-    reason: NonBlankStr | None = None
-
-    @model_validator(mode="after")
-    def _consistent(self) -> Self:
-        if self.status in {"available", "not_found"}:
-            if self.result is None or not self.query:
-                raise ValueError("검색 성공에는 질문과 검색 결과가 필요합니다")
-            found = bool(self.result.facts or self.result.conflicts)
-            if found != (self.status == "available"):
-                raise ValueError("검색 상태와 근거 유무가 다릅니다")
-        elif self.result is not None or self.reason is None:
-            raise ValueError("검색 실패·거절에는 근거 대신 이유가 필요합니다")
-        return self
 
 
 class RecordSearcher(Protocol):

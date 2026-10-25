@@ -1,5 +1,9 @@
 # BE-AI 데이터 계약 (contracts.py)
 
+새 P1의 구체적인 공개 입출력 제안은 [P1 공개 계약 초안](planning/p1-public-contract.md)을 따른다. 화면용 결과와 BE 보관 상태를 구분하며, #180/#181에서 타입과 실행 함수를 구현했다. 제품 BE/FE 팀 합의는 아직 남아 있다.
+
+새 P1 Agent의 제품 연결은 [P1 인계 안내](planning/p1-handoff.md)와 [협업 이슈 #179](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/179)에서 계약을 맞춘다. 실행 사용처가 없던 이전 계획 대화 요청/응답은 제거했다(#182). 현재는 `PlanningChatRequest`와 `PlanningPublicResult`를 사용한다.
+
 ## 무엇인가
 
 [`contracts.py`](../contracts.py)는 BE와 AI 모듈이 같은 프로세스 안에서 주고받는
@@ -7,7 +11,7 @@
 `app.ai` 경계를 위한 내부 계약이다.
 
 행사 계획(조건 수집·계획안 생성)과 기록 색인에 필요한 타입을 정의한다.
-기록 색인은 `app.ai.index_record`로 호출하고, 계획 공개 함수는 BE와 합의한 뒤 제공한다.
+기록 색인은 `app.ai.index_record`, P1은 `app.ai.chat_planning`과 `app.ai.generate_planning_preview`로 호출한다. P1의 제품 연동 계약은 BE/FE 협의 전이다.
 회의 발화 처리는 #113에서 합의할 AI 초안을 [아래](#회의-발화-처리-초안)에 둔다.
 
 ## 왜 필요한가
@@ -17,37 +21,20 @@
 - AI가 제안하고 BE가 저장·권한 확인·승인·실행한다는 책임을 분리한다.
 - 양쪽이 합의된 요청·결과 형식을 기준으로 독립적으로 개발하고 테스트하게 한다.
 
-세부 필드와 제약은 문서에 중복하지 않고 `contracts.py`를 기준으로 삼는다.
-
-구현 전 planning 변경 제안은 [행사계획 설계 초안](planning/legacy/plan_architecture.md)에 둔다. 행사 이름, SET/CLEAR 변경 추출, 기준 버전·발화 근거는 아직 공개 계약에 반영되지 않았다. 아래 예시와 현재 타입을 새 초안이 이미 대체한 것으로 해석하지 않는다.
+P1 공개 요청과 결과, 그 안에 담기는 조건/초안/검색 결과는 루트 `contracts.py`에 정의한다. 공개 오류는 `errors.py`, 실행 함수는 `facade.py`를 기준으로 한다. `planning_contracts.py`는 이전 import 경로의 호환용이며 별도 타입 정의가 없다. BE는 `app.ai`에서 가져온다.
 
 ## 사용 흐름 예시
 
-계획 대화 한 턴은 다음 순서로 처리한다.
-
 ```text
-BE가 Event·Message 조회
-  → EventConditions·ChatTurn으로 변환
-  → PlanChatRequest로 AI 호출
-  → AI가 PlanChatResult 반환
-  → BE가 답변과 갱신된 행사 조건을 저장
+BE가 현재 행사 조건과 저장된 Agent 상태 조회
+  → PlanningChatRequest로 이번 사용자 메시지 전달
+  → await app.ai.chat_planning(request, records=record_search_port)
+  → PlanningPublicResult 반환
+  → BE가 revision 확인 후 조건, 답변, next_state를 함께 저장
+  → FE에 view를 제품 응답으로 변환해 전달
 ```
 
-아래 코드는 연동 형태를 보여주는 개념 예시다. 실제 함수명과 변환·저장 방식은
-BE 연동 구현에서 확정한다.
-
-```python
-request = PlanChatRequest(
-    event_id=event.id,
-    conditions=to_event_conditions(event),
-    messages=to_chat_turns(messages),
-)
-
-result = app.ai.plan_chat(request)
-
-save_assistant_message(event.id, result.reply)
-update_event_conditions(event, result.collected)
-```
+실행 가능한 요청 구성과 버튼 생성 예시는 [P1 공개 계약 11절](planning/p1-public-contract.md#11-3번-작업-공개-함수로-실행하기-181)을 따른다. AI 함수가 DB 저장이나 상태 버전 증가를 대신하지 않는다.
 
 ## 기록 색인 흐름 예시
 
