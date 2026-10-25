@@ -18,11 +18,11 @@ import httpx
 
 from app.ai.config import AISettings
 from app.ai.contracts import IndexRecordRequest
-from app.ai.features.planning.lookup import LOOKUP_PROMPT_VERSION, RecordLookupDecision
-from app.ai.features.planning.nodes import PROMPT_VERSION
-from app.ai.features.planning.schemas import ConditionExtractionOutput, PlanningConditions
-from app.ai.features.planning.turn_flow import process_planning_turn
-from app.ai.features.planning.turn_schemas import PlanningTurnInput
+from app.ai.features.planning.legacy.lookup import LOOKUP_PROMPT_VERSION, RecordLookupDecision
+from app.ai.features.planning.legacy.nodes import PROMPT_VERSION
+from app.ai.features.planning.legacy.schemas import ConditionExtractionOutput, PlanningConditions
+from app.ai.features.planning.legacy.turn_flow import process_planning_turn
+from app.ai.features.planning.legacy.turn_schemas import PlanningTurnInput
 from app.ai.features.retrieval.indexing import index_record_chunks
 from app.ai.features.retrieval.memory_port import InMemoryRecordSearch, StoredRecord
 from app.ai.features.retrieval.nodes import ASSESS_EVIDENCE_PROMPT_VERSION, REWRITE_QUERY_PROMPT_VERSION

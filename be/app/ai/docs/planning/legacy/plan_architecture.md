@@ -46,7 +46,7 @@ P1은 식별할 수 있는 행사 의도가 있으면 미정 조건과 함께 �
 
 ### 조건 스냅샷 제안
 
-작업 1 구현 명세: `features/planning/schemas.py`의 내부 `PlanningConditions`로 분리한다. 기존 EventConditions는 retrieval에서도 사용하므로 수정·상속하지 않는다. 필드는 같은 의미를 유지하며 공개 계약 승격 때 통합한다. BE 모델은 title 100자·NOT NULL, location 200자, expected_headcount를 사용한다. AI의 title 미정(null)과 BE 기본 제목의 구분·저장 매핑은 아직 미합의이며 자동 변환 함수를 만들지 않는다.
+작업 1 구현 명세: `features/planning/legacy/schemas.py`의 내부 `PlanningConditions`로 분리한다. 기존 EventConditions는 retrieval에서도 사용하므로 수정·상속하지 않는다. 필드는 같은 의미를 유지하며 공개 계약 승격 때 통합한다. BE 모델은 title 100자·NOT NULL, location 200자, expected_headcount를 사용한다. AI의 title 미정(null)과 BE 기본 제목의 구분·저장 매핑은 아직 미합의이며 자동 변환 함수를 만들지 않는다.
 
 이름은 100자, 장소는 200자까지 받고 공백만 있는 문자열은 거부한다. 입력 문자열은 임의로 잘라내지 않는다. 인원·금액은 엄격한 정수로 검증해 bool·숫자 문자열·실수를 거부한다. 날짜는 date 객체 또는 정확한 YYYY-MM-DD 문자열만 받으며 datetime·timestamp는 거부한다. 날짜 양쪽이 있으면 종료일이 시작일보다 빠를 수 없다. 같은 날 행사는 허용한다.
 
@@ -531,9 +531,9 @@ flowchart TD
 
 | 위치 | 작업 1~2에서의 역할 |
 | --- | --- |
-| features/planning/schemas.py | 미합의 조건 후보·operation·unresolved 내부 타입 |
-| features/planning/nodes.py | 추출 노드, 순수 검증·적용 함수(필요 시 모듈 분리) |
-| features/planning/prompts/extract_conditions.md | 추출 프롬프트 원문 |
+| features/planning/legacy/schemas.py | 미합의 조건 후보·operation·unresolved 내부 타입 |
+| features/planning/legacy/nodes.py | 추출 노드, 순수 검증·적용 함수(필요 시 모듈 분리) |
+| features/planning/legacy/prompts/extract_conditions.md | 추출 프롬프트 원문 |
 | tests/ | 불변성·계약 검증, 사람이 검수한 모델 평가 사례 |
 | contracts.py, facade.py, __init__.py | BE 합의 후 공개. 지금은 변경하지 않음 |
 | workflow/ | 작업 3 이후 통합 시 graph/state/checkpointer 구성 |

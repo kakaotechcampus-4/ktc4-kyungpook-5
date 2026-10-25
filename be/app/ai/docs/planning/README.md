@@ -1,5 +1,7 @@
 # 행사계획 개발 안내
 
+현재 공개 P1은 `agent/`, `generation/`, `public_workflow.py`, `state_codec.py`를 사용한다. 이전 조건 추출 → 검색 판단 → 규칙 질문 → 답변 조립 구현은 [코드 legacy 안내](../../features/planning/legacy/README.md)로 분리했다. 이전 테스트 API와 평가 스크립트는 보존하지만 현재 공개 P1에서는 호출하지 않는다.
+
 BE/FE 연결은 [P1 전달 안내](p1-handoff.md)를 먼저 읽는다. 공개 함수 호출, 실제 응답, 저장/실패 처리와 UI 사진을 정리했다. 상세 타입과 책임은 [P1 공개 계약](p1-public-contract.md), 공동 합의는 [#179](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/179)에서 확인한다.
 
 생성 권유 수락 후 반복 실패하는 사례는 [출력·전송 한도 진단(#176)](evaluation.md)에서 원인·전후 실측·재실행을 확인한다. 생성 호출만 스트리밍과 명시적 출력 한도를 사용하며, UI는 검증된 완성본을 계속 한 번에 받는다.

@@ -10,8 +10,8 @@ import hashlib
 
 from app.ai.config import get_settings
 from app.ai.errors import AIError
-from app.ai.features.planning.nodes import PROMPT_VERSION, extract_condition_changes
-from app.ai.features.planning.schemas import ConditionExtractionInput, PlanningConditions
+from app.ai.features.planning.legacy.nodes import PROMPT_VERSION, extract_condition_changes
+from app.ai.features.planning.legacy.schemas import ConditionExtractionInput, PlanningConditions
 
 CASES = Path(__file__).parents[1] / "tests/fixtures/eval/planning_conditions.json"
 

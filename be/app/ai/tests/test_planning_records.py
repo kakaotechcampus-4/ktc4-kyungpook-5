@@ -8,8 +8,8 @@ from pydantic import ValidationError
 
 from app.ai.contracts import RecordSource, SourceLocation
 from app.ai.errors import AIInvalidResponseError, AITimeoutError
-from app.ai.features.planning.records import build_record_search_request, search_planning_records
-from app.ai.features.planning.schemas import PlanningRecordSearchInput
+from app.ai.features.planning.legacy.records import build_record_search_request, search_planning_records
+from app.ai.features.planning.legacy.schemas import PlanningRecordSearchInput
 from app.ai.features.retrieval.schemas import EvidenceAssessment, SearchQueries
 from app.ai.llm import EMBEDDING_DIMENSIONS
 from app.ai.ports import RetrievedChunk

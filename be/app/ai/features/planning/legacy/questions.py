@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from ...contracts import ContractModel, NonBlankStr
+from ....contracts import ContractModel, NonBlankStr
 from .schemas import ConditionExtractionResult, ConditionField, SetCondition
 
 QUESTION_POLICY_VERSION = "planning-questions-v1"

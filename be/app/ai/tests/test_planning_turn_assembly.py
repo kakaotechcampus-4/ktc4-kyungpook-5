@@ -5,11 +5,11 @@ import asyncio
 import pytest
 
 from app.ai.errors import AITimeoutError
-from app.ai.features.planning.lookup import RecordLookupDecision
-from app.ai.features.planning.schemas import ConditionExtractionOutput
-from app.ai.features.planning.turn_assembly import assemble_planning_turn
-from app.ai.features.planning.turn_flow import process_planning_turn
-from app.ai.features.planning.turn_schemas import PendingClarification, PlanningTurnInput, RecordLookupState
+from app.ai.features.planning.legacy.lookup import RecordLookupDecision
+from app.ai.features.planning.legacy.schemas import ConditionExtractionOutput
+from app.ai.features.planning.legacy.turn_assembly import assemble_planning_turn
+from app.ai.features.planning.legacy.turn_flow import process_planning_turn
+from app.ai.features.planning.legacy.turn_schemas import PendingClarification, PlanningTurnInput, RecordLookupState
 from test_planning_turn_flow import Port, request, run, set_people
 
 

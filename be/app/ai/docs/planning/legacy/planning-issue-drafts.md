@@ -73,7 +73,7 @@
 
 ### 현재 로컬 상태·검증
 
-구현 파일은 `features/planning/schemas.py`, 테스트는 `tests/test_planning_conditions.py`다. 작업 1~3 통합 상태에서 AI 테스트 총 472개가 통과했다. 이 이슈의 PR을 분리한 뒤 해당 커밋 기준 테스트 결과를 추가한다.
+구현 파일은 `features/planning/legacy/schemas.py`, 테스트는 `tests/test_planning_conditions.py`다. 작업 1~3 통합 상태에서 AI 테스트 총 472개가 통과했다. 이 이슈의 PR을 분리한 뒤 해당 커밋 기준 테스트 결과를 추가한다.
 
 ### 참고 자료 · 관련 이슈
 
@@ -214,7 +214,7 @@
 
 ### 현재 로컬 상태·검증
 
-- 주요 코드: `features/planning/questions.py`, 질문 정책 `planning-questions-v1`.
+- 주요 코드: `features/planning/legacy/questions.py`, 질문 정책 `planning-questions-v1`.
 - 질문 단위 테스트 13개를 포함해 AI 전체 **472개 통과**.
 - 실제 모델 추출과 연결한 합성 2턴 대화 3개에서 예상 질문 필드 **6/6턴 일치**.
 - 실제 대화 검증 후 부분 일정 질문 문구를 보완했고, 해당 변경은 단위 테스트로 검증했다. 이 문구 변경에 대한 모델 재호출은 하지 않았다.

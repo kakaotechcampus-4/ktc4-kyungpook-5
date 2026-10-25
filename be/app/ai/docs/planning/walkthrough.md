@@ -1,5 +1,7 @@
 # 행사계획 코드 따라가기
 
+현재 흐름은 `agent/`와 `generation/`을 따른다. 이전 `turn_*`, `lookup.py`, `records.py`, `questions.py`, 조건 추출 `nodes.py`는 [features/planning/legacy](../../features/planning/legacy/README.md)에 있다. 공유 조건 값과 `PlanningMessage`는 `planning/schemas.py`에 남겼으며 현재 코드가 legacy 타입을 가져오지 않는다.
+
 #184에서 공개 함수로 실제 모델을 확인했다. 25,000원 → 30,000원 상담(값 유지) → JSON 저장/복원 → “일단 그렇게 잡자”(30,000원 잠정 반영) → 권유 수락 생성 순서다. [실측 결과](evaluation.md#공개-함수-실제-모델-연결-검증-184-2026-10-25)와 [BE 저장 예시](p1-public-contract.md#13-be-호출과-저장-순서-184)를 함께 읽으면 호출부터 저장까지 연결된다.
 
 공개 경계의 정의 위치는 #183에서 통일했다. **contracts.py(무엇을 주고받는가) → facade.py(무엇을 호출하는가) → features/planning(어떻게 처리하는가)** 순서로 읽으면 된다. 예를 들어 “50명으로 잡자”는 루트 `PlanningChatRequest`로 들어와 `chat_planning`과 기존 Graph/Tool을 거친 뒤 루트 `PlanningPublicResult`로 돌아온다. 오류는 `errors.py`에서 찾는다. 기존 `planning_contracts.py`는 호환용 재공개만 남았다.

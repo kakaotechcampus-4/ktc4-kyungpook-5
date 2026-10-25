@@ -7,10 +7,10 @@ import pytest
 from pydantic import ValidationError
 
 from app.ai.errors import AIConfigError, AIInvalidResponseError, AIRetryableError, AITimeoutError
-from app.ai.features.planning.lookup import RecordLookupDecision
-from app.ai.features.planning.schemas import ConditionExtractionOutput
-from app.ai.features.planning.turn_flow import prepare_planning_turn
-from app.ai.features.planning.turn_schemas import PlanningTurnInput
+from app.ai.features.planning.legacy.lookup import RecordLookupDecision
+from app.ai.features.planning.legacy.schemas import ConditionExtractionOutput
+from app.ai.features.planning.legacy.turn_flow import prepare_planning_turn
+from app.ai.features.planning.legacy.turn_schemas import PlanningTurnInput
 from app.ai.features.retrieval.schemas import SearchQueries
 from app.ai.llm import EMBEDDING_DIMENSIONS
 

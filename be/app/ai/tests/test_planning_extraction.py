@@ -7,10 +7,10 @@ import pytest
 from pydantic import ValidationError
 
 from app.ai.errors import AIInvalidResponseError, AITimeoutError
-from app.ai.features.planning.nodes import (
+from app.ai.features.planning.legacy.nodes import (
     build_extraction_messages, extract_condition_changes, validate_and_apply,
 )
-from app.ai.features.planning.schemas import ConditionExtractionInput, ConditionExtractionOutput
+from app.ai.features.planning.legacy.schemas import ConditionExtractionInput, ConditionExtractionOutput
 
 
 def request(text="40명으로 바꿔줘. 장소는 다시 정하자", **overrides):

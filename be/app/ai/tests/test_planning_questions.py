@@ -2,8 +2,8 @@
 
 import pytest
 
-from app.ai.features.planning.questions import PlanningQuestionState, select_next_question
-from app.ai.features.planning.schemas import ConditionExtractionResult
+from app.ai.features.planning.legacy.questions import PlanningQuestionState, select_next_question
+from app.ai.features.planning.legacy.schemas import ConditionExtractionResult
 
 
 def result(conditions=None, unresolved=(), **overrides):

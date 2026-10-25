@@ -78,7 +78,7 @@ LLM이 이전 호출을 자동 기억한다고 가정하지 않는다. 매번 �
 
 ### 3-1. 입력 만들기
 
-[schemas.py](../../../features/planning/schemas.py)의 `ConditionExtractionInput`으로 아래 정보를 묶는다. 예시는 읽기 쉽게 일부 필드만 표시했다.
+[schemas.py](../../../features/planning/legacy/schemas.py)의 `ConditionExtractionInput`으로 아래 정보를 묶는다. 예시는 읽기 쉽게 일부 필드만 표시했다.
 
 ```text
 conditions       = {headcount: 32, location: "가평", fee_per_person: 45000}
@@ -97,13 +97,13 @@ base_version     = 3
 
 ### 3-2. 모델에 보낼 메시지 만들기
 
-[nodes.py](../../../features/planning/nodes.py)의 `build_extraction_messages()`는 두 메시지를 만든다.
+[nodes.py](../../../features/planning/legacy/nodes.py)의 `build_extraction_messages()`는 두 메시지를 만든다.
 
 ```python
 return [SystemMessage(_system_prompt()), HumanMessage(payload)]
 ```
 
-- SystemMessage: [extract_conditions.md](../../../features/planning/prompts/extract_conditions.md)의 추출 규칙.
+- SystemMessage: [extract_conditions.md](../../../features/planning/legacy/prompts/extract_conditions.md)의 추출 규칙.
 - HumanMessage: 조건·현재 발화·이전 대화·기준 날짜를 담은 JSON 데이터.
 
 과거 assistant 발화도 JSON의 문맥 데이터로 넣는다. 과거 대화나 문서 속 문장을 새로운 system 지시로 바꾸지 않는다. event_id/request_id/base_version은 모델이 만들 필요가 없어 모델 입력에서 제외하고 코드가 보존한다.
@@ -189,7 +189,7 @@ event_id/request_id/base_version = 입력에서 그대로 복사
 
 ### 3-5. 다음 질문으로 넘기기
 
-[questions.py](../../../features/planning/questions.py)의 `select_next_question(extraction, state)`가 위 결과와 질문 상태를 받는다.
+[questions.py](../../../features/planning/legacy/questions.py)의 `select_next_question(extraction, state)`가 위 결과와 질문 상태를 받는다.
 
 ```text
 asked_fields         = 앞서 물었던 필드
@@ -220,9 +220,9 @@ last_question_fields = 직전 질문의 대상
 <!-- executable-example -->
 ```python
 import asyncio
-from app.ai.features.planning.schemas import ConditionExtractionInput, ConditionExtractionOutput
-from app.ai.features.planning.nodes import extract_condition_changes
-from app.ai.features.planning.questions import PlanningQuestionState, select_next_question
+from app.ai.features.planning.legacy.schemas import ConditionExtractionInput, ConditionExtractionOutput
+from app.ai.features.planning.legacy.nodes import extract_condition_changes
+from app.ai.features.planning.legacy.questions import PlanningQuestionState, select_next_question
 
 request = ConditionExtractionInput.model_validate({
     "event_id": "evt_demo", "request_id": "req_demo", "base_version": 3,
@@ -314,8 +314,8 @@ asyncio.run(main())
 아래 예시는 `be/`에서 Python으로 실행할 수 있다. 요청 변환만 하므로 API를 호출하지 않는다.
 
 ```python
-from app.ai.features.planning.records import build_record_search_request
-from app.ai.features.planning.schemas import PlanningRecordSearchInput
+from app.ai.features.planning.legacy.records import build_record_search_request
+from app.ai.features.planning.legacy.schemas import PlanningRecordSearchInput
 
 request = PlanningRecordSearchInput.model_validate({
     "club_id": "club-1",
@@ -337,7 +337,7 @@ print(search_request.model_dump(mode="json", exclude_none=True))
 
 실제 호출은 `await search_planning_records(request, port=권한이_적용된_검색_port)`다. 이 함수는 위 변환 함수를 거쳐 기존 `search_records(..., rewrite=True, max_rounds=1)`을 호출한다. `embed`와 `invoke`는 실제 API가 기본값이며 테스트에서는 가짜 구현을 주입할 수 있다. 별도의 검색 엔진이나 자유 답변 생성 모델을 추가한 것은 아니다.
 
-입력 타입은 [schemas.py](../../../features/planning/schemas.py), 두 함수는 [records.py](../../../features/planning/records.py), 연결 검증 사례는 [test_planning_records.py](../../../tests/test_planning_records.py)에 있다. 이번 검증은 실제 retrieval 경로와 가짜 외부 의존성을 사용했으며, 실제 모델 검색 품질·BE 권한 격리·FE 표시를 검증한 것은 아니다.
+입력 타입은 [schemas.py](../../../features/planning/legacy/schemas.py), 두 함수는 [records.py](../../../features/planning/legacy/records.py), 연결 검증 사례는 [test_planning_records.py](../../../tests/test_planning_records.py)에 있다. 이번 검증은 실제 retrieval 경로와 가짜 외부 의존성을 사용했으며, 실제 모델 검색 품질·BE 권한 격리·FE 표시를 검증한 것은 아니다.
 
 ### 7-2. 검색 결과가 참고 카드가 되는 실제 코드
 
@@ -345,7 +345,7 @@ print(search_request.model_dump(mode="json", exclude_none=True))
 
 ```python
 from app.ai.features.retrieval.schemas import RecordSearchResult
-from app.ai.features.planning.records import build_planning_record_result
+from app.ai.features.planning.legacy.records import build_planning_record_result
 
 retrieved = RecordSearchResult.model_validate({
     "facts": [{
@@ -414,16 +414,16 @@ print(result.model_dump(mode="json"))
 | `PlanningTurnResult` | 화면에 전달할 내부 결과 묶음 | 조건·답변·질문·참고 자료가 같은 행사/요청을 설명하는지 검사 |
 | `assess_generation_readiness()` | 초안 버튼 허용 기준 | 유형 없음·조건 충돌·미해결 수정 여부를 코드로 판단 |
 
-타입은 [turn_schemas.py](../../../features/planning/turn_schemas.py), 판단 코드는 [turn_policy.py](../../../features/planning/turn_policy.py)에 있다. 이번에 별도 모델 호출이나 프롬프트를 추가하지 않았다.
+타입은 [turn_schemas.py](../../../features/planning/legacy/turn_schemas.py), 판단 코드는 [turn_policy.py](../../../features/planning/legacy/turn_policy.py)에 있다. 이번에 별도 모델 호출이나 프롬프트를 추가하지 않았다.
 
 #### 입력 → 핵심 코드 → 결과
 
 사용자가 “MT 할 거야”라고 말해 기존 추출 코드가 `event_type=MT`를 만들었다고 하자. 장소와 날짜는 아직 없다.
 
 ```python
-from app.ai.features.planning.schemas import PlanningConditions
-from app.ai.features.planning.turn_policy import assess_generation_readiness
-from app.ai.features.planning.turn_schemas import RecordLookupState
+from app.ai.features.planning.legacy.schemas import PlanningConditions
+from app.ai.features.planning.legacy.turn_policy import assess_generation_readiness
+from app.ai.features.planning.legacy.turn_schemas import RecordLookupState
 
 conditions = PlanningConditions(event_type="MT")
 ready = assess_generation_readiness(conditions)
@@ -466,7 +466,7 @@ print(ready.model_dump(), blocked.model_dump(), lookup.model_dump())
       record_lookup.result=출처가 있는 참고 데이터 또는 NOT_FOUND
 ```
 
-핵심 코드는 [turn_flow.py](../../../features/planning/turn_flow.py)의 다음 분기다. 아래는 설명을 위한 요약이다.
+핵심 코드는 [turn_flow.py](../../../features/planning/legacy/turn_flow.py)의 다음 분기다. 아래는 설명을 위한 요약이다.
 
 ```python
 if decision.action == "SKIP":
@@ -481,7 +481,7 @@ else:
     ...
 ```
 
-“인원은 40명으로”면 SKIP, “작년 MT 장소는?”이면 SEARCH, “그때 그 행사 비용은?”인데 앞선 문맥에도 대상이 없으면 CLARIFY가 기대 동작이다. 조회 여부는 [lookup.py](../../../features/planning/lookup.py)의 구조화 모델 호출이 판단한다. 코드는 SEARCH에 검색어가 있는지, CLARIFY에 확인 질문이 있는지, 근거 인용이 실제 이번 발화에 있는지 검사한다. 그 형식·인용 검사가 모델의 의미 해석까지 보장하지는 않는다.
+“인원은 40명으로”면 SKIP, “작년 MT 장소는?”이면 SEARCH, “그때 그 행사 비용은?”인데 앞선 문맥에도 대상이 없으면 CLARIFY가 기대 동작이다. 조회 여부는 [lookup.py](../../../features/planning/legacy/lookup.py)의 구조화 모델 호출이 판단한다. 코드는 SEARCH에 검색어가 있는지, CLARIFY에 확인 질문이 있는지, 근거 인용이 실제 이번 발화에 있는지 검사한다. 그 형식·인용 검사가 모델의 의미 해석까지 보장하지는 않는다.
 
 추출과 조회 판단은 각각 모델을 호출한다. SEARCH일 때는 기존 검색 내부 모델·임베딩 호출이 더해진다. 검색 함수 실행 한 번을 전체 LLM 호출 한 번으로 해석하지 않는다. 질문 선택·pending 병합·최종 reply는 아직 이 함수에서 실행하지 않는다.
 
@@ -491,7 +491,7 @@ else:
 
 ### 7-7. 작업 5-3: 결과를 답변과 다음 턴의 기억으로 묶기
 
-핵심 함수는 [turn_assembly.py](../../../features/planning/turn_assembly.py)의 `assemble_planning_turn()`이다. 다음 순서로 동작하며 추가 모델 호출은 없다.
+핵심 함수는 [turn_assembly.py](../../../features/planning/legacy/turn_assembly.py)의 `assemble_planning_turn()`이다. 다음 순서로 동작하며 추가 모델 호출은 없다.
 
 ```text
 5-2 중간 결과
@@ -509,12 +509,12 @@ else:
 아래는 `be/`에서 실행 가능한 가상 중간 결과 예시다. API는 호출하지 않는다.
 
 ```python
-from app.ai.features.planning.turn_schemas import PlanningTurnInput, RecordLookupState
-from app.ai.features.planning.schemas import ConditionExtractionOutput
-from app.ai.features.planning.nodes import validate_and_apply
-from app.ai.features.planning.lookup import RecordLookupDecision
-from app.ai.features.planning.turn_flow import PlanningTurnPreparation
-from app.ai.features.planning.turn_assembly import assemble_planning_turn
+from app.ai.features.planning.legacy.turn_schemas import PlanningTurnInput, RecordLookupState
+from app.ai.features.planning.legacy.schemas import ConditionExtractionOutput
+from app.ai.features.planning.legacy.nodes import validate_and_apply
+from app.ai.features.planning.legacy.lookup import RecordLookupDecision
+from app.ai.features.planning.legacy.turn_flow import PlanningTurnPreparation
+from app.ai.features.planning.legacy.turn_assembly import assemble_planning_turn
 
 request = PlanningTurnInput.model_validate({
     "club_id": "club-1", "question_state": {"event_id": "e1"},

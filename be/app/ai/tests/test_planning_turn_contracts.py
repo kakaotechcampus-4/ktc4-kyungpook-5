@@ -4,8 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from app.ai.features.planning.schemas import PlanningConditions
-from app.ai.features.planning.turn_policy import assess_generation_readiness
-from app.ai.features.planning.turn_schemas import PlanningTurnInput, PlanningTurnResult, RecordLookupState
+from app.ai.features.planning.legacy.turn_policy import assess_generation_readiness
+from app.ai.features.planning.legacy.turn_schemas import PlanningTurnInput, PlanningTurnResult, RecordLookupState
 
 
 def extraction():

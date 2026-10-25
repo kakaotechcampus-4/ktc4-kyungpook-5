@@ -8,9 +8,9 @@ from typing import Annotated, Literal
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from pydantic import Field, model_validator
 
-from ...contracts import ContractModel, NonBlankStr
-from ...errors import AIInvalidResponseError
-from ...llm import ainvoke_structured
+from ....contracts import ContractModel, NonBlankStr
+from ....errors import AIInvalidResponseError
+from ....llm import ainvoke_structured
 from .schemas import ConditionExtractionInput, MessageEvidence, PlanningConditions
 
 LOOKUP_PROMPT_VERSION = "planning-lookup-v1"

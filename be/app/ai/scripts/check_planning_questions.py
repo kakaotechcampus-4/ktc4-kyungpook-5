@@ -4,9 +4,9 @@ import asyncio
 import json
 
 from app.ai.config import get_settings
-from app.ai.features.planning.nodes import extract_condition_changes, PROMPT_VERSION
-from app.ai.features.planning.questions import PlanningQuestionState, select_next_question, QUESTION_POLICY_VERSION
-from app.ai.features.planning.schemas import ConditionExtractionInput
+from app.ai.features.planning.legacy.nodes import extract_condition_changes, PROMPT_VERSION
+from app.ai.features.planning.legacy.questions import PlanningQuestionState, select_next_question, QUESTION_POLICY_VERSION
+from app.ai.features.planning.legacy.schemas import ConditionExtractionInput
 
 
 async def main():

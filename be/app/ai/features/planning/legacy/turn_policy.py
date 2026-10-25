@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import model_validator
 
-from ...contracts import ContractModel
+from ....contracts import ContractModel
 from .schemas import PlanningConditions
 
 READINESS_POLICY_VERSION = "planning-readiness-v1"

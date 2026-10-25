@@ -8,8 +8,8 @@ from pathlib import Path
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from pydantic import ValidationError
 
-from ...errors import AIInvalidResponseError
-from ...llm import ainvoke_structured
+from ....errors import AIInvalidResponseError
+from ....llm import ainvoke_structured
 from .schemas import (
     ConditionExtractionInput, ConditionExtractionOutput, ConditionExtractionResult,
     PlanningConditions, SetCondition,

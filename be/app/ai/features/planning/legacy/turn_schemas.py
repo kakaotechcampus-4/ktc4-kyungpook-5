@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
-from ...contracts import ContractModel, NonBlankStr
+from ....contracts import ContractModel, NonBlankStr
 from .questions import PlanningQuestion, PlanningQuestionState
 from .schemas import (
     ConditionExtractionInput, ConditionExtractionResult, PlanningConditions,

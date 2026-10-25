@@ -27,8 +27,8 @@ from app.ai.features.planning.generation.entrypoints import ButtonPlanGeneration
 from app.ai.features.planning.generation.graph import run_plan_generation
 from app.ai.features.planning.generation.schemas import PlanningGenerationState, valid_timezone
 from app.ai.features.planning.schemas import CalendarDate
-from app.ai.features.planning.turn_flow import process_planning_turn
-from app.ai.features.planning.turn_schemas import PlanningTurnInput
+from app.ai.features.planning.legacy.turn_flow import process_planning_turn
+from app.ai.features.planning.legacy.turn_schemas import PlanningTurnInput
 from app.ai.features.retrieval.indexing import index_record_chunks
 from app.ai.features.retrieval.memory_port import InMemoryRecordSearch, StoredRecord
 from app.core.enums import RecordCategory

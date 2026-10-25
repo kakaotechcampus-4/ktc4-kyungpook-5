@@ -3,8 +3,8 @@
 import pytest
 from pydantic import ValidationError
 
-from app.ai.features.planning.records import build_planning_record_result
-from app.ai.features.planning.schemas import PlanningRecordSearchInput, PlanningRecordSearchResult
+from app.ai.features.planning.legacy.records import build_planning_record_result
+from app.ai.features.planning.legacy.schemas import PlanningRecordSearchInput, PlanningRecordSearchResult
 from app.ai.features.retrieval.schemas import RecordSearchResult
 
 
