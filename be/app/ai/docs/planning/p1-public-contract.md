@@ -312,3 +312,102 @@ preview_result = await generate_planning_preview(click)
 검증: 공개 계약 4종과 모델 출력 `PlanComposition`의 JSON Schema를 이동 전후 비교해 동일함을 확인했다. AI 테스트 733개 통과(별도 작업인 `test_planning_records_evaluation.py` 제외). 공개 모델의 중첩 타입까지 루트 소유인지, contracts가 features를 import하지 않는지, 이전 경로가 같은 클래스를 가리키는지도 테스트한다. 실제 모델 호출은 수행하지 않았다.
 
 `PlanningStateError`는 위치만 `errors.py`로 옮기고 기존 ValueError 상속을 유지한다. 입력 검증과 JSON 복원에서 처리되는 방식이나 오류 코드는 바꾸지 않는다.
+
+## 13. BE 호출과 저장 순서 (#184)
+
+공개 함수의 실제 모델 검증은 [check_planning_public.py](../../scripts/check_planning_public.py)로 재현한다. 내부 Graph를 직접 부르지 않고 `app.ai`의 공개 함수로 실행한다. 아래 저장소 함수 이름은 **BE 구현을 설명하기 위한 의사코드**이며 현재 저장소나 HTTP API로 제공되는 함수가 아니다.
+
+### 대화 요청 한 번을 처리하는 순서
+
+```text
+1. 사용자 권한과 행사/대화/동아리 소속 확인
+2. 요청 ID 확인: 이미 완료했다면 저장된 같은 결과 반환
+3. 현재 revision, draft, Agent 상태 JSON을 한 스냅샷으로 조회
+4. PlanningChatRequest 구성 → await chat_planning(request, records=...)
+5. 짧은 DB 트랜잭션에서 revision 재확인
+6. 조건 + 사용자/AI 메시지 + next_state + 요청 결과를 함께 저장
+7. revision 증가 → 저장된 화면용 응답 반환
+```
+
+모델을 기다리는 동안 DB 트랜잭션이나 행 잠금을 길게 유지하지 않는 안을 제안한다. 5번에서 다른 요청이 먼저 저장했다면 오래된 결과로 덮어쓰지 않는다. 행사별 요청 큐를 쓸지, revision 충돌 후 재요청할지는 BE에서 결정한다.
+
+```python
+# 의사코드: service/store 함수는 BE가 구현한다.
+from app.ai import PlanningChatRequest, PlanningUserMessage, chat_planning, parse_resume_state
+
+snapshot = await store.read_planning_snapshot(event_id)
+state = parse_resume_state(snapshot.state_json) if snapshot.state_json is not None else None
+request = PlanningChatRequest(
+    request_id=request_id, club_id=authorized_club_id,
+    event_id=event_id, conversation_id=conversation_id,
+    base_revision=snapshot.revision, draft=snapshot.draft,
+    resume_state=state,
+    message=PlanningUserMessage(id=user_message_id, content=content),
+    reference_date=local_today, timezone="Asia/Seoul",
+)
+result = await chat_planning(request, records=record_search_port)
+
+# 내부에서 권한/요청 중복/revision을 다시 확인하는 원자적 저장 동작이다.
+await store.commit_planning_result(
+    expected_revision=request.base_revision,
+    request_id=request.request_id,
+    user_message=request.message,
+    draft=result.view.draft,
+    assistant_reply=result.view.reply,
+    state_json=result.next_state.model_dump_json(),
+    response=result.view.model_dump(mode="json"),
+)
+```
+
+`draft`는 Event 컬럼 값만으로 매번 재조립하면 안 된다. condition_meta의 잠정 여부와 근거, deferred_topics까지 보존해야 상태의 basis_draft와 일치한다. `expected_headcount → headcount`, 기본 제목 → title 변환 정책도 최초 요청과 재접속에 동일하게 적용한다. 외부 편집이 있었다면 동기화 정책을 먼저 정하고 상태를 억지로 초기화하지 않는다.
+
+### 무엇을 저장하고 무엇을 화면으로 보내나
+
+| 데이터 | BE 처리 | FE 전달 |
+| --- | --- | --- |
+| 사용자 메시지 | 요청 ID와 메시지 ID를 연결해 중복 방지 | 사용자 말풍선 |
+| view.reply | 정상 채팅 응답으로 저장 | AI 말풍선. 버튼은 null일 수 있음 |
+| view.draft | 조건 값과 잠정/근거/보류를 함께 보존 | 조건 값, 잠정 표시, 보류 주제 등 화면에 필요한 정보 |
+| next_state | JSON으로 그대로 보관. 모델 내부 구조를 BE가 수정하지 않음 | 전달하지 않음 |
+| view.record_lookup | 출처와 상태를 해당 응답에 보관 | 이번 검색 결과와 자료 없음/실패 구분 |
+| view.generation_result | 이번 생성 결과로 보관 | generated일 때 이번 초안을 P2에 전달 |
+| 요청 ID, 입력 지문, 저장된 응답 | 중복 요청과 다른 입력의 ID 재사용을 구분 | 제품 정책에 맞춰 요청 추적 정보만 제공 |
+
+재접속 때는 저장한 말풍선과 화면용 응답을 읽어 화면을 복원한다. 새로고침을 이유로 모델을 다시 호출하지 않는다. 마지막 성공 초안을 따로 제공할 경우 이번 generation_result가 실패한 사실을 지우지 않는다. 미완료 요청 중복 방지도 필요하며 성공 결과 캐시만으로 동시 실행을 막았다고 보지 않는다.
+
+사용자 메시지를 먼저 저장하는 제품 정책이라면 요청을 pending으로 기록한 뒤, 성공 때 상태와 응답을 함께 저장한다. 실패 시 같은 메시지를 또 추가하지 않고 해당 요청의 실패 상태를 갱신한다. 상태 테이블, 메시지 필드, pending 상태 이름은 아직 합의된 DB 명세가 아니다.
+
+### 실패에 따라 저장 범위가 달라진다
+
+| 상황 | 받아 보는 것 | 저장/표시 방향 |
+| --- | --- | --- |
+| 정상 대화 | PlanningPublicResult | 전체 결과를 원자적으로 저장 |
+| 조건 변경 성공, 생성 실패 | view의 새 draft + generation_result.failed | 새 조건과 next_state는 저장. 생성만 실패 안내 |
+| 검색 실패 | record_lookup.failed를 포함한 정상 결과 | 응답과 상태 저장. 자료 없음으로 표시하지 않음 |
+| 모델 전체 호출 실패 | AI 오류 예외 | 이전 draft와 상태 보존. 요청 실패만 기록 |
+| 복원 실패/조건 불일치 | PlanningStateError 또는 입력 ValidationError | 모델 재시도로 해결하려 하지 말고 상태 확인. 자동 초기화 금지 |
+| 이력 한도 초과 | PlanningStateError(code=history_limit) | 결과를 채택하지 않음. 요약/이력 정책 연결 전 제한 안내 |
+| 저장 직전 revision 충돌 | BE의 충돌 판정 | 오래된 AI 결과를 적용하지 않음 |
+| 저장 성공 후 응답 전달 실패 | BE의 완료 요청 기록 | 재전송에서 기존 결과 반환. 모델 재실행 방지 |
+
+PlanningStateError는 ValueError 계열이다. 현재 API에서는 상태 JSON 복원 시 직접 발생하고, Pydantic 요청 검증 내부에서는 ValidationError로 감싸질 수 있다. 사용자에게 예외 문자열 전체를 보여주지 않고 실패 유형별 안전한 문구로 변환한다. HTTP 상태 코드와 사용자 문구는 BE/FE가 합의한다.
+
+### 버튼도 같은 저장 규칙을 사용한다
+
+`generate_planning_preview`에는 이번 사용자 메시지를 넣지 않는다. 클릭 요청 ID와 현재 snapshot을 사용한다. 생성 성공 후 실제 Event/Step/Action으로 저장하는 매핑은 #177의 P2 계약을 따른다. 미정 인원/날짜로 초안 생성이 성공했다고 운영 시작 조건까지 만족한 것은 아니다.
+
+### BE/FE와 확인할 항목
+
+- Agent 상태 JSON과 조건 메타를 어디에 보관할지
+- 요청 ID의 유효 범위와 입력 지문, 처리 중/완료/실패의 재시도 규칙
+- 행사별 동시 요청 처리와 revision 충돌 시 사용자 경험
+- 기본 제목, 장소, 예상 인원 이름의 변환 기준
+- 기존 HTTP 응답에 view 필드를 어떻게 매핑할지
+- 마지막 성공 초안과 이번 생성 실패를 재접속 화면에서 어떻게 구분할지
+- 실제 RecordSearchPort의 권한 및 동아리 필터 연결 검증
+- 60개 이력 제한 안내와 후속 요약 정책
+
+이 문서는 연결 안내이며 BE DB 마이그레이션, 제품 HTTP/FE 구현, 배포 완료를 의미하지 않는다.
+
+
+실제 실행 결과(2026-10-25): 상담/복원/짧은 수락, 채팅 생성, 버튼 생성이 통과했다. [평가 기록](evaluation.md#공개-함수-실제-모델-연결-검증-184-2026-10-25)에 조건과 한계를 기록했다. 답변의 요약 항목 수와 실제 초안의 단계 수가 다를 수 있으므로 FE는 `generation_result.preview.steps`를 기준으로 표시한다. 이 검증은 메모리의 JSON 문자열 왕복이며 실제 DB 저장 검증이 아니다.
