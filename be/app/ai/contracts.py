@@ -76,64 +76,6 @@ class EventConditions(ContractModel):
     location: str | None = Field(default=None, max_length=200)
 
 
-class PlanChatRequest(ContractModel):
-    """계획 대화 한 턴의 입력"""
-
-    # 다른 행사의 조건·대화가 섞이지 않게 처리 단위를 행사로
-    event_id: str
-    # 저장된 조건. 이미 정한 값을 다시 묻지 않기 위해 매 호출에 함께 넘긴다
-    conditions: EventConditions
-    # 시간순 대화. 마지막 항목이 이번 사용자 발화다.
-    messages: tuple[ChatTurn, ...] = Field(min_length=1)
-
-    @field_validator("messages")
-    @classmethod
-    def _end_with_user_turn(cls, value: tuple[ChatTurn, ...]) -> tuple[ChatTurn, ...]:
-        """
-        계획 대화 요청은 반드시 이번 사용자 발화로 끝나야 한다.
-
-        사용자 발화가 빠진 채 이전 대화만 전달되거나,
-        AI 답변을 마지막으로 다시 호출하는 경우를 막는다.
-    
-
-        [참고]
-        화면에 처음 보이는 인사는 AI 호출 없이 BE가 붙이므로(FE 명세 POST /events)
-        이 계약이 받는 대화는 항상 사용자 발화로 끝난다. 이번 발화를 빠뜨리고
-        이력만 보내거나 직전 AI 답변이 마지막에 남은 호출을 여기서 거른다.
-        AI가 먼저 말을 거는 흐름이 생기면 이 전제부터 다시 본다.
-        """
-        if value[-1].role != MessageRole.USER:
-            raise ValueError("마지막 대화는 사용자 발화여야 합니다")
-        return value
-
-
-class PlanChatResult(ContractModel):
-    """계획 대화 한 턴의 결과"""
-
-    # 사용자에게 보여줄 답변. BE가 Message(role=ASSISTANT) 로 저장
-    reply: str
-
-    # 이번 대화까지 반영된 행사 조건 전체를 반환한다.
-    # 변경된 값만 반환하면, BE가 기존 값을 유지해야 하는지
-    # 사용자가 해당 값을 비운 것인지 구분하기 어렵다
-    collected: EventConditions
-
-    # 계획안을 만들 만큼 모였는지에 대한 AI의 판단. 권유일 뿐이라 사용자는 무시할 수 있다
-    ready_to_generate: bool
-
-    @field_validator("reply")
-    @classmethod
-    def _require_reply_content(cls, value: str) -> str:
-        """AI가 빈 답변을 정상 결과로 반환하지 못하게 한다.
-
-        빈 문자열이나 공백만 있는 답변은 실패와 구분하기 어렵고,
-        그대로 저장되면 화면에 빈 메시지가 남을 수 있다.
-        """
-        if not value.strip():
-            raise ValueError("답변 내용이 있어야 합니다")
-        return value
-
-
 class PlannedAction(ContractModel):
     """Step 안에서 실제로 수행할 수 있는 행동 하나.
 
