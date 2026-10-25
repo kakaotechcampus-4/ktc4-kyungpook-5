@@ -73,3 +73,18 @@ __all__ = (
     "AIInvalidResponseError",
     "AIOutputLimitError",
 )
+
+# P1 공개 데이터 계약 초안 (#180). 실행 함수는 후속 작업에서 연결한다.
+from .planning_contracts import (
+    PlanningChatRequest, PlanningPreviewRequest, PlanningUserMessage,
+    PlanningResumeState, PlanningPublicResult, PlanningView,
+    PlanningGenerationReadiness, PlanningStateError, PlanningDraft, PlanningConditions,
+)
+from .features.planning.state_codec import parse_resume_state
+
+__all__ += (
+    "PlanningChatRequest", "PlanningPreviewRequest", "PlanningUserMessage",
+    "PlanningResumeState", "PlanningPublicResult", "PlanningView",
+    "PlanningGenerationReadiness", "PlanningStateError", "PlanningDraft",
+    "PlanningConditions", "parse_resume_state",
+)
