@@ -1,6 +1,6 @@
 # P1 공개 계약 초안 — BE가 보내는 것과 AI가 돌려주는 것
 
-상태: **1번 명세와 2번 데이터 타입/상태 변환 구현. 공개 실행 함수와 BE 연동은 아직 미구현이며 팀 합의 전이다.**
+상태: **1번 명세와 2번 데이터 타입/상태 변환 구현. 3번 공개 실행 함수까지 연결했다. 제품 BE 연동은 미구현이며 팀 합의 전이다.**
 
 구현 이슈: [#180](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/180). 코드의 기준은 `planning_contracts.py`이며 저장 JSON 형식 버전은 1이다.
 
@@ -10,7 +10,7 @@
 
 BE가 `app.ai`만 import해서 P1 대화를 이어갈 수 있도록 입력과 출력의 책임을 정한다. 내부 Agent를 새로 만드는 작업이 아니다. 기존 대화 Graph와 생성 Graph 앞에 공개 계약과 변환 계층을 둔다.
 
-이번 문서는 공개 입출력과 상태 보관 방향을 제안한다. 2번에서 데이터 타입과 직렬화 코드를 추가했다. 실제 실행 함수, DB 컬럼, HTTP 경로는 아직 추가하지 않았다. P2 단계 삭제와 순서 변경, 운영 Agent도 이번 범위에 넣지 않는다.
+이번 문서는 공개 입출력과 상태 보관 방향을 제안한다. 2번에서 데이터 타입과 직렬화 코드를 추가했다. 3번에서 공개 실행 함수를 연결했다. DB 컬럼과 HTTP 경로는 추가하지 않았다. P2 단계 삭제와 순서 변경, 운영 Agent도 이번 범위에 넣지 않는다.
 
 ```text
 사용자: “일단 인원은 대략 50명으로 하자”
@@ -26,7 +26,7 @@ BE가 `app.ai`만 import해서 P1 대화를 이어갈 수 있도록 입력과 �
 
 ## 2. 공개 기능은 두 가지로 구분한다
 
-아래 실행 함수 이름은 제안이며 아직 import할 수 없다. 요청/결과 타입과 `parse_resume_state`는 `app.ai`에서 import할 수 있다.
+아래 두 실행 함수와 요청/결과 타입, `parse_resume_state`를 `app.ai`에서 import할 수 있다. 제품 HTTP 계약은 BE/FE 협의 전이다.
 
 | 공개 기능 제안 | 입력 계기 | 기존 코드 연결 | 결과 |
 | --- | --- | --- | --- |
@@ -195,7 +195,7 @@ AI 구현 이슈 [#180](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/is
 - [ ] 일부 실패와 전체 실패에서 보존할 상태가 다름을 확인한다.
 - [ ] 최종적으로 BE가 `app.ai`만 import하는 연결 테스트를 통과한다.
 
-1번 문서 작업과 2번 데이터 계약 구현은 공개 실행 API 완성과 구분한다. 현재 `app.ai.__init__`에는 위 두 실행 함수가 없다. 검증에서 모델 응답은 고정했으며 실제 모델 품질이나 제품 연결을 검증한 것은 아니다.
+1번 문서 작업과 2번 데이터 계약 구현은 공개 실행 API 완성과 구분한다. 3번에서 `app.ai.__init__`에 두 실행 함수를 연결했다. 검증에서 모델 응답은 고정했으며 실제 모델 품질이나 제품 연결을 검증한 것은 아니다.
 
 
 ## 10. 2번 작업에서 실제로 구현한 흐름
@@ -203,7 +203,7 @@ AI 구현 이슈 [#180](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/is
 ```text
 PlanningChatRequest                  ← BE가 만드는 입력
   → to_agent_input()                 ← 저장 이력을 SDK 메시지로 복원
-  → run_planning_agent_turn()        ← 기존 Graph와 Tool 실행 (공개 facade 연결은 다음 작업)
+  → run_planning_agent_turn()        ← 기존 Graph와 Tool 실행 (공개 facade에서 연결)
   → capture_turn_state()             ← 결과를 JSON 저장 가능한 형태로 변환
   → state.model_dump_json()          ← BE가 저장할 문자열
 
@@ -213,9 +213,9 @@ PlanningChatRequest                  ← BE가 만드는 입력
   → 앞선 상담과 생성 권유를 이어서 사용
 ```
 
-공개 타입은 [planning_contracts.py](../../planning_contracts.py), 내부 변환 함수는 [state_codec.py](../../features/planning/state_codec.py)에 있다. BE는 내부 변환 함수를 직접 호출하는 제품 코드를 만들지 않는다. 다음 작업에서 공개 facade가 이 순서를 묶는다.
+공개 타입은 [planning_contracts.py](../../planning_contracts.py), 내부 변환 함수는 [state_codec.py](../../features/planning/state_codec.py)에 있다. BE는 내부 변환 함수를 직접 호출하는 제품 코드를 만들지 않는다. 3번에서 공개 facade가 이 순서를 묶었다.
 
-`PlanningPublicResult`는 화면용 `view`와 보관용 `next_state`를 나눈다. 두 조건이 다르면 검증 오류가 난다. 화면용 결과를 자동 구성하는 코드, 생성 가능 여부 계산 연결, 버튼 실행 연결은 다음 작업이다. 현재 상태 캡처는 대화 턴 결과용이다.
+`PlanningPublicResult`는 화면용 `view`와 보관용 `next_state`를 나눈다. 두 조건이 다르면 검증 오류가 난다. 3번에서 화면용 결과 구성, 공통 생성 가능 판정, 버튼 실행을 연결했다. 대화 턴은 capture_turn_state를 쓰고, 버튼은 이력을 유지하며 생성 상태만 갱신한다.
 
 ### 읽어볼 핵심 코드
 
@@ -233,7 +233,7 @@ request = PlanningChatRequest(
     message=PlanningUserMessage(id="message-2", content="일단 그렇게 잡자"),
 )
 # saved_json/current_draft는 BE가 같은 결과로 저장했던 값이다.
-# 공개 chat_planning(request) 실행은 아직 제공하지 않는다.
+# 실제 호출은 아래 11절의 chat_planning 예시를 따른다.
 ```
 
 - `PlanningRequestContext.validate_resume`: 상태의 동아리/행사/대화와 현재 요청이 일치하는지, 조건이 동기화됐는지 검사한다. BE 권한 검사를 대신하지 않는다.
@@ -247,6 +247,55 @@ request = PlanningChatRequest(
 
 다른 행사 상태, 조건 불일치, 손상 JSON, 미지원 버전, Tool 결과 누락, 중복 메시지, 60/61개 이력 경계, 버튼에 가짜 메시지를 넣는 경우를 함께 검증한다. 60개를 복원할 수 있어도 다음 턴 후 60개를 넘으면 캡처를 거절한다. 장기 대화 요약이 연결되기 전의 제한이며 자동으로 이력을 버리지 않는다.
 
-다음은 공개 facade가 검색 주입, 대화/버튼 실행, 화면용 결과 구성, 실패 처리를 묶는 작업이다. 따라서 아직 BE 제품에서 끝까지 호출 가능한 상태는 아니다.
+3번에서 공개 facade를 연결했다. BE가 내부 모듈을 import하지 않고 호출할 수 있으며, 실제 DB/권한/HTTP 연결 검증은 남아 있다.
 
 검증 기록: 2026-10-25, AI 테스트 718개 통과(이번 상태 계약 테스트 20개 포함). 기존 별도 작업 파일 `test_planning_records_evaluation.py`는 이번 회귀 실행에서 제외했다.
+
+
+## 11. 3번 작업: 공개 함수로 실행하기 (#181)
+
+[구현 이슈 #181](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/181). 공개 계약은 팀 협의 전 초안이며 실행 함수까지 구현한 상태다.
+
+```python
+from app.ai import chat_planning, generate_planning_preview, PlanningPreviewRequest
+
+# request는 10절의 PlanningChatRequest다.
+result = await chat_planning(request, records=record_search_port)
+# BE: revision 확인 후 result.view.draft, 답변, 아래 상태를 함께 저장한다.
+saved_json = result.next_state.model_dump_json()
+# FE: result.view를 제품 응답으로 변환해서 표시한다.
+
+# 별도 버튼 요청. 메시지를 만들어 채팅에 추가하지 않는다.
+click = PlanningPreviewRequest(
+    request_id="click-1", club_id=request.club_id, event_id=request.event_id,
+    conversation_id=request.conversation_id, base_revision=saved_revision,
+    draft=result.view.draft, resume_state=result.next_state,
+    reference_date=request.reference_date, timezone=request.timezone,
+)
+preview_result = await generate_planning_preview(click)
+# 이번 generation_result.status가 generated일 때 P2로 이동한다.
+```
+
+위 예시는 async 서비스 안에서 실행하며 `record_search_port`와 `saved_revision`은 BE가 준비한다. 공개 함수가 저장하거나 revision을 증가시키지 않는다.
+
+### 입력 → 핵심 코드 → 결과
+
+1. `facade.chat_planning` → [public_workflow.chat](../../features/planning/public_workflow.py): 공개 요청을 다시 검증하고 실행용 복사본을 만든다.
+2. `to_agent_input`: 상태를 복원한다. `run_planning_agent_turn`이 기존 Graph와 Tool을 실행한다.
+3. `capture_turn_state` → `build_result`: 저장 상태와 화면 응답을 만든다. `changed_fields`는 실제 값 차이로 계산한다.
+4. 버튼은 `generate_preview` → `run_button_plan_generation`으로 간다. 복원된 대화와 최신 검색 근거를 사용하되 새 메시지는 추가하지 않는다.
+5. 생성 권유, 화면의 생성 가능 여부, 실제 생성 차단은 `generation/readiness.py`의 같은 조건 함수를 사용한다. 미정 날짜/인원은 차단 조건이 아니다.
+
+`records`를 생략하면 검색 Tool 자체를 제공하지 않는다. 제품에서는 BE가 기존 RecordSearchPort 구현을 주입한다. AI는 요청의 club_id로 검색 어댑터를 묶고 현재 행사 ID로 과거 자료를 제한하지 않는다. 실제 조회 권한 검사는 BE 책임이다. 버튼은 새 검색을 수행하지 않고 저장된 최신 검색 근거만 사용한다.
+
+조건 변경 성공 후 생성만 실패하면 새 조건과 실패 결과를 함께 반환한다. 대화 전체가 예외로 끝나거나 상태 한도를 넘으면 정상 결과를 반환하지 않으며 입력은 보존한다. BE는 실패한 요청의 중간값을 저장하지 않는다.
+
+### 상태 복원 보완
+
+#180 상태에는 메시지 이름이 빠져 있었다. `latest_reference_facts`는 이름이 search_past_events인 Tool 결과를 찾으므로, 저장 후 버튼 생성에서 근거가 사라질 수 있었다. 이번에는 선택 필드 `name`을 저장하고 복원한다. 기존 형식 버전 1의 JSON도 읽을 수 있지만, 이름이 이미 빠진 과거 상태의 검색 근거는 자동 복구하지 않는다. 필요한 경우 새로 검색한다.
+
+### 검증 범위
+
+공개 함수에서 조건 변경 후 저장/복원, 권유 수락 생성, 버튼 생성과 성공 요청 재사용, 행사 유형 누락, 미해결 변경 확인, 검색 범위 전달, 검색 근거 복원 후 버튼 생성, 부분 실패와 전체 실패를 검증한다. 기존 Graph는 실제 실행하고 모델 응답과 검색 결과를 고정한다. 실제 공급자 모델이나 제품 DB 연결 검증은 아니다.
+
+검증 기록: 2026-10-25, 새 공개 실행 테스트 11개 포함 AI 테스트 729개 통과. 별도 작업인 `test_planning_records_evaluation.py`는 회귀 실행에서 제외했다.

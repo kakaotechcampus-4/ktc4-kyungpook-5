@@ -34,7 +34,7 @@ def restore_history(state: PlanningResumeState | None):
         return ()
     messages = []
     for item in state.payload.history:
-        common = dict(content=item.content, id=item.id)
+        common = dict(content=item.content, id=item.id, name=item.name)
         if item.role == 'user':
             messages.append(HumanMessage(**common))
         elif item.role == 'assistant':
@@ -67,7 +67,7 @@ def capture_turn_state(request: PlanningRequestContext, result: PlanningAgentTur
     validate_planning_history(result.history)
     stored = []
     for message in result.history:
-        common = dict(id=message.id, content=message.content)
+        common = dict(id=message.id, content=message.content, name=message.name)
         if isinstance(message, HumanMessage):
             stored.append(PlanningStoredMessage(role='user', **common))
         elif isinstance(message, AIMessage):

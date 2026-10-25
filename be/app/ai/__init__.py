@@ -74,7 +74,7 @@ __all__ = (
     "AIOutputLimitError",
 )
 
-# P1 공개 데이터 계약 초안 (#180). 실행 함수는 후속 작업에서 연결한다.
+# P1 공개 데이터 계약 초안 (#180). 실행 함수는 아래 #181에서 연결한다.
 from .planning_contracts import (
     PlanningChatRequest, PlanningPreviewRequest, PlanningUserMessage,
     PlanningResumeState, PlanningPublicResult, PlanningView,
@@ -88,3 +88,7 @@ __all__ += (
     "PlanningGenerationReadiness", "PlanningStateError", "PlanningDraft",
     "PlanningConditions", "parse_resume_state",
 )
+
+# P1 실행 계약 초안 (#181). 제품 저장/HTTP는 BE가 연결한다.
+from .facade import chat_planning, generate_planning_preview
+__all__ += ('chat_planning', 'generate_planning_preview')

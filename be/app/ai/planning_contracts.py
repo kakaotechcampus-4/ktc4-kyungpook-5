@@ -1,4 +1,4 @@
-"""P1 공개 데이터 계약 초안 (#180). 실행 facade는 후속 작업에서 연결한다.
+"""P1 공개 데이터 계약 초안 (#180). 실행 facade는 #181에서 연결한다.
 
 기존 내부 타입의 검증을 재사용하되 BE는 app.ai에서만 이름을 가져온다.
 저장 상태에는 LangChain 객체나 공급자 응답 메타데이터를 넣지 않는다.
@@ -37,6 +37,7 @@ class PlanningStoredMessage(ContractModel):
     id: NonBlankStr | None = None
     content: str | list[str | dict[str, JsonValue]]
     tool_calls: tuple[PlanningStoredToolCall, ...] = ()
+    name: NonBlankStr | None = None
     tool_call_id: NonBlankStr | None = None
     tool_status: Literal['success', 'error'] | None = None
 
