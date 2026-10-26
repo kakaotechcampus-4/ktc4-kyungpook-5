@@ -1,0 +1,218 @@
+{
+  "history": [
+    {
+      "content": "올해 MT를 준비해. 참가비는 25,000원으로 잡자.",
+      "type": "human"
+    },
+    {
+      "content": "",
+      "tool_calls": [
+        {
+          "args": {
+            "changes": [
+              {
+                "change": {
+                  "field": "event_type",
+                  "value": "MT"
+                },
+                "evidence": {
+                  "message_id": "7fbdc449-4219-4361-9c2b-d778dcede97a",
+                  "quote": "올해 MT를 준비해"
+                },
+                "op": "SET",
+                "status": "specified"
+              },
+              {
+                "change": {
+                  "field": "fee_per_person",
+                  "value": 25000
+                },
+                "evidence": {
+                  "message_id": "7fbdc449-4219-4361-9c2b-d778dcede97a",
+                  "quote": "참가비는 25,000원으로 잡자"
+                },
+                "op": "SET",
+                "status": "specified"
+              }
+            ],
+            "defer_topics": [],
+            "resume_topics": []
+          },
+          "id": "call_Pcv6ciT0QlURgMnOonRP1QiV",
+          "name": "update_event_conditions",
+          "type": "tool_call"
+        }
+      ],
+      "type": "ai"
+    },
+    {
+      "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":null,\"fee_per_person\":25000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{\"event_type\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"7fbdc449-4219-4361-9c2b-d778dcede97a\",\"quote\":\"올해 MT를 준비해\"}},\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"7fbdc449-4219-4361-9c2b-d778dcede97a\",\"quote\":\"참가비는 25,000원으로 잡자\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"event_type\",\"fee_per_person\"],\"reason\":null}",
+      "tool_call_id": "call_Pcv6ciT0QlURgMnOonRP1QiV",
+      "type": "tool"
+    },
+    {
+      "content": "올해 MT, 참가비 25,000원으로 반영했어요.",
+      "type": "ai"
+    },
+    {
+      "content": "2025년 봄 MT 참가비는 얼마였어?",
+      "type": "human"
+    },
+    {
+      "content": "",
+      "tool_calls": [
+        {
+          "args": {
+            "query": "2025년 봄에 진행한 MT의 참가비가 얼마였는지, 실제 행사 기록과 출처 문서명·위치를 확인해 주세요. 기록이 없거나 대상이 불명확한지도 알려 주세요."
+          },
+          "id": "call_WwgcByaQExweYNxWArRtVEce",
+          "name": "search_past_events",
+          "type": "tool_call"
+        }
+      ],
+      "type": "ai"
+    },
+    {
+      "content": "{\"status\":\"available\",\"query\":\"2025년 봄에 진행한 MT의 참가비가 얼마였는지, 실제 행사 기록과 출처 문서명·위치를 확인해 주세요. 기록이 없거나 대상이 불명확한지도 알려 주세요.\",\"result\":{\"facts\":[{\"content\":\"2025년 봄 MT의 1인 회비는 45,000원이다. 출처: 「2025 봄 MT 결과보고.pdf」 1쪽 · 1. 행사 개요.\",\"sources\":[{\"record_id\":\"rec_mt_2025_report\",\"file_name\":\"2025 봄 MT 결과보고.pdf\",\"location\":{\"label\":\"1쪽 · 1. 행사 개요\"}}]},{\"content\":\"2025년 봄 MT 결과보고에는 일정이 2025년 3월 15일~16일, 장소가 가평 ○○펜션, 참가 인원이 28명으로 기록되어 있다. 출처: 「2025 봄 MT 결과보고.pdf」 1쪽 · 1. 행사 개요.\",\"sources\":[{\"record_id\":\"rec_mt_2025_report\",\"file_name\":\"2025 봄 MT 결과보고.pdf\",\"location\":{\"label\":\"1쪽 · 1. 행사 개요\"}}]},{\"content\":\"2025년 봄 MT 참가 신청 안내에도 1인 회비가 45,000원으로 기록되어 있다. 출처: 「2025 봄 MT 참가 신청 안내.pdf」 1쪽.\",\"sources\":[{\"record_id\":\"rec_notice_2025_spring_mt\",\"file_name\":\"2025 봄 MT 참가 신청 안내.pdf\",\"location\":{\"label\":\"1쪽\"}}]},{\"content\":\"2025년 봄 MT 결과보고의 정산에는 회비 45,000원 × 28명 = 1,260,000원으로 기록되어 있다. 출처: 「2025 봄 MT 결과보고.pdf」 2쪽 · 3. 정산.\",\"sources\":[{\"record_id\":\"rec_mt_2025_report\",\"file_name\":\"2025 봄 MT 결과보고.pdf\",\"location\":{\"label\":\"2쪽 · 3. 정산\"}}]},{\"content\":\"2025 상반기 장부의 회비 수납 시트 16~28행에는 2025년 봄 MT 회비로 45,000원씩 기록된 입금 내역이 있다. 출처: 「2025 상반기 장부.xlsx」 회비 수납 시트 · 16~28행.\",\"sources\":[{\"record_id\":\"rec_ledger_2025_h1\",\"file_name\":\"2025 상반기 장부.xlsx\",\"location\":{\"label\":\"회비 수납 시트 · 16~28행\"}}]}],\"not_found\":[],\"conflicts\":[]},\"reason\":null}",
+      "tool_call_id": "call_WwgcByaQExweYNxWArRtVEce",
+      "type": "tool"
+    },
+    {
+      "content": "2025년 봄 MT 참가비는 **1인 45,000원**이었어요.\n\n- 「2025 봄 MT 결과보고.pdf」 1쪽 행사 개요\n- 「2025 봄 MT 참가 신청 안내.pdf」 1쪽\n- 「2025 상반기 장부.xlsx」 회비 수납 시트 16~28행",
+      "type": "ai"
+    },
+    {
+      "content": "올해도 그 금액으로 하자.",
+      "type": "human"
+    },
+    {
+      "content": "",
+      "tool_calls": [
+        {
+          "args": {
+            "changes": [
+              {
+                "change": {
+                  "field": "fee_per_person",
+                  "value": 45000
+                },
+                "evidence": {
+                  "message_id": "138c535b-a6ff-4c9c-925a-23ab8e6566eb",
+                  "quote": "올해도 그 금액으로 하자"
+                },
+                "op": "SET",
+                "status": "specified"
+              }
+            ],
+            "defer_topics": [],
+            "resume_topics": []
+          },
+          "id": "call_Df4H13fp8AzDtBV9RyaIoc7u",
+          "name": "update_event_conditions",
+          "type": "tool_call"
+        }
+      ],
+      "type": "ai"
+    },
+    {
+      "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":null,\"fee_per_person\":45000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{\"event_type\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"7fbdc449-4219-4361-9c2b-d778dcede97a\",\"quote\":\"올해 MT를 준비해\"}},\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"138c535b-a6ff-4c9c-925a-23ab8e6566eb\",\"quote\":\"올해도 그 금액으로 하자\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"fee_per_person\"],\"reason\":null}",
+      "tool_call_id": "call_Df4H13fp8AzDtBV9RyaIoc7u",
+      "type": "tool"
+    },
+    {
+      "content": "올해 MT 참가비도 **1인 45,000원**으로 반영했어요.",
+      "type": "ai"
+    }
+  ],
+  "model": "gpt-5.6-luna",
+  "observed_elapsed_ms": [
+    6170,
+    16400,
+    4150
+  ],
+  "result": {
+    "draft": {
+      "condition_meta": {
+        "event_type": {
+          "evidence": {
+            "message_id": "7fbdc449-4219-4361-9c2b-d778dcede97a",
+            "quote": "올해 MT를 준비해"
+          },
+          "status": "specified"
+        },
+        "fee_per_person": {
+          "evidence": {
+            "message_id": "138c535b-a6ff-4c9c-925a-23ab8e6566eb",
+            "quote": "올해도 그 금액으로 하자"
+          },
+          "status": "specified"
+        }
+      },
+      "conditions": {
+        "budget_total": null,
+        "end_date": null,
+        "event_type": "MT",
+        "fee_per_person": 45000,
+        "headcount": null,
+        "location": null,
+        "start_date": null,
+        "title": null
+      },
+      "deferred_topics": []
+    },
+    "executions": [
+      {
+        "name": "update_event_conditions",
+        "result": {
+          "changed_fields": [
+            "fee_per_person"
+          ],
+          "draft": {
+            "condition_meta": {
+              "event_type": {
+                "evidence": {
+                  "message_id": "7fbdc449-4219-4361-9c2b-d778dcede97a",
+                  "quote": "올해 MT를 준비해"
+                },
+                "status": "specified"
+              },
+              "fee_per_person": {
+                "evidence": {
+                  "message_id": "138c535b-a6ff-4c9c-925a-23ab8e6566eb",
+                  "quote": "올해도 그 금액으로 하자"
+                },
+                "status": "specified"
+              }
+            },
+            "conditions": {
+              "budget_total": null,
+              "end_date": null,
+              "event_type": "MT",
+              "fee_per_person": 45000,
+              "headcount": null,
+              "location": null,
+              "start_date": null,
+              "title": null
+            },
+            "deferred_topics": []
+          },
+          "reason": null,
+          "status": "applied"
+        },
+        "tool_call_id": "call_Df4H13fp8AzDtBV9RyaIoc7u"
+      }
+    ],
+    "limit_reached": false,
+    "model_calls": 2,
+    "prompt_version": "planning-agent-v2",
+    "record_lookup": null,
+    "reply": "올해 MT 참가비도 **1인 45,000원**으로 반영했어요."
+  },
+  "scenario": [
+    "올해 참가비 25,000원 설정",
+    "2025년 봄 MT 조회: 과거 45,000원, 현재 25,000원 유지",
+    "올해도 그 금액으로 하자: 현재 45,000원 반영, 마지막 조회 출처 유지"
+  ],
+  "url": "http://127.0.0.1:5173/dev/planning",
+  "verified_on": "2026-10-24"
+}

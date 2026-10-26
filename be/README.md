@@ -1,7 +1,8 @@
 # 운영해 · BE
 
-현재는 **ORM 모델과 mock API 1개까지 구현한 단계**입니다. DB 연결·인증·규칙 엔진은 아직 없습니다.
-mock API는 DB 없이 고정 응답만 내려 FE가 화면을 실제 API에 붙여볼 수 있게 한 것입니다 (이슈 #30).
+인증·동아리·영수 내역·회의·기록 업로드·Discord·할 일 후보·mini 활동 API는 실제 DB로 동작합니다
+(#131, #133, #135, 팀장 요청 curl 흐름). OCR·STT·Jev 판단·기록 검색·Discord 수집은 **결정론적 더미**이고
+실제 AI·외부 연동은 후속 이슈입니다. 행사(`/events`) API는 아직 DB 없이 고정 응답만 내리는 mock입니다 (이슈 #30).
 모델 확정 내역과 그 근거는 [BE 스키마 검토안](../docs/week6/be/운영해_BE_스키마_검토안.md)에 있습니다.
 
 ## 기술 스택
@@ -57,29 +58,34 @@ be/
 │   │   ├── auth.py
 │   │   ├── clubs.py
 │   │   ├── events.py        # 계획, 참가자, 결제, 지출, 승인, 업무 전부 포함
-│   │   └── records.py       # 동아리 기록 업로드·조회
-│   ├── schemas/
-│   │   ├── auth.py
-│   │   ├── clubs.py
-│   │   ├── events.py
-│   │   └── records.py
+│   │   ├── records.py       # 동아리 기록 업로드·조회
+│   │   ├── accounting.py    # 지출 직접 입력·CSV·영수증 OCR 초안·확정
+│   │   ├── meetings.py      # 회의·음성 청크·전사·WebSocket
+│   │   ├── discord.py       # Discord 연결·수집 메시지 (읽기 전용)
+│   │   ├── tasks.py         # 할 일 후보 조회·수정·수락
+│   │   ├── agent.py         # 작업 상태·Jev 판단 조회·mini 활동 snapshot/SSE
+│   │   └── test_support.py  # TEST_MODE 전용 주입 경로
+│   ├── schemas/               # 라우터 파일마다 하나 (auth·clubs·events·records·accounting·meetings·discord·tasks·agent)
 │   ├── models/
-│   │   ├── __init__.py        # 전 모델 등록 (Base.metadata)
-│   │   ├── auth.py            # Auth
-│   │   ├── clubs.py           # Club · Member
-│   │   ├── events.py          # Event · Step · Action · Participant
-│   │   ├── records.py         # Record
-│   │   ├── agent.py           # AgentLog
-│   │   └── chat.py            # Conversation · Message
+│   │   ├── __init__.py        # 전 모델 등록 (Base.metadata). 테이블 목록은 아래 "데이터 모델"
+│   │   └── ...
 │   ├── services/
 │   │   ├── auth_service.py
 │   │   ├── club_service.py
 │   │   ├── event_service.py   # 계획/참가자/승인/업무 오케스트레이션
 │   │   ├── event_rules.py     # 참가비·환불·정산 계산 순수함수 (규칙 엔진, NF1)
 │   │   ├── record_service.py
-│   │   └── record_parser.py   # 기록 원본(PDF·CSV·XLSX) → parse_result
+│   │   ├── record_parser.py   # 기록 원본(PDF·CSV·XLSX) → parse_result
+│   │   ├── accounting_service.py · expense_csv_parser.py · receipt_ocr_stub.py
+│   │   ├── meeting_service.py · meeting_stt_stub.py · meeting_judge_stub.py
+│   │   ├── context_service.py      # Jev 판단 작업·판단 기록·할 일 후보 생성
+│   │   ├── context_tools_stub.py   # 기록 검색·문장 생성·Discord 할 일 도출 더미
+│   │   ├── agent_job_service.py    # 작업 상태 전이 + mini 활동 이벤트 기록
+│   │   ├── activity_service.py     # mini snapshot·SSE 이벤트 조회
+│   │   ├── discord_service.py · task_service.py
 │   ├── infra/
-│   │   └── s3.py
+│   │   ├── s3.py
+│   │   └── storage.py         # 업로드 파일 저장 (S3 연동 전까지 로컬 디스크 STORAGE_DIR)
 │   └── ai/                    # AI 모듈. 별도 서버 아님 — BE 프로세스 내부
 │       ├── __init__.py        # BE가 쓰는 단일 공개 진입점 (현재 공개 함수 없음)
 │       ├── facade.py          # BE → AI: 공개 기능 구현 위치
@@ -151,16 +157,27 @@ BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE �
 
 ## 데이터 모델
 
-테이블 11개를 여섯 파일로 나눕니다.
-
 | 파일 | 테이블 |
 | --- | --- |
-| `models/clubs.py` | `clubs` · `members` |
-| `models/auth.py` | `auth` |
+| `models/clubs.py` | `clubs` · `members` · `invitations` |
+| `models/auth.py` | `accounts` · `auth` |
+| `models/common.py` | `idempotency_keys` |
 | `models/events.py` | `events` · `steps` · `actions` · `participants` |
 | `models/records.py` | `records` |
-| `models/agent.py` | `agent_log` |
+| `models/accounting.py` | `receipt_imports` · `receipt_import_rows` · `expenses` |
+| `models/meetings.py` | `meetings` · `meeting_audio_chunks` · `transcript_segments` |
+| `models/discord.py` | `discord_connections` · `discord_messages` |
+| `models/agent.py` | `agent_log` · `agent_jobs` · `agent_activity_events` · `context_decisions` |
+| `models/tasks.py` | `task_suggestions` |
 | `models/chat.py` | `conversations` · `messages` |
+
+팀장 요청 ERD 변경안(2026-10-12)에서는 curl 흐름에 필요한 것만 넣었습니다(`2ffdcc2aee5b` 리비전).
+작업(`agent_jobs`)·판단(`context_decisions`)·할 일 후보(`task_suggestions`)를 나누고, 회의 판단 결과는
+`transcript_segments`가 아니라 `context_decisions`에 둡니다. 판단 근거는 원문 id와 그때의 version을
+`sources`(JSONB)에 고정하고, 전사가 정정되면 이전 판단을 `STALE`로 바꿉니다. 변경안의
+`context_sources`/`context_source_versions`, `agent_job_attempts`, `agent_tool_calls`, `transcript_events`,
+`discord_channels`, `task_suggestion_evidence`, `todos`는 아직 만들지 않았습니다(재시도·근거 버전 이력·
+채널별 cursor가 필요해질 때 추가).
 
 `participants`는 동아리 전체 명단(`members`)과 별개로 "이 행사에 신청했는지"를 행사별로 추적합니다
 (이슈 #107). 미응답·응답 인원 집계가 이 테이블을 기준으로 계산됩니다.
@@ -177,7 +194,7 @@ BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE �
 | 이름 | 용도 | 상태 |
 | --- | --- | --- |
 | `DATABASE_URL` | PostgreSQL 연결 문자열 (`postgresql+psycopg://...`) | 코드 반영됨 (`app/core/config.py`). 비어 있어도 앱은 뜨고 DB를 쓰는 시점에 실패 |
-| `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | `app/ai/config.py` — ML API 게이트웨이 호출, 채팅 모델(`gpt-5.6-terra`) | 코드 반영됨 (`app/ai/config.py`) |
+| `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | `app/ai/config.py` — ML API 게이트웨이 호출, 채팅 모델(`gpt-5.6-luna`) | 코드 반영됨 (`app/ai/config.py`) |
 | `AI_REQUEST_TIMEOUT_SECONDS` | 단일 요청 응답 대기 상한(초). 비우면 60 | 코드 반영됨 (`app/ai/config.py`) |
 | `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_MODEL` | 임베딩 전용 설정. 키를 비우면 `AI_API_KEY` 재사용 | 코드 반영됨 (`app/ai/config.py`) |
 | `JWT_SECRET_KEY` / `SESSION_SECRET` | 인증 방식 확정 후 결정 | 미정 |
@@ -241,11 +258,58 @@ uv run pytest
 `db` 마커가 붙은 테스트(세션 연결, 마이그레이션 왕복·`alembic check`, 시드)는 테스트 DB가 필요합니다.
 기본 주소(`localhost:5432/unyounghae_test`)에 연결할 수 없으면 건너뛰므로, DB 없이도 나머지 테스트는 실행됩니다.
 `TEST_DATABASE_URL`을 주면 그 주소를 쓰고, 이때는 연결에 실패하면 건너뛰지 않고 실패합니다. 빈 값도 준 것으로 보고 실패합니다.
+`/test-support/*` 경로를 쓰는 테스트(카카오 로그인 우회, 회의 전사 주입 등)는 `TEST_MODE=true`도
+**pytest를 띄우기 전에** 셸 환경변수로 줘야 합니다. `main.py`가 이 라우터를 앱 시작 시점에
+한 번만 등록하므로, 테스트 안에서 `monkeypatch.setenv`로 주면 이미 늦습니다.
+
+```bash
+TEST_DATABASE_URL=... TEST_MODE=true uv run pytest
+```
 `tests/integration/`은 mock API의 응답 계약(`{data, meta}` 봉투, camelCase 키, enum 문자열,
 에러 봉투)을 고정합니다. 공통 코드(`schemas`의 `CamelModel`, `core/exceptions.py`)를 바꿀 때
 이 테스트가 먼저 깨지도록 두는 것이 목적입니다 (이슈 #33).
 
 AI 모듈 테스트(`app/ai/tests/`)도 같은 명령으로 함께 실행됩니다.
+
+## 팀장 요청 curl 흐름 (2026-10-12 서비스 계약)
+
+`service-flow` → `accounting` → `meeting` → `discord` → `activity` curl 블록의 정상 흐름이 실제 DB로 끝까지 돕니다.
+`service-errors`(권한·중복·수정·삭제·실패 주입) 블록은 이번 범위가 아닙니다.
+
+```bash
+cd be
+uv run alembic upgrade head
+TEST_MODE=true uv run python scripts/run_dev.py   # macOS/Linux는 TEST_MODE=true uv run uvicorn app.main:app
+```
+
+- `/test-support/*`(전사 주입, Discord FIXTURE 연결·이벤트 주입, 카카오 우회)는 `TEST_MODE=true`일 때만 등록됩니다.
+- 이메일 인증·초대 토큰은 메일 대신 서버 콘솔에 찍힙니다(#131).
+- curl이 쓰는 fixture는 `be/pm-tests/fixtures/`(`expense-valid.csv` 2행 32000원, `meeting-rules.csv` 회칙)에 있습니다.
+  영수증 이미지·회의 음성 파일은 저장소에 없으니 아무 파일이나 지정하면 됩니다(내용을 읽지 않는 더미 처리).
+- 업로드 파일은 `STORAGE_DIR`(기본 `./var/storage`)에 저장됩니다.
+
+202로 접수하는 작업(OCR·STT·판단·Discord sync)은 실제 작업 큐가 없어 **요청 안에서 바로 처리**합니다. 응답을 받은
+시점에 `GET /agent-jobs/{id}`는 이미 `SUCCEEDED`/`FAILED`입니다. 상태 전이(QUEUED → RUNNING(stage) → 완료)는
+`agent_activity_events`에 남아 `GET /clubs/{id}/activity/stream`(SSE)으로 그대로 볼 수 있습니다.
+
+| 더미 | 동작 |
+| --- | --- |
+| 영수증 OCR (`receipt_ocr_stub.py`) | 파일 해시로 금액을 정한 한 행 초안 |
+| 회의 STT (`meeting_stt_stub.py`) | "(더미 전사) N번 음성 청크 …" 문장. 음성 내용은 읽지 않으므로 Jev 판단은 NONE |
+| Jev 판단 (`meeting_judge_stub.py`) | 물음표 → RAG, "바꿔/써/정리해 주세요" 등 → LLM, 그 외 NONE |
+| 기록 검색 (`context_tools_stub.py`) | 동아리 기록 `parse_result` 블록을 글자 2-gram 겹침으로 찾아 실제 `recordId`·위치를 인용 |
+| 문장 생성 (`context_tools_stub.py`) | "(더미 생성) 요청 문장: …" |
+| Discord 할 일 도출 (`context_tools_stub.py`) | 최근 메시지에 "~해야" 등이 있으면 LLM 분기로 보고 앞 메시지까지 근거로 후보 생성 |
+
+curl 주석과 다르게 동작하는 부분입니다.
+
+- `service-flow` 08 `POST /events`는 없습니다. 행사 API는 아직 mock이라 회의·지출의 `eventId`는 비워 둡니다.
+- `meeting` M01 기록 업로드는 파싱까지만 해 `parseStatus=COMPLETED`입니다. AI 색인(청크 저장)이 없어 `INDEXED`가 되지 않으며, 더미 검색은 `COMPLETED` 기록도 찾습니다.
+- `meeting` M09 `finish`는 밀린 처리가 없어 FINALIZING을 거치지 않고 바로 `COMPLETED`입니다.
+- `discord` D01 실제 연결은 `status=DISCONNECTED`입니다(curl 주석은 CONNECTED). 실제 bot 수집기가 없어 D02 `sync` 작업은 `FAILED`(`DISCORD_COLLECTOR_UNAVAILABLE`)로 남습니다. D03부터의 FIXTURE 연결은 `MONITORING`입니다.
+- Discord 이벤트 주입은 `MESSAGE_CREATE`만 받습니다(수정·삭제는 오류 테스트 범위).
+- `Idempotency-Key` 헤더는 받기만 하고 아직 적용하지 않습니다(`core/idempotency.py`는 #131에서 만들어 둠).
+- mini `characterState`: 대기·처리 중 작업이 있으면 `WORKING`, 검토 안 한 할 일 후보가 있으면 `ATTENTION`, 아니면 `IDLE`. 실패 작업은 `jobs[]`에만 표시합니다.
 
 ## mock API
 

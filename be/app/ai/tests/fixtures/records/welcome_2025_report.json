@@ -1,0 +1,20 @@
+{
+  "record": {
+    "id": "rec_welcome_2025_report",
+    "club_id": "clb_keunnamu",
+    "file_name": "2025 신환회 결과보고.pdf",
+    "file_type": "PDF",
+    "category": "EVENT_HISTORY",
+    "event_id": null
+  },
+  "parse_result": {
+    "blocks": [
+      {
+        "text": "2025 신입회원 환영회 결과보고\n1. 행사 개요\n일시: 2025년 3월 28일(금) 저녁 7시\n장소: 학교 앞 ○○식당\n인원: 참가 35명 (신입회원 20명, 기존 회원 15명)\n참가비: 받지 않음 (동아리 예산 사용)\n2. 지출\n식당 350,000원\n다과 48,000원\n합계 398,000원",
+        "location": {
+          "label": "1쪽"
+        }
+      }
+    ]
+  }
+}

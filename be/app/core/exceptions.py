@@ -38,6 +38,68 @@ class EventNotFound(ApiError):
         super().__init__("해당 행사를 찾을 수 없습니다.")
 
 
+class Unauthorized(ApiError):
+    status_code = 401
+    code = "UNAUTHORIZED"
+
+    def __init__(self, message: str = "로그인이 필요합니다.") -> None:
+        super().__init__(message)
+
+
+class Forbidden(ApiError):
+    status_code = 403
+    code = "FORBIDDEN"
+
+    def __init__(self, message: str = "권한이 없습니다.") -> None:
+        super().__init__(message)
+
+
+class VersionConflict(ApiError):
+    """expectedVersion이 현재 값과 다를 때. 재시도 전에 리소스를 다시 조회해야 한다."""
+
+    status_code = 409
+    code = "VERSION_CONFLICT"
+
+    def __init__(self) -> None:
+        super().__init__("버전이 바뀌었습니다. 다시 조회한 뒤 시도해 주세요.")
+
+
+class IdempotencyConflict(ApiError):
+    """같은 Idempotency-Key에 다른 요청 본문이 왔을 때."""
+
+    status_code = 409
+    code = "IDEMPOTENCY_CONFLICT"
+
+    def __init__(self) -> None:
+        super().__init__("같은 Idempotency-Key로 다른 요청이 이미 처리되었습니다.")
+
+
+class ExpenseNotFound(ApiError):
+    status_code = 404
+    code = "EXPENSE_NOT_FOUND"
+
+    def __init__(self) -> None:
+        super().__init__("해당 지출 내역을 찾을 수 없습니다.")
+
+
+class ReceiptImportNotFound(ApiError):
+    status_code = 404
+    code = "RECEIPT_IMPORT_NOT_FOUND"
+
+    def __init__(self) -> None:
+        super().__init__("해당 영수 내역 초안을 찾을 수 없습니다.")
+
+
+class ImportNotReady(ApiError):
+    """검수 전(QUEUED/PROCESSING)이거나 이미 CONFIRMED/FAILED인 초안을 확정하려 할 때."""
+
+    status_code = 409
+    code = "IMPORT_NOT_READY"
+
+    def __init__(self) -> None:
+        super().__init__("아직 확정할 수 있는 상태가 아닙니다.")
+
+
 class ValidationFailed(ApiError):
     status_code = 422
     code = "VALIDATION_FAILED"

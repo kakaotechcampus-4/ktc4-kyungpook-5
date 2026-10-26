@@ -1,0 +1,22 @@
+{
+  "review_status": "AI 작성 소규모 합성 사례, 사람 정답 검수 전. 실행 전 기대값 고정",
+  "reference_date": "2026-10-24",
+  "dialogs": [
+    {"id":"offer-defer-button","initial":{"event_type":"MT"},"turns":[
+      {"source":"chat","text":"일단 약 50명에 참가비는 인당 25,000원으로 잡자. 날짜와 장소는 나중에 정할게. 준비 방향은 이 정도로 생각하고 있어.","updates":{"headcount":50,"fee_per_person":25000},"offer":"pending","generation":null},
+      {"source":"chat","text":"아직 만들지 말자. 조금 더 생각해볼게.","updates":{},"offer":"deferred","generation":null},
+      {"source":"chat","text":"고마워. 잠깐 더 생각해볼게.","updates":{},"offer":"deferred","generation":null},
+      {"source":"button","updates":{},"offer":null,"generation":"generated"}
+    ]},
+    {"id":"direct-chat","initial":{"event_type":"MT","headcount":50,"fee_per_person":25000},"turns":[
+      {"source":"chat","text":"지금 조건으로 기본 준비 순서 계획 초안을 바로 만들어줘. 날짜와 장소는 미정으로 남겨줘.","updates":{},"generation":"generated"}
+    ]},
+    {"id":"workshop-offer-acceptance","initial":{"title":"2026년 워크숍","event_type":"WORKSHOP","headcount":40,"fee_per_person":25000,"start_date":"2026-10-31","end_date":"2026-11-02"},"turns":[
+      {"source":"chat","text":"이 조건으로 초안을 만들어볼 수 있을까? 만들기 전에 먼저 제안해줘.","updates":{},"offer":"pending","generation":null},
+      {"source":"chat","text":"그렇게하자","updates":{},"offer":null,"generation":"generated"}
+    ]},
+    {"id":"dated-button","initial":{"event_type":"PICNIC","headcount":20,"fee_per_person":0,"start_date":"2027-04-10","end_date":"2027-04-10","location":"교내 잔디밭"},"turns":[
+      {"source":"button","updates":{},"generation":"generated"}
+    ]}
+  ]
+}

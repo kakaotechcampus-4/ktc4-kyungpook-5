@@ -1,0 +1,632 @@
+{
+  "date": "2026-10-24",
+  "issue": 174,
+  "url": "http://127.0.0.1:5174/",
+  "api": "127.0.0.1:8011",
+  "model": "gpt-5.6-luna",
+  "agent_prompt": "planning-agent-v5",
+  "note": "폴더·실행 의존성 분리 확인. Agent·생성 프롬프트는 변경하지 않았으며 모델 품질 개선 비교가 아님.",
+  "frames": [
+    {
+      "step": "chat-conditions",
+      "elapsed_ms": 12400,
+      "source": "chat",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 40,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {
+          "event_type": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "MT를 준비해."
+            }
+          },
+          "headcount": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "인원은 40명"
+            }
+          },
+          "fee_per_person": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "참가비는 인당 25,000원으로 잡자."
+            }
+          }
+        },
+        "deferred_topics": [
+          "dates",
+          "location"
+        ]
+      },
+      "reply": "MT 조건 반영했어요.\n\n- 인원: 40명\n- 참가비: 1인 25,000원\n- 날짜·장소: 나중에 결정\n\n현재 참가비 기준 총 수입은 100만 원입니다. 날짜와 장소 없이도 준비 순서와 예산 기준을 담은 검토용 초안을 먼저 만들어드릴까요?",
+      "history_messages": 6,
+      "result": null,
+      "tool_calls": [
+        {
+          "name": "update_event_conditions",
+          "args": {
+            "changes": [
+              {
+                "op": "SET",
+                "change": {
+                  "field": "event_type",
+                  "value": "MT"
+                },
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "MT를 준비해."
+                }
+              },
+              {
+                "op": "SET",
+                "change": {
+                  "field": "headcount",
+                  "value": 40
+                },
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "인원은 40명"
+                }
+              },
+              {
+                "op": "SET",
+                "change": {
+                  "field": "fee_per_person",
+                  "value": 25000
+                },
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "참가비는 인당 25,000원으로 잡자."
+                }
+              }
+            ],
+            "defer_topics": [
+              {
+                "topic": "dates",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "날짜와 장소는 나중에 정할게."
+                }
+              },
+              {
+                "topic": "location",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "날짜와 장소는 나중에 정할게."
+                }
+              }
+            ],
+            "resume_topics": []
+          },
+          "id": "call_OxvIYncRSfGht1oYKkxpFvut",
+          "type": "tool_call"
+        },
+        {
+          "name": "update_generation_offer",
+          "args": {
+            "action": "offer",
+            "reason": "MT 유형, 40명, 참가비가 정해져 있어 날짜·장소 없이도 준비 순서와 예산 기준을 담은 검토용 초안을 만들 수 있습니다.",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "MT를 준비해."
+            }
+          },
+          "id": "call_Cv0dz9HFnuOhMoMv0b0ulqDg",
+          "type": "tool_call"
+        }
+      ]
+    },
+    {
+      "step": "button-generation-failed",
+      "elapsed_ms": 16340,
+      "source": "button",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 40,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {
+          "event_type": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "MT를 준비해."
+            }
+          },
+          "headcount": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "인원은 40명"
+            }
+          },
+          "fee_per_person": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "참가비는 인당 25,000원으로 잡자."
+            }
+          }
+        },
+        "deferred_topics": [
+          "dates",
+          "location"
+        ]
+      },
+      "reply": null,
+      "history_messages": 6,
+      "result": {
+        "status": "failed",
+        "preview": null,
+        "reason": "계획 초안을 만들거나 검증하지 못했어요. 다시 시도해 주세요.",
+        "model_calls": 1
+      },
+      "tool_calls": [
+        {
+          "name": "update_event_conditions",
+          "args": {
+            "changes": [
+              {
+                "op": "SET",
+                "change": {
+                  "field": "event_type",
+                  "value": "MT"
+                },
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "MT를 준비해."
+                }
+              },
+              {
+                "op": "SET",
+                "change": {
+                  "field": "headcount",
+                  "value": 40
+                },
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "인원은 40명"
+                }
+              },
+              {
+                "op": "SET",
+                "change": {
+                  "field": "fee_per_person",
+                  "value": 25000
+                },
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "참가비는 인당 25,000원으로 잡자."
+                }
+              }
+            ],
+            "defer_topics": [
+              {
+                "topic": "dates",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "날짜와 장소는 나중에 정할게."
+                }
+              },
+              {
+                "topic": "location",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "날짜와 장소는 나중에 정할게."
+                }
+              }
+            ],
+            "resume_topics": []
+          },
+          "id": "call_OxvIYncRSfGht1oYKkxpFvut",
+          "type": "tool_call"
+        },
+        {
+          "name": "update_generation_offer",
+          "args": {
+            "action": "offer",
+            "reason": "MT 유형, 40명, 참가비가 정해져 있어 날짜·장소 없이도 준비 순서와 예산 기준을 담은 검토용 초안을 만들 수 있습니다.",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "MT를 준비해."
+            }
+          },
+          "id": "call_Cv0dz9HFnuOhMoMv0b0ulqDg",
+          "type": "tool_call"
+        }
+      ]
+    },
+    {
+      "step": "button-generated-after-retry",
+      "elapsed_ms": 12340,
+      "source": "button",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 40,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {
+          "event_type": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "MT를 준비해."
+            }
+          },
+          "headcount": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "인원은 40명"
+            }
+          },
+          "fee_per_person": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "참가비는 인당 25,000원으로 잡자."
+            }
+          }
+        },
+        "deferred_topics": [
+          "dates",
+          "location"
+        ]
+      },
+      "reply": null,
+      "history_messages": 6,
+      "result": {
+        "status": "generated",
+        "preview": {
+          "id": "c55a4391-8a73-450f-9c72-5d934ff3a6a1",
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "MT",
+              "headcount": 40,
+              "fee_per_person": 25000,
+              "start_date": null,
+              "end_date": null,
+              "location": null,
+              "budget_total": null
+            },
+            "condition_meta": {
+              "event_type": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "MT를 준비해."
+                }
+              },
+              "headcount": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "인원은 40명"
+                }
+              },
+              "fee_per_person": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "참가비는 인당 25,000원으로 잡자."
+                }
+              }
+            },
+            "deferred_topics": [
+              "dates",
+              "location"
+            ]
+          },
+          "trigger": {
+            "source": "button",
+            "request_id": "4f769577-25d5-4fe1-89bc-e3861a0b65e2"
+          },
+          "steps": [
+            {
+              "code": "ASSIGN_ROLES",
+              "purpose": "MT 준비와 진행에 필요한 역할과 책임 범위를 정하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "담당 인원 배치",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "RESEARCH_VENUE",
+              "purpose": "참가 인원과 MT 운영에 적합한 장소 및 교통 조건을 검토하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "장소·교통 알아보기",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "DEMAND_SURVEY",
+              "purpose": "참가 가능 여부와 선호 조건을 확인해 실제 참여 규모와 세부 계획을 조정하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가 가능 여부 및 선호 조건 조사 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "사전 수요 조사",
+              "phase": "PREPARATION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "RECRUIT_NOTICE",
+              "purpose": "행사 조건과 참가 방법을 안내하고 참가 신청을 받기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "MT 참가 모집 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "모집 공지",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CHECK_RESPONSES",
+              "purpose": "모집 및 조사 응답을 확인해 참가자 현황과 미응답자를 파악하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가 응답 확인 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "응답 확인",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CONFIRM_DETAILS",
+              "purpose": "참가 인원과 행사 일정 등 핵심 조건을 최종적으로 정리하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "인원·일정 확정",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "BOOK_VENUE",
+              "purpose": "행사 날짜와 장소가 정해진 뒤 적합한 장소를 예약하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "CONTRACT",
+                  "title": "행사 장소 예약 계약 검토",
+                  "due_date": null
+                },
+                {
+                  "type": "TRANSFER",
+                  "title": "행사 장소 예약 관련 지급 검토",
+                  "due_date": null
+                }
+              ],
+              "name": "예약",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "COLLECT_FEES",
+              "purpose": "참가자에게 정해진 참가비를 수금하고 수금 현황을 관리하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가비 납부 안내",
+                  "due_date": null
+                },
+                {
+                  "type": "EXTERNAL_SEND",
+                  "title": "참가비 수금 요청",
+                  "due_date": null
+                }
+              ],
+              "name": "참가비 수금",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "PRE_EVENT_NOTICE",
+              "purpose": "확정된 행사 일정과 장소 등 참가에 필요한 정보를 사전에 안내하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "행사 전 최종 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "사전 안내",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "EVENT_DAY",
+              "purpose": "확정된 계획에 따라 MT를 운영하고 행사 당일 진행 사항을 관리하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "행사 당일",
+              "phase": "EXECUTION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "SETTLE_EXPENSES",
+              "purpose": "행사 후 발생한 지출을 확인하고 참가비 및 행사 비용을 정산하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "EXPENSE",
+                  "title": "행사 지출 정산",
+                  "due_date": null
+                }
+              ],
+              "name": "지출 정산",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "RECORD_FEEDBACK",
+              "purpose": "참가자 의견과 운영 결과를 기록해 후속 개선에 활용하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "피드백 기록",
+              "phase": "EXECUTION",
+              "actor": "AI"
+            }
+          ],
+          "excluded_steps": [
+            {
+              "code": "REFUND_FEES",
+              "reason": "현재 조건에는 환급 사유나 환급 대상이 정해져 있지 않아 기본 준비 계획에서 제외합니다."
+            }
+          ],
+          "assumptions": [],
+          "open_questions": [
+            "행사 시작일과 종료일은 언제인가요?",
+            "행사 장소 또는 희망 지역은 어디인가요?",
+            "행사 제목을 정할까요?",
+            "예산 총액과 참가비에 포함되는 항목은 무엇인가요?",
+            "참가비 환급 기준을 별도로 정할까요?",
+            "행사 날짜"
+          ],
+          "warnings": [
+            "행사 시작일과 종료일이 미정이므로 모든 단계와 예정 행동에 일정을 지정하지 않았습니다.",
+            "장소가 미정이므로 장소 조사 이후 예약까지 진행할 수 없으며, 행사 일정과 장소가 정해져야 모집·수금·사전 안내의 구체적인 마감일을 정할 수 있습니다.",
+            "현재 조건만으로는 행사 종료 후 정산 및 피드백 일정을 제안할 수 없습니다."
+          ]
+        },
+        "reason": null,
+        "model_calls": 1
+      },
+      "tool_calls": [
+        {
+          "name": "update_event_conditions",
+          "args": {
+            "changes": [
+              {
+                "op": "SET",
+                "change": {
+                  "field": "event_type",
+                  "value": "MT"
+                },
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "MT를 준비해."
+                }
+              },
+              {
+                "op": "SET",
+                "change": {
+                  "field": "headcount",
+                  "value": 40
+                },
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "인원은 40명"
+                }
+              },
+              {
+                "op": "SET",
+                "change": {
+                  "field": "fee_per_person",
+                  "value": 25000
+                },
+                "status": "specified",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "참가비는 인당 25,000원으로 잡자."
+                }
+              }
+            ],
+            "defer_topics": [
+              {
+                "topic": "dates",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "날짜와 장소는 나중에 정할게."
+                }
+              },
+              {
+                "topic": "location",
+                "evidence": {
+                  "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+                  "quote": "날짜와 장소는 나중에 정할게."
+                }
+              }
+            ],
+            "resume_topics": []
+          },
+          "id": "call_OxvIYncRSfGht1oYKkxpFvut",
+          "type": "tool_call"
+        },
+        {
+          "name": "update_generation_offer",
+          "args": {
+            "action": "offer",
+            "reason": "MT 유형, 40명, 참가비가 정해져 있어 날짜·장소 없이도 준비 순서와 예산 기준을 담은 검토용 초안을 만들 수 있습니다.",
+            "evidence": {
+              "message_id": "89f29a48-8f46-417f-a6ad-eb8acd0b6caf",
+              "quote": "MT를 준비해."
+            }
+          },
+          "id": "call_Cv0dz9HFnuOhMoMv0b0ulqDg",
+          "type": "tool_call"
+        }
+      ]
+    }
+  ]
+}

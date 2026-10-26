@@ -1,0 +1,807 @@
+{
+  "state": "COMPLETED",
+  "started_at": "2026-10-24T09:25:09.091267+00:00",
+  "model": "gpt-5.6-luna",
+  "reasoning": "provider default",
+  "generation_max_output_tokens": 8192,
+  "prompt_version": "planning-agent-v5",
+  "generation_prompt_version": "planning-generation-v1",
+  "review_status": "AI 작성 소규모 합성 사례, 사람 정답 검수 전. 실행 전 기대값 고정",
+  "reference_date": "2026-10-24",
+  "dialog_filter": "workshop-offer-acceptance",
+  "git_commit": "0b0faf9c56d2cd8a03a2cd4265dffc4b6694457b",
+  "git_dirty": true,
+  "sha256": {
+    "features/planning/agent/generation_tools.py": "4406f0075435a96af8e0b5899594c0c3ddaa400000a4a535ad9c6b03d0391aa0",
+    "features/planning/agent/graph.py": "7c56f1963f4ecb2d75ab1828de300499825e1e71180db2fb4b1dca8fe9f812f0",
+    "features/planning/agent/nodes.py": "70947196a510b1106e6f92f8ce37c3c2df22f73434b837274b323d3e108bef6f",
+    "features/planning/agent/record_tool.py": "da05eca341026f3fd3bc2a57831a220287858a150d5e23402e6451543088e016",
+    "features/planning/agent/schemas.py": "98a149880147d89b018ca3aed23f3f6e6fedcdbaee0892d0a2699b07e687199d",
+    "features/planning/agent/state.py": "5e58e643b7d1a87c82e163faad520578dc25c9cbdff54a1ee5bcb639a35ad364",
+    "features/planning/agent/tools.py": "a7af857e94efc4619a9a021dbb57b2a59ae4f6672a66648daf869aa733fc2c6a",
+    "features/planning/agent/prompts/chat.md": "98dd9aa8491a07c9b154c9ffe5ebcb8c6e53d4a4d22469199f6da35b158f69b7",
+    "features/planning/generation/__init__.py": "d64c4710852440e504ea0b350647283c050637a2fbafa6864c0b81feeba87f26",
+    "features/planning/generation/catalog.py": "9728dd2591ab6d648e60e921917a49fd3159261ff735b8e020e71b2151a74927",
+    "features/planning/generation/entrypoints.py": "bb67f87ececc070b242a2e0742bbeafbfd1e174723e89a9cd3050495955494c8",
+    "features/planning/generation/graph.py": "f22a31536f9e3a8b240ca15c0ac147bbe9b6da5ca813089fde486b74b8e891b7",
+    "features/planning/generation/model.py": "916cb7a1de4af503d7b467561f9a432253a84221a5ad84d961072e35f452c9d1",
+    "features/planning/generation/offers.py": "820ccd8a32b644d2bfdb219cf010536493f87ab443782e76e9ff594d4a99bec7",
+    "features/planning/generation/schemas.py": "6478e089b36d5614133f654722eebc6dfd6b1906311938bd00c371dbd17c951e",
+    "features/planning/generation/prompts/compose.md": "57b54f2ab15a4fbd775aac42a06c63e0cbbf33a380dcff10b177bd0d3fb94902",
+    "llm.py": "47e55dbcb69ce4ea9cc887b3e5e5857a3f5368f178aed53d3f4a4916ab468e6b",
+    "tests/fixtures/eval/planning_generation.json": "1476a2ded81290eb63176278884f55f76b5c373245cb71c679fe0e594e97ff37",
+    "scripts/eval_plan_generation.py": "4dd90abd5e28f72575e41209308758d4f33b70750c41db01de7c667fbbb3f29f"
+  },
+  "turns": [
+    {
+      "dialog": "workshop-offer-acceptance",
+      "turn": 1,
+      "case": {
+        "source": "chat",
+        "text": "이 조건으로 초안을 만들어볼 수 있을까? 만들기 전에 먼저 제안해줘.",
+        "updates": {},
+        "offer": "pending",
+        "generation": null
+      },
+      "reply": "현재 조건(2026년 워크숍, 40명, 1인 25,000원, 10월 31일~11월 2일)으로 준비 순서와 운영 항목을 정리한 행사 계획 초안을 만들어드릴까요? 장소와 총예산은 미정으로 표시해둘게요.",
+      "trace": [
+        {
+          "type": "ai",
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "update_generation_offer",
+              "args": {
+                "action": "offer",
+                "reason": "사용자가 현재 조건으로 초안 생성을 요청하기 전에 먼저 제안해 달라고 했습니다.",
+                "evidence": {
+                  "message_id": "workshop-offer-acceptance-1",
+                  "quote": "이 조건으로 초안을 만들어볼 수 있을까? 만들기 전에 먼저 제안해줘."
+                }
+              },
+              "id": "call_Me1RGl8sMqFQE0vKc8IIbzld",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"applied\",\"offer\":{\"id\":\"86d87b6a-f850-403a-bd2c-086e810eb749\",\"status\":\"pending\",\"summary\":\"사용자가 현재 조건으로 초안 생성을 요청하기 전에 먼저 제안해 달라고 했습니다.\",\"basis_draft\":{\"conditions\":{\"title\":\"2026년 워크숍\",\"event_type\":\"WORKSHOP\",\"headcount\":40,\"fee_per_person\":25000,\"start_date\":\"2026-10-31\",\"end_date\":\"2026-11-02\",\"location\":null,\"budget_total\":null},\"condition_meta\":{},\"deferred_topics\":[]}},\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": "현재 조건(2026년 워크숍, 40명, 1인 25,000원, 10월 31일~11월 2일)으로 준비 순서와 운영 항목을 정리한 행사 계획 초안을 만들어드릴까요? 장소와 총예산은 미정으로 표시해둘게요.",
+          "tool_calls": []
+        }
+      ],
+      "agent_calls": 2,
+      "generation_calls": 0,
+      "limit_reached": false,
+      "checks": {
+        "input_preserved": true,
+        "conditions": true,
+        "generation": true,
+        "offer": true
+      },
+      "passed": true,
+      "draft": {
+        "conditions": {
+          "title": "2026년 워크숍",
+          "event_type": "WORKSHOP",
+          "headcount": 40,
+          "fee_per_person": 25000,
+          "start_date": "2026-10-31",
+          "end_date": "2026-11-02",
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "generation": {
+        "offer": {
+          "id": "86d87b6a-f850-403a-bd2c-086e810eb749",
+          "status": "pending",
+          "summary": "사용자가 현재 조건으로 초안 생성을 요청하기 전에 먼저 제안해 달라고 했습니다.",
+          "basis_draft": {
+            "conditions": {
+              "title": "2026년 워크숍",
+              "event_type": "WORKSHOP",
+              "headcount": 40,
+              "fee_per_person": 25000,
+              "start_date": "2026-10-31",
+              "end_date": "2026-11-02",
+              "location": null,
+              "budget_total": null
+            },
+            "condition_meta": {},
+            "deferred_topics": []
+          }
+        },
+        "preview": null,
+        "condition_change_pending": false,
+        "pending_condition_fields": []
+      },
+      "outcome": null,
+      "compositions": [],
+      "validation_reasons": [],
+      "provider_errors": [],
+      "schema_errors": [],
+      "ms": 6145,
+      "http_calls": 2
+    },
+    {
+      "dialog": "workshop-offer-acceptance",
+      "turn": 2,
+      "case": {
+        "source": "chat",
+        "text": "그렇게하자",
+        "updates": {},
+        "offer": null,
+        "generation": "generated"
+      },
+      "reply": "초안을 만들었습니다. 현재 조건 기준으로 다음 내용을 포함했어요.\n\n- **행사:** 2026년 워크숍\n- **인원:** 40명\n- **기간:** 2026년 10월 31일~11월 2일\n- **참가비:** 1인 25,000원\n- **준비 순서:** 역할 배치 → 장소 조사·예약 → 모집 및 참석 확인 → 참가비 수금 → 사전 안내 → 행사 운영 → 정산·피드백\n\n다만 **장소와 총예산은 미정**으로 남겨두었고, 3일 일정의 세부 프로그램·식사·숙박·이동 여부도 추가 결정이 필요합니다. 행사까지 약 1주일이라 장소와 교통 조건부터 우선 정하는 게 좋겠습니다.",
+      "trace": [
+        {
+          "type": "ai",
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "generate_event_plan",
+              "args": {
+                "quote": "그렇게하자",
+                "offer_id": "86d87b6a-f850-403a-bd2c-086e810eb749",
+                "use_current_conditions": false
+              },
+              "id": "call_LVebUYyA3WOXeR8YQ6OvRvhP",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"generated\",\"preview\":{\"id\":\"1928e533-9502-43c2-8e4d-787b7abc35e8\",\"basis_draft\":{\"conditions\":{\"title\":\"2026년 워크숍\",\"event_type\":\"WORKSHOP\",\"headcount\":40,\"fee_per_person\":25000,\"start_date\":\"2026-10-31\",\"end_date\":\"2026-11-02\",\"location\":null,\"budget_total\":null},\"condition_meta\":{},\"deferred_topics\":[]},\"trigger\":{\"source\":\"chat\",\"request_id\":\"workshop-offer-acceptance-2\",\"quote\":\"그렇게하자\"},\"steps\":[{\"code\":\"ASSIGN_ROLES\",\"purpose\":\"행사 준비와 당일 운영에 필요한 역할과 책임 범위를 정리합니다.\",\"starts_at\":\"2026-10-24T09:00:00+09:00\",\"deadline\":\"2026-10-25T18:00:00+09:00\",\"actions\":[],\"name\":\"담당 인원 배치\",\"phase\":\"PREPARATION\",\"actor\":\"MANUAL\"},{\"code\":\"RESEARCH_VENUE\",\"purpose\":\"40명이 참여할 수 있는 장소와 교통 조건을 확인하고 장소 미정 상태를 해소합니다.\",\"starts_at\":\"2026-10-24T09:00:00+09:00\",\"deadline\":\"2026-10-26T18:00:00+09:00\",\"actions\":[],\"name\":\"장소·교통 알아보기\",\"phase\":\"PREPARATION\",\"actor\":\"MANUAL\"},{\"code\":\"RECRUIT_NOTICE\",\"purpose\":\"행사 일정, 참가 조건, 참가비 등 현재 확정된 조건을 바탕으로 참가자 모집 및 참석 의향 확인을 진행합니다.\",\"starts_at\":\"2026-10-25T09:00:00+09:00\",\"deadline\":\"2026-10-27T18:00:00+09:00\",\"actions\":[{\"type\":\"NOTICE\",\"title\":\"참가자 모집 공지 준비 및 검토\",\"due_date\":\"2026-10-25\"}],\"name\":\"모집 공지\",\"phase\":\"RECRUITING\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"CHECK_RESPONSES\",\"purpose\":\"모집 결과와 참석 가능 여부를 확인하여 실제 참석 인원을 파악합니다.\",\"starts_at\":\"2026-10-27T18:00:00+09:00\",\"deadline\":\"2026-10-28T18:00:00+09:00\",\"actions\":[{\"type\":\"NOTICE\",\"title\":\"응답 현황 확인 안내\",\"due_date\":\"2026-10-28\"}],\"name\":\"응답 확인\",\"phase\":\"RECRUITING\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"CONFIRM_DETAILS\",\"purpose\":\"참가 인원, 행사 일정, 장소 및 운영 세부사항을 준비 기준에 맞게 정리합니다.\",\"starts_at\":\"2026-10-28T18:00:00+09:00\",\"deadline\":\"2026-10-29T18:00:00+09:00\",\"actions\":[],\"name\":\"인원·일정 확정\",\"phase\":\"RECRUITING\",\"actor\":\"AI\"},{\"code\":\"BOOK_VENUE\",\"purpose\":\"장소가 정해진 뒤 행사 기간에 맞춰 예약 가능 여부와 계약 조건을 확정합니다.\",\"starts_at\":\"2026-10-26T09:00:00+09:00\",\"deadline\":\"2026-10-29T18:00:00+09:00\",\"actions\":[{\"type\":\"CONTRACT\",\"title\":\"장소 예약 조건 검토 및 계약 준비\",\"due_date\":\"2026-10-29\"}],\"name\":\"예약\",\"phase\":\"RECRUITING\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"COLLECT_FEES\",\"purpose\":\"확정된 참가자에게 1인 참가비 납부 절차를 안내하고 수금 일정을 관리합니다.\",\"starts_at\":\"2026-10-28T09:00:00+09:00\",\"deadline\":\"2026-10-30T18:00:00+09:00\",\"actions\":[{\"type\":\"NOTICE\",\"title\":\"참가비 납부 안내 준비\",\"due_date\":\"2026-10-28\"},{\"type\":\"EXTERNAL_SEND\",\"title\":\"참가비 납부 요청 준비\",\"due_date\":\"2026-10-28\"}],\"name\":\"참가비 수금\",\"phase\":\"RECRUITING\",\"actor\":\"AI\"},{\"code\":\"PRE_EVENT_NOTICE\",\"purpose\":\"참가자에게 확정된 행사 일정, 장소와 참석 준비사항을 사전에 안내합니다.\",\"starts_at\":\"2026-10-29T18:00:00+09:00\",\"deadline\":\"2026-10-30T18:00:00+09:00\",\"actions\":[{\"type\":\"NOTICE\",\"title\":\"행사 전 안내 준비\",\"due_date\":\"2026-10-30\"}],\"name\":\"사전 안내\",\"phase\":\"EXECUTION\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"EVENT_DAY\",\"purpose\":\"2026년 10월 31일부터 11월 2일까지 워크숍을 운영합니다.\",\"starts_at\":\"2026-10-31T00:00:00+09:00\",\"deadline\":\"2026-11-02T23:59:59+09:00\",\"actions\":[],\"name\":\"행사 당일\",\"phase\":\"EXECUTION\",\"actor\":\"MANUAL\"},{\"code\":\"SETTLE_EXPENSES\",\"purpose\":\"행사 종료 후 발생한 지출과 증빙을 확인하여 정산합니다.\",\"starts_at\":\"2026-11-03T09:00:00+09:00\",\"deadline\":\"2026-11-05T18:00:00+09:00\",\"actions\":[{\"type\":\"EXPENSE\",\"title\":\"행사 지출 내역 정리 및 정산 준비\",\"due_date\":\"2026-11-05\"}],\"name\":\"지출 정산\",\"phase\":\"EXECUTION\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"REFUND_FEES\",\"purpose\":\"환급 대상이 발생하는 경우 참가비 환급 절차를 처리합니다.\",\"starts_at\":\"2026-11-03T09:00:00+09:00\",\"deadline\":\"2026-11-06T18:00:00+09:00\",\"actions\":[{\"type\":\"TRANSFER\",\"title\":\"환급 대상 확인 후 환급 준비\",\"due_date\":\"2026-11-06\"}],\"name\":\"참가비 환급\",\"phase\":\"EXECUTION\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"RECORD_FEEDBACK\",\"purpose\":\"행사 종료 후 참가자와 운영 과정의 피드백을 기록하여 후속 개선에 활용합니다.\",\"starts_at\":\"2026-11-03T09:00:00+09:00\",\"deadline\":\"2026-11-06T18:00:00+09:00\",\"actions\":[],\"name\":\"피드백 기록\",\"phase\":\"EXECUTION\",\"actor\":\"AI\"}],\"excluded_steps\":[{\"code\":\"DEMAND_SURVEY\",\"reason\":\"참가 인원 40명과 행사 일정이 이미 조건으로 제시되어 있고, 행사까지 준비 기간이 짧아 별도 수요 조사보다 모집 및 참석 응답 확인을 우선합니다.\"}],\"assumptions\":[],\"open_questions\":[\"장소와 교통 조건을 정해야 합니다.\",\"총예산과 장소 예약에 사용할 수 있는 예산을 정해야 합니다.\",\"행사 시작·종료 시각과 각 날짜별 세부 일정이 필요합니다.\",\"참가비 환급 조건과 환급 대상 판단 기준을 정해야 합니다.\",\"참가비 납부 방법과 납부 마감 기준을 정해야 합니다.\",\"워크숍의 세부 프로그램, 준비물, 식사 및 숙박 필요 여부를 정해야 합니다.\"],\"warnings\":[\"기준일이 2026년 10월 24일이고 행사 시작일이 2026년 10월 31일이므로 준비 기간이 약 1주일로 짧습니다.\",\"장소와 총예산이 미정이어서 장소 예약 및 전체 비용 계획이 지연될 수 있습니다.\",\"행사 시작·종료 시각이 제시되지 않아 일정 시각은 계획용 임시 기준이며 실제 행사 시각으로 확정한 값이 아닙니다.\",\"3일 일정이므로 날짜별 프로그램, 식사·숙박·이동 운영 여부를 조기에 결정해야 합니다.\"]},\"reason\":null,\"model_calls\":1}"
+        },
+        {
+          "type": "ai",
+          "content": "초안을 만들었습니다. 현재 조건 기준으로 다음 내용을 포함했어요.\n\n- **행사:** 2026년 워크숍\n- **인원:** 40명\n- **기간:** 2026년 10월 31일~11월 2일\n- **참가비:** 1인 25,000원\n- **준비 순서:** 역할 배치 → 장소 조사·예약 → 모집 및 참석 확인 → 참가비 수금 → 사전 안내 → 행사 운영 → 정산·피드백\n\n다만 **장소와 총예산은 미정**으로 남겨두었고, 3일 일정의 세부 프로그램·식사·숙박·이동 여부도 추가 결정이 필요합니다. 행사까지 약 1주일이라 장소와 교통 조건부터 우선 정하는 게 좋겠습니다.",
+          "tool_calls": []
+        }
+      ],
+      "agent_calls": 2,
+      "generation_calls": 1,
+      "limit_reached": false,
+      "checks": {
+        "input_preserved": true,
+        "conditions": true,
+        "generation": true,
+        "offer": true,
+        "basis": true,
+        "source": true,
+        "unknown_dates": true
+      },
+      "passed": true,
+      "draft": {
+        "conditions": {
+          "title": "2026년 워크숍",
+          "event_type": "WORKSHOP",
+          "headcount": 40,
+          "fee_per_person": 25000,
+          "start_date": "2026-10-31",
+          "end_date": "2026-11-02",
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "generation": {
+        "offer": null,
+        "preview": {
+          "id": "1928e533-9502-43c2-8e4d-787b7abc35e8",
+          "basis_draft": {
+            "conditions": {
+              "title": "2026년 워크숍",
+              "event_type": "WORKSHOP",
+              "headcount": 40,
+              "fee_per_person": 25000,
+              "start_date": "2026-10-31",
+              "end_date": "2026-11-02",
+              "location": null,
+              "budget_total": null
+            },
+            "condition_meta": {},
+            "deferred_topics": []
+          },
+          "trigger": {
+            "source": "chat",
+            "request_id": "workshop-offer-acceptance-2",
+            "quote": "그렇게하자"
+          },
+          "steps": [
+            {
+              "code": "ASSIGN_ROLES",
+              "purpose": "행사 준비와 당일 운영에 필요한 역할과 책임 범위를 정리합니다.",
+              "starts_at": "2026-10-24T09:00:00+09:00",
+              "deadline": "2026-10-25T18:00:00+09:00",
+              "actions": [],
+              "name": "담당 인원 배치",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "RESEARCH_VENUE",
+              "purpose": "40명이 참여할 수 있는 장소와 교통 조건을 확인하고 장소 미정 상태를 해소합니다.",
+              "starts_at": "2026-10-24T09:00:00+09:00",
+              "deadline": "2026-10-26T18:00:00+09:00",
+              "actions": [],
+              "name": "장소·교통 알아보기",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "RECRUIT_NOTICE",
+              "purpose": "행사 일정, 참가 조건, 참가비 등 현재 확정된 조건을 바탕으로 참가자 모집 및 참석 의향 확인을 진행합니다.",
+              "starts_at": "2026-10-25T09:00:00+09:00",
+              "deadline": "2026-10-27T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가자 모집 공지 준비 및 검토",
+                  "due_date": "2026-10-25"
+                }
+              ],
+              "name": "모집 공지",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CHECK_RESPONSES",
+              "purpose": "모집 결과와 참석 가능 여부를 확인하여 실제 참석 인원을 파악합니다.",
+              "starts_at": "2026-10-27T18:00:00+09:00",
+              "deadline": "2026-10-28T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "응답 현황 확인 안내",
+                  "due_date": "2026-10-28"
+                }
+              ],
+              "name": "응답 확인",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CONFIRM_DETAILS",
+              "purpose": "참가 인원, 행사 일정, 장소 및 운영 세부사항을 준비 기준에 맞게 정리합니다.",
+              "starts_at": "2026-10-28T18:00:00+09:00",
+              "deadline": "2026-10-29T18:00:00+09:00",
+              "actions": [],
+              "name": "인원·일정 확정",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "BOOK_VENUE",
+              "purpose": "장소가 정해진 뒤 행사 기간에 맞춰 예약 가능 여부와 계약 조건을 확정합니다.",
+              "starts_at": "2026-10-26T09:00:00+09:00",
+              "deadline": "2026-10-29T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "CONTRACT",
+                  "title": "장소 예약 조건 검토 및 계약 준비",
+                  "due_date": "2026-10-29"
+                }
+              ],
+              "name": "예약",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "COLLECT_FEES",
+              "purpose": "확정된 참가자에게 1인 참가비 납부 절차를 안내하고 수금 일정을 관리합니다.",
+              "starts_at": "2026-10-28T09:00:00+09:00",
+              "deadline": "2026-10-30T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가비 납부 안내 준비",
+                  "due_date": "2026-10-28"
+                },
+                {
+                  "type": "EXTERNAL_SEND",
+                  "title": "참가비 납부 요청 준비",
+                  "due_date": "2026-10-28"
+                }
+              ],
+              "name": "참가비 수금",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "PRE_EVENT_NOTICE",
+              "purpose": "참가자에게 확정된 행사 일정, 장소와 참석 준비사항을 사전에 안내합니다.",
+              "starts_at": "2026-10-29T18:00:00+09:00",
+              "deadline": "2026-10-30T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "행사 전 안내 준비",
+                  "due_date": "2026-10-30"
+                }
+              ],
+              "name": "사전 안내",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "EVENT_DAY",
+              "purpose": "2026년 10월 31일부터 11월 2일까지 워크숍을 운영합니다.",
+              "starts_at": "2026-10-31T00:00:00+09:00",
+              "deadline": "2026-11-02T23:59:59+09:00",
+              "actions": [],
+              "name": "행사 당일",
+              "phase": "EXECUTION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "SETTLE_EXPENSES",
+              "purpose": "행사 종료 후 발생한 지출과 증빙을 확인하여 정산합니다.",
+              "starts_at": "2026-11-03T09:00:00+09:00",
+              "deadline": "2026-11-05T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "EXPENSE",
+                  "title": "행사 지출 내역 정리 및 정산 준비",
+                  "due_date": "2026-11-05"
+                }
+              ],
+              "name": "지출 정산",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "REFUND_FEES",
+              "purpose": "환급 대상이 발생하는 경우 참가비 환급 절차를 처리합니다.",
+              "starts_at": "2026-11-03T09:00:00+09:00",
+              "deadline": "2026-11-06T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "TRANSFER",
+                  "title": "환급 대상 확인 후 환급 준비",
+                  "due_date": "2026-11-06"
+                }
+              ],
+              "name": "참가비 환급",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "RECORD_FEEDBACK",
+              "purpose": "행사 종료 후 참가자와 운영 과정의 피드백을 기록하여 후속 개선에 활용합니다.",
+              "starts_at": "2026-11-03T09:00:00+09:00",
+              "deadline": "2026-11-06T18:00:00+09:00",
+              "actions": [],
+              "name": "피드백 기록",
+              "phase": "EXECUTION",
+              "actor": "AI"
+            }
+          ],
+          "excluded_steps": [
+            {
+              "code": "DEMAND_SURVEY",
+              "reason": "참가 인원 40명과 행사 일정이 이미 조건으로 제시되어 있고, 행사까지 준비 기간이 짧아 별도 수요 조사보다 모집 및 참석 응답 확인을 우선합니다."
+            }
+          ],
+          "assumptions": [],
+          "open_questions": [
+            "장소와 교통 조건을 정해야 합니다.",
+            "총예산과 장소 예약에 사용할 수 있는 예산을 정해야 합니다.",
+            "행사 시작·종료 시각과 각 날짜별 세부 일정이 필요합니다.",
+            "참가비 환급 조건과 환급 대상 판단 기준을 정해야 합니다.",
+            "참가비 납부 방법과 납부 마감 기준을 정해야 합니다.",
+            "워크숍의 세부 프로그램, 준비물, 식사 및 숙박 필요 여부를 정해야 합니다."
+          ],
+          "warnings": [
+            "기준일이 2026년 10월 24일이고 행사 시작일이 2026년 10월 31일이므로 준비 기간이 약 1주일로 짧습니다.",
+            "장소와 총예산이 미정이어서 장소 예약 및 전체 비용 계획이 지연될 수 있습니다.",
+            "행사 시작·종료 시각이 제시되지 않아 일정 시각은 계획용 임시 기준이며 실제 행사 시각으로 확정한 값이 아닙니다.",
+            "3일 일정이므로 날짜별 프로그램, 식사·숙박·이동 운영 여부를 조기에 결정해야 합니다."
+          ]
+        },
+        "condition_change_pending": false,
+        "pending_condition_fields": []
+      },
+      "outcome": {
+        "status": "generated",
+        "preview": {
+          "id": "1928e533-9502-43c2-8e4d-787b7abc35e8",
+          "basis_draft": {
+            "conditions": {
+              "title": "2026년 워크숍",
+              "event_type": "WORKSHOP",
+              "headcount": 40,
+              "fee_per_person": 25000,
+              "start_date": "2026-10-31",
+              "end_date": "2026-11-02",
+              "location": null,
+              "budget_total": null
+            },
+            "condition_meta": {},
+            "deferred_topics": []
+          },
+          "trigger": {
+            "source": "chat",
+            "request_id": "workshop-offer-acceptance-2",
+            "quote": "그렇게하자"
+          },
+          "steps": [
+            {
+              "code": "ASSIGN_ROLES",
+              "purpose": "행사 준비와 당일 운영에 필요한 역할과 책임 범위를 정리합니다.",
+              "starts_at": "2026-10-24T09:00:00+09:00",
+              "deadline": "2026-10-25T18:00:00+09:00",
+              "actions": [],
+              "name": "담당 인원 배치",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "RESEARCH_VENUE",
+              "purpose": "40명이 참여할 수 있는 장소와 교통 조건을 확인하고 장소 미정 상태를 해소합니다.",
+              "starts_at": "2026-10-24T09:00:00+09:00",
+              "deadline": "2026-10-26T18:00:00+09:00",
+              "actions": [],
+              "name": "장소·교통 알아보기",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "RECRUIT_NOTICE",
+              "purpose": "행사 일정, 참가 조건, 참가비 등 현재 확정된 조건을 바탕으로 참가자 모집 및 참석 의향 확인을 진행합니다.",
+              "starts_at": "2026-10-25T09:00:00+09:00",
+              "deadline": "2026-10-27T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가자 모집 공지 준비 및 검토",
+                  "due_date": "2026-10-25"
+                }
+              ],
+              "name": "모집 공지",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CHECK_RESPONSES",
+              "purpose": "모집 결과와 참석 가능 여부를 확인하여 실제 참석 인원을 파악합니다.",
+              "starts_at": "2026-10-27T18:00:00+09:00",
+              "deadline": "2026-10-28T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "응답 현황 확인 안내",
+                  "due_date": "2026-10-28"
+                }
+              ],
+              "name": "응답 확인",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CONFIRM_DETAILS",
+              "purpose": "참가 인원, 행사 일정, 장소 및 운영 세부사항을 준비 기준에 맞게 정리합니다.",
+              "starts_at": "2026-10-28T18:00:00+09:00",
+              "deadline": "2026-10-29T18:00:00+09:00",
+              "actions": [],
+              "name": "인원·일정 확정",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "BOOK_VENUE",
+              "purpose": "장소가 정해진 뒤 행사 기간에 맞춰 예약 가능 여부와 계약 조건을 확정합니다.",
+              "starts_at": "2026-10-26T09:00:00+09:00",
+              "deadline": "2026-10-29T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "CONTRACT",
+                  "title": "장소 예약 조건 검토 및 계약 준비",
+                  "due_date": "2026-10-29"
+                }
+              ],
+              "name": "예약",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "COLLECT_FEES",
+              "purpose": "확정된 참가자에게 1인 참가비 납부 절차를 안내하고 수금 일정을 관리합니다.",
+              "starts_at": "2026-10-28T09:00:00+09:00",
+              "deadline": "2026-10-30T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가비 납부 안내 준비",
+                  "due_date": "2026-10-28"
+                },
+                {
+                  "type": "EXTERNAL_SEND",
+                  "title": "참가비 납부 요청 준비",
+                  "due_date": "2026-10-28"
+                }
+              ],
+              "name": "참가비 수금",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "PRE_EVENT_NOTICE",
+              "purpose": "참가자에게 확정된 행사 일정, 장소와 참석 준비사항을 사전에 안내합니다.",
+              "starts_at": "2026-10-29T18:00:00+09:00",
+              "deadline": "2026-10-30T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "행사 전 안내 준비",
+                  "due_date": "2026-10-30"
+                }
+              ],
+              "name": "사전 안내",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "EVENT_DAY",
+              "purpose": "2026년 10월 31일부터 11월 2일까지 워크숍을 운영합니다.",
+              "starts_at": "2026-10-31T00:00:00+09:00",
+              "deadline": "2026-11-02T23:59:59+09:00",
+              "actions": [],
+              "name": "행사 당일",
+              "phase": "EXECUTION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "SETTLE_EXPENSES",
+              "purpose": "행사 종료 후 발생한 지출과 증빙을 확인하여 정산합니다.",
+              "starts_at": "2026-11-03T09:00:00+09:00",
+              "deadline": "2026-11-05T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "EXPENSE",
+                  "title": "행사 지출 내역 정리 및 정산 준비",
+                  "due_date": "2026-11-05"
+                }
+              ],
+              "name": "지출 정산",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "REFUND_FEES",
+              "purpose": "환급 대상이 발생하는 경우 참가비 환급 절차를 처리합니다.",
+              "starts_at": "2026-11-03T09:00:00+09:00",
+              "deadline": "2026-11-06T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "TRANSFER",
+                  "title": "환급 대상 확인 후 환급 준비",
+                  "due_date": "2026-11-06"
+                }
+              ],
+              "name": "참가비 환급",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "RECORD_FEEDBACK",
+              "purpose": "행사 종료 후 참가자와 운영 과정의 피드백을 기록하여 후속 개선에 활용합니다.",
+              "starts_at": "2026-11-03T09:00:00+09:00",
+              "deadline": "2026-11-06T18:00:00+09:00",
+              "actions": [],
+              "name": "피드백 기록",
+              "phase": "EXECUTION",
+              "actor": "AI"
+            }
+          ],
+          "excluded_steps": [
+            {
+              "code": "DEMAND_SURVEY",
+              "reason": "참가 인원 40명과 행사 일정이 이미 조건으로 제시되어 있고, 행사까지 준비 기간이 짧아 별도 수요 조사보다 모집 및 참석 응답 확인을 우선합니다."
+            }
+          ],
+          "assumptions": [],
+          "open_questions": [
+            "장소와 교통 조건을 정해야 합니다.",
+            "총예산과 장소 예약에 사용할 수 있는 예산을 정해야 합니다.",
+            "행사 시작·종료 시각과 각 날짜별 세부 일정이 필요합니다.",
+            "참가비 환급 조건과 환급 대상 판단 기준을 정해야 합니다.",
+            "참가비 납부 방법과 납부 마감 기준을 정해야 합니다.",
+            "워크숍의 세부 프로그램, 준비물, 식사 및 숙박 필요 여부를 정해야 합니다."
+          ],
+          "warnings": [
+            "기준일이 2026년 10월 24일이고 행사 시작일이 2026년 10월 31일이므로 준비 기간이 약 1주일로 짧습니다.",
+            "장소와 총예산이 미정이어서 장소 예약 및 전체 비용 계획이 지연될 수 있습니다.",
+            "행사 시작·종료 시각이 제시되지 않아 일정 시각은 계획용 임시 기준이며 실제 행사 시각으로 확정한 값이 아닙니다.",
+            "3일 일정이므로 날짜별 프로그램, 식사·숙박·이동 운영 여부를 조기에 결정해야 합니다."
+          ]
+        },
+        "reason": null,
+        "model_calls": 1
+      },
+      "compositions": [
+        {
+          "steps": [
+            {
+              "code": "ASSIGN_ROLES",
+              "purpose": "행사 준비와 당일 운영에 필요한 역할과 책임 범위를 정리합니다.",
+              "starts_at": "2026-10-24T09:00:00+09:00",
+              "deadline": "2026-10-25T18:00:00+09:00",
+              "actions": []
+            },
+            {
+              "code": "RESEARCH_VENUE",
+              "purpose": "40명이 참여할 수 있는 장소와 교통 조건을 확인하고 장소 미정 상태를 해소합니다.",
+              "starts_at": "2026-10-24T09:00:00+09:00",
+              "deadline": "2026-10-26T18:00:00+09:00",
+              "actions": []
+            },
+            {
+              "code": "RECRUIT_NOTICE",
+              "purpose": "행사 일정, 참가 조건, 참가비 등 현재 확정된 조건을 바탕으로 참가자 모집 및 참석 의향 확인을 진행합니다.",
+              "starts_at": "2026-10-25T09:00:00+09:00",
+              "deadline": "2026-10-27T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가자 모집 공지 준비 및 검토",
+                  "due_date": "2026-10-25"
+                }
+              ]
+            },
+            {
+              "code": "CHECK_RESPONSES",
+              "purpose": "모집 결과와 참석 가능 여부를 확인하여 실제 참석 인원을 파악합니다.",
+              "starts_at": "2026-10-27T18:00:00+09:00",
+              "deadline": "2026-10-28T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "응답 현황 확인 안내",
+                  "due_date": "2026-10-28"
+                }
+              ]
+            },
+            {
+              "code": "CONFIRM_DETAILS",
+              "purpose": "참가 인원, 행사 일정, 장소 및 운영 세부사항을 준비 기준에 맞게 정리합니다.",
+              "starts_at": "2026-10-28T18:00:00+09:00",
+              "deadline": "2026-10-29T18:00:00+09:00",
+              "actions": []
+            },
+            {
+              "code": "BOOK_VENUE",
+              "purpose": "장소가 정해진 뒤 행사 기간에 맞춰 예약 가능 여부와 계약 조건을 확정합니다.",
+              "starts_at": "2026-10-26T09:00:00+09:00",
+              "deadline": "2026-10-29T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "CONTRACT",
+                  "title": "장소 예약 조건 검토 및 계약 준비",
+                  "due_date": "2026-10-29"
+                }
+              ]
+            },
+            {
+              "code": "COLLECT_FEES",
+              "purpose": "확정된 참가자에게 1인 참가비 납부 절차를 안내하고 수금 일정을 관리합니다.",
+              "starts_at": "2026-10-28T09:00:00+09:00",
+              "deadline": "2026-10-30T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가비 납부 안내 준비",
+                  "due_date": "2026-10-28"
+                },
+                {
+                  "type": "EXTERNAL_SEND",
+                  "title": "참가비 납부 요청 준비",
+                  "due_date": "2026-10-28"
+                }
+              ]
+            },
+            {
+              "code": "PRE_EVENT_NOTICE",
+              "purpose": "참가자에게 확정된 행사 일정, 장소와 참석 준비사항을 사전에 안내합니다.",
+              "starts_at": "2026-10-29T18:00:00+09:00",
+              "deadline": "2026-10-30T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "행사 전 안내 준비",
+                  "due_date": "2026-10-30"
+                }
+              ]
+            },
+            {
+              "code": "EVENT_DAY",
+              "purpose": "2026년 10월 31일부터 11월 2일까지 워크숍을 운영합니다.",
+              "starts_at": "2026-10-31T00:00:00+09:00",
+              "deadline": "2026-11-02T23:59:59+09:00",
+              "actions": []
+            },
+            {
+              "code": "SETTLE_EXPENSES",
+              "purpose": "행사 종료 후 발생한 지출과 증빙을 확인하여 정산합니다.",
+              "starts_at": "2026-11-03T09:00:00+09:00",
+              "deadline": "2026-11-05T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "EXPENSE",
+                  "title": "행사 지출 내역 정리 및 정산 준비",
+                  "due_date": "2026-11-05"
+                }
+              ]
+            },
+            {
+              "code": "REFUND_FEES",
+              "purpose": "환급 대상이 발생하는 경우 참가비 환급 절차를 처리합니다.",
+              "starts_at": "2026-11-03T09:00:00+09:00",
+              "deadline": "2026-11-06T18:00:00+09:00",
+              "actions": [
+                {
+                  "type": "TRANSFER",
+                  "title": "환급 대상 확인 후 환급 준비",
+                  "due_date": "2026-11-06"
+                }
+              ]
+            },
+            {
+              "code": "RECORD_FEEDBACK",
+              "purpose": "행사 종료 후 참가자와 운영 과정의 피드백을 기록하여 후속 개선에 활용합니다.",
+              "starts_at": "2026-11-03T09:00:00+09:00",
+              "deadline": "2026-11-06T18:00:00+09:00",
+              "actions": []
+            }
+          ],
+          "excluded_steps": [
+            {
+              "code": "DEMAND_SURVEY",
+              "reason": "참가 인원 40명과 행사 일정이 이미 조건으로 제시되어 있고, 행사까지 준비 기간이 짧아 별도 수요 조사보다 모집 및 참석 응답 확인을 우선합니다."
+            }
+          ],
+          "assumptions": [],
+          "open_questions": [
+            "장소와 교통 조건을 정해야 합니다.",
+            "총예산과 장소 예약에 사용할 수 있는 예산을 정해야 합니다.",
+            "행사 시작·종료 시각과 각 날짜별 세부 일정이 필요합니다.",
+            "참가비 환급 조건과 환급 대상 판단 기준을 정해야 합니다.",
+            "참가비 납부 방법과 납부 마감 기준을 정해야 합니다.",
+            "워크숍의 세부 프로그램, 준비물, 식사 및 숙박 필요 여부를 정해야 합니다."
+          ],
+          "warnings": [
+            "기준일이 2026년 10월 24일이고 행사 시작일이 2026년 10월 31일이므로 준비 기간이 약 1주일로 짧습니다.",
+            "장소와 총예산이 미정이어서 장소 예약 및 전체 비용 계획이 지연될 수 있습니다.",
+            "행사 시작·종료 시각이 제시되지 않아 일정 시각은 계획용 임시 기준이며 실제 행사 시각으로 확정한 값이 아닙니다.",
+            "3일 일정이므로 날짜별 프로그램, 식사·숙박·이동 운영 여부를 조기에 결정해야 합니다."
+          ]
+        }
+      ],
+      "validation_reasons": [],
+      "provider_errors": [],
+      "schema_errors": [],
+      "ms": 25295,
+      "http_calls": 3
+    }
+  ],
+  "http_calls": 5,
+  "summary": {
+    "turns": 2,
+    "passed": 2,
+    "expected_turns": 2,
+    "median_ms": 15720.0,
+    "max_ms": 25295,
+    "agent_calls": 4,
+    "generation_calls": 1
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "review_status": "출력 한도 진단용 소규모 합성 입력. 전체 대화 품질 평가가 아님",
+  "reference_date": "2026-10-24",
+  "cases": [
+    {"id":"workshop-1","conditions":{"title":"2026년 워크숍","event_type":"WORKSHOP","headcount":40,"fee_per_person":25000,"start_date":"2026-10-31","end_date":"2026-11-02"}},
+    {"id":"workshop-2","conditions":{"title":"2026년 워크숍","event_type":"WORKSHOP","headcount":40,"fee_per_person":25000,"start_date":"2026-10-31","end_date":"2026-11-02"}},
+    {"id":"mt-undated","conditions":{"event_type":"MT","headcount":50,"fee_per_person":25000}},
+    {"id":"picnic-dated","conditions":{"event_type":"PICNIC","headcount":20,"fee_per_person":0,"start_date":"2027-04-10","end_date":"2027-04-10","location":"교내 잔디밭"}}
+  ]
+}

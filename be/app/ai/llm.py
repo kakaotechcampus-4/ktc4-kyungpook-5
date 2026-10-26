@@ -11,6 +11,7 @@ from typing import Any
 
 import openai
 from langchain_core.language_models import LanguageModelInput
+from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import BaseModel, ValidationError
 
@@ -19,6 +20,7 @@ from .errors import (
     AIConfigError,
     AIError,
     AIInvalidResponseError,
+    AIOutputLimitError,
     AIRetryableError,
     AITimeoutError,
 )
@@ -162,10 +164,49 @@ async def ainvoke_structured[T: BaseModel](
             raise
         raise _invalid_response(schema) from error
 
+    raw = output.get("raw")
+    metadata = raw.response_metadata if isinstance(raw, AIMessage) else {}
+    # 파서가 우연히 일부 JSON을 읽더라도 공급자가 미완성이라면 채택하지 않는다.
+    # 원문·전체 메타정보 대신 고정된 오류 타입만 기능 코드에 전달한다.
+    if metadata.get("status") == "incomplete":
+        if (metadata.get("incomplete_details") or {}).get("reason") == "max_output_tokens":
+            raise AIOutputLimitError("모델이 출력 한도에 도달해 응답을 끝내지 못했습니다") from output["parsing_error"]
+        raise _invalid_response(schema) from output["parsing_error"]
+    if model.streaming and model.use_responses_api and metadata.get("status") != "completed":
+        # 연결이 중간에 닫힌 스트림의 일부를 완성본으로 사용하지 않는다.
+        raise _invalid_response(schema) from output["parsing_error"]
+
     parsed = output["parsed"]
     if output["parsing_error"] is not None or parsed is None:
         raise _invalid_response(schema) from output["parsing_error"]
     return parsed
+
+
+async def ainvoke_with_tools(
+    messages: LanguageModelInput,
+    *,
+    tools: Sequence[dict[str, Any]],
+    allow_tools: bool = True,
+    model: ChatOpenAI | None = None,
+) -> AIMessage:
+    """Tool 요청 또는 자연어 답변을 받는다. 실제 Tool 실행은 Node가 담당한다."""
+    model = model or get_chat_model()
+    bound = model.bind_tools(
+        list(tools), parallel_tool_calls=False,
+        tool_choice="auto" if allow_tools else "none",
+    )
+    try:
+        response = await bound.ainvoke(messages)
+    except (openai.APIConnectionError, openai.APIStatusError) as error:
+        converted = _convert_api_error(error)
+        if converted is None:
+            raise
+        raise converted from error
+    if not isinstance(response, AIMessage) or response.invalid_tool_calls:
+        raise AIInvalidResponseError("모델의 답변 또는 Tool 요청 형식을 읽을 수 없습니다")
+    if not allow_tools and response.tool_calls:
+        raise AIInvalidResponseError("Tool 사용이 끝난 뒤에도 모델이 Tool을 요청했습니다")
+    return response
 
 
 async def aembed_texts(

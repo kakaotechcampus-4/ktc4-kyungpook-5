@@ -1,0 +1,1161 @@
+{
+  "state": "COMPLETED",
+  "started_at": "2026-10-24T05:53:14.839634+00:00",
+  "model": "gpt-5.6-luna",
+  "reasoning": "provider default",
+  "prompt_version": "planning-agent-v3",
+  "generation_prompt_version": "planning-generation-v1",
+  "review_status": "AI 작성 소규모 합성 사례, 사람 정답 검수 전. 실행 전 기대값 고정",
+  "reference_date": "2026-10-24",
+  "git_commit": "968dfa2f30ed4cc453786a77596755b0b27cbec9",
+  "git_dirty": true,
+  "sha256": {
+    "features/planning/agent/generation_tools.py": "ffda5794ca4f0be1dedb344d3825d2da653397711a9289c7ac797928352bfbdd",
+    "features/planning/agent/graph.py": "7c56f1963f4ecb2d75ab1828de300499825e1e71180db2fb4b1dca8fe9f812f0",
+    "features/planning/agent/nodes.py": "0be009c8417eebca8a62bc66394216b4c421cd287ec020582dafebf2bf8eaf64",
+    "features/planning/agent/record_tool.py": "da05eca341026f3fd3bc2a57831a220287858a150d5e23402e6451543088e016",
+    "features/planning/agent/schemas.py": "98a149880147d89b018ca3aed23f3f6e6fedcdbaee0892d0a2699b07e687199d",
+    "features/planning/agent/state.py": "5e58e643b7d1a87c82e163faad520578dc25c9cbdff54a1ee5bcb639a35ad364",
+    "features/planning/agent/tools.py": "a7af857e94efc4619a9a021dbb57b2a59ae4f6672a66648daf869aa733fc2c6a",
+    "features/planning/agent/prompts/chat.md": "f49b0e43e8eba3cc9718f9475b166fb10903492b4466be6d54c8f63cf517e12f",
+    "features/planning/generation/__init__.py": "d64c4710852440e504ea0b350647283c050637a2fbafa6864c0b81feeba87f26",
+    "features/planning/generation/catalog.py": "9728dd2591ab6d648e60e921917a49fd3159261ff735b8e020e71b2151a74927",
+    "features/planning/generation/entrypoints.py": "bb67f87ececc070b242a2e0742bbeafbfd1e174723e89a9cd3050495955494c8",
+    "features/planning/generation/graph.py": "ef41a097393006937ca906f1f8b8ed2b6e769a9ee5a674cffec5e4c95f9d6655",
+    "features/planning/generation/offers.py": "820ccd8a32b644d2bfdb219cf010536493f87ab443782e76e9ff594d4a99bec7",
+    "features/planning/generation/schemas.py": "6478e089b36d5614133f654722eebc6dfd6b1906311938bd00c371dbd17c951e",
+    "features/planning/generation/prompts/compose.md": "57b54f2ab15a4fbd775aac42a06c63e0cbbf33a380dcff10b177bd0d3fb94902",
+    "llm.py": "2f06c0f9e9a1ad1d061e92605e07bb3d83a836e9175c7ae8b09fbc930bfa2afd",
+    "tests/fixtures/eval/planning_generation.json": "3a03ea4c7d6432cf529e5d10e57207f486fe312e087d60c187ae0379dee48017",
+    "scripts/eval_plan_generation.py": "af9f4455c990e4245611f0f737cc4beee0a202eb196cc155c74769de2e82a87b"
+  },
+  "turns": [
+    {
+      "dialog": "offer-defer-button",
+      "turn": 1,
+      "case": {
+        "source": "chat",
+        "text": "일단 약 50명에 참가비는 인당 25,000원으로 잡자. 날짜와 장소는 나중에 정할게. 준비 방향은 이 정도로 생각하고 있어.",
+        "updates": {
+          "headcount": 50,
+          "fee_per_person": 25000
+        },
+        "offer": "pending",
+        "generation": null
+      },
+      "reply": "반영을 시도했지만 시스템에서 이번 발화의 근거를 확인하지 못해 적용되지 않았어요. 현재는 MT 행사에 **인원·참가비·날짜·장소 모두 미정**으로 남아 있습니다.  \n다시 말씀해 주시면 약 50명, 인당 25,000원은 잠정값으로 기록하고 날짜와 장소는 보류해둘게요.",
+      "trace": [
+        {
+          "type": "ai",
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "update_event_conditions",
+              "args": {
+                "changes": [
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "headcount",
+                      "value": 50
+                    },
+                    "status": "tentative",
+                    "evidence": {
+                      "message_id": "offer-defer-button-1",
+                      "quote": "일단 약 50명"
+                    }
+                  },
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "fee_per_person",
+                      "value": 25000
+                    },
+                    "status": "tentative",
+                    "evidence": {
+                      "message_id": "offer-defer-button-1",
+                      "quote": "참가비는 인당 25,000원으로 잡자"
+                    }
+                  }
+                ],
+                "defer_topics": [
+                  {
+                    "topic": "dates",
+                    "evidence": {
+                      "message_id": "offer-defer-button-1",
+                      "quote": "날짜는 나중에 정할게"
+                    }
+                  },
+                  {
+                    "topic": "location",
+                    "evidence": {
+                      "message_id": "offer-defer-button-1",
+                      "quote": "장소는 나중에 정할게"
+                    }
+                  }
+                ],
+                "resume_topics": []
+              },
+              "id": "call_dJwoICo1gdC3PQdyCiVvL8fh",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"rejected\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":null,\"fee_per_person\":null,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{},\"deferred_topics\":[]},\"changed_fields\":[],\"reason\":\"변경과 보류에는 이번 사용자 발화에 포함된 근거가 필요해요.\"}"
+        },
+        {
+          "type": "ai",
+          "content": "반영을 시도했지만 시스템에서 이번 발화의 근거를 확인하지 못해 적용되지 않았어요. 현재는 MT 행사에 **인원·참가비·날짜·장소 모두 미정**으로 남아 있습니다.  \n다시 말씀해 주시면 약 50명, 인당 25,000원은 잠정값으로 기록하고 날짜와 장소는 보류해둘게요.",
+          "tool_calls": []
+        }
+      ],
+      "agent_calls": 2,
+      "generation_calls": 0,
+      "limit_reached": false,
+      "checks": {
+        "input_preserved": true,
+        "conditions": false,
+        "generation": true,
+        "offer": false
+      },
+      "passed": false,
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "generation": {
+        "offer": null,
+        "preview": null,
+        "condition_change_pending": true,
+        "pending_condition_fields": [
+          "fee_per_person",
+          "headcount"
+        ]
+      },
+      "outcome": null,
+      "compositions": [],
+      "validation_reasons": [],
+      "ms": 8698,
+      "http_calls": 2
+    },
+    {
+      "dialog": "offer-defer-button",
+      "turn": 2,
+      "case": {
+        "source": "chat",
+        "text": "아직 만들지 말자. 조금 더 생각해볼게.",
+        "updates": {},
+        "offer": "deferred",
+        "generation": null
+      },
+      "reply": "네, 알겠습니다. 계획 초안 생성은 보류해둘게요. 더 생각해보신 뒤 말씀해주시면 그때 이어서 정리하겠습니다.",
+      "trace": [
+        {
+          "type": "ai",
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "update_generation_offer",
+              "args": {
+                "action": "defer",
+                "reason": "사용자가 행사 계획 초안 생성을 아직 하지 않고 더 검토하겠다고 함",
+                "evidence": {
+                  "message_id": "offer-defer-button-2",
+                  "quote": "아직 만들지 말자. 조금 더 생각해볼게."
+                }
+              },
+              "id": "call_x6i4G63g9UgU8zzB46N5zFVE",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"applied\",\"offer\":{\"id\":\"6fd75361-dbad-43c2-8598-214da3199241\",\"status\":\"deferred\",\"summary\":\"사용자가 행사 계획 초안 생성을 아직 하지 않고 더 검토하겠다고 함\",\"basis_draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":null,\"fee_per_person\":null,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{},\"deferred_topics\":[]}},\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": "네, 알겠습니다. 계획 초안 생성은 보류해둘게요. 더 생각해보신 뒤 말씀해주시면 그때 이어서 정리하겠습니다.",
+          "tool_calls": []
+        }
+      ],
+      "agent_calls": 2,
+      "generation_calls": 0,
+      "limit_reached": false,
+      "checks": {
+        "input_preserved": true,
+        "conditions": false,
+        "generation": true,
+        "offer": true
+      },
+      "passed": false,
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "generation": {
+        "offer": {
+          "id": "6fd75361-dbad-43c2-8598-214da3199241",
+          "status": "deferred",
+          "summary": "사용자가 행사 계획 초안 생성을 아직 하지 않고 더 검토하겠다고 함",
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "MT",
+              "headcount": null,
+              "fee_per_person": null,
+              "start_date": null,
+              "end_date": null,
+              "location": null,
+              "budget_total": null
+            },
+            "condition_meta": {},
+            "deferred_topics": []
+          }
+        },
+        "preview": null,
+        "condition_change_pending": true,
+        "pending_condition_fields": [
+          "fee_per_person",
+          "headcount"
+        ]
+      },
+      "outcome": null,
+      "compositions": [],
+      "validation_reasons": [],
+      "ms": 4994,
+      "http_calls": 2
+    },
+    {
+      "dialog": "offer-defer-button",
+      "turn": 3,
+      "case": {
+        "source": "chat",
+        "text": "고마워. 잠깐 더 생각해볼게.",
+        "updates": {},
+        "offer": "deferred",
+        "generation": null
+      },
+      "reply": "네, 천천히 생각해보세요. 정리되면 이어서 도와드릴게요.",
+      "trace": [
+        {
+          "type": "ai",
+          "content": "네, 천천히 생각해보세요. 정리되면 이어서 도와드릴게요.",
+          "tool_calls": []
+        }
+      ],
+      "agent_calls": 1,
+      "generation_calls": 0,
+      "limit_reached": false,
+      "checks": {
+        "input_preserved": true,
+        "conditions": false,
+        "generation": true,
+        "offer": true
+      },
+      "passed": false,
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "generation": {
+        "offer": {
+          "id": "6fd75361-dbad-43c2-8598-214da3199241",
+          "status": "deferred",
+          "summary": "사용자가 행사 계획 초안 생성을 아직 하지 않고 더 검토하겠다고 함",
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "MT",
+              "headcount": null,
+              "fee_per_person": null,
+              "start_date": null,
+              "end_date": null,
+              "location": null,
+              "budget_total": null
+            },
+            "condition_meta": {},
+            "deferred_topics": []
+          }
+        },
+        "preview": null,
+        "condition_change_pending": true,
+        "pending_condition_fields": [
+          "fee_per_person",
+          "headcount"
+        ]
+      },
+      "outcome": null,
+      "compositions": [],
+      "validation_reasons": [],
+      "ms": 1943,
+      "http_calls": 1
+    },
+    {
+      "dialog": "offer-defer-button",
+      "turn": 4,
+      "case": {
+        "source": "button",
+        "updates": {},
+        "offer": null,
+        "generation": "generated"
+      },
+      "agent_calls": 0,
+      "generation_calls": 0,
+      "limit_reached": false,
+      "checks": {
+        "input_preserved": true,
+        "history_unchanged": true,
+        "conditions": false,
+        "generation": false,
+        "offer": false
+      },
+      "passed": false,
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "generation": {
+        "offer": {
+          "id": "6fd75361-dbad-43c2-8598-214da3199241",
+          "status": "deferred",
+          "summary": "사용자가 행사 계획 초안 생성을 아직 하지 않고 더 검토하겠다고 함",
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "MT",
+              "headcount": null,
+              "fee_per_person": null,
+              "start_date": null,
+              "end_date": null,
+              "location": null,
+              "budget_total": null
+            },
+            "condition_meta": {},
+            "deferred_topics": []
+          }
+        },
+        "preview": null,
+        "condition_change_pending": true,
+        "pending_condition_fields": [
+          "fee_per_person",
+          "headcount"
+        ]
+      },
+      "outcome": {
+        "status": "needs_clarification",
+        "preview": null,
+        "reason": "반영하지 못한 조건 변경이 있어요. 현재 남은 조건으로 만들지 먼저 확인해 주세요.",
+        "model_calls": 0
+      },
+      "compositions": [],
+      "validation_reasons": [],
+      "ms": 1,
+      "http_calls": 0
+    },
+    {
+      "dialog": "direct-chat",
+      "turn": 1,
+      "case": {
+        "source": "chat",
+        "text": "지금 조건으로 기본 준비 순서 계획 초안을 바로 만들어줘. 날짜와 장소는 미정으로 남겨줘.",
+        "updates": {},
+        "generation": "generated"
+      },
+      "reply": "기본 준비 순서 계획 초안을 만들었습니다. 현재 조건은 **MT / 50명 / 1인 참가비 25,000원**이며, **날짜와 장소는 미정**으로 남겨두었습니다.\n\n1. 담당 인원 배치  \n2. 장소·교통 알아보기  \n3. 사전 수요 조사  \n4. 참가 모집 공지  \n5. 모집 응답 확인  \n6. 참가 인원·일정 확정  \n7. 장소 예약  \n8. 참가비 수금  \n9. 행사 전 안내  \n10. 행사 진행  \n11. 행사 비용 정산  \n12. 필요한 경우 참가비 환급  \n13. 행사 피드백 기록  \n\n날짜와 장소가 정해지면 각 단계의 일정과 예약·예산 관련 내용을 구체화할 수 있습니다. 총예산과 참가비에 포함할 항목도 아직 미정입니다.",
+      "trace": [
+        {
+          "type": "ai",
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "generate_event_plan",
+              "args": {
+                "evidence": {
+                  "message_id": "direct-chat-1",
+                  "quote": "지금 조건으로 기본 준비 순서 계획 초안을 바로 만들어줘. 날짜와 장소는 미정으로 남겨줘."
+                },
+                "offer_id": null,
+                "use_current_conditions": false
+              },
+              "id": "call_3zD7ymmEaOgvUtVL8TJ9yema",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"generated\",\"preview\":{\"id\":\"ff094821-55b7-410c-99fc-644a2a73b149\",\"basis_draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":50,\"fee_per_person\":25000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{},\"deferred_topics\":[]},\"trigger\":{\"source\":\"chat\",\"request_id\":\"direct-chat-1\",\"quote\":\"지금 조건으로 기본 준비 순서 계획 초안을 바로 만들어줘. 날짜와 장소는 미정으로 남겨줘.\"},\"steps\":[{\"code\":\"ASSIGN_ROLES\",\"purpose\":\"행사 준비와 진행에 필요한 역할과 책임 범위를 정해 후속 준비를 원활하게 하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[],\"name\":\"담당 인원 배치\",\"phase\":\"PREPARATION\",\"actor\":\"MANUAL\"},{\"code\":\"RESEARCH_VENUE\",\"purpose\":\"50명 규모의 MT에 적합한 장소와 교통 여건을 비교하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[],\"name\":\"장소·교통 알아보기\",\"phase\":\"PREPARATION\",\"actor\":\"MANUAL\"},{\"code\":\"DEMAND_SURVEY\",\"purpose\":\"참가 희망과 선호 조건을 확인해 장소 및 일정 검토의 기초 자료로 활용하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[{\"type\":\"NOTICE\",\"title\":\"수요 조사 안내\",\"due_date\":null}],\"name\":\"사전 수요 조사\",\"phase\":\"PREPARATION\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"RECRUIT_NOTICE\",\"purpose\":\"행사 참여 의사를 공식적으로 확인하고 모집을 진행하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[{\"type\":\"NOTICE\",\"title\":\"참가 모집 안내\",\"due_date\":null}],\"name\":\"모집 공지\",\"phase\":\"RECRUITING\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"CHECK_RESPONSES\",\"purpose\":\"모집 응답을 확인해 참가 인원과 후속 확정 절차를 준비하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[{\"type\":\"NOTICE\",\"title\":\"응답 확인 안내\",\"due_date\":null}],\"name\":\"응답 확인\",\"phase\":\"RECRUITING\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"CONFIRM_DETAILS\",\"purpose\":\"참가 인원과 행사 일정 등 핵심 조건을 확정해 예약과 수금의 기준을 마련하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[],\"name\":\"인원·일정 확정\",\"phase\":\"RECRUITING\",\"actor\":\"AI\"},{\"code\":\"BOOK_VENUE\",\"purpose\":\"확정된 조건에 맞는 장소를 예약해 행사 진행 기반을 확보하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[{\"type\":\"CONTRACT\",\"title\":\"장소 예약 계약\",\"due_date\":null},{\"type\":\"TRANSFER\",\"title\":\"장소 예약 관련 이체\",\"due_date\":null}],\"name\":\"예약\",\"phase\":\"RECRUITING\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"COLLECT_FEES\",\"purpose\":\"참가비를 수금해 행사 관련 비용 집행에 필요한 재원을 마련하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[{\"type\":\"NOTICE\",\"title\":\"참가비 수금 안내\",\"due_date\":null},{\"type\":\"EXTERNAL_SEND\",\"title\":\"참가비 수금 요청\",\"due_date\":null}],\"name\":\"참가비 수금\",\"phase\":\"RECRUITING\",\"actor\":\"AI\"},{\"code\":\"PRE_EVENT_NOTICE\",\"purpose\":\"행사 전 확정된 참가자에게 필요한 준비사항과 진행 정보를 안내하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[{\"type\":\"NOTICE\",\"title\":\"행사 전 안내\",\"due_date\":null}],\"name\":\"사전 안내\",\"phase\":\"EXECUTION\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"EVENT_DAY\",\"purpose\":\"준비된 일정에 따라 MT를 진행하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[],\"name\":\"행사 당일\",\"phase\":\"EXECUTION\",\"actor\":\"MANUAL\"},{\"code\":\"SETTLE_EXPENSES\",\"purpose\":\"행사 종료 후 발생한 지출을 정리하고 비용 내역을 확인하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[{\"type\":\"EXPENSE\",\"title\":\"행사 비용 정산\",\"due_date\":null}],\"name\":\"지출 정산\",\"phase\":\"EXECUTION\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"REFUND_FEES\",\"purpose\":\"환급이 필요한 참가비가 있는 경우 행사 종료 후 환급 절차를 진행하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[{\"type\":\"TRANSFER\",\"title\":\"참가비 환급\",\"due_date\":null}],\"name\":\"참가비 환급\",\"phase\":\"EXECUTION\",\"actor\":\"APPROVAL_REQUIRED\"},{\"code\":\"RECORD_FEEDBACK\",\"purpose\":\"행사 운영에 대한 의견을 기록해 향후 행사 준비에 참고하기 위해 필요합니다.\",\"starts_at\":null,\"deadline\":null,\"actions\":[],\"name\":\"피드백 기록\",\"phase\":\"EXECUTION\",\"actor\":\"AI\"}],\"excluded_steps\":[],\"assumptions\":[],\"open_questions\":[\"행사 제목\",\"행사 시작일과 종료일\",\"행사 장소\",\"총예산 및 장소·교통·식사 등 세부 예산\",\"참가비 1인당 25000원의 적용 범위와 환급 기준\",\"행사 날짜\"],\"warnings\":[\"행사 시작일과 종료일이 정해지지 않아 모든 단계의 일정과 행동 예정일을 제안할 수 없습니다.\",\"장소가 미정이므로 예약 가능 여부와 관련 비용을 아직 검토할 수 없습니다.\",\"총예산이 미정이므로 장소 예약 및 기타 비용 집행 가능 범위를 판단하기 어렵습니다.\"]},\"reason\":null,\"model_calls\":1}"
+        },
+        {
+          "type": "ai",
+          "content": "기본 준비 순서 계획 초안을 만들었습니다. 현재 조건은 **MT / 50명 / 1인 참가비 25,000원**이며, **날짜와 장소는 미정**으로 남겨두었습니다.\n\n1. 담당 인원 배치  \n2. 장소·교통 알아보기  \n3. 사전 수요 조사  \n4. 참가 모집 공지  \n5. 모집 응답 확인  \n6. 참가 인원·일정 확정  \n7. 장소 예약  \n8. 참가비 수금  \n9. 행사 전 안내  \n10. 행사 진행  \n11. 행사 비용 정산  \n12. 필요한 경우 참가비 환급  \n13. 행사 피드백 기록  \n\n날짜와 장소가 정해지면 각 단계의 일정과 예약·예산 관련 내용을 구체화할 수 있습니다. 총예산과 참가비에 포함할 항목도 아직 미정입니다.",
+          "tool_calls": []
+        }
+      ],
+      "agent_calls": 2,
+      "generation_calls": 1,
+      "limit_reached": false,
+      "checks": {
+        "input_preserved": true,
+        "conditions": true,
+        "generation": true,
+        "basis": true,
+        "source": true,
+        "unknown_dates": true
+      },
+      "passed": true,
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 50,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "generation": {
+        "offer": null,
+        "preview": {
+          "id": "ff094821-55b7-410c-99fc-644a2a73b149",
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "MT",
+              "headcount": 50,
+              "fee_per_person": 25000,
+              "start_date": null,
+              "end_date": null,
+              "location": null,
+              "budget_total": null
+            },
+            "condition_meta": {},
+            "deferred_topics": []
+          },
+          "trigger": {
+            "source": "chat",
+            "request_id": "direct-chat-1",
+            "quote": "지금 조건으로 기본 준비 순서 계획 초안을 바로 만들어줘. 날짜와 장소는 미정으로 남겨줘."
+          },
+          "steps": [
+            {
+              "code": "ASSIGN_ROLES",
+              "purpose": "행사 준비와 진행에 필요한 역할과 책임 범위를 정해 후속 준비를 원활하게 하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "담당 인원 배치",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "RESEARCH_VENUE",
+              "purpose": "50명 규모의 MT에 적합한 장소와 교통 여건을 비교하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "장소·교통 알아보기",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "DEMAND_SURVEY",
+              "purpose": "참가 희망과 선호 조건을 확인해 장소 및 일정 검토의 기초 자료로 활용하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "수요 조사 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "사전 수요 조사",
+              "phase": "PREPARATION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "RECRUIT_NOTICE",
+              "purpose": "행사 참여 의사를 공식적으로 확인하고 모집을 진행하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가 모집 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "모집 공지",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CHECK_RESPONSES",
+              "purpose": "모집 응답을 확인해 참가 인원과 후속 확정 절차를 준비하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "응답 확인 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "응답 확인",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CONFIRM_DETAILS",
+              "purpose": "참가 인원과 행사 일정 등 핵심 조건을 확정해 예약과 수금의 기준을 마련하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "인원·일정 확정",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "BOOK_VENUE",
+              "purpose": "확정된 조건에 맞는 장소를 예약해 행사 진행 기반을 확보하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "CONTRACT",
+                  "title": "장소 예약 계약",
+                  "due_date": null
+                },
+                {
+                  "type": "TRANSFER",
+                  "title": "장소 예약 관련 이체",
+                  "due_date": null
+                }
+              ],
+              "name": "예약",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "COLLECT_FEES",
+              "purpose": "참가비를 수금해 행사 관련 비용 집행에 필요한 재원을 마련하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가비 수금 안내",
+                  "due_date": null
+                },
+                {
+                  "type": "EXTERNAL_SEND",
+                  "title": "참가비 수금 요청",
+                  "due_date": null
+                }
+              ],
+              "name": "참가비 수금",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "PRE_EVENT_NOTICE",
+              "purpose": "행사 전 확정된 참가자에게 필요한 준비사항과 진행 정보를 안내하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "행사 전 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "사전 안내",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "EVENT_DAY",
+              "purpose": "준비된 일정에 따라 MT를 진행하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "행사 당일",
+              "phase": "EXECUTION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "SETTLE_EXPENSES",
+              "purpose": "행사 종료 후 발생한 지출을 정리하고 비용 내역을 확인하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "EXPENSE",
+                  "title": "행사 비용 정산",
+                  "due_date": null
+                }
+              ],
+              "name": "지출 정산",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "REFUND_FEES",
+              "purpose": "환급이 필요한 참가비가 있는 경우 행사 종료 후 환급 절차를 진행하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "TRANSFER",
+                  "title": "참가비 환급",
+                  "due_date": null
+                }
+              ],
+              "name": "참가비 환급",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "RECORD_FEEDBACK",
+              "purpose": "행사 운영에 대한 의견을 기록해 향후 행사 준비에 참고하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "피드백 기록",
+              "phase": "EXECUTION",
+              "actor": "AI"
+            }
+          ],
+          "excluded_steps": [],
+          "assumptions": [],
+          "open_questions": [
+            "행사 제목",
+            "행사 시작일과 종료일",
+            "행사 장소",
+            "총예산 및 장소·교통·식사 등 세부 예산",
+            "참가비 1인당 25000원의 적용 범위와 환급 기준",
+            "행사 날짜"
+          ],
+          "warnings": [
+            "행사 시작일과 종료일이 정해지지 않아 모든 단계의 일정과 행동 예정일을 제안할 수 없습니다.",
+            "장소가 미정이므로 예약 가능 여부와 관련 비용을 아직 검토할 수 없습니다.",
+            "총예산이 미정이므로 장소 예약 및 기타 비용 집행 가능 범위를 판단하기 어렵습니다."
+          ]
+        },
+        "condition_change_pending": false,
+        "pending_condition_fields": []
+      },
+      "outcome": {
+        "status": "generated",
+        "preview": {
+          "id": "ff094821-55b7-410c-99fc-644a2a73b149",
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "MT",
+              "headcount": 50,
+              "fee_per_person": 25000,
+              "start_date": null,
+              "end_date": null,
+              "location": null,
+              "budget_total": null
+            },
+            "condition_meta": {},
+            "deferred_topics": []
+          },
+          "trigger": {
+            "source": "chat",
+            "request_id": "direct-chat-1",
+            "quote": "지금 조건으로 기본 준비 순서 계획 초안을 바로 만들어줘. 날짜와 장소는 미정으로 남겨줘."
+          },
+          "steps": [
+            {
+              "code": "ASSIGN_ROLES",
+              "purpose": "행사 준비와 진행에 필요한 역할과 책임 범위를 정해 후속 준비를 원활하게 하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "담당 인원 배치",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "RESEARCH_VENUE",
+              "purpose": "50명 규모의 MT에 적합한 장소와 교통 여건을 비교하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "장소·교통 알아보기",
+              "phase": "PREPARATION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "DEMAND_SURVEY",
+              "purpose": "참가 희망과 선호 조건을 확인해 장소 및 일정 검토의 기초 자료로 활용하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "수요 조사 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "사전 수요 조사",
+              "phase": "PREPARATION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "RECRUIT_NOTICE",
+              "purpose": "행사 참여 의사를 공식적으로 확인하고 모집을 진행하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가 모집 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "모집 공지",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CHECK_RESPONSES",
+              "purpose": "모집 응답을 확인해 참가 인원과 후속 확정 절차를 준비하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "응답 확인 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "응답 확인",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "CONFIRM_DETAILS",
+              "purpose": "참가 인원과 행사 일정 등 핵심 조건을 확정해 예약과 수금의 기준을 마련하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "인원·일정 확정",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "BOOK_VENUE",
+              "purpose": "확정된 조건에 맞는 장소를 예약해 행사 진행 기반을 확보하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "CONTRACT",
+                  "title": "장소 예약 계약",
+                  "due_date": null
+                },
+                {
+                  "type": "TRANSFER",
+                  "title": "장소 예약 관련 이체",
+                  "due_date": null
+                }
+              ],
+              "name": "예약",
+              "phase": "RECRUITING",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "COLLECT_FEES",
+              "purpose": "참가비를 수금해 행사 관련 비용 집행에 필요한 재원을 마련하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가비 수금 안내",
+                  "due_date": null
+                },
+                {
+                  "type": "EXTERNAL_SEND",
+                  "title": "참가비 수금 요청",
+                  "due_date": null
+                }
+              ],
+              "name": "참가비 수금",
+              "phase": "RECRUITING",
+              "actor": "AI"
+            },
+            {
+              "code": "PRE_EVENT_NOTICE",
+              "purpose": "행사 전 확정된 참가자에게 필요한 준비사항과 진행 정보를 안내하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "행사 전 안내",
+                  "due_date": null
+                }
+              ],
+              "name": "사전 안내",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "EVENT_DAY",
+              "purpose": "준비된 일정에 따라 MT를 진행하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "행사 당일",
+              "phase": "EXECUTION",
+              "actor": "MANUAL"
+            },
+            {
+              "code": "SETTLE_EXPENSES",
+              "purpose": "행사 종료 후 발생한 지출을 정리하고 비용 내역을 확인하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "EXPENSE",
+                  "title": "행사 비용 정산",
+                  "due_date": null
+                }
+              ],
+              "name": "지출 정산",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "REFUND_FEES",
+              "purpose": "환급이 필요한 참가비가 있는 경우 행사 종료 후 환급 절차를 진행하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "TRANSFER",
+                  "title": "참가비 환급",
+                  "due_date": null
+                }
+              ],
+              "name": "참가비 환급",
+              "phase": "EXECUTION",
+              "actor": "APPROVAL_REQUIRED"
+            },
+            {
+              "code": "RECORD_FEEDBACK",
+              "purpose": "행사 운영에 대한 의견을 기록해 향후 행사 준비에 참고하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [],
+              "name": "피드백 기록",
+              "phase": "EXECUTION",
+              "actor": "AI"
+            }
+          ],
+          "excluded_steps": [],
+          "assumptions": [],
+          "open_questions": [
+            "행사 제목",
+            "행사 시작일과 종료일",
+            "행사 장소",
+            "총예산 및 장소·교통·식사 등 세부 예산",
+            "참가비 1인당 25000원의 적용 범위와 환급 기준",
+            "행사 날짜"
+          ],
+          "warnings": [
+            "행사 시작일과 종료일이 정해지지 않아 모든 단계의 일정과 행동 예정일을 제안할 수 없습니다.",
+            "장소가 미정이므로 예약 가능 여부와 관련 비용을 아직 검토할 수 없습니다.",
+            "총예산이 미정이므로 장소 예약 및 기타 비용 집행 가능 범위를 판단하기 어렵습니다."
+          ]
+        },
+        "reason": null,
+        "model_calls": 1
+      },
+      "compositions": [
+        {
+          "steps": [
+            {
+              "code": "ASSIGN_ROLES",
+              "purpose": "행사 준비와 진행에 필요한 역할과 책임 범위를 정해 후속 준비를 원활하게 하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": []
+            },
+            {
+              "code": "RESEARCH_VENUE",
+              "purpose": "50명 규모의 MT에 적합한 장소와 교통 여건을 비교하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": []
+            },
+            {
+              "code": "DEMAND_SURVEY",
+              "purpose": "참가 희망과 선호 조건을 확인해 장소 및 일정 검토의 기초 자료로 활용하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "수요 조사 안내",
+                  "due_date": null
+                }
+              ]
+            },
+            {
+              "code": "RECRUIT_NOTICE",
+              "purpose": "행사 참여 의사를 공식적으로 확인하고 모집을 진행하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가 모집 안내",
+                  "due_date": null
+                }
+              ]
+            },
+            {
+              "code": "CHECK_RESPONSES",
+              "purpose": "모집 응답을 확인해 참가 인원과 후속 확정 절차를 준비하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "응답 확인 안내",
+                  "due_date": null
+                }
+              ]
+            },
+            {
+              "code": "CONFIRM_DETAILS",
+              "purpose": "참가 인원과 행사 일정 등 핵심 조건을 확정해 예약과 수금의 기준을 마련하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": []
+            },
+            {
+              "code": "BOOK_VENUE",
+              "purpose": "확정된 조건에 맞는 장소를 예약해 행사 진행 기반을 확보하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "CONTRACT",
+                  "title": "장소 예약 계약",
+                  "due_date": null
+                },
+                {
+                  "type": "TRANSFER",
+                  "title": "장소 예약 관련 이체",
+                  "due_date": null
+                }
+              ]
+            },
+            {
+              "code": "COLLECT_FEES",
+              "purpose": "참가비를 수금해 행사 관련 비용 집행에 필요한 재원을 마련하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "참가비 수금 안내",
+                  "due_date": null
+                },
+                {
+                  "type": "EXTERNAL_SEND",
+                  "title": "참가비 수금 요청",
+                  "due_date": null
+                }
+              ]
+            },
+            {
+              "code": "PRE_EVENT_NOTICE",
+              "purpose": "행사 전 확정된 참가자에게 필요한 준비사항과 진행 정보를 안내하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "NOTICE",
+                  "title": "행사 전 안내",
+                  "due_date": null
+                }
+              ]
+            },
+            {
+              "code": "EVENT_DAY",
+              "purpose": "준비된 일정에 따라 MT를 진행하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": []
+            },
+            {
+              "code": "SETTLE_EXPENSES",
+              "purpose": "행사 종료 후 발생한 지출을 정리하고 비용 내역을 확인하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "EXPENSE",
+                  "title": "행사 비용 정산",
+                  "due_date": null
+                }
+              ]
+            },
+            {
+              "code": "REFUND_FEES",
+              "purpose": "환급이 필요한 참가비가 있는 경우 행사 종료 후 환급 절차를 진행하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": [
+                {
+                  "type": "TRANSFER",
+                  "title": "참가비 환급",
+                  "due_date": null
+                }
+              ]
+            },
+            {
+              "code": "RECORD_FEEDBACK",
+              "purpose": "행사 운영에 대한 의견을 기록해 향후 행사 준비에 참고하기 위해 필요합니다.",
+              "starts_at": null,
+              "deadline": null,
+              "actions": []
+            }
+          ],
+          "excluded_steps": [],
+          "assumptions": [],
+          "open_questions": [
+            "행사 제목",
+            "행사 시작일과 종료일",
+            "행사 장소",
+            "총예산 및 장소·교통·식사 등 세부 예산",
+            "참가비 1인당 25000원의 적용 범위와 환급 기준"
+          ],
+          "warnings": [
+            "행사 시작일과 종료일이 정해지지 않아 모든 단계의 일정과 행동 예정일을 제안할 수 없습니다.",
+            "장소가 미정이므로 예약 가능 여부와 관련 비용을 아직 검토할 수 없습니다.",
+            "총예산이 미정이므로 장소 예약 및 기타 비용 집행 가능 범위를 판단하기 어렵습니다."
+          ]
+        }
+      ],
+      "validation_reasons": [],
+      "ms": 25563,
+      "http_calls": 3
+    },
+    {
+      "dialog": "dated-button",
+      "turn": 1,
+      "case": {
+        "source": "button",
+        "updates": {},
+        "generation": "generated"
+      },
+      "agent_calls": 0,
+      "generation_calls": 1,
+      "limit_reached": false,
+      "checks": {
+        "input_preserved": true,
+        "history_unchanged": true,
+        "conditions": true,
+        "generation": false
+      },
+      "passed": false,
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "PICNIC",
+          "headcount": 20,
+          "fee_per_person": 0,
+          "start_date": "2027-04-10",
+          "end_date": "2027-04-10",
+          "location": "교내 잔디밭",
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "generation": {
+        "offer": null,
+        "preview": null,
+        "condition_change_pending": false,
+        "pending_condition_fields": []
+      },
+      "outcome": {
+        "status": "failed",
+        "preview": null,
+        "reason": "계획 초안을 만들거나 검증하지 못했어요. 다시 시도해 주세요.",
+        "model_calls": 1
+      },
+      "compositions": [],
+      "validation_reasons": [],
+      "ms": 26228,
+      "http_calls": 1
+    }
+  ],
+  "http_calls": 9,
+  "summary": {
+    "turns": 6,
+    "passed": 1,
+    "expected_turns": 6,
+    "median_ms": 6846.0,
+    "max_ms": 26228,
+    "agent_calls": 7,
+    "generation_calls": 2
+  }
+}

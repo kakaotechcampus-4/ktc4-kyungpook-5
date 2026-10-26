@@ -5,6 +5,7 @@
 enum은 재공개하지 않는다. `app.core.enums`에서 가져온다.
 """
 
+
 from .contracts import (
     IndexedChunk,
     IndexRecordRequest,
@@ -14,14 +15,27 @@ from .contracts import (
     SourceLocation,
 )
 from .errors import (
+    PlanningStateError,
     AIConfigError,
     AIEmptyRecordError,
     AIError,
     AIInvalidResponseError,
+    AIOutputLimitError,
     AIRetryableError,
     AITimeoutError,
 )
-from .facade import index_record
+from .facade import index_record, judge_utterance
+from .features.meeting.context import MEETING_CONTEXT_UTTERANCES
+from .features.meeting.schemas import (
+    JudgeTrace,
+    JudgeUtteranceRequest,
+    JudgeUtteranceResult,
+    MeetingEvent,
+    MeetingProgressPort,
+    MeetingStage,
+    MeetingUtterance,
+    ToolCall,
+)
 from .llm import EMBEDDING_DIMENSIONS
 from .ports import ChunkSearchQuery, RecordSearchPort, RetrievedChunk
 
@@ -33,6 +47,18 @@ __all__ = (
     "IndexedChunk",
     "RecordBlock",
     "SourceLocation",
+    # 회의 발화 처리. #113에서 BE와 합의하기 전의 초안이라 바뀔 수 있다 (docs/contracts.md)
+    "judge_utterance",
+    "JudgeUtteranceRequest",
+    "JudgeUtteranceResult",
+    "MeetingUtterance",
+    "MeetingEvent",
+    "JudgeTrace",
+    "ToolCall",
+    "MeetingProgressPort",
+    "MeetingStage",
+    # BE가 judge_utterance에 실어 보낼 앞 발화 수
+    "MEETING_CONTEXT_UTTERANCES",
     # 기록 검색 port (BE가 구현)
     "RecordSearchPort",
     "ChunkSearchQuery",
@@ -47,4 +73,24 @@ __all__ = (
     "AIRetryableError",
     "AITimeoutError",
     "AIInvalidResponseError",
+    "AIOutputLimitError",
 )
+
+# P1 공개 데이터 계약 초안 (#180). 실행 함수는 아래 #181에서 연결한다.
+from .contracts import (
+    PlanningChatRequest, PlanningPreviewRequest, PlanningUserMessage,
+    PlanningResumeState, PlanningPublicResult, PlanningView,
+    PlanningGenerationReadiness, PlanningDraft, PlanningConditions,
+)
+from .features.planning.state_codec import parse_resume_state
+
+__all__ += (
+    "PlanningChatRequest", "PlanningPreviewRequest", "PlanningUserMessage",
+    "PlanningResumeState", "PlanningPublicResult", "PlanningView",
+    "PlanningGenerationReadiness", "PlanningStateError", "PlanningDraft",
+    "PlanningConditions", "parse_resume_state",
+)
+
+# P1 실행 계약 초안 (#181). 제품 저장/HTTP는 BE가 연결한다.
+from .facade import chat_planning, generate_planning_preview
+__all__ += ('chat_planning', 'generate_planning_preview')

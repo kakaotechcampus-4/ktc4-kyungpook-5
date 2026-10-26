@@ -13,15 +13,25 @@ HTTP 상태 코드나 API 응답 코드로 변환하는 책임은 BE에 있다.
     └── AIRetryableError    같은 요청을 다시 시도하면 성공할 수 있다
         ├── AITimeoutError
         └── AIInvalidResponseError
+            └── AIOutputLimitError
 
 모델 호출 예외는 `llm.ainvoke_structured`가 이 타입으로 바꾼다(기준: docs/errors.md).
 예상하지 못한 예외는 AIError로 변환X
 -> 이런 예외는 그대로 BE에 전달해 서버 오류로 처리한다.
 """
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .features.meeting.schemas import JudgeTrace
+
 
 class AIError(Exception):
     """AI 모듈에서 발생한 오류의 최상위 타입."""
+
+    # 회의 판단(judge_utterance)이 실패하면 실패하기 전까지의 판단 기록을 담는다.
+    # BE는 이 값으로 실패한 판단도 판단 기록에 남긴다(#117). 다른 기능에서는 None이다
+    trace: "JudgeTrace | None" = None
 
 
 class AIConfigError(AIError):
@@ -81,3 +91,21 @@ class AIInvalidResponseError(AIRetryableError):
     같은 입력이라도 다시 생성하면 정상적인 응답이 나올 수 있으므로
     재시도 가능한 오류로 분류한다.
     """
+
+
+class AIOutputLimitError(AIInvalidResponseError):
+    """공급자가 출력 한도 도달로 미완성 응답임을 명시한 경우.
+
+    잘린 JSON의 구문만 보고 추측하지 않는다. 한도를 조정하지 않으면 같은
+    실패가 반복될 수 있으므로 일반 형식 오류와 구분한다.
+    """
+
+
+# P1 저장 상태 복원 오류
+
+class PlanningStateError(ValueError):
+    """복원 실패를 빈 대화로 숨기지 않도록 구분하는 공개 오류."""
+
+    def __init__(self, code: str, message: str):
+        self.code = code
+        super().__init__(message)

@@ -11,8 +11,8 @@ from app.core.enums import RecordCategory
 FIXTURES = sorted((Path(__file__).parent / "fixtures" / "records").glob("*.json"))
 
 
-def test_예시_기록은_4종이다():
-    assert len(FIXTURES) == 4
+def test_예시_기록은_12종이다():
+    assert len(FIXTURES) == 12
 
 
 @pytest.mark.parametrize("path", FIXTURES, ids=lambda path: path.stem)
