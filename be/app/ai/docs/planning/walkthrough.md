@@ -74,7 +74,7 @@ tentative
 | `PlanningDraft(...)` | 인원·참가비의 tentative 근거와 dates 보류를 함께 묶음 |
 | `ConditionUpdateResult(...)` | 실제 새 초안을 반환. 입력 before는 여전히 32명 |
 
-이후 agent Node는 이 결과를 보고 “날짜는 나중에 정하고, 약 50명·25,000원을 기준으로 생각해둘게요”처럼 답할 수 있다. 이 답변 생성은 아직 구현하지 않았다. 처리기가 자연어 응답이나 다음 질문을 만들어 붙이지 않는다.
+이후 agent Node는 이 결과를 보고 “날짜는 나중에 정하고, 약 50명·25,000원을 기준으로 생각해둘게요”처럼 답할 수 있다. 이 답변 생성은 아래 2단계의 agent Node가 담당한다. 처리기가 자연어 응답이나 다음 질문을 만들어 붙이지 않는다.
 
 같은 함수에 종료일보다 늦은 시작일을 요청하면 `rejected`와 날짜 설명, 원래 초안을 반환한다. 잘못된 요청을 자동 수정하지 않으므로 다음 단계 LLM이 실제 결과를 보고 설명할 수 있다. 같은 요청을 새 초안에 다시 적용하면 `unchanged`이고, 같은 50명이라도 tentative에서 specified로 바꾸면 `applied`다.
 
@@ -268,7 +268,7 @@ agent: search_past_events(query="2025 봄 MT 참가비") 선택
 
 ## 5-2①: 채팅과 버튼은 다른 요청, 생성에는 같은 입력
 
-현재 [generation/schemas.py](../../features/planning/generation/schemas.py)에 생성 입력·결과와 권유 상태를 구현했다. 아직 화면 버튼에 연결한 코드는 아니다.
+현재 [generation/schemas.py](../../features/planning/generation/schemas.py)에 생성 입력·결과와 권유 상태를 구현했다. 버튼 연결은 아래 5-3 절, 공개 호출은 문서 앞부분의 P1 계약을 따른다.
 
 ```python
 # 버튼: 클릭 ID만 필요. 가짜 사용자 메시지를 만들지 않는다.
@@ -382,7 +382,7 @@ model_calls = 대화 Agent 호출 수 / generation_model_calls = 생성 내부 �
 
 - 채팅: `run_planning_agent_turn(request, generate=run_plan_generation)`. 생성 기능을 주입하지 않으면 새 두 Tool은 모델에 공개하지 않는다.
 - 버튼: `run_button_plan_generation(ButtonPlanGenerationRequest(...))`. 대화 Agent의 의도 해석과 가짜 HumanMessage를 거치지 않는다.
-- 둘 다 내부 함수다. 5-3 로컬 HTTP·테스트 FE 버튼은 아래처럼 연결했고, `app.ai` 공개 facade·실서비스 API는 미연결이다. 요청 상태를 서비스에서 저장·검증하는 책임은 BE와 합의해야 한다.
+- 위 두 함수는 내부 진입점이다. 현재 공개 facade는 `chat_planning`과 `generate_planning_preview`로 이 경로를 연결한다. 아래 테스트 API와 제품 HTTP는 별개이며, 제품의 저장과 권한, HTTP/FE 연결은 #187에서 진행한다.
 
 `be/`에서 API 없이 확인할 수 있다.
 

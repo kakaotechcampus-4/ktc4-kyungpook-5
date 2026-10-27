@@ -21,7 +21,7 @@ AI팀은 동작 예시·성공/실패 상태·협의할 입출력을 문서로 �
 
 ## 행사 Agent
 
-행사계획 내부의 현재 개발 방향은 [행사계획 대화 Agent 설계](planning/design.md)입니다. 사용자 발화·현재 초안·최근 대화를 읽은 LLM이 필요한 Tool과 답변을 선택하는 내부 그래프와 [로컬 테스트 UI](planning/step-03-ui.md)를 연결했습니다. 기존 [단계별 설계](planning/legacy/plan_architecture.md)는 legacy 참고입니다. 아래 전체 행사 Agent의 수명과 현재 공개 계약을 이미 변경한 것은 아닙니다. Tool의 초안 state 갱신은 BE 데이터 저장·확정과 구분합니다.
+행사계획 내부의 현재 개발 방향은 [행사계획 대화 Agent 설계](planning/design.md)입니다. 사용자 발화·현재 초안·최근 대화를 읽은 LLM이 필요한 Tool과 답변을 선택하는 내부 그래프와 [로컬 테스트 UI](planning/step-03-ui.md)를 연결했습니다. 기존 [단계별 설계](planning/legacy/plan_architecture.md)는 legacy 참고입니다. 현재 P1 공개 함수와 JSON 상태 변환도 구현했습니다. 제품의 DB/HTTP 연결과 아래 전체 행사 Agent의 상시 대기 및 운영 전환은 미구현입니다. 공개 경계는 [P1 계약](planning/p1-public-contract.md)을 따릅니다. Tool의 초안 state 갱신은 BE 데이터 저장·확정과 구분합니다.
 
 행사 하나를 행사 Agent 하나가 담당합니다. 행사 Agent는 계획을 시작할 때 만들어지고, 행사가 끝날 때까지 같은 실행 상태를 이어서 사용합니다. 필요할 때만 불려 한 번 실행하고 끝나는 함수가 아닙니다. 신호를 기다리다 깨어나 스스로 처리하고 다시 기다립니다.
 
@@ -647,7 +647,7 @@ AI가 찾을 내용·기준일·계획 중인 행사의 종류와 시기로 검�
 → 확인한 사실과 출처, 확인하지 못한 것, 자료 간 차이
 ```
 
-`search_records`는 AI 내부 기능이며 `app.ai`로 공개하지 않습니다. planning·operations·회의 어시스턴트와 `tools/records.py`가 이 함수를 같이 쓰도록 둔 것입니다. 지금은 회의 어시스턴트만 쓰며, 검색과 근거 판단을 나눈 `find_chunks`·`assess_chunks`로 부릅니다([답과 출처](#답과-출처)). 호출하는 쪽의 조건에 맞춰 검색어 정리를 건너뛰거나(`rewrite=False`, 회의처럼 검색어를 이미 만든 경우), 검색 횟수(`max_rounds`)와 판단 모델(`invoke`)을 바꿀 수 있습니다. 모델은 출처를 직접 쓰지 않고 프롬프트에 붙인 자료 번호만 가리키며, 코드가 그 번호를 검색된 청크의 출처로 바꿉니다. 검색되지 않은 번호를 가리키면 `AIInvalidResponseError`입니다. 관련 청크가 하나도 없으면 모델을 부르지 않고 출처 없이 찾지 못했다는 결과를 돌려줍니다. 이 결과는 오류가 아닙니다. 기록 원문은 사용자 메시지의 `<record>` 구역에만 넣고 꺾쇠를 바꿔, 기록 속 지시문이 규칙을 바꾸지 못하게 합니다(AI-COMMON-01). 프롬프트 원문은 `features/retrieval/prompts/`에 있습니다.
+`search_records`는 AI 내부 기능이며 `app.ai`로 공개하지 않습니다. planning·operations·회의 어시스턴트와 `tools/records.py`가 이 함수를 같이 쓰도록 둔 것입니다. 현재 P1의 검색 Tool도 이 함수를 사용합니다. 회의 어시스턴트는 검색과 근거 판단을 나눈 `find_chunks`·`assess_chunks`로 부릅니다([답과 출처](#답과-출처)). 호출하는 쪽의 조건에 맞춰 검색어 정리를 건너뛰거나(`rewrite=False`, 회의처럼 검색어를 이미 만든 경우), 검색 횟수(`max_rounds`)와 판단 모델(`invoke`)을 바꿀 수 있습니다. 모델은 출처를 직접 쓰지 않고 프롬프트에 붙인 자료 번호만 가리키며, 코드가 그 번호를 검색된 청크의 출처로 바꿉니다. 검색되지 않은 번호를 가리키면 `AIInvalidResponseError`입니다. 관련 청크가 하나도 없으면 모델을 부르지 않고 출처 없이 찾지 못했다는 결과를 돌려줍니다. 이 결과는 오류가 아닙니다. 기록 원문은 사용자 메시지의 `<record>` 구역에만 넣고 꺾쇠를 바꿔, 기록 속 지시문이 규칙을 바꾸지 못하게 합니다(AI-COMMON-01). 프롬프트 원문은 `features/retrieval/prompts/`에 있습니다.
 
 청크 테이블에는 `record_id`·`file_name`·`category`·`event_id`·`club_id`를 복사해 두고 모두 BE가 채웁니다. 필터가 청크 테이블 하나에서 끝나고, AI는 메타데이터를 다루지 않습니다. 검색 결과의 출처(`RecordSource`)는 청크에서 그대로 옮기므로 검색되지 않은 기록이 출처로 나가지 않습니다.
 

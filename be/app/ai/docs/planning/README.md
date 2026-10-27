@@ -18,8 +18,16 @@ LLM이 사용자와 대화하고 필요한 Tool을 선택하는 행사계획 기
 8. [Legacy 안내](legacy/README.md): 기존 구현·평가·UI 실행 방법.
 9. [5단계 생성 권유·P2 전달 명세](step-05-generation.md): 먼저 권유하기·수락/보류·별도 생성 graph, 채팅/버튼 HTTP와 읽기 전용 P2 연결.
 
-작업 순서는 1) 초안 State·조건 변경 Tool → 2) 실제 LLM·LangGraph → 3) UI 연결 → 4) 기록 검색 Tool → 5) 계획 생성이다. [테스트 화면](http://127.0.0.1:5174/)에서 저장 없이 대화·검색·계획 초안 생성을 실행할 수 있다. 공개 BE 연동·저장·계획 수정·검색 품질 개선은 후속 범위다. 관련 #165~#169 / AI-PLAN-01~04.
+작업 순서는 1) 초안 State·조건 변경 Tool → 2) 실제 LLM·LangGraph → 3) UI 연결 → 4) 기록 검색 Tool → 5) 계획 생성이다. [테스트 화면](http://127.0.0.1:5174/)에서 저장 없이 대화·검색·계획 초안 생성을 실행할 수 있다. 공개 Python 함수와 상태 변환은 구현돼 있다. 실제 제품 BE/FE 연결과 저장, 계획 수정 후 검토, 검색 품질 개선은 후속 범위다. 관련 #165~#169 / AI-PLAN-01~04.
 
 5-1 명세(#171)·5-2 내부 생성 Tool/graph(#172)·5-3 로컬 P2 연결(#173)을 구현했다. 채팅의 생성 Tool과 버튼의 별도 함수가 같은 생성 graph를 쓴다. 생성 가능 조건과 LLM의 권유 타이밍을 구분하며, 사용자 요청·수락·클릭으로 초안을 만든다. 실제 모델과 UI에서 두 경로를 확인했고, 자발적 권유·JSON 출력의 남은 제한은 [평가 기록](evaluation.md)에 있다. 관련 AI-PLAN-02·05.
 
 테스트 UI는 [tests/ui/planning](../../tests/ui/planning/README.md)의 독립 앱으로 관리한다(#174). 제품 `fe/`를 수정·참조하지 않으며, FE팀에는 동작 예시·계약·요청 사항을 전달한다. 실행 주소는 `http://127.0.0.1:5174/`이며 기존 제품 FE의 `/dev/planning` 경로는 제거했다.
+
+## 현재 후속 작업
+
+- [#194](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/194): 이력 사용량과 한도 임박 정보를 공개 결과에 제공. 현재 미구현이다.
+- [#195](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/195): 긴 대화 압축의 설계와 평가 기준. 자동 압축 구현은 별도 범위다.
+- [#196](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/196): 채팅과 버튼 생성의 반복 응답 시간 측정. 개별 관찰 시간을 서비스 평균으로 안내하지 않는다.
+- [#177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177): P2 데이터와 수정 후 AI 검토 협의. 현재 생성 결과와 예정 계약을 구분한다.
+- [#187](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/187): BE 저장과 HTTP, 제품 FE 연결. AI 공개 함수 구현 완료와 제품 연결 완료는 다르다.

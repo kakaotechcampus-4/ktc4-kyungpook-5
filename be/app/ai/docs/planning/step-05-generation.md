@@ -2,7 +2,7 @@
 
 2026-10-24 · [#171](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/171) · AI-PLAN-02·05, AI-PLAN-01·03·04.
 
-**5-1 명세·5-2 내부 실행·5-3 로컬 HTTP/P2 연결을 구현했다.** 관련 [#172](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/172), [#173](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/173). 공개 BE 계약·DB 저장은 미연결이다. 실제 모델의 권유·JSON 출력 품질에 남은 제한은 [평가 기록](evaluation.md)에 있다. legacy의 작업 5-1(#158)과 구분한다.
+**5-1 명세·5-2 내부 실행·5-3 로컬 HTTP/P2 연결을 구현했다.** 관련 [#172](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/172), [#173](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/173). 공개 Python 계약과 실행 함수는 구현돼 있다. 실제 제품 BE의 DB/HTTP 및 FE 연결은 #187에서 진행한다. 실제 모델의 권유·JSON 출력 품질에 남은 제한은 [평가 기록](evaluation.md)에 있다. legacy의 작업 5-1(#158)과 구분한다.
 
 ## 1. 사용자가 경험할 한 흐름
 
