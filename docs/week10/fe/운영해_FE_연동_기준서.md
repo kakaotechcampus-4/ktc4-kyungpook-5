@@ -32,7 +32,7 @@ FE  ──HTTP, camelCase──→  BE                  ──Python, snake_case
 | 영역 | 기준 | 상태 |
 | --- | --- | --- |
 | 행사 목록·상세·단계·행동 (읽기) | `be/app/schemas/events.py` | 확정·구현됨 |
-| 행사 승인·거절·단계 수정 (쓰기) | 명세 v1 §3 (요청 명세) | **미구현** · #41 |
+| 행사 승인·거절·단계 수정 (쓰기) | 명세 v1 — 승인·거절·완료는 §3, 단계 편집·확정은 §1 | **미구현** · #41 |
 | P1·P2 계획 | **`be/app/ai/contracts.py`** | AI 확정 · HTTP 없음 |
 | 계획 요약 패널 | **아무도 정의 안 함** | #177에서 논의 중 (§5.3) |
 | 동아리 기록 | `be/app/schemas/records.py` + 명세 v1 §4 | 일부 구현 · #42 |
@@ -195,7 +195,7 @@ POST /meetings/{id}/finish             종료
 
 | 항목 | 결정 |
 | --- | --- |
-| P1·P2 계약 | **`contracts.py`를 따른다.** 명세 v1 §1은 폐기 |
+| P1·P2 계약 | **`contracts.py`를 따른다.** 명세 v1에서 폐기하는 건 **계획 대화·생성 경로 셋**(`GET·POST /conversations/{id}/messages`, `plan:generate`)뿐이다 — `collected`·`readyToGenerate`·`locationCandidates`가 `draft`·`condition_meta`·`deferred_topics`·`generation_readiness`와 맞지 않는다. **같은 §1의 단계 편집·확정(`PATCH /steps/{id}`·`:reorder`·`PATCH /events/{id}`·`:confirm`)은 그대로 유효**하다 |
 | `title` | **BE가 채운다.** `Event.title`은 `nullable=False`이고 AI는 초안 단계에서만 `None`을 허용. 층이 다른 것이지 모순이 아님 |
 | `RecordCategory` | **BE를 따른다** — `LEDGER`/`ETC`/`RULES`/`EVENT_HISTORY`/`RECEIPT` |
 | `RecordParseStatus` | **BE를 따른다** — 6개 (`QUEUED` 포함) |
@@ -241,7 +241,7 @@ POST /meetings/{id}/finish             종료
 | 이슈 | 문제 | 조치 |
 | --- | --- | --- |
 | **#92** | "GET /events에 location·expectedHeadcount 추가" — **이미 구현됨** | **닫기** |
-| **#41** | BE 체크리스트의 P1/P2 항목이 전부 명세 v1 경로(`/conversations/{id}/messages`, `plan:generate`, `GET /plan` …). **`contracts.py`로 대체됐음** | P1/P2 절 교체 |
+| **#41** | BE 체크리스트의 계획 대화·생성 항목이 명세 v1 경로(`/conversations/{id}/messages`, `plan:generate`). **`contracts.py`로 대체됐음** | 해당 항목만 교체 |
 | **#41** | FE 항목이 `features/planning/hooks.ts`를 가리키는데 **그 파일이 없음** (planning에는 `mock.ts`·`types.ts`뿐) | 문구 수정 |
 | **#42** | `features/records/api.ts`를 가리키는데 **`features/records`가 없음** (`mypage/components/RecordsTab.tsx`) | 문구 수정 |
 | — | **동아리원 목록 API** — 화면은 있는데 이슈가 없음 | **신설** |
