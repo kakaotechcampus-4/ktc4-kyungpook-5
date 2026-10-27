@@ -32,8 +32,6 @@ export interface EventDetail {
   location: string | null
   headcount: number | null
   currentStep: { id: string; stepOrder: number; name: string } | null
-  // TODO: 명세에 없다. BE에 요청하거나 뺀다.
-  manager: string | null
 }
 
 export type StepActor = 'AI' | 'APPROVAL_REQUIRED' | 'MANUAL'
