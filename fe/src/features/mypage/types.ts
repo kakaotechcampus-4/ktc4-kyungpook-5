@@ -46,15 +46,23 @@ export interface JoinRequest {
 }
 
 // 동아리 자료. 과거 행사 문서·장부·공지 등을 분류해 올려 둔다.
-export type RecordCategory = 'PLAN' | 'NOTICE' | 'LEDGER' | 'ETC'
+export type RecordCategory = 'RULES' | 'EVENT_HISTORY' | 'LEDGER' | 'RECEIPT' | 'ETC'
 // 올린 파일을 읽어 들이는 상태. 읽지 못한 건 손이 가야 한다.
-export type ParseStatus = 'INDEXED' | 'PARSING' | 'NEEDS_REVIEW' | 'FAILED'
+// QUEUED → PARSING → NEEDS_REVIEW | COMPLETED → INDEXED, 또는 FAILED.
+// INDEXED라야 AI가 찾을 수 있다. COMPLETED는 읽기만 끝난 상태다.
+export type ParseStatus =
+  | 'QUEUED'
+  | 'PARSING'
+  | 'NEEDS_REVIEW'
+  | 'COMPLETED'
+  | 'INDEXED'
+  | 'FAILED'
 
 export interface ClubRecord {
   id: string
   fileName: string
-  // 이슈 #60에서 PDF · CSV · XLSX만 올릴 수 있게 줄였다.
-  fileType: 'PDF' | 'CSV' | 'XLSX'
+  // 올릴 수 있는 건 #60에서 PDF · CSV · XLSX로 줄였지만, 서버는 다섯 가지를 내려줄 수 있다.
+  fileType: 'PDF' | 'CSV' | 'XLSX' | 'HWP' | 'IMAGE'
   category: RecordCategory
   size: string
   uploadedAt: string

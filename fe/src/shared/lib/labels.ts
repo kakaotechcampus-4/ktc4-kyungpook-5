@@ -31,11 +31,15 @@ export const EVENT_STATUS_LABEL: Record<string, string> = {
   PLANNING: '계획 중',
   ON_GOING: '진행 중',
   COMPLETE: '완료',
+  CANCELLING: '취소 정리 중',
+  CANCELLED: '취소됨',
 }
 
 // 행사 상태 칩 색. L1 행사 카드와 M1 요약 카드가 같이 쓴다.
-export const EVENT_STATUS_TONE = {
+export const EVENT_STATUS_TONE: Record<string, 'neutral' | 'done' | 'approved' | 'failed'> = {
   ON_GOING: 'done',
   PLANNING: 'approved',
   COMPLETE: 'neutral',
-} as const
+  CANCELLING: 'failed',
+  CANCELLED: 'neutral',
+}

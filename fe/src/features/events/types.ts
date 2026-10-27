@@ -3,7 +3,8 @@
 // DB 컬럼이 아니라 서버가 계산해 내려준다.
 export type StepState = 'DONE' | 'CURRENT' | 'TODO'
 
-export type EventStatus = 'PLANNING' | 'ON_GOING' | 'COMPLETE'
+// 취소 두 값은 취소 정리(L2-d)를 거치는 동안과 끝난 뒤를 나눈다.
+export type EventStatus = 'PLANNING' | 'ON_GOING' | 'COMPLETE' | 'CANCELLING' | 'CANCELLED'
 
 // GET /events 목록 한 줄
 export interface EventSummary {

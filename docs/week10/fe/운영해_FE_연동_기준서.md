@@ -255,8 +255,8 @@ POST /meetings/{id}/finish             종료
 
 | # | 할 일 | 이유 |
 | --- | --- | --- |
-| 1 | **`npm run gen:api-types`** | `schema.d.ts`에 경로가 **3개뿐**. BE는 40개가 넘음. 이걸 먼저 해야 나머지 드리프트가 타입 오류로 드러남 |
-| 2 | enum 맞추기 | `RecordCategory` 5값 · `ParseStatus` 6값 · `fileType` 5값(`HWP`·`IMAGE` 누락) |
+| 1 | **`npm run gen:api-types`** | `schema.d.ts`에 경로가 **3개뿐**. BE는 38개. 서버를 안 띄우려면 `be/`에서 `uv run python -c "import json,pathlib; from app.main import app; pathlib.Path('openapi.json').write_text(json.dumps(app.openapi()),encoding='utf-8')"` 로 덤프한 뒤 그 파일을 넘긴다 |
+| 2 | enum 맞추기 | `RecordCategory` 5값 · `ParseStatus` 6값 · `fileType` 5값(`HWP`·`IMAGE` 누락) · **`EventStatus` 5값**(`CANCELLING`·`CANCELLED` 누락). **스키마를 새로 뽑아도 타입 오류로는 안 드러난다** — FE 도메인 타입이 손으로 쓴 것이라 생성 타입과 이어져 있지 않다. 눈으로 대조해야 한다 |
 | 3 | `catalogue.ts` StepCode 5개 수정 | `ASSIGN_STAFF`→`ASSIGN_ROLES`, `SCOUT_VENUE`→`RESEARCH_VENUE`, `SURVEY_DEMAND`→`DEMAND_SURVEY`, `CONFIRM_HEADCOUNT`→`CONFIRM_DETAILS`, `PRE_NOTICE`→`PRE_EVENT_NOTICE`. **AI는 `StepCode` 중에서만 고르므로 초안이 오는 날 전부 매칭 실패** |
 | 4 | `PlanGeneratingScreen` 수정 | `ProgressBar`로 **가짜 진행률**을 보임. #179에 "가짜 진행은 그리지 않겠다"고 올리고 v13을 그렇게 그렸는데 코드가 반대 |
 | 5 | `PlanFacts.tsx`의 `REQUIRED = 4` 제거 | #177에서 폐기 합의. `PlanFacts` 타입도 `{value, decided:boolean}`으로는 **4상태를 못 담음** |
