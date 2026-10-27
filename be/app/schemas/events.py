@@ -7,14 +7,16 @@ enum은 core/enums.py의 StrEnum을 그대로 쓴다. 값이 곧 API 코드라 �
 """
 
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from app.core.enums import (
     ActionStatus,
     ActionType,
     EventStatus,
+    EventType,
     MemberRole,
     StepActor,
+    StepCode,
     StepState,
 )
 from app.schemas.common import CamelModel, PageMeta, UtcDateTime
@@ -120,3 +122,112 @@ class StepOut(CamelModel):
 class StepListResponse(CamelModel):
     data: list[StepOut]
     meta: None = None
+
+
+# --- P1·P2 행사 계획 (#187) ----------------------------------------------
+
+
+class EventCreateIn(CamelModel):
+    club_id: str
+    title: str | None = None
+
+
+class EventCreateOut(CamelModel):
+    id: str
+    title: str
+    status: EventStatus
+
+
+class DraftOut(CamelModel):
+    """임시 저장 목록 한 줄. saved_at이 null이면 아직 한 번도 저장 안 한 것이다."""
+
+    id: str
+    title: str
+    event_type: EventType | None
+    saved_at: UtcDateTime | None
+    created_at: UtcDateTime
+
+
+class DraftListResponse(CamelModel):
+    data: list[DraftOut]
+    meta: None = None
+
+
+class PlanChatIn(CamelModel):
+    message_id: str
+    message: str
+    base_revision: int
+
+
+class PlanGenerateIn(CamelModel):
+    base_revision: int
+    use_current_conditions: bool = False
+
+
+class ConditionMetaOut(CamelModel):
+    status: Literal["tentative", "specified"]
+    evidence_message_id: str
+    evidence_quote: str
+
+
+class PlanConditionsOut(CamelModel):
+    title: str | None
+    event_type: EventType | None
+    headcount: int | None
+    fee_per_person: int | None
+    start_date: date | None
+    end_date: date | None
+    location: str | None
+    budget_total: int | None
+
+
+class PlanDraftOut(CamelModel):
+    conditions: PlanConditionsOut
+    condition_meta: dict[str, ConditionMetaOut]
+    deferred_topics: list[str]
+
+
+class GenerationReadinessOut(CamelModel):
+    can_generate: bool
+    reasons: list[str]
+
+
+class GenerationResultOut(CamelModel):
+    status: Literal["generated", "needs_clarification", "failed"]
+    reason: str | None
+
+
+class RecordLookupOut(CamelModel):
+    status: Literal["available", "not_found", "failed", "rejected"]
+    query: str | None
+    reason: str | None
+
+
+class PlanViewOut(CamelModel):
+    reply: str | None
+    draft: PlanDraftOut
+    changed_fields: list[str]
+    record_lookup: RecordLookupOut | None
+    generation_readiness: GenerationReadinessOut
+    generation_result: GenerationResultOut | None
+    base_revision: int
+
+
+class ExcludedStepOut(CamelModel):
+    code: StepCode
+    reason: str
+
+
+class PlanSummaryOut(CamelModel):
+    total_steps: int
+    ai_steps: int
+    approval_steps: int
+    manual_steps: int
+
+
+class PlanScreenOut(CamelModel):
+    draft: PlanDraftOut
+    warnings: list[str]
+    excluded_steps: list[ExcludedStepOut]
+    summary: PlanSummaryOut
+    base_revision: int

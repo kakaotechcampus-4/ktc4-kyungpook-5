@@ -1,0 +1,259 @@
+"""P1·P2 행사 계획 API 테스트 (#187).
+
+app.ai.chat_planning()/generate_planning_preview()는 실제 모델 호출이라(AI_API_KEY
+필요, 턴당 수 초~수십 초) 결과를 monkeypatch로 고정해 저장·동시성·멱등성 로직만
+검증한다. 실제 모델과의 연동 자체는 app/ai/tests에서 따로 확인한다.
+"""
+
+import uuid
+from collections.abc import AsyncIterator
+
+import pytest
+from fastapi.testclient import TestClient
+
+import app.ai as ai
+from app.db import session as db_session
+
+pytestmark = [pytest.mark.db, pytest.mark.anyio]
+
+PASSWORD = "PmTest-2027!"
+
+
+@pytest.fixture
+async def app_db(
+    migrated_db_url: str, monkeypatch: pytest.MonkeyPatch, clear_db_caches: None
+) -> AsyncIterator[None]:
+    monkeypatch.setenv("DATABASE_URL", migrated_db_url)
+    yield
+    await db_session.get_engine().dispose()
+
+
+def _login(client: TestClient, tag: str) -> dict:
+    email = f"{tag}-{uuid.uuid4().hex[:12]}@example.com"
+    client.post(
+        "/api/v1/auth/signup", json={"email": email, "password": PASSWORD, "name": tag}
+    )
+    login = client.post("/api/v1/auth/login", json={"email": email, "password": PASSWORD})
+    return {"Authorization": f"Bearer {login.json()['data']['accessToken']}"}
+
+
+def _owner_with_club(client: TestClient) -> tuple[dict, str]:
+    headers = _login(client, "plan-owner")
+    club = client.post("/api/v1/clubs", headers=headers, json={"name": "계획 테스트 동아리"})
+    assert club.status_code == 201, club.text
+    return headers, club.json()["data"]["id"]
+
+
+def _create_event(client: TestClient, headers: dict, club_id: str) -> str:
+    res = client.post("/api/v1/events", headers=headers, json={"clubId": club_id})
+    assert res.status_code == 201, res.text
+    return res.json()["data"]["id"]
+
+
+def _fake_chat_result(
+    *, event_type: str | None = None, headcount: int | None = None,
+    reply: str = "알겠습니다.", generation_result=None,
+) -> ai.PlanningPublicResult:
+    from app.ai.contracts import PlanningGenerationState, PlanningStatePayload
+
+    conditions = ai.PlanningConditions(event_type=event_type, headcount=headcount)
+    draft = ai.PlanningDraft(conditions=conditions)
+    view = ai.PlanningView(
+        reply=reply,
+        draft=draft,
+        changed_fields=(),
+        record_lookup=None,
+        generation_readiness=ai.PlanningGenerationReadiness(
+            can_generate=bool(event_type),
+            reasons=() if event_type else ("event_type_missing",),
+        ),
+        generation_result=generation_result,
+        preview_is_current=False,
+    )
+    next_state = ai.PlanningResumeState(
+        club_id="club-x", event_id="event-x", conversation_id="conv-x",
+        payload=PlanningStatePayload(
+            basis_draft=draft, history=(), generation=PlanningGenerationState()
+        ),
+    )
+    return ai.PlanningPublicResult(
+        request_id="req-x", base_revision=0, view=view, next_state=next_state
+    )
+
+
+def _fake_generation_result() -> ai.PlanningPublicResult:
+    from app.ai.contracts import (
+        ButtonGenerationTrigger,
+        EventPlanPreview,
+        PlanAction,
+        PlanGenerationResult,
+        PreviewStep,
+    )
+    from app.core.enums import ActionType, StepActor, StepCode, StepPhase
+
+    preview = EventPlanPreview(
+        id="preview-1",
+        basis_draft=ai.PlanningDraft(
+            conditions=ai.PlanningConditions(event_type="MT", headcount=30)
+        ),
+        trigger=ButtonGenerationTrigger(request_id="click-1"),
+        steps=(
+            PreviewStep(
+                code=StepCode.RESEARCH_VENUE,
+                purpose="장소 후보를 찾는다",
+                name="장소 조사",
+                phase=StepPhase.PREPARATION,
+                actor=StepActor.AI,
+                actions=(
+                    PlanAction(type=ActionType.NOTICE, title="장소 공지"),
+                ),
+            ),
+            PreviewStep(
+                code=StepCode.COLLECT_FEES,
+                purpose="참가비를 걷는다",
+                name="참가비 수금",
+                phase=StepPhase.RECRUITING,
+                actor=StepActor.APPROVAL_REQUIRED,
+                actions=(
+                    PlanAction(type=ActionType.TRANSFER, title="참가비 송금"),
+                ),
+            ),
+        ),
+        excluded_steps=(),
+        warnings=("일정이 비어 있습니다",),
+    )
+    generation_result = PlanGenerationResult(status="generated", preview=preview)
+    return _fake_chat_result(
+        event_type="MT", headcount=30, reply=None, generation_result=generation_result
+    )
+
+
+async def test_행사_생성_시_제목을_비우면_기본값이_들어간다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = _owner_with_club(client)
+
+    res = client.post("/api/v1/events", headers=headers, json={"clubId": club_id})
+
+    assert res.status_code == 201, res.text
+    assert "새 행사" in res.json()["data"]["title"]
+
+
+async def test_대화_한_턴으로_조건이_저장되고_revision이_오른다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    async def fake_chat_planning(request, *, records=None):
+        return _fake_chat_result(event_type="MT", headcount=30)
+
+    monkeypatch.setattr("app.ai.chat_planning", fake_chat_planning)
+
+    res = client.post(
+        f"/api/v1/events/{event_id}/plan/chat",
+        headers=headers,
+        json={"messageId": "msg-1", "message": "MT 가려고, 30명", "baseRevision": 0},
+    )
+
+    assert res.status_code == 200, res.text
+    body = res.json()["data"]
+    assert body["baseRevision"] == 1
+    assert body["draft"]["conditions"]["headcount"] == 30
+    assert body["generationReadiness"]["canGenerate"] is True
+
+
+async def test_base_revision이_다르면_409(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    async def fake_chat_planning(request, *, records=None):
+        return _fake_chat_result(event_type="MT")
+
+    monkeypatch.setattr("app.ai.chat_planning", fake_chat_planning)
+
+    res = client.post(
+        f"/api/v1/events/{event_id}/plan/chat",
+        headers=headers,
+        json={"messageId": "msg-1", "message": "MT 가자", "baseRevision": 5},
+    )
+
+    assert res.status_code == 409, res.text
+    assert res.json()["error"]["code"] == "VERSION_CONFLICT"
+
+
+async def test_같은_Idempotency_Key면_AI를_다시_부르지_않는다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    call_count = 0
+
+    async def fake_chat_planning(request, *, records=None):
+        nonlocal call_count
+        call_count += 1
+        return _fake_chat_result(event_type="MT")
+
+    monkeypatch.setattr("app.ai.chat_planning", fake_chat_planning)
+
+    body = {"messageId": "msg-1", "message": "MT 가자", "baseRevision": 0}
+    first = client.post(
+        f"/api/v1/events/{event_id}/plan/chat",
+        headers={**headers, "Idempotency-Key": "idem-1"},
+        json=body,
+    )
+    second = client.post(
+        f"/api/v1/events/{event_id}/plan/chat",
+        headers={**headers, "Idempotency-Key": "idem-1"},
+        json=body,
+    )
+
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    assert first.json() == second.json()
+    assert call_count == 1
+
+
+async def test_생성_성공하면_Step_Action이_규칙대로_만들어진다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    async def fake_generate(request):
+        return _fake_generation_result()
+
+    monkeypatch.setattr("app.ai.generate_planning_preview", fake_generate)
+
+    res = client.post(
+        f"/api/v1/events/{event_id}/plan/generate",
+        headers=headers,
+        json={"baseRevision": 0},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["data"]["generationResult"]["status"] == "generated"
+
+    plan = client.get(f"/api/v1/events/{event_id}/plan", headers=headers)
+    assert plan.status_code == 200, plan.text
+    summary = plan.json()["data"]["summary"]
+    assert summary["totalSteps"] == 2
+    assert summary["aiSteps"] == 1
+    assert summary["approvalSteps"] == 1
+    assert plan.json()["data"]["warnings"] == ["일정이 비어 있습니다"]
+
+
+async def test_다른_동아리_사람은_행사_계획에_접근할_수_없다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    outsider_headers = _login(client, "plan-outsider")
+
+    res = client.get(f"/api/v1/events/{event_id}/plan", headers=outsider_headers)
+
+    assert res.status_code == 403
+    assert res.json()["error"]["code"] == "FORBIDDEN"

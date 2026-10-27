@@ -108,6 +108,36 @@ class ValidationFailed(ApiError):
         super().__init__("입력을 확인해 주세요.", fields=fields)
 
 
+class AIUnavailable(ApiError):
+    """AIRetryableError/AITimeoutError. 호출 쪽이 잠시 뒤 다시 시도할 수 있다."""
+
+    status_code = 503
+    code = "AI_UNAVAILABLE"
+
+    def __init__(self) -> None:
+        super().__init__("AI 응답이 지연되거나 실패했습니다. 잠시 뒤 다시 시도해 주세요.")
+
+
+class AIMisconfigured(ApiError):
+    """AIConfigError. 설정 누락이라 재시도해도 소용없다 — 원문은 서버 로그에만 남긴다."""
+
+    status_code = 500
+    code = "AI_MISCONFIGURED"
+
+    def __init__(self) -> None:
+        super().__init__("AI 기능을 쓸 수 없는 상태입니다.")
+
+
+class PlanningStateConflict(ApiError):
+    """PlanningStateError (scope_mismatch/draft_mismatch/unsupported_version 등)."""
+
+    status_code = 409
+    code = "PLANNING_STATE_CONFLICT"
+
+    def __init__(self) -> None:
+        super().__init__("저장된 계획 상태와 맞지 않습니다. 다시 조회한 뒤 시도해 주세요.")
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
