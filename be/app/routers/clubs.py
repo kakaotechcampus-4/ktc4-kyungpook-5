@@ -1,6 +1,6 @@
 """동아리·멤버십 엔드포인트."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_account, require_club_role, require_member
@@ -11,6 +11,8 @@ from app.models.clubs import Member
 from app.schemas.clubs import (
     ClubCreateIn,
     ClubOut,
+    ClubSearchListResponse,
+    ClubSearchOut,
     InvitationAcceptIn,
     InvitationAcceptOut,
     InvitationCreateIn,
@@ -44,6 +46,16 @@ async def get_me(
             clubs=clubs,
         )
     )
+
+
+@router.get("/clubs", response_model=ClubSearchListResponse)
+async def search_clubs(
+    query: str = Query(..., min_length=1),
+    session: AsyncSession = Depends(get_session),
+) -> ClubSearchListResponse:
+    """이름 일부로 동아리를 찾는다. 회원가입 중(로그인 전)에도 호출된다."""
+    rows = await club_service.search_clubs(session, query=query)
+    return ClubSearchListResponse(data=[ClubSearchOut.model_validate(row) for row in rows])
 
 
 @router.post("/clubs", response_model=Envelope[ClubOut], status_code=201)

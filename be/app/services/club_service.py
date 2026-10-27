@@ -16,6 +16,17 @@ INVITATION_TTL = timedelta(days=7)
 # 임원 직책(회장·홍보부장 등)은 ERD에서 축소하기로 해 role만으로 subtitle을 정한다.
 _OFFICER_SUBTITLE = {MemberRole.OWNER: "대표", MemberRole.MANAGER: "운영진"}
 
+_CLUB_CATEGORY_LABEL = {
+    ClubCategory.ACADEMIC: "학술",
+    ClubCategory.SPORTS: "운동",
+    ClubCategory.VOLUNTEER: "봉사",
+    ClubCategory.HOBBY: "취미",
+    ClubCategory.ETC: "기타",
+}
+
+# 검색 결과가 과하게 많아지는 것만 막는다 — 페이지네이션은 두지 않는다(#189).
+CLUB_SEARCH_LIMIT = 20
+
 
 async def create_club(
     session: AsyncSession,
@@ -178,6 +189,44 @@ async def list_members(session: AsyncSession, *, club_id: str) -> list[dict]:
                 "contact": invitation.email,
                 "account": "INVITED",
                 "account_at": invitation.created_at,
+            }
+        )
+    return rows
+
+
+async def search_clubs(session: AsyncSession, *, query: str) -> list[dict]:
+    """동아리 이름 일부로 찾는다. 로그인 전에도 부를 수 있어 동아리원 확인을 안 한다."""
+    clubs = await session.scalars(
+        select(Club)
+        .where(Club.name.ilike(f"%{query}%"))
+        .order_by(Club.name)
+        .limit(CLUB_SEARCH_LIMIT)
+    )
+    rows: list[dict] = []
+    for club in clubs:
+        owner = await session.scalar(
+            select(Member).where(
+                Member.club_id == club.id,
+                Member.role == MemberRole.OWNER,
+                Member.status == MemberStatus.ACTIVE,
+            )
+        )
+        executive_count = await session.scalar(
+            select(func.count())
+            .select_from(Member)
+            .where(
+                Member.club_id == club.id,
+                Member.role.in_((MemberRole.OWNER, MemberRole.MANAGER)),
+                Member.status == MemberStatus.ACTIVE,
+            )
+        )
+        rows.append(
+            {
+                "id": club.id,
+                "name": club.name,
+                "field": _CLUB_CATEGORY_LABEL.get(club.category, "기타"),
+                "owner_name": owner.name if owner else "",
+                "executive_count": executive_count or 0,
             }
         )
     return rows

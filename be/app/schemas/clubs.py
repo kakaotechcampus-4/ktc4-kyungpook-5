@@ -72,3 +72,19 @@ class MemberOut(CamelModel):
 class MemberListResponse(CamelModel):
     data: list[MemberOut]
     meta: None = None
+
+
+# --- 동아리 검색 (#189) -----------------------------------------------------
+
+
+class ClubSearchOut(CamelModel):
+    id: str
+    name: str
+    field: str
+    owner_name: str
+    executive_count: int
+
+
+class ClubSearchListResponse(CamelModel):
+    data: list[ClubSearchOut]
+    meta: None = None
