@@ -41,12 +41,13 @@ export const DEMO_MESSAGES: ChatMessage[] = [
 ]
 
 export const DEMO_FACTS: PlanFacts = {
-  '행사 이름': { value: '2026 봄 MT', decided: true },
-  종류: { value: 'MT · 1박 2일', decided: true },
-  '예상 인원': { value: '32명', decided: true },
-  참가비: { value: '1인 45,000원', decided: true },
-  일정: { value: '아직 안 정했어요', decided: false },
-  장소: { value: '후보 2곳 (가평 ○○펜션 외)', decided: false },
+  '행사 이름': { status: '확정', value: '2026 봄 MT' },
+  종류: { status: '확정', value: 'MT · 1박 2일' },
+  '예상 인원': { status: '잠정', value: '32명', quote: '네, 32명 정도 예상해요' },
+  참가비: { status: '확정', value: '1인 45,000원' },
+  // 「나중에 정하자」고 한 주제(deferred_topics)와 아직 말이 안 나온 것(미정)은 다르다.
+  일정: { status: '나중에' },
+  장소: { status: '미정' },
 }
 
 // 과거 기록을 봤을 때만 보인다. 무엇을 보고 무엇을 알아냈는지 적는다.
