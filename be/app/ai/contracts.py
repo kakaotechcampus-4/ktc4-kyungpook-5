@@ -38,6 +38,7 @@ from app.core.enums import (
 
 from .llm import EMBEDDING_DIMENSIONS
 from .errors import PlanningStateError
+from .planning_catalog import PLANNING_STEP_NAMES
 
 
 # 공통 계약 기반
@@ -467,6 +468,30 @@ class ExcludedPlanStep(ContractModel):
     reason: NonBlankStr
 
 
+class ExcludedPreviewStep(ExcludedPlanStep):
+    """최종 제외 단계. LLM 출력과 달리 카탈로그 이름을 포함한다."""
+
+    name: NonBlankStr
+
+    @model_validator(mode="before")
+    @classmethod
+    def restore_missing_name(cls, value):
+        # 이전 저장 상태에는 name이 없다. 모델 재호출 없이 파생 정보만 보완한다.
+        # 전달받은 dict를 직접 고치지 않아 BE가 읽어 온 원본 상태도 보존한다.
+        if isinstance(value, dict) and "name" not in value:
+            code = value.get("code")
+            name = PLANNING_STEP_NAMES.get(code) if isinstance(code, str) else None
+            if name is not None:
+                return {**value, "name": name}
+        return value
+
+    @model_validator(mode="after")
+    def validate_catalog_name(self) -> Self:
+        if self.name != PLANNING_STEP_NAMES.get(self.code):
+            raise ValueError("제외 단계 이름이 계획 카탈로그와 다릅니다")
+        return self
+
+
 class PreviewStep(PlanStepFields):
     name: NonBlankStr
     phase: StepPhase
@@ -484,7 +509,7 @@ class EventPlanPreview(ContractModel):
     basis_draft: PlanningDraft
     trigger: ChatGenerationTrigger | ButtonGenerationTrigger
     steps: tuple[PreviewStep, ...] = Field(min_length=1)
-    excluded_steps: tuple[ExcludedPlanStep, ...]
+    excluded_steps: tuple[ExcludedPreviewStep, ...]
     assumptions: tuple[PlanAssumption, ...] = ()
     open_questions: tuple[NonBlankStr, ...] = ()
     warnings: tuple[NonBlankStr, ...] = ()

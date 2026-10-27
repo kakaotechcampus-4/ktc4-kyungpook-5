@@ -94,6 +94,23 @@ BE의 `expected_headcount`와 AI의 `headcount`는 어댑터에서 변환한다.
 
 생성 성공에만 이번 preview가 있다. 이전 성공 초안은 next_state에 보존되며, 이번 실패를 이전 초안의 성공으로 표시하면 안 된다. 재접속 때 마지막 초안을 화면으로 복원하는 투영 방법도 공개 어댑터에서 제공할 필요가 있다. 초안의 상세 필드는 [P2 계약 이슈 #177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177)을 따로 맞춘다.
 
+### 제외 단계의 고정 이름 (#198)
+
+[#190의 AI 요청과 후속 답변](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/pull/190#issuecomment-6452350544)에 따라 최종 `EventPlanPreview.excluded_steps`는 `code`, `name`, `reason`을 제공한다. 이름은 AI 공통 `planning_catalog.py`의 13개 고정 이름에서 코드가 붙인다. BE는 제품 응답에 이름과 이유를 매핑하고 FE는 이를 표시한다. 실제 제품 연결은 #187에서 확인한다.
+
+```text
+모델 출력: {code: BOOK_VENUE, reason: 별도 시설 예약을 포함하지 않았어요.}
+  → 포함/제외 검증
+  → 고정 이름 보완
+최종 응답: {code: BOOK_VENUE, name: 예약, reason: 별도 시설 예약을 포함하지 않았어요.}
+```
+
+LLM 출력에는 기존 `ExcludedPlanStep(code, reason)`을 유지한다. 최종 응답은 `ExcludedPreviewStep`으로 구분하므로 모델이 name을 새로 작성하지 않는다. 포함 단계도 같은 이름 목록을 참조한다. 이름 보완에 추가 모델 호출은 없다.
+
+기존 형식 버전 1의 저장 JSON에는 name이 없을 수 있다. 공개 타입을 읽을 때 누락된 이름만 코드로 보완하며, 새로 직렬화한 JSON에는 이름이 포함된다. 명시된 이름이 카탈로그와 다르거나 null/빈 문자열이면 오류로 구분한다. 코드, 제외 이유, 초안 ID, 현재 조건과 대화/Tool 이력은 유지한다. BE가 상태 payload를 직접 수정하거나 복원을 위해 모델을 다시 호출할 필요는 없다.
+
+이름 목록은 공개 계약과 생성 코드가 함께 읽는 공통 데이터다. 공개 계약에서 내부 features 모듈이나 Graph를 import하지 않는다. P2 단계 제외/복원 API, 편집값 보관, 수정 후 AI 검토와 경고 source 변경은 이번 범위 밖이다.
+
 ## 5. 이어가기 상태는 BE가 보관하고 AI가 해석한다
 
 쉽게 말하면 `view`는 **화면에 보여줄 결과**, `next_state`는 **Agent가 다음 대화를 이어갈 작업 기록**이다.
