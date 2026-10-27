@@ -448,7 +448,7 @@ generate() — '다음: 흐름 만들기' 클릭
 
 이 경로에서 버튼 요청은 current_message가 없다. 로컬 API는 `validate_planning_history()`로 채팅과 같은 이력 검사를 하고, `plan_messages()`와 `latest_reference_facts()`로 실제 문맥·최근 근거만 준비한다. 클릭을 사용자 말풍선으로 만들지 않는다.
 
-[AgentPlanPreview.tsx](../../tests/ui/planning/src/features/planning/components/AgentPlanPreview.tsx)가 검증된 preview를 테스트 앱 안의 StepFlow에 전달한다. [generation-playground.ts](../../tests/ui/planning/src/features/planning/generation-playground.ts)의 `toPreviewSteps()`는 서버 이름·묶음·담당·목적·예정 행동을 표시 타입으로 바꾼다. 미정 날짜는 '미정'이다. 수정 콜백을 전달하지 않아 수정 버튼도 보이지 않는다. 제외 단계의 FE/BE 코드 차이는 명시적인 변환표로 이름을 찾는다.
+[AgentPlanPreview.tsx](../../tests/ui/planning/src/features/planning/components/AgentPlanPreview.tsx)가 검증된 preview를 테스트 앱 안의 StepFlow에 전달한다. [generation-playground.ts](../../tests/ui/planning/src/features/planning/generation-playground.ts)의 `toPreviewSteps()`는 서버 이름·묶음·담당·목적·예정 행동을 표시 타입으로 바꾼다. 미정 날짜는 '미정'이다. 수정 콜백을 전달하지 않아 수정 버튼도 보이지 않는다. 제외 단계도 서버 응답의 name과 reason을 그대로 표시한다. 이름 조회를 위한 FE/BE 코드 변환표는 제거했다(#198).
 
 버튼 활성화는 행사 유형이 있고 미해결 변경이 없는지 확인한다. 권유 상태가 deferred여도 사용자가 직접 누르면 요청할 수 있다. 전송 중에는 입력·초기화·다음 버튼을 잠그고, 버튼 요청에는 별도 생성 중 화면을 표시한다. 단계별 진행률을 알 수 없는 상태에서 가짜 퍼센트는 표시하지 않는다.
 

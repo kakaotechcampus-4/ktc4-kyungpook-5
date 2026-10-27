@@ -1,5 +1,34 @@
 # 행사계획 대화 Agent 검증 기록
 
+## 제외 단계 이름과 저장 호환 (#198, 2026-10-28)
+
+기준은 develop `16a2df9`, 이름 보완 코드 `f257f3b`와 같은 작업의 테스트 UI 변경이다. 공통 이름 목록, 최종 응답과 저장 상태 복원, 실제 생성 Graph와 독립 UI를 확인했다. 모델 응답을 고정했고 외부 모델 호출은 0회다. 행사별 단계 선택의 적절성이나 실제 모델의 성공률을 측정한 결과가 아니다.
+
+| 확인 | 결과 |
+| --- | --- |
+| 변경 전 관련 테스트 | 61개 통과 |
+| 이름 보완과 저장 호환 회귀 추가 후 관련 테스트 | 77개 통과, 신규 16개 |
+| AI 전체 테스트 | 751개 통과 |
+| 변경 전후 모델용 PlanComposition JSON Schema 비교 | 동일 |
+| 변경 전후 모델에 전달하는 13개 카탈로그와 생성 프롬프트 비교 | 동일 |
+| 기존 실제 모델 검증 기록을 새 타입으로 읽기 | 화면 응답 6건과 초안 2건 복원, 이름 없던 제외 항목 1개 보완 |
+| 독립 테스트 UI | build, lint, 변경 파일 Prettier 확인 통과 |
+| 브라우저 검증 | 버튼 생성 성공, 제외 항목 2개의 이름과 이유 일치, 브라우저 오류 0건 |
+
+고정 응답 테스트는 채팅 Tool 생성과 버튼 생성, 동일 성공 요청 재사용, 이름 없는 저장 상태의 복원, 실패한 재생성 뒤 이전 초안 보존을 확인한다. 누락된 name만 보완하고 명시된 잘못된 이름이나 알 수 없는 코드는 거절한다. 기존 포함/제외 완전성, 날짜, 행동 조합 검사는 유지한다.
+
+기존 실제 모델 기록은 [2026-10-25 원본](evaluation-results/planning-public-2026-10-25.json)을 오프라인으로 읽었으며 새 모델 실행이 아니다. 저장 상태 보존은 별도의 고정 응답 테스트로 확인했다. 실제 제품 DB, HTTP 응답 매핑과 FE 연결은 #187에서 검증해야 한다. 경고의 생성 주체를 나타내는 source 필드는 이번 범위에 포함하지 않았다.
+
+브라우저에서는 `MT, 50명, 참가비 25,000원, 날짜 미정` 대화 뒤 「다음: 흐름 만들기」를 눌렀다. 고정 모델 출력은 수요 조사와 예약을 제외한 초안이며, 실제 `validate_plan()`이 이름을 붙였다. UI는 자체 코드 변환 없이 응답의 name과 reason을 표시했다. 아래 화면과 [검증 원본](ui-tests/excluded-step-names-198.json)은 이 표시 경로의 증거다.
+
+![고정 이름이 붙은 제외 단계 카드](ui-tests/excluded-step-names-198.png)
+
+핵심 회귀 재실행 (`be/`, 모델/네트워크 호출 없음):
+
+```sh
+.venv/bin/python -m pytest app/ai/tests/test_planning_excluded_names.py app/ai/tests/test_plan_generation_graph.py app/ai/tests/test_planning_public_workflow.py app/ai/tests/test_planning_public_state.py app/ai/tests/test_planning_contract_boundary.py -q
+```
+
 ## 공개 함수 실제 모델 연결 검증 (#184, 2026-10-25)
 
 `app.ai.chat_planning` 5회와 `app.ai.generate_planning_preview` 1회를 실제 모델 `gpt-5.6-luna`로 호출했다. 내부 Graph를 직접 호출하거나 모델 응답을 대체하지 않았다. 각 채팅 결과를 JSON 문자열로 저장한 뒤 다음 입력에서 복원했다. [결과 원본](evaluation-results/planning-public-2026-10-25.json), [재현 스크립트](../../scripts/check_planning_public.py).
