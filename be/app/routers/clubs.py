@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_account, require_club_role
+from app.core.deps import get_current_account, require_club_role, require_member
 from app.core.enums import MemberRole
 from app.db.session import get_session
 from app.models.auth import Account
@@ -16,6 +16,8 @@ from app.schemas.clubs import (
     InvitationCreateIn,
     InvitationCreateOut,
     MeOut,
+    MemberListResponse,
+    MemberOut,
     MyClubOut,
 )
 from app.schemas.common import Envelope
@@ -104,3 +106,13 @@ async def accept_invitation(
     return Envelope(
         data=InvitationAcceptOut(club_id=member.club_id, role=member.role)
     )
+
+
+@router.get("/clubs/{club_id}/members", response_model=MemberListResponse)
+async def list_members(
+    club_id: str,
+    _member: Member = Depends(require_member),
+    session: AsyncSession = Depends(get_session),
+) -> MemberListResponse:
+    rows = await club_service.list_members(session, club_id=club_id)
+    return MemberListResponse(data=[MemberOut.model_validate(row) for row in rows])
