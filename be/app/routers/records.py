@@ -1,20 +1,39 @@
-"""동아리 기록 엔드포인트. 이번에는 업로드와 단건 조회만 연다(meeting.curl.sh M01).
+"""동아리 기록 엔드포인트. 업로드·목록·단건 조회를 연다(meeting.curl.sh M01, #42).
 
-목록·수정·삭제·열 맞추기·챗봇은 #42 범위다.
+수정·삭제·열 맞추기·챗봇은 이번 범위가 아니다.
 """
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import ensure_member, get_current_account
 from app.core.enums import RecordCategory
 from app.db.session import get_session
 from app.models.auth import Account
-from app.schemas.common import Envelope
-from app.schemas.records import RecordDetailOut, RecordOut
+from app.schemas.common import Envelope, PageMeta
+from app.schemas.records import RecordDetailOut, RecordListResponse, RecordOut
 from app.services import record_service
 
 router = APIRouter(prefix="/api/v1/records", tags=["records"])
+
+
+@router.get("", response_model=RecordListResponse)
+async def list_records(
+    club_id: str = Query(..., alias="clubId"),
+    category: RecordCategory | None = Query(None),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> RecordListResponse:
+    await ensure_member(session, club_id=club_id, account=account)
+    rows, total = await record_service.list_records(
+        session, club_id=club_id, category=category, page=page, size=size
+    )
+    return RecordListResponse(
+        data=[RecordOut.model_validate(row) for row in rows],
+        meta=PageMeta(page=page, size=size, total_count=total),
+    )
 
 
 @router.post("", response_model=Envelope[RecordOut], status_code=201)
