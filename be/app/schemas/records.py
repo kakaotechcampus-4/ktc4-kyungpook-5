@@ -3,7 +3,7 @@
 from typing import Any
 
 from app.core.enums import RecordCategory, RecordFileType, RecordParseStatus
-from app.schemas.common import CamelModel, UtcDateTime
+from app.schemas.common import CamelModel, PageMeta, UtcDateTime
 
 
 class RecordOut(CamelModel):
@@ -20,3 +20,8 @@ class RecordDetailOut(RecordOut):
     parse_result: dict[str, Any] | None
     # {reason, params, debugMessage}. 화면 문구는 FE가 reason으로 고른다.
     parse_error: dict[str, Any] | None
+
+
+class RecordListResponse(CamelModel):
+    data: list[RecordOut]
+    meta: PageMeta

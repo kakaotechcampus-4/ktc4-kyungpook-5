@@ -7,6 +7,7 @@
 
 from pathlib import Path
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import RecordCategory, RecordFileType, RecordParseStatus
@@ -78,3 +79,28 @@ async def get_record(session: AsyncSession, *, record_id: str) -> Record:
     if record is None:
         raise RecordNotFound()
     return record
+
+
+async def list_records(
+    session: AsyncSession,
+    *,
+    club_id: str,
+    category: RecordCategory | None,
+    page: int,
+    size: int,
+) -> tuple[list[Record], int]:
+    conditions = [Record.club_id == club_id]
+    if category is not None:
+        conditions.append(Record.category == category)
+
+    total = await session.scalar(
+        select(func.count()).select_from(Record).where(*conditions)
+    )
+    rows = await session.scalars(
+        select(Record)
+        .where(*conditions)
+        .order_by(Record.created_at.desc())
+        .offset((page - 1) * size)
+        .limit(size)
+    )
+    return list(rows), total or 0
