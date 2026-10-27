@@ -3,7 +3,7 @@ from functools import partial
 
 from ...contracts import (
     PlanningChatRequest, PlanningPreviewRequest, PlanningPublicResult,
-    PlanningView, PlanningGenerationReadiness, PlanningResumeState, PlanningStatePayload,
+    PlanningView, PlanningGenerationReadiness, PlanningResumeState, PlanningStatePayload, PlanningHistoryUsage,
 )
 from ...ports import RecordSearchPort
 from .agent.graph import run_planning_agent_turn
@@ -25,6 +25,9 @@ def build_result(request, state, *, reply=None, record_lookup=None, generation_r
         request_id=request.request_id, base_revision=request.base_revision,
         view=PlanningView(
             reply=reply, draft=draft,
+            # 입력 이력이나 말풍선 수가 아닌, 이번 처리 후 보관할 상태를 기준으로 센다.
+            # 채팅과 버튼이 이 함수로 모이므로 버튼 클릭을 발화로 세지 않는다.
+            history_usage=PlanningHistoryUsage.from_count(len(state.payload.history)),
             # 숫자는 답변에서 읽지 않는다. 처리 전후의 실제 값 차이만 알린다.
             changed_fields=tuple(field for field in type(draft.conditions).model_fields
                 if getattr(request.draft.conditions, field) != getattr(draft.conditions, field)),

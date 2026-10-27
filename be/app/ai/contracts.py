@@ -531,6 +531,8 @@ class PlanningGenerationState(ContractModel):
 # P1 대화를 이어가기 위한 저장 상태
 
 MAX_PLANNING_HISTORY = 60
+# 모델 품질 기준이 아닌 초기 안내 정책이다. 남은 사용자 턴 수로 환산하지 않는다.
+PLANNING_HISTORY_WARNING_THRESHOLD = MAX_PLANNING_HISTORY * 4 // 5
 
 
 class PlanningStoredToolCall(ContractModel):
@@ -673,6 +675,25 @@ class PlanningGenerationReadiness(ContractModel):
         return self
 
 
+class PlanningHistoryUsage(ContractModel):
+    """화면에 전달할 이력 정보. 사용자/AI/Tool 메시지를 같은 기준으로 센다."""
+
+    message_count: Annotated[int, Field(strict=True, ge=0, le=MAX_PLANNING_HISTORY)]
+    max_messages: Literal[60] = MAX_PLANNING_HISTORY
+    near_limit: bool
+
+    @classmethod
+    def from_count(cls, message_count: int) -> Self:
+        return cls(message_count=message_count,
+                   near_limit=message_count >= PLANNING_HISTORY_WARNING_THRESHOLD)
+
+    @model_validator(mode="after")
+    def validate_usage(self) -> Self:
+        if self.near_limit != (self.message_count >= PLANNING_HISTORY_WARNING_THRESHOLD):
+            raise ValueError("이력 사용량과 한도 임박 여부가 다릅니다")
+        return self
+
+
 class PlanningView(ContractModel):
     reply: NonBlankStr | None = None
     draft: PlanningDraft
@@ -681,6 +702,8 @@ class PlanningView(ContractModel):
     generation_readiness: PlanningGenerationReadiness
     generation_result: PlanGenerationResult | None = None
     preview_is_current: bool = False
+    # 이전에 저장한 화면 응답은 정보 없음으로 읽는다. 0개라고 추정하지 않는다.
+    history_usage: PlanningHistoryUsage | None = None
 
 # 화면용 결과와 보관용 상태
 class PlanningPublicResult(ContractModel):
@@ -693,4 +716,7 @@ class PlanningPublicResult(ContractModel):
     def validate_snapshot(self) -> Self:
         if self.view.draft != self.next_state.payload.basis_draft:
             raise ValueError('화면 조건과 보관 상태의 조건이 다릅니다')
+        if self.view.history_usage is not None:
+            if self.view.history_usage.message_count != len(self.next_state.payload.history):
+                raise ValueError('화면 이력 사용량과 보관 상태의 이력이 다릅니다')
         return self
