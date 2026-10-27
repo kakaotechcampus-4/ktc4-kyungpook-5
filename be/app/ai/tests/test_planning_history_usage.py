@@ -143,4 +143,3 @@ def test_old_saved_view_has_unknown_usage_without_changing_state(monkeypatch):
     assert restored.view.history_usage is None
     assert restored.next_state==result.next_state
     assert MAX_PLANNING_HISTORY==60
-

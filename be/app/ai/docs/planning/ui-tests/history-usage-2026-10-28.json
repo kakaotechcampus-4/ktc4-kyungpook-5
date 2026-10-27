@@ -1,0 +1,209 @@
+{
+  "date": "2026-10-28",
+  "mode": "fixed model responses, real Graph and local API, built independent UI",
+  "external_model_calls": 0,
+  "checks": {
+    "warning_absent_at_46": true,
+    "warning_visible_at_48": true,
+    "button_keeps_48": true,
+    "failure_keeps_warning": true,
+    "new_dialog_clears_warning": true,
+    "no_browser_errors": true
+  },
+  "chat_attempts": [
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 4,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 6,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 8,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 10,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 12,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 14,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 16,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 18,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 20,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 22,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 24,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 26,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 28,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 30,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 32,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 34,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 36,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 38,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 40,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 42,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 44,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 46,
+        "max_messages": 60,
+        "near_limit": false
+      }
+    },
+    {
+      "status": 200,
+      "usage": {
+        "message_count": 48,
+        "max_messages": 60,
+        "near_limit": true
+      }
+    }
+  ],
+  "button": {
+    "status": "generated",
+    "usage": {
+      "message_count": 48,
+      "max_messages": 60,
+      "near_limit": true
+    }
+  },
+  "failure_status": 503,
+  "screenshot": "history-usage-2026-10-28.png"
+}
