@@ -53,12 +53,13 @@ export const DEMO_FACTS: PlanFacts = {
 export const DEMO_REFERENCE =
   '2025 봄 MT 결과보고 · 28명 · 1인 45,000원 · 가평 ○○펜션. 예비비 130,000원을 잡았는데 172,000원을 썼어요.'
 
-// 계획을 만드는 동안 보이는 단계. 2단계로 넘어갈 때 쓴다.
-export const PLAN_STEPS = [
-  { label: '과거 기록 확인', desc: '올린 자료가 있으면 먼저 봅니다' },
-  { label: '단계 고르기' },
-  { label: '일정 계산' },
-  { label: '수금·공지 정리' },
+// 계획을 만드는 동안 보이는 조건. 무엇을 근거로 만드는 중인지만 보이고
+// 진행 단계는 보이지 않는다 — AI 호출이 한 번이라 중간을 알 수 없다(#179).
+export const DEMO_GENERATING_LINE = '2026 봄 MT · 1박 2일 · 1인 45,000원'
+export const DEMO_GENERATING_MARKS = [
+  { label: '32명 잠정', tentative: true },
+  { label: '일정 나중에' },
+  { label: '장소 미정' },
 ]
 
 // ── 2단계 ──
