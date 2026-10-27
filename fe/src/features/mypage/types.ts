@@ -50,13 +50,7 @@ export type RecordCategory = 'RULES' | 'EVENT_HISTORY' | 'LEDGER' | 'RECEIPT' | 
 // 올린 파일을 읽어 들이는 상태. 읽지 못한 건 손이 가야 한다.
 // QUEUED → PARSING → NEEDS_REVIEW | COMPLETED → INDEXED, 또는 FAILED.
 // INDEXED라야 AI가 찾을 수 있다. COMPLETED는 읽기만 끝난 상태다.
-export type ParseStatus =
-  | 'QUEUED'
-  | 'PARSING'
-  | 'NEEDS_REVIEW'
-  | 'COMPLETED'
-  | 'INDEXED'
-  | 'FAILED'
+export type ParseStatus = 'QUEUED' | 'PARSING' | 'NEEDS_REVIEW' | 'COMPLETED' | 'INDEXED' | 'FAILED'
 
 export interface ClubRecord {
   id: string

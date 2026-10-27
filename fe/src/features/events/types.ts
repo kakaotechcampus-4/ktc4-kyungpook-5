@@ -17,7 +17,6 @@ export interface EventSummary {
   currentStepName: string | null
   stepProgress: Array<{ stepOrder: number; state: StepState }>
   pendingApprovalCount: number
-  // TODO: 아래 둘은 GET /events 응답에 아직 없다(DB에는 있음). BE에 요청하거나 카드에서 뺀다.
   location: string | null
   headcount: number | null
 }

@@ -56,14 +56,21 @@ export interface PlanStep {
 }
 
 // 오른쪽 요약. 일곱 줄로 고정이라 계획이 바뀌어도 자리가 흔들리지 않는다.
+// 계산은 서버가 한다(AI는 "세면 나오는 값"이라 담지 않는다 — contracts.py PlanDraft).
+// 서버가 조립한 문장이 아니라 값으로 받아 문구는 화면에서 만든다.
 export interface PlanSummary {
   totalSteps: number
   aiSteps: number
   approvalSteps: number
   manualSteps: number
-  collect: string
-  notice: string
-  period: string
+  // 수금 Action의 횟수와 1인당 금액. 수금 단계가 없으면 null.
+  // 모두 같은 금액을 낸다는 전제다 — 감면·면제·차등은 이 한 줄로 표현되지 않는다(#177).
+  collection: { times: number; feePerPerson: number } | null
+  // 공지 Action의 횟수. 개별 연락은 세지 않는다.
+  noticeCount: number
+  // 준비 기간(첫 단계 시작일 → 마지막 단계 마감일). 행사 당일 기간이 아니다(#177).
+  periodStart: string | null
+  periodEnd: string | null
 }
 
 // 시작하기 전에 짚어줄 것. 일정이 비었거나 단계가 겹칠 때만 생긴다.

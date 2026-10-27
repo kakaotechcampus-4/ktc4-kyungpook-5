@@ -142,9 +142,11 @@ export const DEMO_SUMMARY: PlanSummary = {
   aiSteps: 3,
   approvalSteps: 3,
   manualSteps: 1,
-  collect: '1회 · 1인 45,000원',
-  notice: '2회',
-  period: '3/2 → 3/25',
+  collection: { times: 1, feePerPerson: 45000 },
+  noticeCount: 2,
+  // 준비 기간이다. 행사 당일은 3/21이고 마지막 단계(피드백 기록)가 3/25에 끝난다.
+  periodStart: '2026-03-02',
+  periodEnd: '2026-03-25',
 }
 
 export const DEMO_WARNING: PlanWarning = {
@@ -162,7 +164,8 @@ export const EMPTY_SUMMARY: PlanSummary = {
   aiSteps: 0,
   approvalSteps: 0,
   manualSteps: 0,
-  collect: '없음',
-  notice: '없음',
-  period: '미정',
+  collection: null,
+  noticeCount: 0,
+  periodStart: null,
+  periodEnd: null,
 }

@@ -1,7 +1,9 @@
 // M1 메인 전용 타입
 
 // 토리의 판단과 확인한 근거.
-// TODO: API 명세에 아직 없다. 엔드포인트가 정해지면 모양을 맞춘다.
+// TODO(연동): GET /clubs/{clubId}/context-decisions의 ContextDecisionOut에 대응한다.
+// question → title, reasonSummary → reason, citations[] → evidence[].
+// citations가 아직 느슨한 객체 배열이라 모양 고정은 BE에 요청해 둔 상태다.
 export interface ToriJudgement {
   title: string
   reason: string
