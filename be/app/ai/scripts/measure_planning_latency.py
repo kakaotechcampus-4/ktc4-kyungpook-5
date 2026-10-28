@@ -15,15 +15,12 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from pydantic import ValidationError
-
 from app.ai import chat_planning, generate_planning_preview, PlanningPublicResult
 from app.ai.config import AISettings
-from app.ai.errors import (
-    AIConfigError, AIInvalidResponseError, AIOutputLimitError, AIRetryableError,
-    AITimeoutError, PlanningStateError,
-)
 from app.ai.scripts.planning_latency_checks import inspect_result
+from app.ai.scripts.planning_latency_observation import (
+    OBSERVATION_SCOPE, capture_request, error_category, install_observers,
+)
 from app.ai.scripts.planning_latency_inputs import (
     AI_DIR, DEFAULT_FIXTURE, LatencyFixture, json_text, make_request, request_hashes, schedule,
 )
@@ -59,7 +56,7 @@ def execution_metadata(mode, settings):
     sources += sorted((AI_DIR / 'features/planning').rglob('*.py'))
     sources += sorted((AI_DIR / 'features/planning').rglob('*.md'))
     sources += [Path(__file__), AI_DIR / 'scripts/planning_latency_inputs.py',
-                AI_DIR / 'scripts/planning_latency_checks.py']
+                AI_DIR / 'scripts/planning_latency_checks.py', AI_DIR / 'scripts/planning_latency_observation.py']
     versions = {name: importlib.metadata.version(name) for name in ('langgraph', 'langchain-openai', 'pydantic', 'openai')}
     return dict(
         mode=mode, python=platform.python_version(), platform=platform.platform(), dependencies=versions,
@@ -71,20 +68,11 @@ def execution_metadata(mode, settings):
         model_options=dict(temperature='not_set', reasoning='not_set', sdk_max_retries=DEFAULT_MAX_RETRIES,
                            request_timeout_seconds=settings.request_timeout_seconds if settings else None,
                            generation_max_tokens=PLAN_MAX_OUTPUT_TOKENS, generation_streaming=True) if settings else None,
-        coverage=dict(timing='public_function_only', stage_timings=None, model_call_attempts=None,
+        coverage=dict(timing='public_function_with_nested_spans', stage_timings=OBSERVATION_SCOPE,
+                      model_call_attempts='wrapped_invoker_attempts',
                       http_attempts=None, token_usage=None, model_input_chars=None,
-                      unavailable_reason='세부 구간과 모델/HTTP 관측은 후속 작업'),
+                      unavailable_reason='SDK 내부 HTTP 시도와 토큰은 미관측. 구간의 메시지 문자 수는 text만 포함'),
     )
-
-
-def error_category(error) -> str:
-    for kind, name in ((AIOutputLimitError, 'output_limit'), (AITimeoutError, 'timeout'),
-                       (AIInvalidResponseError, 'invalid_output'), (PlanningStateError, 'invalid_state'),
-                       (AIConfigError, 'configuration'), (AIRetryableError, 'retryable'),
-                       (ValidationError, 'invalid_result')):
-        if isinstance(error, kind):
-            return name
-    return 'unexpected_error'
 
 
 def write_manifest(directory, report):
@@ -101,18 +89,28 @@ def append_event(stream, event):
 
 async def measure_attempt(case, request, call, *, clock=time.perf_counter_ns):
     original_json = request.model_dump_json()
-    # 요청 준비와 결과 검사를 타이머 밖에 둔다. 예외와 취소도 먼저 시간을 확정한다.
-    started = clock()
-    try:
-        result = await call(request)
-    except (asyncio.CancelledError, KeyboardInterrupt):
-        elapsed = (clock() - started) / 1_000_000
-        return dict(outcome='interrupted', ai_request_ms=elapsed, returned_normally=False), True
-    except Exception as error:
-        elapsed = (clock() - started) / 1_000_000
-        return dict(outcome='failed', ai_request_ms=elapsed, returned_normally=False,
-                    failure=dict(category=error_category(error), error_type=type(error).__name__)), False
-    elapsed = (clock() - started) / 1_000_000
+    caught, interrupted = None, False
+    with capture_request(clock) as trace:
+        started = clock()
+        trace.origin_ns = started
+        try:
+            result = await call(request)
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            interrupted = True
+        except Exception as error:
+            caught = error
+        finally:
+            elapsed = (clock() - started) / 1_000_000
+    # 이 시점 이후의 계약 검사/파일 기록은 구간과 전체 시간 양쪽에서 제외한다.
+    timing = dict(ai_request_ms=elapsed, observation=trace.snapshot(elapsed))
+    if interrupted:
+        return dict(outcome='interrupted', returned_normally=False, **timing), True
+    if caught is not None:
+        origin = trace.origin_for(caught)
+        failure = dict(category=error_category(caught), error_type=type(caught).__name__)
+        if origin:
+            failure.update(stage=origin['stage'], span_id=origin['id'])
+        return dict(outcome='failed', returned_normally=False, failure=failure, **timing), False
     try:
         # 모델을 우회한 테스트 호출자도 공개 결과 계약을 통과해야 한다.
         parsed = PlanningPublicResult.model_validate_json(
@@ -124,11 +122,16 @@ async def measure_attempt(case, request, call, *, clock=time.perf_counter_ns):
         generation = parsed.view.generation_result
         category = (f'generation_{generation.status}' if generation and generation.status != 'generated'
                     else 'expectation_failed')
-        return dict(outcome='success' if passed else 'failed', ai_request_ms=elapsed, returned_normally=True,
-                    failure=None if passed else dict(category=category, error_type=None),
+        failure = None if passed else dict(category=category, error_type=None)
+        origin = trace.generation_failure() if generation and generation.status == 'failed' else None
+        if failure is not None and origin:
+            failure.update(category=origin['failure_code'], error_type=origin['error_type'],
+                           stage=origin['stage'], span_id=origin['id'])
+        return dict(outcome='success' if passed else 'failed', returned_normally=True, **timing,
+                    failure=failure,
                     **inspected, result=parsed.model_dump(mode='json')), False
     except Exception as error:
-        return dict(outcome='failed', ai_request_ms=elapsed, returned_normally=True,
+        return dict(outcome='failed', returned_normally=True, **timing,
                     failure=dict(category=error_category(error), error_type=type(error).__name__)), False
 
 
@@ -145,7 +148,7 @@ async def run_session(output_dir: Path, *, session_id: str, fixture_path=DEFAULT
     chat = chat if injected else chat_planning
     generate = generate if injected else generate_planning_preview
     report = dict(
-        report_version=1, session_id=session_id, status='running', started_at=now(),
+        report_version=2, session_id=session_id, status='running', started_at=now(),
         fixture_sha256=hashlib.sha256(raw).hexdigest(), fixture_version=fixture.fixture_version,
         profile=dict(rounds=rounds, warmup=warmup, interval_seconds=interval, concurrency=1,
                      reference_date=fixture.reference_date, timezone=fixture.timezone),
@@ -158,7 +161,7 @@ async def run_session(output_dir: Path, *, session_id: str, fixture_path=DEFAULT
     (output_dir / 'fixture.json').write_bytes(raw)
     write_manifest(output_dir, report)
     try:
-        with (output_dir / 'attempts.jsonl').open('x') as stream:
+        with install_observers(), (output_dir / 'attempts.jsonl').open('x') as stream:
             for index, ((phase, number, case), entry) in enumerate(zip(plan, attempts, strict=True)):
                 request = make_request(fixture, case, entry['attempt_id'])
                 call = generate if case.id == 'G2' else chat

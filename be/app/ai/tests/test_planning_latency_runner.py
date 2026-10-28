@@ -71,7 +71,8 @@ def test_every_round_restores_snapshot_and_runs_real_public_workflows(tmp_path, 
         assert len({item['normalized_input_sha256'] for item in started if item['case_id'] == case_id}) == 1
     assert len(fixed_models.calls) == 6  # 매 준비 실행/반복에서 G1/G2가 각각 새로 생성한다.
     assert report['environment']['mode'] == 'injected_callers'
-    assert report['environment']['coverage']['stage_timings'] is None
+    assert report['environment']['coverage']['stage_timings'] == runner.OBSERVATION_SCOPE
+    assert report['report_version'] == 2
     assert report['environment']['model_options'] is None
     assert (destination / 'fixture.json').read_bytes() == runner.DEFAULT_FIXTURE.read_bytes()
 
@@ -103,7 +104,8 @@ def test_normal_return_with_failed_generation_is_not_counted_as_success(tmp_path
     failed = [item for item in events(destination) if item.get('outcome') == 'failed']
     assert report['counts']['measurement']['success'] == 2
     assert len(failed) == 2
-    assert all(item['returned_normally'] and item['failure']['category'] == 'generation_failed' for item in failed)
+    assert all(item['returned_normally'] and item['failure']['category'] == 'timeout'
+               and item['failure']['stage'] == 'generation_model' for item in failed)
     assert all(item['checks']['failed_preview_preserved'] for item in failed)
     assert 'private-provider' not in (destination / 'attempts.jsonl').read_text()
 

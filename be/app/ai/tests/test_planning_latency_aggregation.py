@@ -235,15 +235,20 @@ def test_real_recorder_with_fixed_models_flows_into_aggregator(tmp_path, fixed_m
     directories = []
 
     async def chat(request):
+        tick[0] += 1_000_000
         if '-0002-C1' in request.request_id:
             raise AITimeoutError('private-provider-body')
         return await chat_planning(request)
 
+    async def button(request):
+        tick[0] += 1_000_000
+        return await generate_planning_preview(request)
+
     for index in (1, 2):
         directory = tmp_path / f'session-{index}'
-        tick = iter(range(0, 100_000_000, 1_000_000))
+        tick = [0]
         asyncio.run(runner.run_session(directory, session_id=f'fixed-{index}', rounds=2, interval=0,
-                    chat=chat, generate=generate_planning_preview, clock=lambda: next(tick)))
+                    chat=chat, generate=button, clock=lambda: tick[0]))
         directories.append(directory)
     before = [{name: (directory / name).read_bytes() for name in ('session.json', 'fixture.json', 'attempts.jsonl')}
               for directory in directories]

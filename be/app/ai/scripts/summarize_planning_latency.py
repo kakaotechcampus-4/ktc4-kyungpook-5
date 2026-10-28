@@ -9,6 +9,7 @@ from pathlib import Path
 
 from app.ai.scripts.planning_latency_inputs import CASE_IDS, LatencyFixture, digest, make_request, request_hashes, schedule
 from app.ai.scripts.planning_latency_summary import summarize_group
+from app.ai.scripts.planning_latency_observation import OBSERVATION_SCOPE, validate_observation
 
 IDENTITY = ('attempt_id', 'phase', 'round', 'case_id', 'request_sha256', 'normalized_input_sha256')
 ENVIRONMENT = ('mode', 'model', 'model_options', 'python', 'platform', 'dependencies', 'source_sha256')
@@ -54,7 +55,7 @@ def read_events(raw):
     return events, truncated_tail
 
 
-def validate_finished(item):
+def validate_finished(item, report_version=1):
     require(item.get('outcome') in ('success', 'failed', 'interrupted'), '종료 결과가 유효하지 않습니다')
     value = item.get('ai_request_ms')
     require(type(value) in (int, float) and math.isfinite(value) and value >= 0, '요청 시간이 유효하지 않습니다')
@@ -72,13 +73,25 @@ def validate_finished(item):
                 '실패 유형이 필요합니다')
     else:
         require(not item['returned_normally'], '중단 요청은 정상 반환이 아닙니다')
+    if report_version == 2:
+        try:
+            validate_observation(item.get('observation'), item['ai_request_ms'], allow_pending=item['outcome'] != 'success')
+        except (ValueError, KeyError, TypeError) as error:
+            raise RecordError('구간 관측 기록이 유효하지 않습니다') from error
+        failure = item.get('failure') or {}
+        if 'span_id' in failure:
+            origin = next((span for span in item['observation']['spans'] if span['id'] == failure['span_id']), None)
+            require(origin is not None and origin['stage'] == failure.get('stage')
+                    and origin['failure_code'] == failure['category'], '실패 원인과 구간 기록이 다릅니다')
+    else:
+        require('observation' not in item, '구간 관측은 세션 형식 2가 필요합니다')
 
 
 def load_session(directory: Path) -> dict:
     files = {name: (directory / name).read_bytes() for name in ('session.json', 'fixture.json', 'attempts.jsonl')}
     manifest = json.loads(files['session.json'])
     require(isinstance(manifest, dict) and type(manifest.get('report_version')) is int
-            and manifest['report_version'] == 1, '지원하지 않는 세션 형식입니다')
+            and manifest['report_version'] in (1, 2), '지원하지 않는 세션 형식입니다')
     require(isinstance(manifest.get('session_id'), str)
             and re.fullmatch(r'[A-Za-z0-9_-]{1,48}', manifest['session_id']), '세션 ID가 유효하지 않습니다')
     require(manifest.get('status') in ('running', 'completed', 'interrupted', 'runner_failed'), '세션 상태가 유효하지 않습니다')
@@ -102,6 +115,9 @@ def load_session(directory: Path) -> dict:
         require(isinstance(environment['model'], str) and environment['model']
                 and isinstance(environment['model_options'], dict) and environment['model_options'],
                 '실제 모델의 설정 정보가 필요합니다')
+    if manifest['report_version'] == 2:
+        require(isinstance(environment.get('coverage'), dict)
+                and environment['coverage'].get('stage_timings') == OBSERVATION_SCOPE, '구간 관측 범위 정보가 필요합니다')
     planned = manifest.get('planned_attempts')
     require(isinstance(planned, list) and len(planned) == len(expected_order), '예정 요청 수가 다릅니다')
     planned = [identity(item) for item in planned]
@@ -133,7 +149,7 @@ def load_session(directory: Path) -> dict:
             started.append(item)
         elif item.get('event') == 'finished':
             require(active is not None and key == active, '중복 또는 대응하지 않는 종료 기록입니다')
-            validate_finished(item)
+            validate_finished(item, manifest['report_version'])
             finished.append(item)
             active = None
         else:
@@ -154,7 +170,8 @@ def load_session(directory: Path) -> dict:
 
 def configuration(session):
     manifest = session['manifest']
-    return dict(fixture_sha256=manifest['fixture_sha256'], fixture_version=manifest['fixture_version'],
+    return dict(report_version=manifest['report_version'], observation_scope=manifest['environment'].get('coverage'),
+                fixture_sha256=manifest['fixture_sha256'], fixture_version=manifest['fixture_version'],
                 profile={key: manifest['profile'][key] for key in PROFILE},
                 environment={key: manifest['environment'][key] for key in ENVIRONMENT},
                 normalized_inputs=session['normalized_inputs'])
@@ -182,19 +199,31 @@ def aggregate_sessions(directories) -> dict:
                     complete=session['complete'], truncated_tail=session['truncated_tail'],
                     source_sha256=session['source_sha256'], groups=groups([session]))
 
-    return dict(summary_version=1, percentile_method='linear_R7', units='milliseconds',
+    observation_complete = None
+    if common['report_version'] == 2 and any(session['started'] for session in sessions):
+        observation_complete = all(len(session['finished']) == len(session['started'])
+                                   and all(item['observation']['complete'] for item in session['finished'])
+                                   for session in sessions)
+
+    return dict(summary_version=2, percentile_method='linear_R7', units='milliseconds',
                 complete=all(session['complete'] for session in sessions), session_count=len(sessions),
+                observation_complete=observation_complete,
                 mode=common['environment']['mode'], model=common['environment']['model'],
                 profile=common['profile'], configuration_sha256=digest(common),
                 aggregation_source_sha256={path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-                                           for path in (Path(__file__), Path(__file__).with_name('planning_latency_summary.py'))},
-                coverage=dict(timing='public_function_only', stage_timings=None, model_call_attempts=None,
+                                           for path in (Path(__file__), *[Path(__file__).with_name(name) for name in (
+                                               'planning_latency_summary.py', 'planning_latency_observation.py', 'planning_latency_inputs.py')])},
+                coverage=dict(timing='public_function_with_nested_spans' if common['report_version'] == 2 else 'public_function_only',
+                              stage_timings=OBSERVATION_SCOPE if common['report_version'] == 2 else None,
+                              model_call_attempts='wrapped_invoker_attempts' if common['report_version'] == 2 else None,
                               http_attempts=None, token_usage=None),
                 groups=groups(sessions), sessions=[source(session) for session in sessions])
 
 
 def render_table(summary) -> str:
-    lines = [f"모드: {summary['mode']}, 세션: {summary['session_count']}, 기록: {'완료' if summary['complete'] else '부분 결과'}",
+    observation = summary.get('observation_complete')
+    scope = '미관측' if observation is None else '완료' if observation else '부분 관측'
+    lines = [f"모드: {summary['mode']}, 세션: {summary['session_count']}, 기록: {'완료' if summary['complete'] else '부분 결과'}, 구간: {scope}",
              '사례 | 시작 | 성공 | 실패 | 미완료 | 미시작 | 성공률 | 성공 p50(ms) | 성공 p95(ms)']
     for case_id, group in summary['groups']['measurement'].items():
         counts = group['counts']
@@ -217,7 +246,7 @@ def main():
             json.dump(summary, stream, ensure_ascii=False, indent=2, allow_nan=False)
             stream.write('\n')
         print(render_table(summary))
-        return 0 if summary['complete'] else 2
+        return 0 if summary['complete'] and summary['observation_complete'] is not False else 2
     except RecordError as error:
         print(f'집계 실패: {error}')
     except Exception as error:
