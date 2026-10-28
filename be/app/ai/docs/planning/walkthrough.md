@@ -472,7 +472,7 @@ AI 테스트 앱: be/app/ai/tests/ui/planning/ (포트 5174)
 
 채팅 전체가 더 오래 걸려도 생성 모델 자체가 느려졌다는 뜻은 아니다. 내부 `compose_plan()`과 `validate_plan()` 시간, 대화 모델 호출을 따로 봐야 이유를 알 수 있다. 생성 Graph는 전체 시간 안에 포함되므로 두 시간을 다시 더하지 않는다.
 
-일반 상담과 인원 변경도 별도 사례로 둔다. 한 번 잰 숫자 대신 같은 입력으로 반복하고, 실패를 빼고 성공률을 계산하지 않는다. 상세 사례, 반복 횟수와 통계 규칙은 [응답 시간 기준 측정](latency-baseline.md)에 있다. 현재는 고정 입력과 전체 요청 시간의 반복 실행기까지 구현했다. 세부 구간 관측, p50/p95 집계와 실제 모델 기준값은 후속이다.
+일반 상담과 인원 변경도 별도 사례로 둔다. 한 번 잰 숫자 대신 같은 입력으로 반복하고, 실패를 빼고 성공률을 계산하지 않는다. 상세 사례, 반복 횟수와 통계 규칙은 [응답 시간 기준 측정](latency-baseline.md)에 있다. 고정 입력과 전체 요청 시간의 반복 실행기, 기록의 p50/p95 집계를 구현했다. 세부 구간 관측과 실제 모델 기준값은 후속이다.
 
 ### 예시: 인원을 60명으로 바꾸는 요청을 반복한다
 
@@ -513,3 +513,40 @@ elapsed = (clock() - started) / 1_000_000
 실제 코드는 예외와 취소에서도 시간을 남긴다. [planning_latency_checks.py](../../scripts/planning_latency_checks.py)의 `inspect_result()`는 답변 문구가 아닌 조건과 상태를 검사한다. “60명으로 반영했어요.”라고 답했지만 headcount가 50이면 실패다. 초안 생성을 요청했는데 정상 답변만 하고 생성하지 않은 경우도 실패다. 실패한 요청을 성공할 때까지 다시 실행하지 않고 다음 사례로 진행한다.
 
 실행 결과는 새 폴더의 `fixture.json`, `session.json`, `attempts.jsonl`이다. JSONL에는 같은 attempt_id의 started/finished가 각각 한 줄씩 생긴다. 앞 기록만 남았다면 중간에 끝난 요청이므로 완료로 간주하지 않는다. 모델 없는 입력 확인 명령과 실제 모델을 사용하는 명령은 [실행 방법](latency-baseline.md#모델-없이-입력과-순서-확인)을 구분해 참고한다.
+
+### 예시: 기록한 숫자가 올바른 요약으로 나오는지 확인한다
+
+아래는 계산 검증용 숫자다. 실제 모델의 응답 시간이 아니다.
+
+```text
+한 사례의 본 측정 6회
+  성공: 2초, 3초, 4초, 5초, 6초
+  실패: 90초 뒤 timeout
+준비 실행 1회: 별도 보관
+
+load_session(): 시작과 종료 연결, 해시와 순서 확인
+  → 본 측정과 준비 실행 분리
+  → 성공 5개와 실패 1개 분리
+  → summarize_group()
+      성공률 = 5 / 6
+      성공 p50 = 4초, p95 = 5.8초
+      실패 시간 = 90초
+```
+
+[summarize_planning_latency.py](../../scripts/summarize_planning_latency.py)의 `load_session()`은 고정 입력과 실제 요청이 같은지, 시작/종료가 짝을 이루는지 확인한다. 중복 기록이 있으면 같은 요청을 두 번 세게 되므로 계산하지 않고 거절한다. 시작만 남았다면 pending으로 보관하고 부분 요약을 만든다. API 설정과 모델은 사용하지 않는다.
+
+[planning_latency_summary.py](../../scripts/planning_latency_summary.py)의 핵심은 시간 표본과 성공률의 분모를 구분하는 것이다.
+
+```python
+successful = [item for item in finished if item['outcome'] == 'success']
+success_rate = len(successful) / len(started) if started else None
+success_ms = distribution(item['ai_request_ms'] for item in successful)
+```
+
+실패는 성공 시간의 분위수에 섞지 않지만 성공률의 분모에는 남는다. 종료가 없는 요청도 시작 수에는 포함하고, 지연 표본에는 0ms를 넣지 않는다. 시작 자체가 없으면 성공률은 null이다.
+
+`distribution()`은 정렬한 성공 표본의 95% 위치를 구하고 양옆 값을 선형 보간한다. 위 예시에서는 5초와 6초 사이를 계산해 5.8초가 나온다. NumPy의 기본 linear/R7과 같은 계산이며 새로운 의존성은 추가하지 않았다. 표본이 하나라면 그 한 값, 없으면 null로 표시하며 작은 표본을 서비스 보장으로 해석하지 않는다.
+
+`aggregate_sessions()`는 같은 입력, 모델 설정과 코드인 세션만 합친다. 각 세션의 p95를 평균 내지 않고 원본 성공 시간을 한곳에 모아 `distribution()`을 다시 호출한다. 세션별 요약도 따로 남긴다.
+
+결과는 별도 JSON과 콘솔 표다. `groups.measurement.C1.success_ms.p95_ms`처럼 본 측정의 사례와 지표를 찾아볼 수 있고, 준비 실행은 `groups.warmup`에서 확인한다. 기록이 완전해도 실패 요청은 있을 수 있으므로 complete와 성공률을 따로 본다. [집계 명령과 필드 안내](latency-baseline.md#모델-없이-저장-결과-집계), [고정 데이터 검증 결과](evaluation.md#고정-응답으로-기록과-집계-검증-2026-10-28)를 참고한다.

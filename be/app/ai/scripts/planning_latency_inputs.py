@@ -92,7 +92,8 @@ def make_request(fixture: LatencyFixture, case: LatencyCase, attempt_id: str):
 
 
 def request_hashes(request) -> dict:
-    actual = request.model_dump(mode='json')
+    # 집계에서는 저장 당시의 JSON을 그대로 해시한다. 현재 타입의 기본값을 새로 넣지 않는다.
+    actual = request if isinstance(request, dict) else request.model_dump(mode='json')
     normalized = {**actual, 'request_id': '<request-id>'}
     if 'message' in normalized:
         normalized['message'] = {**normalized['message'], 'id': '<message-id>'}
