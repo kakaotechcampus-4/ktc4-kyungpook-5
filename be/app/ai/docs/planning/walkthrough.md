@@ -472,7 +472,7 @@ AI 테스트 앱: be/app/ai/tests/ui/planning/ (포트 5174)
 
 채팅 전체가 더 오래 걸려도 생성 모델 자체가 느려졌다는 뜻은 아니다. 내부 `compose_plan()`과 `validate_plan()` 시간, 대화 모델 호출을 따로 봐야 이유를 알 수 있다. 생성 Graph는 전체 시간 안에 포함되므로 두 시간을 다시 더하지 않는다.
 
-일반 상담과 인원 변경도 별도 사례로 둔다. 한 번 잰 숫자 대신 같은 입력으로 반복하고, 실패를 빼고 성공률을 계산하지 않는다. 상세 사례, 반복 횟수와 통계 규칙은 [응답 시간 기준 측정](latency-baseline.md)에 있다. 고정 입력과 전체 요청 시간의 반복 실행기, 기록의 p50/p95 집계를 구현했다. 세부 구간 관측과 실제 모델 기준값은 후속이다.
+일반 상담과 인원 변경도 별도 사례로 둔다. 한 번 잰 숫자 대신 같은 입력으로 반복하고, 실패를 빼고 성공률을 계산하지 않는다. 상세 사례, 반복 횟수와 통계 규칙은 [응답 시간 기준 측정](latency-baseline.md)에 있다. 고정 입력, 반복 실행기, 전체/세부 구간 관측과 기록의 p50/p95 집계를 구현했다. 실제 모델 기준값은 아직 수집하지 않았다.
 
 ### 예시: 인원을 60명으로 바꾸는 요청을 반복한다
 
@@ -550,3 +550,85 @@ success_ms = distribution(item['ai_request_ms'] for item in successful)
 `aggregate_sessions()`는 같은 입력, 모델 설정과 코드인 세션만 합친다. 각 세션의 p95를 평균 내지 않고 원본 성공 시간을 한곳에 모아 `distribution()`을 다시 호출한다. 세션별 요약도 따로 남긴다.
 
 결과는 별도 JSON과 콘솔 표다. `groups.measurement.C1.success_ms.p95_ms`처럼 본 측정의 사례와 지표를 찾아볼 수 있고, 준비 실행은 `groups.warmup`에서 확인한다. 기록이 완전해도 실패 요청은 있을 수 있으므로 complete와 성공률을 따로 본다. [집계 명령과 필드 안내](latency-baseline.md#모델-없이-저장-결과-집계), [고정 데이터 검증 결과](evaluation.md#고정-응답으로-기록과-집계-검증-2026-10-28)를 참고한다.
+
+### 세부 구간은 어느 함수의 앞뒤에서 재는가
+
+사용자가 생성 권유에 “응, 만들어줘.”라고 답한 요청을 보자. 아래 시간은 흐름을 검증하기 위해 가상 시계에 직접 넣은 값이다. 실제 모델 속도가 아니다.
+
+```text
+PlanningChatRequest(같은 MT 조건과 pending offer, message="응, 만들어줘.")
+  → measure_attempt(): 요청 시계 시작
+    → chat_planning()
+      → call_agent_model(): 생성 Tool 선택 응답                    0~10ms
+      → generate_event_plan Tool
+        → run_plan_generation(): 생성 Graph 전체                10~42ms
+          → compose_plan(): 입력 구성과 초안 작성               10~40ms
+            → invoke(..., PlanComposition): 생성 모델 호출       10~40ms
+          → validate_plan(): 코드로 계획 검증                   40~42ms
+      → call_agent_model(): 결과 설명 응답                       42~47ms
+    ← 공개 결과와 next_state 반환
+  → 요청 시계 종료: 47ms
+  → 결과 검사와 파일 저장: 시간 집계에서 제외
+```
+
+첫 모델 응답은 생성 Tool을 고르고, 그 Tool이 초안 생성 Graph를 실행한다. 모델이 구조화 초안 `PlanComposition`을 쓰면 코드가 카탈로그/날짜/행동/근거를 검사해 `EventPlanPreview`로 바꾼다. 마지막 대화 모델은 이 결과를 읽어 사용자에게 설명한다. 관측기는 이 기능들을 호출하는 순서를 바꾸지 않는다.
+
+측정 도구 안의 [install_observers()](../../scripts/planning_latency_observation.py)는 기존 함수에 잠시 래퍼를 붙인다. `public_workflow.run_plan_generation`, `agent.graph.call_agent_model`, `generation.graph.compose_plan/validate_plan`을 감싼다. 실행이 끝나면 `ExitStack`이 원래 함수로 복원한다. 함수 정의 때 이미 기본 인자로 묶인 생성 모델도 놓치지 않도록, compose에 실제 전달된 invoke를 다시 감싼다.
+
+```python
+# wrap_async(): 기존 함수를 실제로 호출하는 앞뒤가 하나의 구간이다.
+with trace.span(stage, **details) as item:
+    result = await function(*args, **kwargs)
+```
+
+`RequestTrace.span()`은 진입 때 `perf_counter_ns()`를 읽고, 반환/예외/취소 모두 finally에서 종료 시계를 읽는다. 모델의 성공 응답을 받은 뒤가 아니라 진입 기록을 만들 때 논리 호출 시도가 생긴다. 따라서 첫 대화 모델이 timeout으로 끝나도 시도는 1회다. SDK 안에서 HTTP를 여러 번 재시도했는지는 별도로 관측하지 않으므로 추정하지 않는다.
+
+각 요청은 `capture_request()`의 ContextVar를 가진다. 위 요청의 기록은 다음과 같이 묶인다.
+
+| ID | 구간 | 부모 ID | 관측 시간 |
+| --- | --- | --- | --- |
+| 1 | agent_model | 없음 | 10ms |
+| 2 | generation | 없음 | 32ms |
+| 3 | compose_plan | 2 | 30ms |
+| 4 | generation_model | 3 | 30ms |
+| 5 | validate_plan | 2 | 2ms |
+| 6 | agent_model | 없음 | 5ms |
+
+**generation 32ms 안에 compose 30ms와 validate 2ms가 들어 있다. compose 30ms 안에는 generation_model 30ms가 포함된다.** 그러므로 전체를 `10 + 32 + 30 + 30 + 2 + 5`로 더하면 안 된다. 이 가상 시계에서는 기타 작업 시간을 0으로 두어 전체가 `10 + 32 + 5 = 47ms`다. 실제로는 상태 변환, 프롬프트 준비, Graph 스케줄링과 관측 오버헤드가 있어 전체 시간이 더 클 수 있다. 남는 시간을 순수 모델 시간이라고 부르지 않는다.
+
+동일 조건에서 버튼으로 요청하면 대화 Agent를 거치지 않는다. `generate_planning_preview()` → 공통 생성 Graph만 실행하므로 위 시계에서는 32ms이며 논리 모델 시도는 대화 0회, 생성 1회다. 채팅은 대화 2회, 생성 1회다.
+
+### 저장된 구간과 집계는 어떻게 읽는가
+
+요청이 끝나면 `measure_attempt()`가 시계를 멈추고 observation 스냅샷을 만든다. 다음은 위 생성 모델 구간의 일부다.
+
+```json
+{
+  "id": 4,
+  "parent_id": 3,
+  "stage": "generation_model",
+  "start_ms": 10,
+  "end_ms": 40,
+  "duration_ms": 30,
+  "outcome": "ok"
+}
+```
+
+새 `report_version=2`의 finished 이벤트에는 `observation.spans`와 `model_call_attempts`가 들어간다. 메시지 본문이나 공급자 예외 원문은 구간에 복사하지 않는다. 모델 메시지 text 길이와 개수는 숫자로 남기지만 Tool 스키마를 포함한 전체 입력 토큰 수는 아니다.
+
+집계기는 시간이 부모/요청 범위 안에 있는지, 자식과 부모의 유형이 맞는지, 호출 수가 실제 구간 수와 일치하는지 확인한다. 그런 뒤 `groups.measurement.G1.observation`에 구간별 요약을 붙인다.
+
+- `model_call_attempts`: 위 요청에서는 agent_model=2, generation_model=1이다.
+- `by_stage.agent_model.per_call_ms`: 호출 시간 10ms와 5ms, 표본 2개다.
+- `by_stage.agent_model.per_completed_request_total_ms`: 한 요청의 대화 모델 합계 15ms, 표본 1개다.
+- `by_stage.generation.per_call_ms`: 전체 생성 함수의 32ms다. 자식 시간을 다시 합하지 않는다.
+
+버튼의 대화 모델은 calls=0이다. 단일 호출 표본이 없으므로 per_call_ms의 p95는 null이고, 그 요청의 대화 모델 총합은 0ms다. 반면 옛 version=1은 관측 자체가 없으므로 observation이 null이다. 서로 다른 형식은 합쳐 측정한 것처럼 집계하지 않는다.
+
+### 실패하거나 다시 시도하면 어떻게 남는가
+
+생성 모델이 timeout을 내면 그 구간의 오류 타입과 timeout 분류를 먼저 남긴다. 생성 Graph가 이를 안전한 `PlanGenerationResult(status="failed")`로 바꿔 정상 반환해도, 기록기는 이미 관측한 원인을 연결해 `failure.stage=generation_model`로 기록한다. 계획 코드 검증이 실패했다면 stage=validate_plan, category=invalid_plan이다. 공개 실패 문구를 분석해 추측하지 않는다.
+
+Agent가 그 실패 뒤 생성 Tool을 다시 선택해 성공하면 최종 요청은 성공일 수 있다. 그래도 첫 실패 구간과 두 번째 성공 구간 모두 남는다. 검증 사례에서는 생성 함수 30ms 실패와 32ms 성공을 보존해 요청당 생성 합계 62ms, 생성 모델 논리 시도 2회를 확인했다. 이는 원래 Agent의 선택을 관측한 것으로 새 재시도 정책을 넣은 것이 아니다.
+
+취소한 모델 호출은 관측한 대기를 interrupted_wait_ms로 남기고 완료 시간과 분리한다. 동기 검증 함수가 스레드에서 계속 실행 중이라면 end_ms와 duration_ms는 null, outcome은 running으로 남긴다. 뒤늦게 끝나도 이미 종료한 요청의 스냅샷에 시간을 섞지 않는다. 구간 집계는 pending_calls로 표시하고 해당 시간을 분위수에서 제외한다. [측정 범위와 형식 안내](latency-baseline.md#세부-구간-관측의-구현-범위), [검증 결과](evaluation.md#세부-구간과-논리-모델-호출-관측-검증-2026-10-28)를 함께 참고한다.
