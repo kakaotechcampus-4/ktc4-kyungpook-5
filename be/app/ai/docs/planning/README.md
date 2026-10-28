@@ -28,6 +28,6 @@ LLM이 사용자와 대화하고 필요한 Tool을 선택하는 행사계획 기
 
 - [#194](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/194): 이력 사용량과 한도 임박 정보를 공개 결과에 제공. 현재 미구현이다.
 - [#195](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/195): 긴 대화 압축의 설계와 평가 기준. 자동 압축 구현은 별도 범위다.
-- [#196](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/196): [응답 시간 기준 측정](latency-baseline.md)에 따라 고정 입력과 반복 실행기를 구현했다. 전체 함수 시간과 요청별 결과를 기록하며 세부 구간 관측, 집계와 실제 기준값 수집은 후속이다. 개별 관찰 시간을 서비스 평균으로 안내하지 않는다.
+- [#196](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/196): [응답 시간 기준 측정](latency-baseline.md)에 따라 고정 입력과 반복 실행기, 오프라인 집계를 구현했다. 전체 함수 시간과 요청별 결과를 기록하고 성공률과 p50/p95를 계산한다. 세부 구간 관측과 실제 기준값 수집은 후속이다. 개별 관찰 시간을 서비스 평균으로 안내하지 않는다.
 - [#177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177): P2 데이터와 수정 후 AI 검토 협의. 현재 생성 결과와 예정 계약을 구분한다.
 - [#187](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/187): BE 저장과 HTTP, 제품 FE 연결. AI 공개 함수 구현 완료와 제품 연결 완료는 다르다.
