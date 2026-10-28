@@ -472,7 +472,7 @@ AI 테스트 앱: be/app/ai/tests/ui/planning/ (포트 5174)
 
 채팅 전체가 더 오래 걸려도 생성 모델 자체가 느려졌다는 뜻은 아니다. 내부 `compose_plan()`과 `validate_plan()` 시간, 대화 모델 호출을 따로 봐야 이유를 알 수 있다. 생성 Graph는 전체 시간 안에 포함되므로 두 시간을 다시 더하지 않는다.
 
-일반 상담과 인원 변경도 별도 사례로 둔다. 한 번 잰 숫자 대신 같은 입력으로 반복하고, 실패를 빼고 성공률을 계산하지 않는다. 상세 사례, 반복 횟수와 통계 규칙은 [응답 시간 기준 측정](latency-baseline.md)에 있다. 고정 입력, 반복 실행기, 전체/세부 구간 관측과 기록의 p50/p95 집계를 구현했다. 실제 모델 기준값은 아직 수집하지 않았다.
+일반 상담과 인원 변경도 별도 사례로 둔다. 한 번 잰 숫자 대신 같은 입력으로 반복하고, 실패를 빼고 성공률을 계산하지 않는다. 상세 사례, 반복 횟수와 통계 규칙은 [응답 시간 기준 측정](latency-baseline.md)에 있다. 고정 입력, 반복 실행기, 전체/세부 구간 관측과 기록의 p50/p95 집계를 구현하고 실제 모델 3세션의 본측정 120건을 수집했다. 아래의 고정 시계 설명과 끝부분의 실제 요청 예시를 구분한다.
 
 ### 예시: 인원을 60명으로 바꾸는 요청을 반복한다
 
@@ -632,3 +632,91 @@ with trace.span(stage, **details) as item:
 Agent가 그 실패 뒤 생성 Tool을 다시 선택해 성공하면 최종 요청은 성공일 수 있다. 그래도 첫 실패 구간과 두 번째 성공 구간 모두 남는다. 검증 사례에서는 생성 함수 30ms 실패와 32ms 성공을 보존해 요청당 생성 합계 62ms, 생성 모델 논리 시도 2회를 확인했다. 이는 원래 Agent의 선택을 관측한 것으로 새 재시도 정책을 넣은 것이 아니다.
 
 취소한 모델 호출은 관측한 대기를 interrupted_wait_ms로 남기고 완료 시간과 분리한다. 동기 검증 함수가 스레드에서 계속 실행 중이라면 end_ms와 duration_ms는 null, outcome은 running으로 남긴다. 뒤늦게 끝나도 이미 종료한 요청의 스냅샷에 시간을 섞지 않는다. 구간 집계는 pending_calls로 표시하고 해당 시간을 분위수에서 제외한다. [측정 범위와 형식 안내](latency-baseline.md#세부-구간-관측의-구현-범위), [검증 결과](evaluation.md#세부-구간과-논리-모델-호출-관측-검증-2026-10-28)를 함께 참고한다.
+
+### 실제 모델에서는 어떤 시간이 기록됐는가
+
+2026-10-28에 `be76b60`의 기존 모델/프롬프트/재시도 설정으로 준비 실행 12건과 본측정 120건을 실행했다. 앞부분의 47ms 예시는 검산용 가상 시간이고, 여기부터는 `gpt-5.6-luna` 실제 응답 시간이다. [모든 결과와 재집계 방법](evaluation-results/planning-latency-real-2026-10-28/README.md)을 보존했다.
+
+먼저 사용자 입장에서 다음 입력을 보자.
+
+```text
+현재 상태: MT, 50명, 참가비 25,000원, 날짜와 장소 미정
+직전 Agent: 이 조건으로 준비 순서 초안을 만들까요?
+사용자: “응, 만들어줘.”
+```
+
+성공 요청의 p50에 가까운 실제 요청 `real-20261028-01-measurement-0004-G1`을 따라가면 다음과 같다. 한 요청의 실제 값이며 전체 요청의 평균은 아니다.
+
+```text
+make_request(G1)
+  → 같은 fixture 복원, 이번 message와 고유 request_id 준비 (측정 전)
+measure_attempt()
+  → 타이머 시작
+    → chat_planning(request)
+      → call_agent_model()                       1.929초
+        “응”을 pending offer 수락으로 해석, generate_event_plan 선택
+      → generate_event_plan Tool
+        → run_plan_generation()                 12.078초
+          → compose_plan()                      12.075초
+            → 생성 모델, PlanComposition 반환   12.074초
+          → validate_plan()                      0.239ms
+            카탈로그/날짜/행동/근거 검사 → EventPlanPreview
+      → call_agent_model()                       2.973초
+        검증된 초안을 보고 설명 답변 작성
+    ← PlanningPublicResult(view, next_state)
+  → 타이머 종료: 전체 16.988초
+  → inspect_result() → JSONL finished 기록 (측정 후)
+```
+
+여기서 생성 12.078초 안에 작성/생성 모델/검증 시간이 들어 있다. 전체는 대략 `대화 1.929 + 생성 12.078 + 대화 2.973 + 기타 처리`다. 검증 0.239ms는 초 단위가 아니다. 부모와 자식을 모두 합하거나 모델 시간을 공급자 순수 추론 시간으로 읽지 않는다.
+
+코드가 반환한 핵심 결과는 다음과 같다.
+
+```text
+view.generation_result.status = generated
+view.generation_result.preview.steps = 13개
+next_state.payload.generation.preview = 같은 검증된 preview
+view.draft.conditions.headcount = 50 (입력 조건 유지)
+단계 날짜와 행동 기한 = null (행사 날짜 미정 유지)
+```
+
+답변은 “현재 조건으로 MT 준비 순서 초안을 만들었어요”로 시작하고 날짜/장소 미정을 설명했다. UI의 단계 데이터는 답변 문자열을 파싱하지 않고 구조화 preview를 사용한다. 이 답변은 정산과 환급을 한 항목으로 요약해 12개 항목으로 표현했지만 실제 구조화 단계는 13개였다. 자동 통과를 모든 설명 문구에 대한 품질 보장으로 읽으면 안 된다.
+
+버튼은 같은 생성 Graph로 바로 진입한다. 실제 요청 `real-20261028-02-measurement-0002-G2`에서는 다음과 같이 기록됐다.
+
+```text
+generate_planning_preview(request)
+  → run_plan_generation() 11.827초
+    → 생성 모델 11.822초, validate_plan 0.249ms (부모 시간에 포함)
+  ← 전체 11.828초, 12단계 preview, reply=None
+대화 모델 0회, 생성 모델 1회, 대화 이력 유지
+```
+
+두 요청 모두 공통 생성 Graph를 사용하지만 같은 결과를 재사용한 것은 아니다. 실제 생성 결과도 13단계와 12단계로 달랐다. 두 사례의 성공 p50은 각각 17.066초와 11.828초였다. 생성 입력과 출력도 다르므로 그 차이를 전부 대화 모델 비용이라고 단정하지 않는다.
+
+### 응답이 왔다는 것과 원하는 결과가 나왔다는 것
+
+검사 코드는 [inspect_result()](../../scripts/planning_latency_checks.py)다. 모델을 추가로 호출하지 않고 반환된 조건과 상태를 비교한다.
+
+```python
+# C2: 입력 조건 사전을 복사한 뒤 headcount만 60으로 기대한다.
+expected = request.draft.conditions.model_dump()
+expected['headcount'] = 60
+conditions_match = view.draft.conditions.model_dump() == expected
+# 실제 검사는 지정 상태(specified), 다른 metadata와 deferred_topics 유지도 따로 확인한다.
+```
+
+C2는 30건 모두 headcount를 60으로 바꿨다. 그런데 19건에서 사용자가 요청하지 않은 `deferred_topics=[dates]`가 생겼고, 4건에서 인원을 지정값 대신 잠정값(tentative)으로 적었다. 1건이 중복돼 엄격한 검사를 모두 통과한 요청은 8건이었다. “예상 참가 인원”이라는 표현에 잠정 해석 여지가 있으므로 먼저 기대 상태를 확인한다. 이 불일치를 “인원 값을 못 바꿨다”라고 요약하면 실제 문제가 가려진다.
+
+G1/G2의 최종 실패 5건은 모델 응답은 왔지만 `validate_plan()`이 거절한 경우다. 현재 공개 실패 결과는 실패 사유를 묶어 반환하고 관측기도 `invalid_plan`까지만 기록한다. 어떤 세부 규칙이었는지는 이 원본만으로 확정할 수 없다.
+
+실제 G1 요청 `real-20261028-02-measurement-0003-G1`은 다음 경로였다.
+
+```text
+Agent → 생성(12.080초) → 코드 검증 실패
+      → Agent → 생성 재시도(12.175초) → 코드 검증 다시 실패
+      → Agent 설명 → generation_result.status=failed
+전체 31.244초, 대화 모델 3회, 생성 모델 2회
+```
+
+따라서 관측기를 통해 “시간은 생성 모델 대기에 주로 쓰였고, 거절된 초안을 다시 생성해 더 기다린 요청이 있다”까지 확인했다. 코드 검증 실행은 생성 시도 61회의 평균 약 0.216ms여서 그 연산 자체를 먼저 최적화할 근거는 없다. 다음은 C2 기대 상태와 부가 변경 확인, 계획 검증의 안전한 세부 원인 관측이다. 그 뒤 같은 프로필로 변경 전후를 비교한다. 실제 제품 HTTP/DB/FE 대기 시간과 SDK 내부 HTTP/토큰은 이번 측정 범위 밖이다.
