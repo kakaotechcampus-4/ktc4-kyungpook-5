@@ -454,7 +454,7 @@ AI 테스트 앱: be/app/ai/tests/ui/planning/ (포트 5174)
 
 화면·타입·스타일·package/lockfile은 모두 AI 테스트 폴더에 있다. 초기 FE 화면 조각을 참고한 복사본을 보관하지만 제품 `fe/`를 import하거나 빌드에 사용하지 않는다. 제품 FE의 라우트·공용 컴포넌트·타입·프록시에 추가했던 테스트 변경은 제거했다. 실제 UI 구현은 FE팀의 역할이며 이 테스트 앱을 제품 코드로 자동 반영하지 않는다. [독립 실행 안내](../../tests/ui/planning/README.md)를 따른다.
 
-## 응답 시간은 어떻게 비교할까? (#196, 기준만 정리)
+## 응답 시간은 어떻게 비교할까? (#196)
 
 같은 MT 조건에서 사용자가 “응, 만들어줘.”라고 답하는 경우와 버튼을 누르는 경우를 생각해 보자.
 
@@ -472,4 +472,44 @@ AI 테스트 앱: be/app/ai/tests/ui/planning/ (포트 5174)
 
 채팅 전체가 더 오래 걸려도 생성 모델 자체가 느려졌다는 뜻은 아니다. 내부 `compose_plan()`과 `validate_plan()` 시간, 대화 모델 호출을 따로 봐야 이유를 알 수 있다. 생성 Graph는 전체 시간 안에 포함되므로 두 시간을 다시 더하지 않는다.
 
-일반 상담과 인원 변경도 별도 사례로 둔다. 한 번 잰 숫자 대신 같은 입력으로 반복하고, 실패를 빼고 성공률을 계산하지 않는다. 상세 사례, 반복 횟수와 통계 규칙은 [응답 시간 기준 측정](latency-baseline.md)에 있다. 현재는 기준 문서만 정리했으며 반복 실행기, 시간 관측 코드와 실제 측정 결과는 아직 없다.
+일반 상담과 인원 변경도 별도 사례로 둔다. 한 번 잰 숫자 대신 같은 입력으로 반복하고, 실패를 빼고 성공률을 계산하지 않는다. 상세 사례, 반복 횟수와 통계 규칙은 [응답 시간 기준 측정](latency-baseline.md)에 있다. 현재는 고정 입력과 전체 요청 시간의 반복 실행기까지 구현했다. 세부 구간 관측, p50/p95 집계와 실제 모델 기준값은 후속이다.
+
+### 예시: 인원을 60명으로 바꾸는 요청을 반복한다
+
+```text
+고정 planning_latency.json
+  조건: MT / 50명 / 25,000원 / 날짜 미정
+  이력: 권유 Tool 호출과 결과, 마지막 “초안을 만들까요?” 답변
+  상태: pending offer 있음, 생성한 초안 없음
+
+① make_request(C2): 같은 JSON을 새로 복원
+   이번 발화: “예상 참가 인원을 60명으로 바꿔줘. 계획 초안은 만들지 마.”
+② run_session(): started 이벤트 기록
+③ measure_attempt(): 시계 시작 → chat_planning() 호출 → 반환 즉시 시계 종료
+④ inspect_result(): headcount가 60인지, 나머지 조건은 유지됐는지 검사
+⑤ finished 이벤트: 시간 + 검사 결과 + 실제 반환 결과 기록
+
+다음 C2 반복 → ①의 50명부터 다시 시작
+60명으로 바뀐 next_state를 다음 반복에 전달하지 않는다.
+```
+
+[planning_latency_inputs.py](../../scripts/planning_latency_inputs.py)의 `make_request()`는 매번 고정 JSON에서 state를 복원한다. request_id와 이번 message_id만 고유하게 만들고 날짜, 조건, 이력과 권유는 유지한다. G2라면 message가 없는 `PlanningPreviewRequest`를 만든다. 기존 성공 초안을 재사용하지 않으므로 같은 생성 경로를 다시 실행할 수 있다.
+
+```python
+state = parse_resume_state(fixture.resume_state.model_dump_json())
+# C1/C2/G1: 이 state로 PlanningChatRequest를 만든다.
+# G2: 같은 state로 PlanningPreviewRequest를 만든다.
+```
+
+[measure_planning_latency.py](../../scripts/measure_planning_latency.py)의 `measure_attempt()`는 다음 경계를 지킨다. `await call(request)`에서 실제 공개 함수와 기존 Graph가 실행된다. 타이머가 멈춘 다음 결과를 직렬화하고 검사하므로 파일 저장과 검사 시간은 요청 시간에 섞이지 않는다.
+
+```python
+started = clock()
+result = await call(request)
+elapsed = (clock() - started) / 1_000_000
+# 여기부터 결과 계약 검사 → inspect_result() → 파일 기록
+```
+
+실제 코드는 예외와 취소에서도 시간을 남긴다. [planning_latency_checks.py](../../scripts/planning_latency_checks.py)의 `inspect_result()`는 답변 문구가 아닌 조건과 상태를 검사한다. “60명으로 반영했어요.”라고 답했지만 headcount가 50이면 실패다. 초안 생성을 요청했는데 정상 답변만 하고 생성하지 않은 경우도 실패다. 실패한 요청을 성공할 때까지 다시 실행하지 않고 다음 사례로 진행한다.
+
+실행 결과는 새 폴더의 `fixture.json`, `session.json`, `attempts.jsonl`이다. JSONL에는 같은 attempt_id의 started/finished가 각각 한 줄씩 생긴다. 앞 기록만 남았다면 중간에 끝난 요청이므로 완료로 간주하지 않는다. 모델 없는 입력 확인 명령과 실제 모델을 사용하는 명령은 [실행 방법](latency-baseline.md#모델-없이-입력과-순서-확인)을 구분해 참고한다.

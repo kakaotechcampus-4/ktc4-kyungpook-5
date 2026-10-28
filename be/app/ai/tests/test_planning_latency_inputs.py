@@ -25,7 +25,6 @@ def test_fixture_restores_a_real_offer_and_four_independent_requests():
     assert 'message' not in requests[-1].model_dump()
     assert len(fixture.resume_state.payload.history) == 4
     assert all(request.resume_state.payload.generation.preview is None for request in requests)
-    requests[0].draft.condition_meta.clear()
     requests[0].resume_state.payload.history[1].tool_calls[0].args['reason'] = '다른 내용'
     assert fixture.model_dump_json() == before
     assert requests[1].resume_state == fixture.resume_state
@@ -91,3 +90,13 @@ def test_fixed_snapshot_can_accept_offer_and_generate_through_both_public_functi
     assert len(model.calls) == 2
     assert second.next_state.payload.history == fixture.resume_state.payload.history
     assert json.loads(fixture.model_dump_json())['actual_provider_calls'] == 0
+
+
+def test_valid_previous_preview_is_rejected_as_a_benchmark_start(monkeypatch):
+    fixture = load_fixture()
+    monkeypatch.setattr(public_workflow, 'run_plan_generation', partial(run_plan_generation, invoke=Model()))
+    generated = run(generate_planning_preview(make_request(fixture, fixture.cases[3], 'previous-generation')))
+    data = fixture.model_dump(mode='json')
+    data['resume_state']['payload']['generation']['preview'] = generated.view.generation_result.preview.model_dump(mode='json')
+    with pytest.raises(ValidationError, match='생성 전 상태'):
+        LatencyFixture.model_validate(data)
