@@ -121,3 +121,17 @@ async def test_동아리원이_아니면_목록을_볼_수_없다(client: TestCl
 
     assert res.status_code == 403
     assert res.json()["error"]["code"] == "FORBIDDEN"
+
+
+async def test_원본_다운로드는_같은_동아리만_허용(client: TestClient, app_db: None, tmp_path, monkeypatch) -> None:
+    from app.core.config import get_settings
+    monkeypatch.setenv("STORAGE_DIR", str(tmp_path))
+    get_settings.cache_clear()
+    headers, club_id = _owner_with_club(client)
+    record_id = _upload(client, headers, club_id, "ETC", "minutes.csv")
+    response = client.get(f"/api/v1/records/{record_id}/file", headers=headers)
+    assert response.status_code == 200
+    assert response.content == b"a,b\n1,2\n"
+    outsider = _login(client, "rec-download-outsider")
+    denied = client.get(f"/api/v1/records/{record_id}/file", headers=outsider)
+    assert denied.status_code == 403
