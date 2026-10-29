@@ -106,7 +106,7 @@ jobs:
           script_b64=$(base64 -w 0 deploy/remote-deploy.sh)
           command_text="set -eu
           install -d /opt/unyounghae
-          printf %s '$compose_b64' | base64 -d > /opt/unyounghae/compose.yml
+          printf %s '$compose_b64' | base64 -d > /opt/unyounghae/compose.next.yml
           printf %s '$bootstrap_b64' | base64 -d > /opt/unyounghae/bootstrap-instance.sh
           printf %s '$script_b64' | base64 -d > /opt/unyounghae/remote-deploy.sh
           bash /opt/unyounghae/bootstrap-instance.sh

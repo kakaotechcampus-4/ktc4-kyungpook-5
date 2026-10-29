@@ -7,14 +7,22 @@ set -euo pipefail
 : "${ACME_EMAIL:?set ACME_EMAIL}"
 
 cd /opt/unyounghae
+# Do not create a new store or overwrite an existing database configuration.
+[[ -f api.env && -d api-storage ]] || {
+  echo 'Missing /opt/unyounghae/api.env or existing api-storage directory' >&2
+  exit 1
+}
 registry="${BACKEND_IMAGE%%/*}"
 aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$registry"
 
 printf 'BACKEND_IMAGE=%s\nFRONTEND_IMAGE=%s\nSITE_ADDRESS=%s\nACME_EMAIL=%s\n' \
   "$BACKEND_IMAGE" "$FRONTEND_IMAGE" "${SITE_ADDRESS:-:80}" "$ACME_EMAIL" > .env.next
 
-docker compose --env-file .env.next -f compose.yml pull
-docker compose --env-file .env.next -f compose.yml up -d --remove-orphans
+docker compose --env-file .env.next -f compose.next.yml pull
+# Read-only: the operator must inspect and migrate the selected DB beforehand.
+docker compose --env-file .env.next -f compose.next.yml run --rm --no-deps api \
+  uv run --no-sync python deployment_preflight.py
+docker compose --env-file .env.next -f compose.next.yml up -d --remove-orphans
 
 site_host="${SITE_ADDRESS:-:80}"
 check_frontend() {
@@ -32,13 +40,14 @@ check_frontend() {
 for attempt in {1..60}; do
   if curl --silent --fail http://127.0.0.1:8000/api/v1/healthz >/dev/null \
     && check_frontend; then
+    mv compose.next.yml compose.yml
     mv .env.next .env
     exit 0
   fi
   sleep 2
 done
 
-docker compose --env-file .env.next -f compose.yml logs --tail 100 web >&2 || true
+docker compose --env-file .env.next -f compose.next.yml logs --tail 100 web >&2 || true
 if [[ -f .env ]]; then
   docker compose --env-file .env -f compose.yml up -d --remove-orphans
 fi
