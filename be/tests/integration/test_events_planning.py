@@ -75,6 +75,8 @@ def _fake_chat_result(
         ),
         generation_result=generation_result,
         preview_is_current=False,
+        # 실제 공개 함수는 매번 채운다(public_workflow.py). 보관 이력 수와 같아야 한다.
+        history_usage=ai.PlanningHistoryUsage.from_count(0),
     )
     next_state = ai.PlanningResumeState(
         club_id="club-x", event_id="event-x", conversation_id="conv-x",
@@ -91,6 +93,7 @@ def _fake_generation_result() -> ai.PlanningPublicResult:
     from app.ai.contracts import (
         ButtonGenerationTrigger,
         EventPlanPreview,
+        ExcludedPreviewStep,
         PlanAction,
         PlanGenerationResult,
         PreviewStep,
@@ -125,7 +128,13 @@ def _fake_generation_result() -> ai.PlanningPublicResult:
                 ),
             ),
         ),
-        excluded_steps=(),
+        excluded_steps=(
+            ExcludedPreviewStep(
+                code=StepCode.DEMAND_SURVEY,
+                name="사전 수요 조사",
+                reason="이미 참여 의사를 확인했어요.",
+            ),
+        ),
         warnings=("일정이 비어 있습니다",),
     )
     generation_result = PlanGenerationResult(status="generated", preview=preview)
@@ -476,3 +485,45 @@ async def test_기준일은_KST_날짜로_넘긴다(
     assert _chat(client, headers, event_id).status_code == 200
     assert seen == [date(2026, 10, 30)]
 
+
+async def test_대화_한도_사용량과_제외_단계_이름이_응답과_재접속_화면에_있다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    async def fake_generate(request):
+        return _fake_generation_result()
+
+    monkeypatch.setattr("app.ai.generate_planning_preview", fake_generate)
+
+    res = client.post(
+        f"/api/v1/events/{event_id}/plan/generate", headers=headers, json={"baseRevision": 0}
+    )
+    plan = client.get(f"/api/v1/events/{event_id}/plan", headers=headers).json()["data"]
+
+    usage = {"messageCount": 0, "maxMessages": 60, "nearLimit": False}
+    assert res.json()["data"]["historyUsage"] == usage
+    assert plan["historyUsage"] == usage
+    assert plan["excludedSteps"] == [
+        {"code": "DEMAND_SURVEY", "name": "사전 수요 조사", "reason": "이미 참여 의사를 확인했어요."}
+    ]
+
+
+async def test_이름_없이_저장된_예전_제외_단계도_읽을_수_있다(
+    client: TestClient, app_db: None
+) -> None:
+    from app.models.events import Event
+
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+    async with db_session.get_sessionmaker()() as session:
+        event = await session.get(Event, event_id)
+        event.plan_excluded_steps = [{"code": "DEMAND_SURVEY", "reason": "예전 계획"}]
+        await session.commit()
+
+    plan = client.get(f"/api/v1/events/{event_id}/plan", headers=headers)
+
+    assert plan.status_code == 200, plan.text
+    assert plan.json()["data"]["excludedSteps"][0]["name"] is None
+    assert plan.json()["data"]["historyUsage"] is None

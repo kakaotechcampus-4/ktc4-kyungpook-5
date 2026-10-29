@@ -149,7 +149,20 @@ def _view_out(result: "ai.PlanningPublicResult", *, base_revision: int) -> dict:
             "reasons": list(view.generation_readiness.reasons),
         },
         "generation_result": generation_result,
+        "history_usage": _history_usage_out(view.history_usage),
         "base_revision": base_revision,
+    }
+
+
+def _history_usage_out(usage: "ai.PlanningHistoryUsage | None") -> dict | None:
+    """대화 이력이 한도(60개)에 가까워졌는지 (#194). Tool 메시지까지 센 값이라 남은
+    사용자 대화 횟수로 바꿔 보여주지 않는다."""
+    if usage is None:
+        return None
+    return {
+        "message_count": usage.message_count,
+        "max_messages": usage.max_messages,
+        "near_limit": usage.near_limit,
     }
 
 
@@ -218,7 +231,8 @@ async def _materialize_preview(
 
     event.plan_warnings = [{"message": w} for w in preview.warnings]
     event.plan_excluded_steps = [
-        {"code": excl.code.value, "reason": excl.reason}
+        # name은 AI가 카탈로그에서 붙인 고정 이름이다(#198). FE가 코드를 다시 매핑하지 않는다.
+        {"code": excl.code.value, "name": excl.name, "reason": excl.reason}
         for excl in preview.excluded_steps
     ]
     event.saved_at = datetime.now(UTC)
@@ -528,6 +542,7 @@ async def get_plan_screen(
     return {
         "draft": _draft_out(draft),
         "warnings": [w.get("message", "") for w in (event.plan_warnings or [])],
+        # #198 이전에 저장한 행에는 name이 없다 — 스키마가 null로 받는다.
         "excluded_steps": event.plan_excluded_steps or [],
         "summary": {
             "total_steps": total or 0,
@@ -535,6 +550,12 @@ async def get_plan_screen(
             "approval_steps": actor_counts.get(StepActor.APPROVAL_REQUIRED, 0),
             "manual_steps": actor_counts.get(StepActor.MANUAL, 0),
         },
+        # 재접속해도 한도 임박 안내를 다시 띄울 수 있게 보관한 이력으로 센다(#194).
+        "history_usage": _history_usage_out(
+            ai.PlanningHistoryUsage.from_count(len(resume_state.payload.history))
+            if resume_state is not None
+            else None
+        ),
         "base_revision": conversation.base_revision if conversation is not None else 0,
         "generation_readiness": (
             ai.planning_generation_readiness(draft, resume_state=resume_state).model_dump(mode="json")
