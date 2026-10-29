@@ -23,7 +23,11 @@ function toFacts(draft: Draft): PlanFacts {
     const meta =
       draft.conditionMeta[field] ??
       draft.conditionMeta[field.replace(/[A-Z]/g, (x) => `_${x.toLowerCase()}`)]
-    if (value !== null && value !== undefined)
+    const topic =
+      field === 'startDate' ? 'dates' : field.replace(/[A-Z]/g, (x) => `_${x.toLowerCase()}`)
+    if ((value === null || value === undefined) && draft.deferredTopics.includes(topic)) {
+      result[label] = { status: '나중에' }
+    } else if (value !== null && value !== undefined)
       result[label] = {
         status: meta?.status === 'tentative' ? '잠정' : '확정',
         value: String(value),
@@ -47,7 +51,6 @@ export function usePlanningChat(
   onCreated: (id: string, failedText?: string) => void,
 ) {
   const queryClient = useQueryClient()
-  const [localMessages, setMessages] = useState<ChatMessage[]>([])
   const [view, setView] = useState<S['PlanViewOut'] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -74,10 +77,12 @@ export function usePlanningChat(
     from: m.role === 'USER' ? '나' : '토리',
     text: m.content,
   }))
-  const messages = [FIRST_MESSAGE, ...storedMessages, ...localMessages]
-  const revision = view?.baseRevision ?? snapshot.data?.screen.baseRevision ?? 0
+  const messages = [FIRST_MESSAGE, ...storedMessages]
+  const screen = snapshot.data?.screen
+  const currentView = view && view.baseRevision >= (screen?.baseRevision ?? 0) ? view : null
+  const revision = currentView?.baseRevision ?? screen?.baseRevision ?? 0
   const facts = toFacts(
-    view?.draft ??
+    currentView?.draft ??
       snapshot.data?.screen.draft ?? {
         conditions: {
           title: null,
@@ -113,23 +118,21 @@ export function usePlanningChat(
         baseRevision: revision,
       })
       setView(result)
-      if (selectedId) {
-        setMessages((items) => [
-          ...items,
-          { id, from: '나', text },
-          ...(result.reply
-            ? [{ id: `${id}-reply`, from: '토리' as const, text: result.reply }]
-            : []),
-        ])
-      }
       succeeded = true
-      if (!result.reply) setError('답변을 받지 못했어요. 계획 상태를 확인해 주세요.')
+      if (selectedId) {
+        const updated = await snapshot.refetch()
+        if (updated.isError)
+          setError('답변은 처리됐지만 대화 이력을 불러오지 못했어요. 다시 확인해 주세요.')
+        else if (!result.reply) setError('답변을 받지 못했어요. 계획 상태를 확인해 주세요.')
+      }
       return true
     } catch (cause) {
       setError(
         cause instanceof ApiError && cause.code === 'VERSION_CONFLICT'
-          ? '계획이 변경됐어요. 화면을 다시 불러온 뒤 확인해 주세요.'
-          : '계획 답변을 확인하지 못했어요. 요청이 반영됐을 수 있으니 다시 보내기 전에 확인해 주세요.',
+          ? '다른 변경이 있어요. 계획을 다시 불러온 뒤 확인해 주세요.'
+          : cause instanceof ApiError && cause.code === 'AI_UNAVAILABLE'
+            ? '답변 서비스를 이용할 수 없어요. 잠시 후 다시 시도해 주세요.'
+            : '계획 답변을 확인하지 못했어요. 요청이 반영됐을 수 있으니 다시 보내기 전에 확인해 주세요.',
       )
       return false
     } finally {
@@ -151,7 +154,6 @@ export function usePlanningChat(
       })
       setView(result)
       await refresh()
-      setMessages([])
       if (result.generationResult?.status !== 'generated')
         setError(result.reply || '계획을 생성하지 못했어요. 조건을 확인해 주세요.')
     } catch {
@@ -161,5 +163,5 @@ export function usePlanningChat(
       setBusy(false)
     }
   }
-  return { messages, facts, busy, error, send, generate, snapshot, view, revision }
+  return { messages, facts, busy, error, send, generate, snapshot, view: currentView, revision }
 }

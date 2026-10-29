@@ -2171,6 +2171,7 @@ export interface components {
             summary: components["schemas"]["PlanSummaryOut"];
             /** Baserevision */
             baseRevision: number;
+            generationReadiness?: components["schemas"]["GenerationReadinessOut"] | null;
         };
         /** PlanSummaryOut */
         PlanSummaryOut: {

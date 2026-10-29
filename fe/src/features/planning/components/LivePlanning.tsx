@@ -7,6 +7,14 @@ import { useAuthStore } from '@/shared/auth/store'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 
+const REASONS: Record<string, string> = {
+  event_type_missing: '행사 종류를 알려 주세요.',
+  dates_unanswered: '일정을 알려 주거나 아직 미정이라고 말해 주세요.',
+  headcount_unanswered: '예상 인원을 알려 주거나 아직 미정이라고 말해 주세요.',
+  location_unanswered: '장소를 알려 주거나 아직 미정이라고 말해 주세요.',
+  condition_change_pending: '반영하지 못한 조건 변경을 먼저 확인해 주세요.',
+}
+
 export function LivePlanning() {
   const clubId = useAuthStore((state) => state.clubId)
   const userId = useAuthStore((state) => state.me?.id)
@@ -105,6 +113,8 @@ function Conversation({
   const screen = live.snapshot.data?.screen
   const steps = live.snapshot.data?.steps ?? []
   const lookup = live.view?.recordLookup
+  const readiness = live.view?.generationReadiness ?? screen?.generationReadiness ?? null
+  const lastMessage = live.snapshot.data?.messages.at(-1)
   return (
     <>
       <div className="flex flex-col items-start gap-5 lg:flex-row">
@@ -130,6 +140,11 @@ function Conversation({
           onNext={() => {}}
         />
       </div>
+      {lastMessage?.role === 'USER' && !live.busy && (
+        <p role="alert" className="text-failed">
+          마지막 답변에 대한 질문을 받지 못했어요. 연결 상태를 확인해 주세요.
+        </p>
+      )}
       {lookup && (
         <p role="status" className="text-mute">
           {lookup.status === 'available'
@@ -146,12 +161,21 @@ function Conversation({
         <p className="text-mute">
           생성하면 기존 초안 단계가 새 결과로 바뀝니다. 행사 시작이나 발송은 진행되지 않아요.
         </p>
+        <p role="status" className="text-ink2">
+          {!eventId
+            ? '먼저 어떤 행사를 준비하는지 알려 주세요.'
+            : !readiness
+              ? '진행 가능 상태를 확인하지 못했어요. 대화를 이어가거나 다시 불러와 주세요.'
+              : readiness.canGenerate
+                ? '초안을 만들 준비가 됐어요. 아래 버튼을 눌러 진행해 주세요.'
+                : readiness.reasons.length
+                  ? readiness.reasons
+                      .map((reason) => REASONS[reason] ?? '추가 정보를 확인해 주세요.')
+                      .join(' ')
+                  : '대화를 이어서 필요한 정보를 확인해 주세요.'}
+        </p>
         <Button
-          disabled={
-            !eventId ||
-            live.busy ||
-            (live.view ? !live.view.generationReadiness.canGenerate : false)
-          }
+          disabled={!eventId || live.busy || !readiness?.canGenerate}
           onClick={() => void live.generate()}
         >
           {live.busy ? '처리 중…' : '현재 조건으로 초안 생성'}

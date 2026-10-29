@@ -87,7 +87,7 @@ export function PlanFacts({
                       settled ? 'font-bold text-ink' : 'text-mute',
                     )}
                   >
-                    {fact?.value ?? '아직이에요'}
+                    {fact?.value ?? (status === '나중에' ? '나중에 정해요' : '아직이에요')}
                   </span>
                   {status === '잠정' && (
                     <Chip tone="approved" size="sm">
