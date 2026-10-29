@@ -278,7 +278,7 @@ async def test_계획_이력과_단계는_소속만_순서대로_조회한다(cl
     assert client.get(f"/api/v1/events/{event_id}/plan/steps", headers=outsider).status_code == 403
 
 
-async def test_계획_복원에_저장된_준비상태를_반환한다(client, app_db, monkeypatch):
+async def test_계획_복원에_현재_정책으로_준비상태를_계산한다(client, app_db, monkeypatch):
     headers, club_id = _owner_with_club(client)
     event_id = _create_event(client, headers, club_id)
     initial = client.get(f'/api/v1/events/{event_id}/plan', headers=headers)
@@ -291,4 +291,9 @@ async def test_계획_복원에_저장된_준비상태를_반환한다(client, a
     assert result.status_code == 200
     restored = client.get(f'/api/v1/events/{event_id}/plan', headers=headers)
     assert restored.status_code == 200
-    assert restored.json()['data']['generationReadiness'] == result.json()['data']['generationReadiness']
+    # 구 정책에서 저장된 true라도 현재 조건을 기준으로 다시 계산한다.
+    assert result.json()['data']['generationReadiness']['canGenerate'] is True
+    assert restored.json()['data']['generationReadiness'] == {
+        'canGenerate': False,
+        'reasons': ['dates_unanswered', 'location_unanswered'],
+    }
