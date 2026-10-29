@@ -133,86 +133,89 @@ function Conversation({
           persisted={!!eventId}
           initialDraft={failedText}
         />
-        <PlanFacts
-          facts={live.facts}
-          readiness={{ canGenerate: false, reasons: [] }}
-          hideNext
-          onNext={() => {}}
-        />
-      </div>
-      {lastMessage?.role === 'USER' && !live.busy && (
-        <p role="alert" className="text-failed">
-          마지막 답변에 대한 질문을 받지 못했어요. 연결 상태를 확인해 주세요.
-        </p>
-      )}
-      {lookup && (
-        <p role="status" className="text-mute">
-          {lookup.status === 'available'
-            ? '관련 자료를 참고했어요.'
-            : lookup.status === 'not_found'
-              ? '관련 자료를 찾지 못했어요.'
-              : lookup.status === 'failed'
-                ? '자료 검색에 실패했어요.'
-                : '자료 조회를 진행하지 못했어요.'}
-        </p>
-      )}
-      <Card className="space-y-4 p-5">
-        <h2 className="text-h2">계획 초안</h2>
-        <p className="text-mute">
-          생성하면 기존 초안 단계가 새 결과로 바뀝니다. 행사 시작이나 발송은 진행되지 않아요.
-        </p>
-        <p role="status" className="text-ink2">
-          {!eventId
-            ? '먼저 어떤 행사를 준비하는지 알려 주세요.'
-            : !readiness
-              ? '진행 가능 상태를 확인하지 못했어요. 대화를 이어가거나 다시 불러와 주세요.'
-              : readiness.canGenerate
-                ? '초안을 만들 준비가 됐어요. 아래 버튼을 눌러 진행해 주세요.'
-                : readiness.reasons.length
-                  ? readiness.reasons
-                      .map((reason) => REASONS[reason] ?? '추가 정보를 확인해 주세요.')
-                      .join(' ')
-                  : '대화를 이어서 필요한 정보를 확인해 주세요.'}
-        </p>
-        <Button
-          disabled={!eventId || live.busy || !readiness?.canGenerate}
-          onClick={() => void live.generate()}
-        >
-          {live.busy ? '처리 중…' : '현재 조건으로 초안 생성'}
-        </Button>
-        {screen && (
-          <p className="text-mute">
-            전체 {screen.summary.totalSteps}단계 · AI {screen.summary.aiSteps} · 승인 필요{' '}
-            {screen.summary.approvalSteps} · 직접 수행 {screen.summary.manualSteps}
-          </p>
-        )}
-        {screen?.warnings.map((warning, index) => (
-          <p key={index} className="text-mute">
-            {warning}
-          </p>
-        ))}
-        {steps.length > 0 ? (
-          <ol className="space-y-2">
-            {steps.map((step) => (
-              <li key={step.id} className="rounded bg-bg p-3">
-                <strong>
-                  {step.stepOrder}. {step.name}
-                </strong>{' '}
-                ·{' '}
-                {step.actor === 'AI'
-                  ? 'AI 실행'
-                  : step.actor === 'APPROVAL_REQUIRED'
-                    ? '승인 필요'
-                    : '직접 수행'}{' '}
-                · {step.deadline ? new Date(step.deadline).toLocaleString('ko-KR') : '기한 미정'}
-              </li>
+        <div className="flex w-full min-w-0 flex-col gap-4 lg:w-[340px] lg:shrink-0">
+          {lastMessage?.role === 'USER' && !live.busy && (
+            <p role="alert" className="text-failed">
+              마지막 답변에 대한 질문을 받지 못했어요. 연결 상태를 확인해 주세요.
+            </p>
+          )}
+          {lookup && (
+            <p role="status" className="text-mute">
+              {lookup.status === 'available'
+                ? '관련 자료를 참고했어요.'
+                : lookup.status === 'not_found'
+                  ? '관련 자료를 찾지 못했어요.'
+                  : lookup.status === 'failed'
+                    ? '자료 검색에 실패했어요.'
+                    : '자료 조회를 진행하지 못했어요.'}
+            </p>
+          )}
+          <Card className="space-y-4 p-5">
+            <h2 className="text-h2">계획 초안</h2>
+            <p className="text-mute">
+              생성하면 기존 초안 단계가 새 결과로 바뀝니다. 행사 시작이나 발송은 진행되지 않아요.
+            </p>
+            <p role="status" className="text-ink2">
+              {!eventId
+                ? '먼저 어떤 행사를 준비하는지 알려 주세요.'
+                : !readiness
+                  ? '진행 가능 상태를 확인하지 못했어요. 대화를 이어가거나 다시 불러와 주세요.'
+                  : readiness.canGenerate
+                    ? '초안을 만들 준비가 됐어요. 아래 버튼을 눌러 진행해 주세요.'
+                    : readiness.reasons.length
+                      ? readiness.reasons
+                          .map((reason) => REASONS[reason] ?? '추가 정보를 확인해 주세요.')
+                          .join(' ')
+                      : '대화를 이어서 필요한 정보를 확인해 주세요.'}
+            </p>
+            <Button
+              disabled={!eventId || live.busy || !readiness?.canGenerate}
+              onClick={() => void live.generate()}
+            >
+              {live.busy ? '처리 중…' : '현재 조건으로 초안 생성'}
+            </Button>
+            {screen && (
+              <p className="text-mute">
+                전체 {screen.summary.totalSteps}단계 · AI {screen.summary.aiSteps} · 승인 필요{' '}
+                {screen.summary.approvalSteps} · 직접 수행 {screen.summary.manualSteps}
+              </p>
+            )}
+            {screen?.warnings.map((warning, index) => (
+              <p key={index} className="text-mute">
+                {warning}
+              </p>
             ))}
-          </ol>
-        ) : (
-          <p className="text-mute">아직 생성된 단계가 없어요.</p>
-        )}
-        <p className="text-mute">단계 수정과 행사 시작은 준비 중입니다.</p>
-      </Card>
+            {steps.length > 0 ? (
+              <ol className="space-y-2">
+                {steps.map((step) => (
+                  <li key={step.id} className="rounded bg-bg p-3">
+                    <strong>
+                      {step.stepOrder}. {step.name}
+                    </strong>{' '}
+                    ·{' '}
+                    {step.actor === 'AI'
+                      ? 'AI 실행'
+                      : step.actor === 'APPROVAL_REQUIRED'
+                        ? '승인 필요'
+                        : '직접 수행'}{' '}
+                    ·{' '}
+                    {step.deadline ? new Date(step.deadline).toLocaleString('ko-KR') : '기한 미정'}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-mute">아직 생성된 단계가 없어요.</p>
+            )}
+            <p className="text-mute">단계 수정과 행사 시작은 준비 중입니다.</p>
+          </Card>
+          <PlanFacts
+            facts={live.facts}
+            readiness={{ canGenerate: false, reasons: [] }}
+            hideNext
+            onNext={() => {}}
+          />
+        </div>
+      </div>
     </>
   )
 }

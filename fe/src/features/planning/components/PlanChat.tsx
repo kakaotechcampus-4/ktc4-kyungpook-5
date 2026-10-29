@@ -1,5 +1,5 @@
 // P1 왼쪽: 토리와 주고받는 대화.
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '@/features/planning/types'
 import { isSendKey } from '@/features/planning/chatKey'
 import { cn } from '@/shared/lib/cn'
@@ -28,6 +28,12 @@ export function PlanChat({
   initialDraft = '',
 }: PlanChatProps) {
   const [draft, setDraft] = useState(initialDraft)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const followEnd = useRef(true)
+  useLayoutEffect(() => {
+    const panel = scrollRef.current
+    if (panel && followEnd.current) panel.scrollTop = panel.scrollHeight
+  }, [messages])
 
   const send = async (text: string) => {
     const trimmed = text.trim()
@@ -40,7 +46,7 @@ export function PlanChat({
   const lastToriId = [...messages].reverse().find((m) => m.from === '토리')?.id
 
   return (
-    <Card className="flex min-w-0 flex-1 flex-col">
+    <Card className="flex h-[min(70vh,700px)] min-h-[380px] w-full min-w-0 flex-col lg:flex-1">
       <header className="flex items-center justify-between border-b border-line px-[24px] py-[18px]">
         <h2 className="text-h2 text-ink">토리와 계획 잡기</h2>
         <span className="text-[11px] text-mute">
@@ -52,7 +58,17 @@ export function PlanChat({
         </span>
       </header>
 
-      <div className="flex min-h-[420px] flex-col gap-[14px] px-[24px] pt-[20px] pb-[18px]">
+      <div
+        ref={scrollRef}
+        role="region"
+        aria-label="계획 대화 내용"
+        tabIndex={0}
+        onScroll={(event) => {
+          const panel = event.currentTarget
+          followEnd.current = panel.scrollHeight - panel.scrollTop - panel.clientHeight < 48
+        }}
+        className="flex min-h-0 flex-1 flex-col gap-[14px] overflow-y-auto px-[24px] pt-[20px] pb-[18px]"
+      >
         {messages.map((message) =>
           message.from === '토리' ? (
             <div key={message.id} className="flex flex-col gap-[9px]">
@@ -114,7 +130,7 @@ export function PlanChat({
             aria-label="계획 대화 답변"
             aria-describedby="planning-input-help"
             rows={2}
-            className="min-h-[58px] resize-y"
+            className="min-h-[58px] max-h-[160px] resize-y"
             disabled={busy}
             placeholder="답을 입력하세요"
             value={draft}

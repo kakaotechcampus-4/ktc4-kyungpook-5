@@ -65,7 +65,7 @@ export function PlanFacts({
   const { canGenerate, reasons } = readiness ?? localReadiness(facts)
 
   return (
-    <div className="flex w-[320px] shrink-0 flex-col gap-[16px]">
+    <div className="flex w-full min-w-0 shrink-0 flex-col gap-[16px]">
       <Card className="flex flex-col gap-[16px] px-[22px] pt-[20px] pb-[22px]">
         <h2 className="text-h2 text-ink">지금까지 정한 것</h2>
 

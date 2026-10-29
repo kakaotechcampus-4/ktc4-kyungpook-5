@@ -94,17 +94,19 @@ function DemoPlanningPage() {
       <PlanStepper current={step} />
 
       {step === 1 ? (
-        <div className="flex items-start gap-[20px]">
+        <div className="flex flex-col items-start gap-[20px] lg:flex-row">
           <PlanChat messages={messages} onSend={send} demo={demo} busy={false} error="" />
-          <PlanFacts
-            facts={DEMO_FACTS}
-            readiness={demo ? undefined : { canGenerate: false, reasons: [] }}
-            reference={demo ? DEMO_REFERENCE : undefined}
-            unavailable={!demo}
-            onNext={() => {
-              if (demo) setGenerating(true)
-            }}
-          />
+          <div className="w-full lg:w-[320px] lg:shrink-0">
+            <PlanFacts
+              facts={DEMO_FACTS}
+              readiness={demo ? undefined : { canGenerate: false, reasons: [] }}
+              reference={demo ? DEMO_REFERENCE : undefined}
+              unavailable={!demo}
+              onNext={() => {
+                if (demo) setGenerating(true)
+              }}
+            />
+          </div>
         </div>
       ) : (
         <div className="flex items-start gap-[20px]">
