@@ -1,10 +1,11 @@
 // P1 왼쪽: 토리와 주고받는 대화.
 import { useState } from 'react'
 import type { ChatMessage } from '@/features/planning/types'
+import { isSendKey } from '@/features/planning/chatKey'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
-import { Input } from '@/shared/ui/Input'
+import { Textarea } from '@/shared/ui/Input'
 import { Tori } from '@/shared/ui/Tori'
 
 interface PlanChatProps {
@@ -57,7 +58,7 @@ export function PlanChat({
             <div key={message.id} className="flex flex-col gap-[9px]">
               <div className="flex items-start gap-[10px]">
                 <Tori size={26} className="mt-[4px] shrink-0" />
-                <p className="rounded-[12px] border border-line bg-bg px-[15px] py-[12px] text-[12.5px] leading-[19px] text-ink">
+                <p className="rounded-[12px] border border-line bg-bg px-[15px] py-[12px] text-[12.5px] leading-[19px] whitespace-pre-wrap text-ink">
                   {message.text}
                 </p>
               </div>
@@ -82,7 +83,7 @@ export function PlanChat({
               key={message.id}
               className={cn(
                 'ml-auto max-w-[70%] rounded-[12px] bg-blue-600 px-[15px] py-[12px]',
-                'text-[12.5px] leading-[19px] font-medium text-white',
+                'text-[12.5px] leading-[19px] font-medium whitespace-pre-wrap text-white',
               )}
             >
               {message.text}
@@ -108,13 +109,36 @@ export function PlanChat({
           void send(draft)
         }}
       >
-        <div className="flex-1">
-          <Input
+        <div className="min-w-0 flex-1">
+          <Textarea
+            aria-label="계획 대화 답변"
+            aria-describedby="planning-input-help"
+            rows={2}
+            className="min-h-[58px] resize-y"
             disabled={busy}
             placeholder="답을 입력하세요"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (
+                !isSendKey({
+                  key: e.key,
+                  shiftKey: e.shiftKey,
+                  altKey: e.altKey,
+                  ctrlKey: e.ctrlKey,
+                  metaKey: e.metaKey,
+                  isComposing: e.nativeEvent.isComposing,
+                  keyCode: e.keyCode,
+                })
+              )
+                return
+              e.preventDefault()
+              if (!e.repeat) e.currentTarget.form?.requestSubmit()
+            }}
           />
+          <p id="planning-input-help" className="mt-1 text-[11px] text-mute">
+            Enter로 전송 · Shift+Enter로 줄바꿈
+          </p>
         </div>
         <Button type="submit" disabled={busy}>
           보내기
