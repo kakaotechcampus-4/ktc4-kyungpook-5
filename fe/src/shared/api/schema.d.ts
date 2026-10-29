@@ -859,6 +859,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Event */
+        get: operations["get_event_api_v1_events__event_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/{event_id}/plan/chat": {
         parameters: {
             query?: never;
@@ -1007,6 +1024,8 @@ export interface components {
             title: string;
             /** Subtitle */
             subtitle: string | null;
+            /** Content */
+            content: string | null;
             /** Irreversible */
             irreversible: boolean;
             /** Approveneeded */
@@ -1031,6 +1050,8 @@ export interface components {
             allowManual: boolean | null;
             /** Canapprove */
             canApprove: boolean;
+            /** Editable */
+            editable: boolean;
         };
         /**
          * ActionStatus
@@ -1352,6 +1373,15 @@ export interface components {
          * @enum {string}
          */
         CurrencyCode: "KRW";
+        /** CurrentStepOut */
+        CurrentStepOut: {
+            /** Id */
+            id: string;
+            /** Steporder */
+            stepOrder: number;
+            /** Name */
+            name: string;
+        };
         /** DiscordConnectionCreateIn */
         DiscordConnectionCreateIn: {
             /** Guildid */
@@ -1533,6 +1563,12 @@ export interface components {
             /** Meta */
             meta?: null;
         };
+        /** Envelope[EventDetailOut] */
+        Envelope_EventDetailOut_: {
+            data: components["schemas"]["EventDetailOut"];
+            /** Meta */
+            meta?: null;
+        };
         /** Envelope[ExpenseOut] */
         Envelope_ExpenseOut_: {
             data: components["schemas"]["ExpenseOut"];
@@ -1703,6 +1739,32 @@ export interface components {
             /** Title */
             title: string;
             status: components["schemas"]["EventStatus"];
+        };
+        /**
+         * EventDetailOut
+         * @description L2 헤더. 목록 카드와 달리 현재 단계를 id까지 내려 Step 모달을 바로 연다.
+         */
+        EventDetailOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            status: components["schemas"]["EventStatus"];
+            /** Startdate */
+            startDate: string | null;
+            /** Enddate */
+            endDate: string | null;
+            /** Dday */
+            dday: number | null;
+            /** Location */
+            location: string | null;
+            /** Headcount */
+            headcount: number | null;
+            currentStep: components["schemas"]["CurrentStepOut"] | null;
+            /** Payment */
+            payment: unknown | null;
+            /** Budget */
+            budget: unknown | null;
         };
         /** EventListResponse */
         EventListResponse: {
@@ -2499,6 +2561,8 @@ export interface components {
             id: string;
             /** Steporder */
             stepOrder: number;
+            code: components["schemas"]["StepCode"];
+            phase: components["schemas"]["StepPhase"];
             /** Name */
             name: string;
             actor: components["schemas"]["StepActor"];
@@ -2518,6 +2582,11 @@ export interface components {
             /** Remainingactions */
             remainingActions: components["schemas"]["RemainingActionOut"][];
         };
+        /**
+         * StepPhase
+         * @enum {string}
+         */
+        StepPhase: "PREPARATION" | "RECRUITING" | "EXECUTION" | "CANCELLATION";
         /** StepProgressOut */
         StepProgressOut: {
             /** Steporder */
@@ -4622,13 +4691,15 @@ export interface operations {
     };
     list_events_api_v1_events_get: {
         parameters: {
-            query?: {
-                clubId?: string | null;
+            query: {
+                clubId: string;
                 status?: components["schemas"]["EventStatus"] | null;
                 page?: number;
                 size?: number;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4709,6 +4780,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DraftListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_api_v1_events__event_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EventDetailOut_"];
                 };
             };
             /** @description Validation Error */
@@ -4909,7 +5013,9 @@ export interface operations {
                 page?: number;
                 size?: number;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 event_id: string;
             };
@@ -4940,7 +5046,9 @@ export interface operations {
     list_event_steps_api_v1_events__event_id__steps_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 event_id: string;
             };
