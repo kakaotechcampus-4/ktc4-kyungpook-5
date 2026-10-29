@@ -18,13 +18,15 @@ export const STEP_ACTOR_LABEL: Record<string, string> = {
 
 export const MEMBER_ROLE_LABEL: Record<string, string> = {
   OWNER: '회장',
-  MANAGER: '총무',
-  MEMBER: '회원',
+  MANAGER: '임원',
+  MEMBER: '명단 구성원',
 }
 
 // 처리한 사람 "김지훈 · 회장". 기록이 비어 있으면 숨기지 않고 알 수 없음으로 드러낸다.
 export function formatResolver(by: { name: string; role: string } | null | undefined): string {
-  return by ? `${by.name} · ${MEMBER_ROLE_LABEL[by.role]}` : '처리한 사람 알 수 없음'
+  return by
+    ? `${by.name} · ${MEMBER_ROLE_LABEL[by.role] ?? '역할 확인 필요'}`
+    : '처리한 사람 알 수 없음'
 }
 
 export const EVENT_STATUS_LABEL: Record<string, string> = {

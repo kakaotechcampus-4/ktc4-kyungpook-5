@@ -1,5 +1,5 @@
 // S1 회원가입. 기존 동아리에 참여하거나 새로 만든다. 모드에 따라 아래 입력란이 통째로 바뀐다.
-// 참여 요청을 보내면 허가를 기다리는 화면으로 바뀐다(대표가 허가해야 쓸 수 있다).
+// 참여 요청을 보내면 허가를 기다리는 화면으로 바뀐다(회장이 허가해야 쓸 수 있다).
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AuthShell, ErrorBanner, Field } from '@/features/auth/components/AuthShell'
@@ -26,7 +26,7 @@ export default function SignupPage() {
 
   const [query, setQuery] = useState('')
   const [club, setClub] = useState<ClubSearchResult>()
-  const [role, setRole] = useState('총무')
+  const [role, setRole] = useState('임원')
 
   const [clubName, setClubName] = useState('')
   const [clubField, setClubField] = useState<ClubField>('학술')
@@ -64,7 +64,7 @@ export default function SignupPage() {
     }
     setError(undefined)
 
-    // 새로 만들면 바로 대표가 되므로 그대로 들어간다. 참여는 허가를 기다린다.
+    // 새로 만들면 바로 회장이 되므로 그대로 들어간다. 참여는 허가를 기다린다.
     if (mode === 'CREATE') {
       navigate('/')
       return
@@ -181,10 +181,10 @@ export default function SignupPage() {
           </section>
 
           <ToriNote
-            title={mode === 'JOIN' ? '요청을 보내면 알림이 가요' : '만들면 바로 대표가 돼요'}
+            title={mode === 'JOIN' ? '요청을 보내면 알림이 가요' : '만들면 바로 회장이 돼요'}
           >
             {mode === 'JOIN'
-              ? `요청을 보내면 대표${club ? ` ${club.ownerName} 님` : ''}에게 알림이 가요. 허가 전까지는 동아리 자료와 행사에 접근할 수 없어요.`
+              ? `요청을 보내면 회장${club ? ` ${club.ownerName} 님` : ''}에게 알림이 가요. 허가 전까지는 동아리 자료와 행사에 접근할 수 없어요.`
               : '다음 화면에서 임원을 초대하고 동아리원 명단을 올릴 수 있어요. 명단이 있어야 참가·미납 집계를 해드릴 수 있어요.'}
           </ToriNote>
 

@@ -62,7 +62,7 @@ export function ClubSearchField({
             <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
               <span className="truncate text-[13px] font-bold text-ink">{club.name}</span>
               <span className="text-[10.5px] text-mute">
-                {club.field} · 대표 {club.ownerName} · 임원 {club.executiveCount}명
+                {club.field} · 회장 {club.ownerName} · 임원 {club.executiveCount}명
               </span>
             </span>
             {picked && (
@@ -99,7 +99,7 @@ export function ClubSearchField({
             </select>
           </Field>
           <p className="text-[10.5px] text-mute">
-            임원만 계정을 만듭니다. 일반 동아리원은 명단에만 등록돼요.
+            회장과 임원만 서비스를 이용해요. 일반 동아리원은 내부 명단에만 등록돼요.
           </p>
         </div>
       )}

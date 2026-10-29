@@ -4,8 +4,8 @@ from typing import Literal
 
 from pydantic import EmailStr
 
-from app.core.enums import ClubCategory, MemberRole
-from app.schemas.common import CamelModel, UtcDateTime
+from app.core.enums import ClubCategory
+from app.schemas.common import CamelModel, ServiceMemberRole, UtcDateTime
 
 
 class ClubCreateIn(CamelModel):
@@ -26,7 +26,7 @@ class MyClubOut(CamelModel):
 
     id: str
     name: str
-    role: MemberRole
+    role: ServiceMemberRole
 
 
 class MeOut(CamelModel):
@@ -38,7 +38,7 @@ class MeOut(CamelModel):
 
 class InvitationCreateIn(CamelModel):
     email: EmailStr
-    role: MemberRole
+    role: ServiceMemberRole
 
 
 class InvitationCreateOut(CamelModel):
@@ -51,7 +51,7 @@ class InvitationAcceptIn(CamelModel):
 
 class InvitationAcceptOut(CamelModel):
     club_id: str
-    role: MemberRole
+    role: ServiceMemberRole
 
 
 # --- 동아리원 목록 (#188) --------------------------------------------------

@@ -1,8 +1,4 @@
-"""동아리 기록 엔드포인트. 업로드·목록·단건 조회를 연다(meeting.curl.sh M01, #42).
-
-수정·삭제·열 맞추기·챗봇은 이번 범위가 아니다.
-"""
-
+"""소속 권한을 검증한 자료 업로드·목록·조회·색인 재시도."""
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,6 +30,18 @@ async def list_records(
         data=[RecordOut.model_validate(row) for row in rows],
         meta=PageMeta(page=page, size=size, total_count=total),
     )
+
+
+@router.post("/{record_id}/index", response_model=Envelope[RecordDetailOut])
+async def retry_index(
+    record_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[RecordDetailOut]:
+    record = await record_service.get_record(session, record_id=record_id)
+    await ensure_member(session, club_id=record.club_id, account=account)
+    record = await record_service.index_record(session, record_id=record_id)
+    return Envelope(data=RecordDetailOut.model_validate(record))
 
 
 @router.post("", response_model=Envelope[RecordOut], status_code=201)

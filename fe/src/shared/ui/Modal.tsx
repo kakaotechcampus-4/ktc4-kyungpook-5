@@ -17,6 +17,7 @@ interface ModalProps {
   // 시안 기준 600~660px
   width?: number
   className?: string
+  placement?: 'center' | 'left'
 }
 
 export function Modal({
@@ -29,6 +30,7 @@ export function Modal({
   footerNote,
   footer,
   width = 640,
+  placement = 'center',
   className,
 }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -57,7 +59,10 @@ export function Modal({
       onClick={(e) => e.target === e.currentTarget && onClose()}
       style={{ width }}
       className={cn(
-        'm-auto max-h-[calc(100vh-64px)] max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-[20px] bg-card p-0 text-ink shadow-[0_12px_36px_rgba(0,0,0,0.18)] backdrop:bg-backdrop open:flex',
+        'flex-col overflow-hidden bg-card p-0 text-ink shadow-[0_12px_36px_rgba(0,0,0,0.18)] backdrop:bg-backdrop open:flex',
+        placement === 'left'
+          ? 'm-0 h-dvh max-h-dvh max-w-[calc(100vw-48px)] rounded-none'
+          : 'm-auto max-h-[calc(100vh-64px)] max-w-[calc(100vw-32px)] rounded-[20px]',
         className,
       )}
     >

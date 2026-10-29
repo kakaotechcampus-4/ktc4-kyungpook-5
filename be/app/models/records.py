@@ -45,6 +45,8 @@ class Record(IdMixin, TimestampMixin, Base):
     parse_result: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
     # 읽기 실패 원인. 화면에 사유와 해결 방법을 보여주므로 형식을 schemas에서 고정한다.
     parse_error: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
+    # 파싱 성공과 검색 준비 실패를 구분한다. 원문과 parse_result는 재시도에 보존한다.
+    index_error: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
 
     club: Mapped["Club"] = relationship(back_populates="records")
     event: Mapped["Event | None"] = relationship()

@@ -224,7 +224,7 @@ async def test_권한_없는_멤버는_초대를_못_만든다(client: TestClien
     res = client.post(
         f"/api/v1/clubs/{club_id}/invitations",
         headers={"Authorization": f"Bearer {outsider_token}"},
-        json={"email": "someone@example.com", "role": "MEMBER"},
+        json={"email": "someone@example.com", "role": "MANAGER"},
     )
 
     assert res.status_code == 403

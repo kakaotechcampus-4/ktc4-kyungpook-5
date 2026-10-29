@@ -1,12 +1,12 @@
 """Jev 판단 오케스트레이션 — 판단 작업 생성, 분기별 도구 호출, 판단·할 일 후보 저장.
 
-최종 전사·허용 채널 메시지가 들어오면 자동으로 판단 작업을 만든다. PM이 판단 API를
-따로 부르지 않는다. 판단·검색·생성은 더미(meeting_judge_stub, context_tools_stub)다.
-
-NONE 분기는 판단 기록만 남기고 검색·생성·할 일 도구를 부르지 않는다.
+실제 WS는 decide_live_meeting_segment에서 공개 AI의 조회와 후보 추출을 독립 호출한다.
+이전 decide_meeting_segment/Discord 경로는 개발 fixture이고 실제 AI 결과가 아니다.
 """
 
+import asyncio
 import time
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -26,6 +26,7 @@ from app.models.discord import DiscordMessage
 from app.models.meetings import Meeting, TranscriptSegment
 from app.models.tasks import TaskSuggestion
 from app.services import agent_job_service, context_tools_stub
+from app.services import meeting_ai_service
 from app.services.meeting_judge_stub import (
     STUB_MODEL_NAME,
     STUB_PROMPT_VERSION,
@@ -35,6 +36,114 @@ from app.services.meeting_judge_stub import (
 POLICY_VERSION = f"{STUB_PROMPT_VERSION}+{context_tools_stub.STUB_TOOLS_VERSION}"
 # Discord 판단에 함께 보는 앞 메시지 수(이번 메시지 포함).
 DISCORD_CONTEXT_WINDOW = 5
+
+
+async def decide_live_meeting_segment(
+    session: AsyncSession, *, meeting: Meeting, segment: TranscriptSegment
+) -> tuple[AgentJob, ContextDecision]:
+    """실제 WS 전사 경로. 자료 조회와 후보 추출은 서로의 분기로 막지 않는다."""
+    job = await agent_job_service.create_job(
+        session, club_id=meeting.club_id, kind=AgentJobKind.CONTEXT_DECISION
+    )
+    agent_job_service.start(session, job, AgentJobStage.DECIDING)
+    earlier = list(await session.scalars(
+        select(TranscriptSegment).where(
+            TranscriptSegment.meeting_id == meeting.id,
+            TranscriptSegment.seq < segment.seq, TranscriptSegment.is_final.is_(True),
+            TranscriptSegment.text != "",
+        ).order_by(TranscriptSegment.seq.desc()).limit(4)
+    ))
+
+    def utterance(item: TranscriptSegment) -> dict:
+        return {
+            "utterance_id": item.id, "seq": item.seq, "version": item.version,
+            "text": item.text,
+            "started_at": meeting.started_at + timedelta(milliseconds=item.start_ms or 0),
+            "ended_at": meeting.started_at + timedelta(milliseconds=item.end_ms or item.start_ms or 0),
+        }
+
+    payload = {
+        "meeting_id": meeting.id, "club_id": meeting.club_id,
+        "utterance": utterance(segment), "context": [utterance(item) for item in reversed(earlier)],
+    }
+    source = {"sourceId": segment.id, "sourceVersion": segment.version}
+    meeting_id, segment_id, source_version = meeting.id, segment.id, segment.version
+    segment.decision_job_id = job.id
+    # 전사·진행 job을 먼저 보존하고 모델 대기 중 DB 연결을 반납한다.
+    await session.commit()
+    judged, extracted = await asyncio.gather(
+        meeting_ai_service.judge(payload), meeting_ai_service.extract(payload), return_exceptions=True,
+    )
+    tools: list[dict] = []
+    failures: list[dict] = []
+    for name, result in (("meeting.lookup", judged), ("tasks.extract", extracted)):
+        if isinstance(result, BaseException):
+            code = getattr(result, "code", None) or type(result).__name__
+            failure = {"tool": name, "status": "FAILED", "code": code}
+            tools.append(failure)
+            failures.append(failure)
+    lookup_ok = not isinstance(judged, BaseException)
+    extraction_ok = not isinstance(extracted, BaseException)
+    # Public result validates route/kind/source ids; never turn lookup failure into NONE.
+    trace = judged.trace if lookup_ok else None
+    if trace is not None:
+        tools.extend(item.model_dump(mode="json") for item in trace.tool_calls)
+    if extraction_ok:
+        tools.append({"tool": "tasks.extract", "status": "OK", "resultCount": len(extracted)})
+    status = ContextDecisionStatus.SUCCEEDED
+    if failures:
+        status = ContextDecisionStatus.PARTIAL if lookup_ok or extraction_ok else ContextDecisionStatus.FAILED
+    current = await session.scalar(select(TranscriptSegment).where(
+        TranscriptSegment.id == segment_id,
+    ).with_for_update().execution_options(populate_existing=True))
+    if current.version != source_version:
+        status = ContextDecisionStatus.STALE
+    decision = ContextDecision(
+        club_id=job.club_id, job_id=job.id, source_type=ContextSourceType.MEETING_TRANSCRIPT,
+        meeting_id=meeting_id, sources=[source], status=status,
+        route=JudgeRoute(judged.route) if lookup_ok else JudgeRoute.ERROR,
+        kind=JudgeKind(judged.kind) if lookup_ok else JudgeKind.FAILED,
+        question=judged.question if lookup_ok else None,
+        output=judged.answer if lookup_ok else None,
+        citations=None,
+        reason_summary=None if not failures else "일부 AI 처리를 완료하지 못했습니다. 기능별 오류를 확인해 주세요.",
+        tool_calls=tools,
+        model_version=trace.model if trace is not None else "unavailable",
+        policy_version=trace.prompt_version if trace is not None else "unavailable",
+    )
+    # AI 계약은 snake_case지만 FE 저장 출처는 기존 camelCase를 유지한다.
+    if lookup_ok:
+        decision.citations = [
+            {"recordId": source.record_id, "fileName": source.file_name,
+             "location": source.location.model_dump(mode="json")}
+            for source in judged.sources
+        ]
+    session.add(decision)
+    await session.flush()
+    suggestion_ids: list[str] = []
+    if extraction_ok and status != ContextDecisionStatus.STALE:
+        for draft in extracted:
+            suggestion = TaskSuggestion(
+                club_id=job.club_id, decision_id=decision.id,
+                source_type=ContextSourceType.MEETING_TRANSCRIPT,
+                title=draft.title, description=draft.description,
+                suggested_assignee=draft.suggested_assignee,
+                due_date=draft.due_date, kind=draft.kind, due_at=draft.due_at,
+                scheduled_at=draft.scheduled_at, unresolved_fields=draft.unresolved_fields,
+                evidence=[source],
+            )
+            session.add(suggestion)
+            await session.flush()
+            suggestion_ids.append(suggestion.id)
+    result = {"contextDecisionId": decision.id, "taskSuggestionIds": suggestion_ids}
+    if failures:
+        job.result = result
+        agent_job_service.fail(session, job, {"code": "MEETING_AI_FAILED", "features": failures})
+    else:
+        agent_job_service.succeed(session, job, result)
+    if status != ContextDecisionStatus.STALE:
+        current.decision_job_id = job.id
+    return job, decision
 
 
 class ContextDecisionNotFound(ApiError):
@@ -134,7 +243,7 @@ async def mark_segment_decisions_stale(
     decisions = await session.scalars(
         select(ContextDecision).where(
             ContextDecision.meeting_id == meeting_id,
-            ContextDecision.status == ContextDecisionStatus.SUCCEEDED,
+            ContextDecision.status.in_([ContextDecisionStatus.SUCCEEDED, ContextDecisionStatus.PARTIAL]),
         )
     )
     for decision in decisions:

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import ContextSourceType, TaskSuggestionStatus
 from app.core.exceptions import ApiError, VersionConflict
+from app.models.agent import ContextDecision
 from app.models.tasks import TaskSuggestion
 from app.schemas.tasks import TaskSuggestionPatchIn
 
@@ -38,8 +39,13 @@ async def list_suggestions(
     club_id: str,
     source_type: ContextSourceType | None,
     status: TaskSuggestionStatus | None,
+    meeting_id: str | None = None,
 ) -> list[TaskSuggestion]:
     query = select(TaskSuggestion).where(TaskSuggestion.club_id == club_id)
+    if meeting_id is not None:
+        query = query.join(ContextDecision, TaskSuggestion.decision_id == ContextDecision.id).where(
+            ContextDecision.club_id == club_id, ContextDecision.meeting_id == meeting_id
+        )
     if source_type is not None:
         query = query.where(TaskSuggestion.source_type == source_type)
     if status is not None:
@@ -59,7 +65,14 @@ async def get_suggestion(
 async def _get_proposed(
     session: AsyncSession, *, club_id: str, suggestion_id: str, expected_version: int
 ) -> TaskSuggestion:
-    suggestion = await get_suggestion(session, club_id=club_id, suggestion_id=suggestion_id)
+    # /confirm도 같은 후보 행을 잠근다. 후보 수정·수락과 예약 확정이 엇갈리지 않게 한다.
+    suggestion = await session.scalar(
+        select(TaskSuggestion).where(
+            TaskSuggestion.id == suggestion_id, TaskSuggestion.club_id == club_id
+        ).with_for_update()
+    )
+    if suggestion is None:
+        raise TaskSuggestionNotFound()
     if suggestion.version != expected_version:
         raise VersionConflict()
     if suggestion.status != TaskSuggestionStatus.PROPOSED:

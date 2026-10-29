@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import ClubCategory, InvitationStatus, MemberRole, MemberStatus
+from app.core.enums import ClubCategory, InvitationStatus, MemberRole, MemberStatus, SERVICE_ROLES
 from app.core.exceptions import ValidationFailed
 from app.core.security import hash_token, new_token
 from app.models.auth import Account, Auth
@@ -54,10 +54,11 @@ async def create_club(
 
 
 async def list_my_clubs(session: AsyncSession, account: Account) -> list[Member]:
-    """account가 속한 모든 동아리의 Member 행. Member.club이 lazy-load된다."""
+    """회장·임원으로 이용할 수 있는 소속만 돌려준다. 일반 명단은 노출하지 않는다."""
     rows = await session.scalars(
         select(Member)
-        .where(Member.account_id == account.id, Member.status == MemberStatus.ACTIVE)
+        .where(Member.account_id == account.id, Member.status == MemberStatus.ACTIVE,
+               Member.role.in_(SERVICE_ROLES))
         .join(Club, Member.club_id == Club.id)
     )
     members = list(rows)
@@ -74,6 +75,8 @@ async def create_invitation(
     role: MemberRole,
     invited_by: Member,
 ) -> Invitation:
+    if role not in SERVICE_ROLES:
+        raise ValidationFailed({"role": "회장·임원 역할만 초대할 수 있습니다."})
     token = new_token()
     invitation = Invitation(
         club_id=club_id,
@@ -103,6 +106,8 @@ async def accept_invitation(
         raise ValidationFailed({"token": "이미 처리된 초대입니다."})
     if invitation.expires_at < datetime.now(UTC):
         raise ValidationFailed({"token": "초대가 만료되었습니다."})
+    if invitation.role not in SERVICE_ROLES:
+        raise ValidationFailed({"role": "일반 동아리원 초대는 서비스에서 사용할 수 없습니다. 회장·임원 초대를 요청해 주세요."})
 
     existing = await session.scalar(
         select(Member).where(

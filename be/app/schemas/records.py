@@ -13,6 +13,7 @@ class RecordOut(CamelModel):
     category: RecordCategory
     size: int
     parse_status: RecordParseStatus
+    index_error: dict[str, Any] | None = None
     created_at: UtcDateTime
 
 

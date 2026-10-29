@@ -8,7 +8,7 @@ AI 설정(`AISettings`)은 여기서 새로 선언하지 않고 `app.ai.config`�
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.ai.config import AISettings
@@ -34,6 +34,21 @@ class Settings(BaseSettings):
 
     # TEST_MODE=true일 때만 /test-support/* 라우트를 등록한다. 운영 환경은 404.
     test_mode: bool = False
+    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+    stt_url: str = ""
+    stt_api_key: SecretStr = SecretStr("")
+    stt_model: str = "whisper-large-v3"
+    stt_timeout_seconds: float = Field(default=60, gt=0)
+    audio_vad_rms_threshold: float = Field(default=450, gt=0)
+
+    web_push_vapid_public_key: str = ""
+    web_push_vapid_private_key: SecretStr = SecretStr("")
+    web_push_vapid_subject: str = ""
+    web_push_timeout_seconds: float = Field(default=10, gt=0)
+    web_push_ttl_seconds: int = Field(default=3600, ge=0)
+    reminder_dispatcher_enabled: bool = False
+    reminder_poll_seconds: float = Field(default=5, gt=0)
 
     ai: AISettings = Field(default_factory=AISettings)
 

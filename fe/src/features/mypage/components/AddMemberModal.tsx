@@ -16,7 +16,7 @@ const defaultSubtitle = (group: MemberGroup) => (group === '임원' ? EXECUTIVE_
 
 const GROUPS: Array<{ value: MemberGroup; desc: string }> = [
   { value: '임원', desc: '직책이 있는 운영진이에요' },
-  { value: '동아리원', desc: '일반 회원이에요' },
+  { value: '동아리원', desc: '서비스 계정 없이 명단에만 등록돼요' },
 ]
 
 interface AddMemberModalProps {
