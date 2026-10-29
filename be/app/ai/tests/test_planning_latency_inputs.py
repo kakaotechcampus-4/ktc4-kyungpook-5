@@ -7,7 +7,8 @@ import pytest
 from langchain_core.messages import AIMessage
 from pydantic import ValidationError
 
-from app.ai import PlanningChatRequest, PlanningPreviewRequest, chat_planning, generate_planning_preview
+from app.ai import (PlanningChatRequest, PlanningPreviewRequest, chat_planning, generate_planning_preview,
+                    planning_generation_readiness)
 from app.ai.features.planning import public_workflow
 from app.ai.features.planning.agent.nodes import GENERATE_TOOL_NAME
 from app.ai.features.planning.generation.graph import run_plan_generation
@@ -19,6 +20,9 @@ from app.ai.tests.test_planning_public_workflow import run, scripted, tool
 def test_fixture_restores_a_real_offer_and_four_independent_requests():
     fixture = load_fixture()
     before = fixture.model_dump_json()
+    state = fixture.resume_state
+    assert set(state.payload.basis_draft.deferred_topics) == {"dates", "location"}
+    assert planning_generation_readiness(state.payload.basis_draft, resume_state=state).can_generate
     requests = [make_request(fixture, case, f's1-{case.id}') for case in fixture.cases]
     assert all(isinstance(request, PlanningChatRequest) for request in requests[:3])
     assert isinstance(requests[-1], PlanningPreviewRequest)

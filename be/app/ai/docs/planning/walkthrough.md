@@ -547,7 +547,7 @@ agent: 현재 상태와 이번 발화 해석
 60명으로 바뀐 next_state를 다음 반복에 전달하지 않는다.
 ```
 
-[planning_latency_inputs.py](../../scripts/planning_latency_inputs.py)의 `make_request()`는 매번 고정 JSON에서 state를 복원한다. request_id와 이번 message_id만 고유하게 만들고 날짜, 조건, 이력과 권유는 유지한다. G2라면 message가 없는 `PlanningPreviewRequest`를 만든다. 기존 성공 초안을 재사용하지 않으므로 같은 생성 경로를 다시 실행할 수 있다.
+[planning_latency_inputs.py](../../scripts/planning_latency_inputs.py)의 `make_request()`는 매번 고정 JSON에서 state를 복원한다. request_id와 이번 message_id만 고유하게 만들고 날짜·장소 명시 보류, 조건, 이력과 권유는 유지한다. 과거 실측과 입력이 달라 직접 비교하지 않는다. G2라면 message가 없는 `PlanningPreviewRequest`를 만든다. 기존 성공 초안을 재사용하지 않으므로 같은 생성 경로를 다시 실행할 수 있다.
 
 ```python
 state = parse_resume_state(fixture.resume_state.model_dump_json())

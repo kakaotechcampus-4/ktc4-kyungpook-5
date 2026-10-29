@@ -1,6 +1,6 @@
 {
   "fixture_version": 1,
-  "provenance": "합성 MT 조건과 고정 모델 응답 2개로 실제 공개 함수와 권유 Tool을 실행해 만든 상태. 외부 모델 호출 없음. 실제 사용자 정답 세트가 아님.",
+  "provenance": "합성 MT 조건·날짜와 장소의 명시적 보류·고정 모델 응답으로 만든 생성 전 상태. 외부 모델 호출 없음. 과거 측정 입력과 해시가 다르며 실제 사용자 정답 세트가 아님.",
   "actual_provider_calls": 0,
   "reference_date": "2026-10-28",
   "timezone": "Asia/Seoul",
@@ -23,13 +23,16 @@
           "budget_total": null
         },
         "condition_meta": {},
-        "deferred_topics": []
+        "deferred_topics": [
+          "dates",
+          "location"
+        ]
       },
       "history": [
         {
           "role": "user",
           "id": "fixture-user",
-          "content": "현재 조건으로 준비 순서 초안을 만들지 물어봐 줘. 아직 생성하지는 마.",
+          "content": "날짜와 장소는 아직 미정이야. 현재 조건으로 준비 순서 초안을 만들지 물어봐 줘. 아직 생성하지는 마.",
           "tool_calls": [],
           "name": null,
           "tool_call_id": null,
@@ -45,7 +48,7 @@
               "name": "update_generation_offer",
               "args": {
                 "action": "offer",
-                "reason": "날짜는 미정으로 두고 MT 준비 순서의 초안을 만들 수 있어요."
+                "reason": "날짜와 장소는 미정으로 두고 MT 준비 순서의 초안을 만들 수 있어요."
               }
             }
           ],
@@ -56,7 +59,7 @@
         {
           "role": "tool",
           "id": "bb5953e5-4863-46a8-bb0a-de1cedcfca8e",
-          "content": "{\"status\":\"applied\",\"offer\":{\"id\":\"19600000-0000-4000-8000-000000000001\",\"status\":\"pending\",\"summary\":\"날짜는 미정으로 두고 MT 준비 순서의 초안을 만들 수 있어요.\",\"basis_draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":50,\"fee_per_person\":25000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{},\"deferred_topics\":[]}},\"reason\":null}",
+          "content": "{\"status\":\"applied\",\"offer\":{\"id\":\"19600000-0000-4000-8000-000000000001\",\"status\":\"pending\",\"summary\":\"날짜와 장소는 미정으로 두고 MT 준비 순서의 초안을 만들 수 있어요.\",\"basis_draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":50,\"fee_per_person\":25000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{},\"deferred_topics\":[\"dates\",\"location\"]}},\"reason\":null}",
           "tool_calls": [],
           "name": "update_generation_offer",
           "tool_call_id": "fixture-offer-tool",
@@ -65,7 +68,7 @@
         {
           "role": "assistant",
           "id": "fixture-offer-reply",
-          "content": "MT, 50명, 참가비 25,000원으로 정리돼 있어요. 날짜는 미정으로 두고 준비 순서 초안을 만들까요?",
+          "content": "MT, 50명, 참가비 25,000원으로 정리돼 있어요. 날짜와 장소는 미정으로 두고 준비 순서 초안을 만들까요?",
           "tool_calls": [],
           "name": null,
           "tool_call_id": null,
@@ -76,7 +79,7 @@
         "offer": {
           "id": "19600000-0000-4000-8000-000000000001",
           "status": "pending",
-          "summary": "날짜는 미정으로 두고 MT 준비 순서의 초안을 만들 수 있어요.",
+          "summary": "날짜와 장소는 미정으로 두고 MT 준비 순서의 초안을 만들 수 있어요.",
           "basis_draft": {
             "conditions": {
               "title": null,
@@ -89,7 +92,10 @@
               "budget_total": null
             },
             "condition_meta": {},
-            "deferred_topics": []
+            "deferred_topics": [
+              "dates",
+              "location"
+            ]
           }
         },
         "preview": null,
