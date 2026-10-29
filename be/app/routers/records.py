@@ -1,5 +1,8 @@
 """소속 권한을 검증한 자료 업로드·목록·조회·색인 재시도."""
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi.responses import Response
+from starlette.concurrency import run_in_threadpool
+from urllib.parse import quote
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import ensure_member, get_current_account
@@ -9,6 +12,7 @@ from app.models.auth import Account
 from app.schemas.common import Envelope, PageMeta
 from app.schemas.records import RecordDetailOut, RecordListResponse, RecordOut
 from app.services import record_service
+from app.infra.storage import read_file
 
 router = APIRouter(prefix="/api/v1/records", tags=["records"])
 
@@ -74,3 +78,17 @@ async def get_record(
     record = await record_service.get_record(session, record_id=record_id)
     await ensure_member(session, club_id=record.club_id, account=account)
     return Envelope(data=RecordDetailOut.model_validate(record))
+
+
+@router.get("/{record_id}/file")
+async def download_record_file(
+    record_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    record = await record_service.get_record(session, record_id=record_id)
+    await ensure_member(session, club_id=record.club_id, account=account)
+    content = await run_in_threadpool(read_file, record.storage_key)
+    return Response(content, media_type="application/octet-stream", headers={
+        "Content-Disposition": f"attachment; filename*=UTF-8''{quote(record.file_name, safe='')}"
+    })

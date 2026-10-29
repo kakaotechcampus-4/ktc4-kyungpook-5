@@ -20,6 +20,7 @@ from app.core.enums import (
 )
 from app.core.exceptions import ApiError, VersionConflict
 from app.infra.storage import save_file
+from starlette.concurrency import run_in_threadpool
 from app.models.agent import AgentJob, ContextDecision
 from app.models.meetings import Meeting, MeetingAudioChunk, TranscriptSegment
 from app.services import agent_job_service, context_service
@@ -300,7 +301,7 @@ async def add_audio_chunk(
         seq=seq,
         start_ms=start_ms,
         end_ms=end_ms,
-        storage_key=save_file(meeting.club_id, file_name, content),
+        storage_key=await run_in_threadpool(save_file, meeting.club_id, file_name, content),
         sha256=sha256,
         mime_type=mime_type,
         size=len(content),

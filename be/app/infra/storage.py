@@ -26,3 +26,22 @@ def save_file(club_id: str, file_name: str, content: bytes) -> str:
     full_path.parent.mkdir(parents=True, exist_ok=True)
     full_path.write_bytes(content)
     return relative
+
+
+def read_file(storage_key: str) -> bytes:
+    """키에 기록된 저장소에서 원본을 읽는다. 오류는 호출자에게 전파한다."""
+    settings = get_settings()
+    if storage_key.startswith("s3:"):
+        if not settings.s3_bucket.strip():
+            raise RuntimeError("S3_BUCKET is required to read S3 files")
+        import boto3
+
+        result = boto3.client("s3", region_name=settings.s3_region).get_object(
+            Bucket=settings.s3_bucket, Key=storage_key[3:]
+        )
+        return result["Body"].read()
+    root = Path(settings.storage_dir).resolve()
+    target = (root / storage_key).resolve()
+    if not target.is_relative_to(root):
+        raise ValueError("Invalid storage key")
+    return target.read_bytes()

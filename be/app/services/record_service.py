@@ -9,6 +9,7 @@ from pathlib import Path
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app import ai
 
@@ -62,7 +63,7 @@ async def upload_record(
         file_name=file_name,
         file_type=file_type,
         category=category,
-        storage_key=save_file(club_id, file_name, content),
+        storage_key=await run_in_threadpool(save_file, club_id, file_name, content),
         size=len(content),
         parse_status=RecordParseStatus.PARSING,
     )

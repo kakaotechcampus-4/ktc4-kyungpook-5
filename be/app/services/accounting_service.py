@@ -29,6 +29,7 @@ from app.core.exceptions import (
     VersionConflict,
 )
 from app.infra.storage import save_file
+from starlette.concurrency import run_in_threadpool
 from app.models.accounting import Expense, ReceiptImport, ReceiptImportRow
 from app.models.records import Record
 from app.schemas.accounting import ExpenseRowDraftIn
@@ -100,7 +101,7 @@ async def create_receipt_import(
     file_bytes: bytes,
     created_by: str,
 ) -> ReceiptImport:
-    storage_key = save_file(club_id, file_name, file_bytes)
+    storage_key = await run_in_threadpool(save_file, club_id, file_name, file_bytes)
     record = Record(
         club_id=club_id,
         event_id=event_id,
