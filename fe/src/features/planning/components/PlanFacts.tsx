@@ -50,6 +50,7 @@ interface PlanFactsProps {
   // 과거 기록을 봤을 때만 준다.
   reference?: string
   unavailable?: boolean
+  hideNext?: boolean
   onNext: () => void
 }
 
@@ -58,6 +59,7 @@ export function PlanFacts({
   readiness,
   reference,
   unavailable = false,
+  hideNext = false,
   onNext,
 }: PlanFactsProps) {
   const { canGenerate, reasons } = readiness ?? localReadiness(facts)
@@ -110,18 +112,20 @@ export function PlanFacts({
 
       {reference && <ToriNote title="참고한 과거 기록">{reference}</ToriNote>}
 
-      <Card className="flex flex-col gap-[12px] px-[22px] pt-[20px] pb-[22px]">
-        <Button size="lg" className="w-full" disabled={!canGenerate} onClick={onNext}>
-          다음: 흐름 만들기 →
-        </Button>
-        <p className="text-[11px] leading-[16px] text-mute">
-          {unavailable
-            ? '대화로 조건을 확인할 수 있어요. 계획 생성 연결은 준비 중이에요.'
-            : canGenerate
-              ? '날짜와 인원은 미정이어도 괜찮아요. 2단계에서 정해도 돼요.'
-              : reasons.map((reason) => BLOCK_TEXT[reason]).join(' ')}
-        </p>
-      </Card>
+      {!hideNext && (
+        <Card className="flex flex-col gap-[12px] px-[22px] pt-[20px] pb-[22px]">
+          <Button size="lg" className="w-full" disabled={!canGenerate} onClick={onNext}>
+            다음: 흐름 만들기 →
+          </Button>
+          <p className="text-[11px] leading-[16px] text-mute">
+            {unavailable
+              ? '대화로 조건을 확인할 수 있어요. 계획 생성 연결은 준비 중이에요.'
+              : canGenerate
+                ? '날짜와 인원은 미정이어도 괜찮아요. 2단계에서 정해도 돼요.'
+                : reasons.map((reason) => BLOCK_TEXT[reason]).join(' ')}
+          </p>
+        </Card>
+      )}
     </div>
   )
 }

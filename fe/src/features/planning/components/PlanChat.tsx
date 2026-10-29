@@ -11,6 +11,8 @@ interface PlanChatProps {
   messages: ChatMessage[]
   onSend: (text: string) => Promise<boolean>
   demo?: boolean
+  persisted?: boolean
+  initialDraft?: string
   busy?: boolean
   error?: string
 }
@@ -21,8 +23,10 @@ export function PlanChat({
   busy = false,
   error = '',
   demo = false,
+  persisted = false,
+  initialDraft = '',
 }: PlanChatProps) {
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState(initialDraft)
 
   const send = async (text: string) => {
     const trimmed = text.trim()
@@ -39,7 +43,11 @@ export function PlanChat({
       <header className="flex items-center justify-between border-b border-line px-[24px] py-[18px]">
         <h2 className="text-h2 text-ink">토리와 계획 잡기</h2>
         <span className="text-[11px] text-mute">
-          {demo ? '화면 미리보기' : '새로고침하면 이 대화 화면은 초기화돼요'}
+          {demo
+            ? '화면 미리보기'
+            : persisted
+              ? '저장된 대화'
+              : '첫 메시지를 보내면 계획이 만들어져요'}
         </span>
       </header>
 

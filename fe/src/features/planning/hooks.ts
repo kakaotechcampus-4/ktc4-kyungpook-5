@@ -1,11 +1,13 @@
 import { useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
 import type { ChatMessage, PlanFacts } from './types'
 import { FIRST_MESSAGE } from './mock'
 import { ApiError } from '@/shared/api/types'
 import type { components } from '@/shared/api/schema'
 
-type Draft = components['schemas']['PlanDraftOut']
+type S = components['schemas']
+type Draft = S['PlanDraftOut']
 const fields = [
   ['title', '행사 이름'],
   ['eventType', '종류'],
@@ -21,26 +23,78 @@ function toFacts(draft: Draft): PlanFacts {
     const meta =
       draft.conditionMeta[field] ??
       draft.conditionMeta[field.replace(/[A-Z]/g, (x) => `_${x.toLowerCase()}`)]
-    if (value !== null && value !== undefined) {
+    if (value !== null && value !== undefined)
       result[label] = {
         status: meta?.status === 'tentative' ? '잠정' : '확정',
         value: String(value),
         quote: meta?.evidenceQuote,
       }
-    }
   }
   return result
 }
-export function usePlanningChat(clubId: string | null) {
-  const [messages, setMessages] = useState<ChatMessage[]>([FIRST_MESSAGE])
-  const [facts, setFacts] = useState<PlanFacts>({})
+export function usePlanningDrafts(clubId: string | null, userId: string | undefined) {
+  return useQuery({
+    queryKey: ['planning', 'drafts', userId, clubId],
+    queryFn: () => planningApi.drafts(clubId!),
+    enabled: !!clubId,
+    retry: false,
+  })
+}
+export function usePlanningChat(
+  clubId: string | null,
+  selectedId: string | null,
+  userId: string | undefined,
+  onCreated: (id: string, failedText?: string) => void,
+) {
+  const queryClient = useQueryClient()
+  const [localMessages, setMessages] = useState<ChatMessage[]>([])
+  const [view, setView] = useState<S['PlanViewOut'] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const eventId = useRef<string | null>(null)
-  const revision = useRef(0)
   const locked = useRef(false)
+  const snapshot = useQuery({
+    queryKey: ['planning', 'snapshot', userId, clubId, selectedId],
+    enabled: !!clubId && !!selectedId,
+    retry: false,
+    queryFn: async () => {
+      const [screen, messages, steps] = await Promise.all([
+        planningApi.get(selectedId!),
+        planningApi.messages(selectedId!),
+        planningApi.steps(selectedId!),
+      ])
+      return { screen, messages, steps }
+    },
+  })
+  const refresh = () =>
+    queryClient.invalidateQueries({
+      queryKey: ['planning', 'snapshot', userId, clubId, selectedId],
+    })
+  const storedMessages: ChatMessage[] = (snapshot.data?.messages ?? []).map((m) => ({
+    id: m.id,
+    from: m.role === 'USER' ? '나' : '토리',
+    text: m.content,
+  }))
+  const messages = [FIRST_MESSAGE, ...storedMessages, ...localMessages]
+  const revision = view?.baseRevision ?? snapshot.data?.screen.baseRevision ?? 0
+  const facts = toFacts(
+    view?.draft ??
+      snapshot.data?.screen.draft ?? {
+        conditions: {
+          title: null,
+          eventType: null,
+          headcount: null,
+          feePerPerson: null,
+          startDate: null,
+          endDate: null,
+          location: null,
+          budgetTotal: null,
+        },
+        conditionMeta: {},
+        deferredTopics: [],
+      },
+  )
   const send = async (text: string) => {
-    if (locked.current) return false
+    if (locked.current || (selectedId && !snapshot.data)) return false
     if (!clubId) {
       setError('로그인하고 소속을 선택해 주세요.')
       return false
@@ -48,44 +102,64 @@ export function usePlanningChat(clubId: string | null) {
     locked.current = true
     setBusy(true)
     setError('')
+    let eventId = selectedId
     const id = crypto.randomUUID()
-    setMessages((previous) => [...previous, { id, from: '나', text }])
+    let succeeded = false
     try {
-      if (!eventId.current) eventId.current = (await planningApi.create(clubId)).id
-      const view = await planningApi.chat(eventId.current, {
+      if (!eventId) eventId = (await planningApi.create(clubId)).id
+      const result = await planningApi.chat(eventId, {
         messageId: id,
         message: text,
-        baseRevision: revision.current,
+        baseRevision: revision,
       })
-      revision.current = view.baseRevision
-      setFacts(toFacts(view.draft))
-      if (view.reply)
-        setMessages((previous) => [
-          ...previous,
-          { id: `${id}-reply`, from: '토리', text: view.reply! },
+      setView(result)
+      if (selectedId) {
+        setMessages((items) => [
+          ...items,
+          { id, from: '나', text },
+          ...(result.reply
+            ? [{ id: `${id}-reply`, from: '토리' as const, text: result.reply }]
+            : []),
         ])
-      else setError('답변을 받지 못했어요. 계획 상태를 확인해 주세요.')
+      }
+      succeeded = true
+      if (!result.reply) setError('답변을 받지 못했어요. 계획 상태를 확인해 주세요.')
       return true
     } catch (cause) {
-      if (cause instanceof ApiError && cause.code === 'VERSION_CONFLICT' && eventId.current) {
-        try {
-          revision.current = (await planningApi.get(eventId.current)).baseRevision
-        } catch {
-          /* 다음 시도에서 다시 확인 */
-        }
-      }
       setError(
-        cause instanceof ApiError && cause.code === 'AI_UNAVAILABLE'
-          ? '계획 답변 서비스에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.'
-          : cause instanceof ApiError && cause.code === 'VERSION_CONFLICT'
-            ? '계획이 변경되어 최신 상태를 확인했어요. 답변을 다시 보내 주세요.'
-            : '계획 답변을 받지 못했어요. 요청이 서버에 반영됐을 수 있으니 다시 보내기 전에 확인해 주세요.',
+        cause instanceof ApiError && cause.code === 'VERSION_CONFLICT'
+          ? '계획이 변경됐어요. 화면을 다시 불러온 뒤 확인해 주세요.'
+          : '계획 답변을 확인하지 못했어요. 요청이 반영됐을 수 있으니 다시 보내기 전에 확인해 주세요.',
       )
       return false
     } finally {
       locked.current = false
       setBusy(false)
+      void queryClient.invalidateQueries({ queryKey: ['planning', 'drafts', userId, clubId] })
+      if (eventId && !selectedId) onCreated(eventId, succeeded ? undefined : text)
     }
   }
-  return { messages, facts, busy, error, send }
+  const generate = async () => {
+    if (!selectedId || !snapshot.data || locked.current) return
+    locked.current = true
+    setBusy(true)
+    setError('')
+    try {
+      const result = await planningApi.generate(selectedId, {
+        baseRevision: revision,
+        useCurrentConditions: false,
+      })
+      setView(result)
+      await refresh()
+      setMessages([])
+      if (result.generationResult?.status !== 'generated')
+        setError(result.reply || '계획을 생성하지 못했어요. 조건을 확인해 주세요.')
+    } catch {
+      setError('계획 생성 결과를 확인하지 못했어요. 다시 불러와 저장 상태를 확인해 주세요.')
+    } finally {
+      locked.current = false
+      setBusy(false)
+    }
+  }
+  return { messages, facts, busy, error, send, generate, snapshot, view, revision }
 }

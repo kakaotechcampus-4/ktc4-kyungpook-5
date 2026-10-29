@@ -2,8 +2,7 @@
 // 두 단계 사이에 계획을 만드는 화면이 끼어든다.
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { usePlanningChat } from '@/features/planning/hooks'
-import { useAuthStore } from '@/shared/auth/store'
+import { LivePlanning } from '@/features/planning/components/LivePlanning'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
 import { PlanStepper } from '@/features/planning/components/PlanStepper'
@@ -30,16 +29,15 @@ import { PlanGeneratingScreen } from '@/shared/ui/StateScreen'
 const GENERATING_MS = 1600
 
 export default function PlanningPage() {
-  const clubId = useAuthStore((state) => state.clubId)
-  return <ClubPlanningPage key={clubId ?? 'none'} clubId={clubId} />
+  const demo = useSearchParams()[0].has('demo')
+  return demo ? <DemoPlanningPage /> : <LivePlanning />
 }
 
-function ClubPlanningPage({ clubId }: { clubId: string | null }) {
+function DemoPlanningPage() {
   const navigate = useNavigate()
   // 다른 화면과 같은 방식. ?demo면 대화가 오간 뒤 상태를, 없으면 첫 질문만 보인다.
   const demo = useSearchParams()[0].has('demo')
 
-  const live = usePlanningChat(clubId)
   const [step, setStep] = useState<1 | 2>(1)
   const [messages, setMessages] = useState<ChatMessage[]>(demo ? DEMO_MESSAGES : [FIRST_MESSAGE])
   const [generating, setGenerating] = useState(false)
@@ -97,15 +95,9 @@ function ClubPlanningPage({ clubId }: { clubId: string | null }) {
 
       {step === 1 ? (
         <div className="flex items-start gap-[20px]">
-          <PlanChat
-            messages={demo ? messages : live.messages}
-            onSend={demo ? send : live.send}
-            demo={demo}
-            busy={!demo && live.busy}
-            error={demo ? '' : live.error}
-          />
+          <PlanChat messages={messages} onSend={send} demo={demo} busy={false} error="" />
           <PlanFacts
-            facts={demo ? DEMO_FACTS : live.facts}
+            facts={DEMO_FACTS}
             readiness={demo ? undefined : { canGenerate: false, reasons: [] }}
             reference={demo ? DEMO_REFERENCE : undefined}
             unavailable={!demo}

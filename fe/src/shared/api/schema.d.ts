@@ -436,6 +436,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/records/{record_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Record File */
+        get: operations["download_record_file_api_v1_records__record_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent-jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -853,6 +870,40 @@ export interface paths {
         put?: never;
         /** Chat Plan */
         post: operations["chat_plan_api_v1_events__event_id__plan_chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/plan/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plan Messages */
+        get: operations["list_plan_messages_api_v1_events__event_id__plan_messages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/plan/steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Planned Steps */
+        get: operations["list_planned_steps_api_v1_events__event_id__plan_steps_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2027,6 +2078,27 @@ export interface components {
              */
             useCurrentConditions: boolean;
         };
+        /** PlanMessageListResponse */
+        PlanMessageListResponse: {
+            /** Data */
+            data: components["schemas"]["PlanMessageOut"][];
+            /** Meta */
+            meta?: null;
+        };
+        /** PlanMessageOut */
+        PlanMessageOut: {
+            /** Id */
+            id: string;
+            /** Seq */
+            seq: number;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "USER" | "ASSISTANT";
+            /** Content */
+            content: string;
+        };
         /** PlanScreenOut */
         PlanScreenOut: {
             draft: components["schemas"]["PlanDraftOut"];
@@ -2061,6 +2133,27 @@ export interface components {
             generationResult: components["schemas"]["GenerationResultOut"] | null;
             /** Baserevision */
             baseRevision: number;
+        };
+        /** PlannedStepListResponse */
+        PlannedStepListResponse: {
+            /** Data */
+            data: components["schemas"]["PlannedStepOut"][];
+            /** Meta */
+            meta?: null;
+        };
+        /** PlannedStepOut */
+        PlannedStepOut: {
+            /** Id */
+            id: string;
+            /** Steporder */
+            stepOrder: number;
+            /** Name */
+            name: string;
+            actor: components["schemas"]["StepActor"];
+            /** Startsat */
+            startsAt: string | null;
+            /** Deadline */
+            deadline: string | null;
         };
         /** PushDeleteOut */
         PushDeleteOut: {
@@ -3619,6 +3712,39 @@ export interface operations {
             };
         };
     };
+    download_record_file_api_v1_records__record_id__file_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                record_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_agent_job_api_v1_agent_jobs__job_id__get: {
         parameters: {
             query?: never;
@@ -4621,6 +4747,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_PlanViewOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plan_messages_api_v1_events__event_id__plan_messages_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanMessageListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_planned_steps_api_v1_events__event_id__plan_steps_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlannedStepListResponse"];
                 };
             };
             /** @description Validation Error */
