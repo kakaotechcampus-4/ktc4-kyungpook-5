@@ -10,14 +10,16 @@ import { Tori } from '@/shared/ui/Tori'
 interface PlanChatProps {
   messages: ChatMessage[]
   onSend: (text: string) => void
+  busy?: boolean
+  error?: string
 }
 
-export function PlanChat({ messages, onSend }: PlanChatProps) {
+export function PlanChat({ messages, onSend, busy = false, error = '' }: PlanChatProps) {
   const [draft, setDraft] = useState('')
 
   const send = (text: string) => {
     const trimmed = text.trim()
-    if (!trimmed) return
+    if (!trimmed || busy) return
     onSend(trimmed)
     setDraft('')
   }
@@ -48,6 +50,7 @@ export function PlanChat({ messages, onSend }: PlanChatProps) {
                     <button
                       key={reply}
                       type="button"
+                      disabled={busy}
                       onClick={() => send(reply)}
                       className="rounded-[9px] border border-blue-200 bg-card px-[13px] py-[8px] text-[11.5px] font-bold text-blue-700 hover:bg-blue-50"
                     >
@@ -71,6 +74,16 @@ export function PlanChat({ messages, onSend }: PlanChatProps) {
         )}
       </div>
 
+      {busy && (
+        <p role="status" className="px-[24px] text-mute">
+          토리가 답변을 준비하고 있어요…
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="px-[24px] text-failed">
+          {error}
+        </p>
+      )}
       <form
         className="flex items-center gap-[10px] border-t border-line px-[20px] py-[16px]"
         onSubmit={(e) => {
@@ -80,12 +93,15 @@ export function PlanChat({ messages, onSend }: PlanChatProps) {
       >
         <div className="flex-1">
           <Input
+            disabled={busy}
             placeholder="답을 입력하세요"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
           />
         </div>
-        <Button type="submit">보내기</Button>
+        <Button type="submit" disabled={busy}>
+          보내기
+        </Button>
       </form>
     </Card>
   )

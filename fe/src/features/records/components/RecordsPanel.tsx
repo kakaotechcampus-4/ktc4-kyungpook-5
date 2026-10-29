@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { RECORD_PAGE_SIZE } from '@/features/records/api'
+import { downloadRecord, RECORD_PAGE_SIZE } from '@/features/records/api'
 import { useRecordDetail, useRecordUploads, useRetryRecordIndex } from '@/features/records/hooks'
 import {
   formatFileSize,
@@ -17,6 +17,8 @@ import { Input } from '@/shared/ui/Input'
 function RecordStatusRow({ clubId, record }: { clubId: string; record: ClubRecord }) {
   const detail = useRecordDetail(clubId, record.id)
   const retryIndex = useRetryRecordIndex(clubId, record.id)
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState(false)
   const current = detail.data ?? record
   const status = RECORD_STATUS[current.parseStatus]
 
@@ -46,6 +48,11 @@ function RecordStatusRow({ clubId, record }: { clubId: string; record: ClubRecor
           {recordErrorMessage(detail.error)} 마지막으로 받은 상태를 표시하고 있어요.
         </p>
       )}
+      {downloadError && (
+        <p role="alert" className="text-[12px] text-failed">
+          원본 파일을 받지 못했어요. 접근 권한과 파일 상태를 확인해 주세요.
+        </p>
+      )}
       {retryIndex.isError && (
         <p role="alert" className="text-[12px] text-failed">
           {recordErrorMessage(retryIndex.error)} 검색 준비 재시도가 완료되지 않았어요.
@@ -54,6 +61,20 @@ function RecordStatusRow({ clubId, record }: { clubId: string; record: ClubRecor
       <div className="flex flex-wrap items-center justify-between gap-[8px]">
         <span className="break-all text-[10px] text-mute">자료 ID · {record.id}</span>
         <div className="flex flex-wrap gap-[6px]">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={downloading}
+            onClick={() => {
+              setDownloading(true)
+              setDownloadError(false)
+              void downloadRecord(record.id, current.fileName)
+                .catch(() => setDownloadError(true))
+                .finally(() => setDownloading(false))
+            }}
+          >
+            {downloading ? '받는 중…' : '원본 다운로드'}
+          </Button>
           {current.parseStatus === 'COMPLETED' && (
             <Button
               variant="secondary"

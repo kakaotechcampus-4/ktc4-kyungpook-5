@@ -1,4 +1,4 @@
-import { apiGet, apiGetPage, apiPost, apiPostForm } from '@/shared/api/client'
+import { apiDownload, apiGet, apiGetPage, apiPost, apiPostForm } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
 import type { ClubRecord, RecordDetail, UploadRecordInput } from '@/features/records/types'
 
@@ -24,4 +24,8 @@ export function getRecords(clubId: string, page: number) {
 
 export function retryRecordIndex(recordId: string) {
   return apiPost<RecordDetail>(`/records/${encodeURIComponent(recordId)}/index`)
+}
+
+export function downloadRecord(recordId: string, fileName: string) {
+  return apiDownload(`/records/${encodeURIComponent(recordId)}/file`, fileName)
 }
