@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { getMe, login, logout, type LoginInput } from '@/features/auth/api'
+import { getMe, login, loginWithKakao, logout, type LoginInput } from '@/features/auth/api'
 import { ApiError } from '@/shared/api/types'
 import { getRefreshToken, useAuthStore } from '@/shared/auth/store'
 
@@ -33,22 +33,32 @@ export function useMe() {
   })
 }
 
+async function establishSession(
+  queryClient: ReturnType<typeof useQueryClient>,
+  tokens: Awaited<ReturnType<typeof login>>,
+) {
+  queryClient.clear()
+  useAuthStore.getState().setSession(tokens)
+  return queryClient.fetchQuery({
+    queryKey: ME_KEY,
+    queryFn: () => loadMe(tokens.accessToken),
+    retry: false,
+    staleTime: 60_000,
+  })
+}
+
+export function useKakaoLogin() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (code: string) => establishSession(queryClient, await loginWithKakao(code)),
+  })
+}
+
 export function useLogin() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (body: LoginInput) => {
-      const tokens = await login(body)
-      // 이전 계정/조직의 Query 데이터가 새 로그인에 남지 않게 한다.
-      queryClient.clear()
-      useAuthStore.getState().setSession(tokens)
-      // useMe가 함께 활성화돼도 같은 Query로 /me 요청을 공유한다.
-      const me = await queryClient.fetchQuery({
-        queryKey: ME_KEY,
-        queryFn: () => loadMe(tokens.accessToken),
-        retry: false,
-        staleTime: 60_000,
-      })
-      return me
+      return establishSession(queryClient, await login(body))
     },
   })
 }

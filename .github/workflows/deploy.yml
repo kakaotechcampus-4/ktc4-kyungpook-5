@@ -74,6 +74,8 @@ jobs:
         with:
           context: fe
           file: fe/Dockerfile.prod
+          build-args: |
+            VITE_KAKAO_REST_API_KEY=${{ vars.KAKAO_REST_API_KEY }}
           push: true
           tags: ${{ steps.images.outputs.frontend_image }}
 

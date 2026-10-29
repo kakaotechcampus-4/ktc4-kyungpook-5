@@ -5,6 +5,7 @@ import RecordsPage from '@/pages/RecordsPage'
 import AccountingPage from '@/pages/AccountingPage'
 import MeetingsPage from '@/pages/MeetingsPage'
 import LoginPage from '@/pages/LoginPage'
+import KakaoCallbackPage from '@/pages/KakaoCallbackPage'
 import SignupPage from '@/pages/SignupPage'
 import MainPage from '@/pages/MainPage'
 import MainEntryPage from '@/pages/MainEntryPage'
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
   { path: '/', element: <MainEntryPage /> },
   { path: '/onboarding/:view?', element: <OnboardingPage /> },
   { path: '/login', element: <LoginPage /> },
+  { path: '/auth/kakao/callback', element: <KakaoCallbackPage /> },
   { path: '/signup', element: <SignupPage /> },
   {
     element: <AppLayout />,

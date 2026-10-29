@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { beginKakaoLogin, kakaoConfigured } from '@/features/auth/kakao'
 import { Link } from 'react-router-dom'
 import {
   authErrorMessage,
@@ -17,6 +18,7 @@ import { Input } from '@/shared/ui/Input'
 export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [kakaoError, setKakaoError] = useState(false)
   const token = useAuthStore((state) => state.token)
   const me = useAuthStore((state) => state.me)
   const selectedClubId = useAuthStore((state) => state.clubId)
@@ -121,12 +123,28 @@ export function LoginForm() {
           처음이신가요? 회원가입 ›
         </Link>
         <div className="flex flex-col gap-[9px] border-t border-line pt-[18px]">
-          <span className="text-[11px] text-mute">소셜 로그인은 준비 중이에요</span>
-          <Button variant="secondary" size="lg" disabled>
-            Google로 계속하기
-          </Button>
-          <Button variant="secondary" size="lg" disabled>
+          <Button
+            size="lg"
+            className="w-full !bg-[#FEE500] !text-[#191919] hover:!bg-[#f5dc00]"
+            disabled={!kakaoConfigured || login.isPending}
+            onClick={() => {
+              try {
+                beginKakaoLogin()
+              } catch {
+                setKakaoError(true)
+              }
+            }}
+          >
             카카오로 계속하기
+          </Button>
+          {!kakaoConfigured && (
+            <span className="text-[11px] text-mute">카카오 로그인은 준비 중이에요.</span>
+          )}
+          {kakaoError && (
+            <ErrorBanner title="카카오 로그인을 시작하지 못했어요. 브라우저 설정을 확인해 주세요." />
+          )}
+          <Button variant="secondary" size="lg" disabled>
+            Google로 계속하기 (준비 중)
           </Button>
         </div>
       </form>
