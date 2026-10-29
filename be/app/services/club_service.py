@@ -2,16 +2,30 @@
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import ClubCategory, InvitationStatus, MemberRole, MemberStatus
 from app.core.exceptions import ValidationFailed
 from app.core.security import hash_token, new_token
-from app.models.auth import Account
+from app.models.auth import Account, Auth
 from app.models.clubs import Club, Invitation, Member
 
 INVITATION_TTL = timedelta(days=7)
+
+# 임원 직책(회장·홍보부장 등)은 ERD에서 축소하기로 해 role만으로 subtitle을 정한다.
+_OFFICER_SUBTITLE = {MemberRole.OWNER: "대표", MemberRole.MANAGER: "운영진"}
+
+_CLUB_CATEGORY_LABEL = {
+    ClubCategory.ACADEMIC: "학술",
+    ClubCategory.SPORTS: "운동",
+    ClubCategory.VOLUNTEER: "봉사",
+    ClubCategory.HOBBY: "취미",
+    ClubCategory.ETC: "기타",
+}
+
+# 검색 결과가 과하게 많아지는 것만 막는다 — 페이지네이션은 두지 않는다(#189).
+CLUB_SEARCH_LIMIT = 20
 
 
 async def create_club(
@@ -113,3 +127,106 @@ async def accept_invitation(
 
     await session.commit()
     return member
+
+
+def _group_and_subtitle(role: MemberRole, student_no: str | None) -> tuple[str, str]:
+    if role in _OFFICER_SUBTITLE:
+        return "임원", _OFFICER_SUBTITLE[role]
+    return "동아리원", f"{student_no}학번" if student_no else "동아리원"
+
+
+async def list_members(session: AsyncSession, *, club_id: str) -> list[dict]:
+    """명단 + 수락 대기 초대. 초대는 아직 Member 행이 없어 따로 합친다.
+
+    페이지네이션 없이 전체를 내린다(#188) — 동아리 규모상 과한 설계로 보임.
+    """
+    members = await session.scalars(
+        select(Member)
+        .where(Member.club_id == club_id, Member.status == MemberStatus.ACTIVE)
+        .order_by(Member.name)
+    )
+    rows: list[dict] = []
+    for member in members:
+        group, subtitle = _group_and_subtitle(member.role, member.student_no)
+        account_status = "NONE"
+        account_at = None
+        if member.account_id:
+            account_status = "JOINED"
+            account_at = await session.scalar(
+                select(func.max(Auth.created_at)).where(
+                    Auth.account_id == member.account_id
+                )
+            )
+        account = await session.get(Account, member.account_id) if member.account_id else None
+        rows.append(
+            {
+                "id": member.id,
+                "name": member.name,
+                "group": group,
+                "subtitle": subtitle,
+                "contact": member.phone or (account.email if account else None),
+                "account": account_status,
+                "account_at": account_at,
+            }
+        )
+
+    invitations = await session.scalars(
+        select(Invitation).where(
+            Invitation.club_id == club_id,
+            Invitation.status == InvitationStatus.PENDING,
+            Invitation.expires_at >= datetime.now(UTC),
+        )
+    )
+    for invitation in invitations:
+        group, subtitle = _group_and_subtitle(invitation.role, None)
+        rows.append(
+            {
+                "id": invitation.id,
+                # 수락 전에는 이름을 모른다 — 이메일로 식별한다.
+                "name": invitation.email,
+                "group": group,
+                "subtitle": subtitle,
+                "contact": invitation.email,
+                "account": "INVITED",
+                "account_at": invitation.created_at,
+            }
+        )
+    return rows
+
+
+async def search_clubs(session: AsyncSession, *, query: str) -> list[dict]:
+    """동아리 이름 일부로 찾는다. 로그인 전에도 부를 수 있어 동아리원 확인을 안 한다."""
+    clubs = await session.scalars(
+        select(Club)
+        .where(Club.name.ilike(f"%{query}%"))
+        .order_by(Club.name)
+        .limit(CLUB_SEARCH_LIMIT)
+    )
+    rows: list[dict] = []
+    for club in clubs:
+        owner = await session.scalar(
+            select(Member).where(
+                Member.club_id == club.id,
+                Member.role == MemberRole.OWNER,
+                Member.status == MemberStatus.ACTIVE,
+            )
+        )
+        executive_count = await session.scalar(
+            select(func.count())
+            .select_from(Member)
+            .where(
+                Member.club_id == club.id,
+                Member.role.in_((MemberRole.OWNER, MemberRole.MANAGER)),
+                Member.status == MemberStatus.ACTIVE,
+            )
+        )
+        rows.append(
+            {
+                "id": club.id,
+                "name": club.name,
+                "field": _CLUB_CATEGORY_LABEL.get(club.category, "기타"),
+                "owner_name": owner.name if owner else "",
+                "executive_count": executive_count or 0,
+            }
+        )
+    return rows
