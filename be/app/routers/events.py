@@ -96,7 +96,10 @@ async def chat_plan(
         session, event_id=event_id, account=account
     )
     # chat()은 AI 호출 전후로 세션을 직접 열고 닫는다 — 여기서 받은 session은
-    # 권한 확인에만 쓰고 그대로 넘기지 않는다(db/session.py 참고).
+    # 권한 확인에만 쓰고 그대로 넘기지 않는다(db/session.py 참고). 권한 확인
+    # 쿼리가 연 트랜잭션을 AI 호출 내내 쥐고 있지 않도록 여기서 바로 닫는다
+    # (#192 리뷰 — pg_stat_activity에서 idle in transaction으로 확인됨).
+    await session.close()
     view = await planning_service.chat(
         club_id=event.club_id, event_id=event_id, member_id=member.id,
         message_id=body.message_id, message_content=body.message,
@@ -116,6 +119,8 @@ async def generate_plan(
     event, member = await _get_event_for_account(
         session, event_id=event_id, account=account
     )
+    # 위 chat_plan과 같은 이유로 AI 호출 전에 요청 세션을 닫는다(#192 리뷰).
+    await session.close()
     view = await planning_service.generate(
         club_id=event.club_id, event_id=event_id, member_id=member.id,
         base_revision=body.base_revision,
