@@ -487,3 +487,32 @@ AI 테스트 앱: be/app/ai/tests/ui/planning/ (포트 5174)
 ```
 
 화면·타입·스타일·package/lockfile은 모두 AI 테스트 폴더에 있다. 초기 FE 화면 조각을 참고한 복사본을 보관하지만 제품 `fe/`를 import하거나 빌드에 사용하지 않는다. 제품 FE의 라우트·공용 컴포넌트·타입·프록시에 추가했던 테스트 변경은 제거했다. 실제 UI 구현은 FE팀의 역할이며 이 테스트 앱을 제품 코드로 자동 반영하지 않는다. [독립 실행 안내](../../tests/ui/planning/README.md)를 따른다.
+
+## 대화가 길어졌을 때 안내하는 흐름 (#194)
+
+예를 들어 저장 이력 44개에서 “인원은 50명으로 잡자”를 처리한다고 하자.
+
+```text
+44개 + 사용자 발화 1개
+     + AI의 조건 Tool 요청 1개
+     + Tool 결과 1개
+     + AI 최종 답변 1개
+  → capture_turn_state(): 48개 이력을 JSON 상태로 구성
+  → build_result(): 저장할 이력 수를 계산
+  → view.history_usage = {message_count: 48, max_messages: 60, near_limit: true}
+  → BE 저장/전달 → FE 안내 표시 [제품 연결 필요]
+```
+
+핵심은 LLM이 사용량을 추측하지 않는 것이다.
+
+```python
+# public_workflow.build_result() 안에서 두 요청 경로가 같은 기준을 사용한다.
+history_usage = PlanningHistoryUsage.from_count(len(state.payload.history))
+# 반환할 view에 붙이고, next_state 자체는 그대로 보존한다.
+```
+
+`PlanningHistoryUsage`는 루트 `contracts.py`에 있다. `from_count()`가 사용량과 한도 임박을 계산하고 계약 검증이 범위와 일관성을 확인한다. 안내는 48개부터이며 다음 대화를 몇 번 할 수 있다는 뜻은 아니다. 61개 이상이면 기존 상태 캡처가 오류를 내므로 중간값을 정상 결과로 반환하지 않는다.
+
+이후 버튼으로 생성해도 새 채팅 이력이 없으므로 48개를 유지한다. JSON 저장 후 복원한 상태를 다시 사용해도 같은 개수다. 과거 화면 응답에 필드가 없으면 null이며 0개로 꾸미지 않는다. Agent 상태 형식 버전은 바꾸지 않는다.
+
+독립 UI의 테스트 API도 같은 `from_count()`를 사용하고 화면은 `near_limit`만 읽어 안내를 표시한다. 프롬프트와 Tool은 바꾸지 않는다. 제품 HTTP 매핑은 [공개 계약 14절](p1-public-contract.md#14-대화-이력-안내-194)의 AI 구현안이며 BE/FE 합의와 실제 연결은 남아 있다.

@@ -5,7 +5,12 @@ import { AgentReferences } from '@/features/planning/components/AgentReferences'
 import { AgentPlanPreview } from '@/features/planning/components/AgentPlanPreview'
 import type { ChatMessage } from '@/features/planning/types'
 import { testApi, toAgentFacts, TOPIC_LABELS } from '@/features/planning/agent-playground'
-import type { AgentHealth, AgentResult, RecordLookup } from '@/features/planning/agent-playground'
+import type {
+  AgentHealth,
+  AgentResult,
+  RecordLookup,
+  HistoryUsage,
+} from '@/features/planning/agent-playground'
 import {
   latestToolCalls,
   latestUserMessage,
@@ -23,7 +28,12 @@ const greeting: ChatMessage = {
   text: '안녕하세요! 어떤 행사를 준비하고 계세요? 아직 정하지 못한 부분도 같이 생각해봐요.',
   quickReplies: ['MT', '워크숍', '신환회'],
 }
-type ApiResponse<T> = { result: T; elapsed_ms: number; fixture_count: number }
+type ApiResponse<T> = {
+  result: T
+  elapsed_ms: number
+  fixture_count: number
+  history_usage: HistoryUsage
+}
 type Work = 'chat' | 'button' | 'records' | 'connect'
 const executionLabels: Record<string, string> = {
   applied: '반영',
@@ -56,6 +66,7 @@ export default function PlanningPlaygroundPage() {
   const [elapsed, setElapsed] = useState<number | null>(null)
   const [reference, setReference] = useState<RecordLookup | null>(null)
   const [notice, setNotice] = useState('')
+  const [historyUsage, setHistoryUsage] = useState<HistoryUsage | null>(null)
   const [debug, setDebug] = useState<unknown>(null)
   const [stats, setStats] = useState<{
     agent: number
@@ -115,6 +126,7 @@ export default function PlanningPlaygroundPage() {
     setDialogKey(crypto.randomUUID())
     setMessages([greeting])
     setSession(newSession())
+    setHistoryUsage(null)
     setView('chat')
     setError('')
     setPending(null)
@@ -139,6 +151,7 @@ export default function PlanningPlaygroundPage() {
       if (request.source === 'chat') {
         const response = await testApi<ApiResponse<AgentResult>>('agent/turn', request.body)
         const result = response.result
+        setHistoryUsage(response.history_usage ?? null)
         setSession({ draft: result.draft, history: result.history, generation: result.generation })
         if (result.record_lookup) setReference(result.record_lookup)
         const reply: ChatMessage = {
@@ -177,6 +190,7 @@ export default function PlanningPlaygroundPage() {
           request.body,
         )
         const update = response.result
+        setHistoryUsage(response.history_usage ?? null)
         setSession((previous) => ({ ...previous, generation: update.generation }))
         setStats({
           agent: 0,
@@ -334,6 +348,11 @@ export default function PlanningPlaygroundPage() {
         <p role="status" className="text-caption text-blue-700">
           {notice}
         </p>
+      )}
+      {historyUsage?.near_limit && (
+        <Card role="status" className="border-amber-200 bg-amber-50 p-4 text-caption">
+          대화가 길어지고 있어요. 현재 정한 내용을 확인해 주세요.
+        </Card>
       )}
       {history.length > 60 && (
         <p className="text-caption text-failed">

@@ -28,7 +28,7 @@ LLM이 사용자와 대화하고 필요한 Tool을 선택하는 행사계획 기
 
 ## 현재 후속 작업
 
-- [#194](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/194): 이력 사용량과 한도 임박 정보를 공개 결과에 제공. 현재 미구현이다.
+- [#194](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/194): AI 공개 결과의 `view.history_usage`와 독립 UI 안내를 구현했다. 제품 필드 합의와 연결은 #187에서 확인한다.
 - [#195](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/195): 긴 대화 압축의 설계와 평가 기준. 자동 압축 구현은 별도 범위다.
 - [#196](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/196): 채팅과 버튼 생성의 반복 응답 시간 측정. 개별 관찰 시간을 서비스 평균으로 안내하지 않는다.
 - [#177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177): P2 데이터와 수정 후 AI 검토 협의. 현재 생성 결과와 예정 계약을 구분한다.
