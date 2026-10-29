@@ -54,9 +54,10 @@ function ClubPlanningPage({ clubId }: { clubId: string | null }) {
     return () => clearTimeout(timer)
   }, [generating])
 
-  // TODO(연동): POST /plans/chat. 토리의 답과 「정한 것」 갱신은 서버가 준다.
-  const send = (text: string) =>
+  const send = async (text: string) => {
     setMessages((list) => [...list, { id: `msg_${list.length}`, from: '나', text }])
+    return true
+  }
 
   if (generating) {
     return (
@@ -98,19 +99,16 @@ function ClubPlanningPage({ clubId }: { clubId: string | null }) {
         <div className="flex items-start gap-[20px]">
           <PlanChat
             messages={demo ? messages : live.messages}
-            onSend={demo ? send : (text) => void live.send(text)}
+            onSend={demo ? send : live.send}
+            demo={demo}
             busy={!demo && live.busy}
             error={demo ? '' : live.error}
           />
-          {!demo && (
-            <p role="status" className="text-caption text-mute">
-              대화로 조건을 확인할 수 있어요. 계획 생성 연결은 준비 중이에요.
-            </p>
-          )}
           <PlanFacts
             facts={demo ? DEMO_FACTS : live.facts}
             readiness={demo ? undefined : { canGenerate: false, reasons: [] }}
             reference={demo ? DEMO_REFERENCE : undefined}
+            unavailable={!demo}
             onNext={() => {
               if (demo) setGenerating(true)
             }}

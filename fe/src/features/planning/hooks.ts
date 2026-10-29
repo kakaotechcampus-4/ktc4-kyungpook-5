@@ -40,10 +40,10 @@ export function usePlanningChat(clubId: string | null) {
   const revision = useRef(0)
   const locked = useRef(false)
   const send = async (text: string) => {
-    if (locked.current) return
+    if (locked.current) return false
     if (!clubId) {
       setError('로그인하고 소속을 선택해 주세요.')
-      return
+      return false
     }
     locked.current = true
     setBusy(true)
@@ -64,7 +64,8 @@ export function usePlanningChat(clubId: string | null) {
           ...previous,
           { id: `${id}-reply`, from: '토리', text: view.reply! },
         ])
-      else setError('답변을 받지 못했어요. 잠시 후 다시 시도해 주세요.')
+      else setError('답변을 받지 못했어요. 계획 상태를 확인해 주세요.')
+      return true
     } catch (cause) {
       if (cause instanceof ApiError && cause.code === 'VERSION_CONFLICT' && eventId.current) {
         try {
@@ -78,8 +79,9 @@ export function usePlanningChat(clubId: string | null) {
           ? '계획 답변 서비스에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.'
           : cause instanceof ApiError && cause.code === 'VERSION_CONFLICT'
             ? '계획이 변경되어 최신 상태를 확인했어요. 답변을 다시 보내 주세요.'
-            : '계획 답변을 받지 못했어요. 연결과 로그인 상태를 확인하고 다시 시도해 주세요.',
+            : '계획 답변을 받지 못했어요. 요청이 서버에 반영됐을 수 있으니 다시 보내기 전에 확인해 주세요.',
       )
+      return false
     } finally {
       locked.current = false
       setBusy(false)

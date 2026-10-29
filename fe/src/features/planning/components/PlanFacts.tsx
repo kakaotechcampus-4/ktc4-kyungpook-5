@@ -49,10 +49,17 @@ interface PlanFactsProps {
   readiness?: GenerationReadiness
   // 과거 기록을 봤을 때만 준다.
   reference?: string
+  unavailable?: boolean
   onNext: () => void
 }
 
-export function PlanFacts({ facts, readiness, reference, onNext }: PlanFactsProps) {
+export function PlanFacts({
+  facts,
+  readiness,
+  reference,
+  unavailable = false,
+  onNext,
+}: PlanFactsProps) {
   const { canGenerate, reasons } = readiness ?? localReadiness(facts)
 
   return (
@@ -108,9 +115,11 @@ export function PlanFacts({ facts, readiness, reference, onNext }: PlanFactsProp
           다음: 흐름 만들기 →
         </Button>
         <p className="text-[11px] leading-[16px] text-mute">
-          {canGenerate
-            ? '날짜와 인원은 미정이어도 괜찮아요. 2단계에서 정해도 돼요.'
-            : reasons.map((reason) => BLOCK_TEXT[reason]).join(' ')}
+          {unavailable
+            ? '대화로 조건을 확인할 수 있어요. 계획 생성 연결은 준비 중이에요.'
+            : canGenerate
+              ? '날짜와 인원은 미정이어도 괜찮아요. 2단계에서 정해도 돼요.'
+              : reasons.map((reason) => BLOCK_TEXT[reason]).join(' ')}
         </p>
       </Card>
     </div>

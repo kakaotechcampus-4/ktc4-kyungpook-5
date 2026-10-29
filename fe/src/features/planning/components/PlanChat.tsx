@@ -1,4 +1,4 @@
-// P1 왼쪽: 토리와 주고받는 대화. 저장하지 않는 임시 대화라 새로고침하면 사라진다.
+// P1 왼쪽: 토리와 주고받는 대화.
 import { useState } from 'react'
 import type { ChatMessage } from '@/features/planning/types'
 import { cn } from '@/shared/lib/cn'
@@ -9,19 +9,26 @@ import { Tori } from '@/shared/ui/Tori'
 
 interface PlanChatProps {
   messages: ChatMessage[]
-  onSend: (text: string) => void
+  onSend: (text: string) => Promise<boolean>
+  demo?: boolean
   busy?: boolean
   error?: string
 }
 
-export function PlanChat({ messages, onSend, busy = false, error = '' }: PlanChatProps) {
+export function PlanChat({
+  messages,
+  onSend,
+  busy = false,
+  error = '',
+  demo = false,
+}: PlanChatProps) {
   const [draft, setDraft] = useState('')
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || busy) return
-    onSend(trimmed)
-    setDraft('')
+    setDraft(trimmed)
+    if (await onSend(trimmed)) setDraft('')
   }
 
   // 빠른 답변은 마지막 토리 말풍선에만 남긴다. 지난 질문의 선택지는 이미 지나간 것이다.
@@ -31,7 +38,9 @@ export function PlanChat({ messages, onSend, busy = false, error = '' }: PlanCha
     <Card className="flex min-w-0 flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-line px-[24px] py-[18px]">
         <h2 className="text-h2 text-ink">토리와 계획 잡기</h2>
-        <span className="text-[11px] text-mute">저장되지 않는 임시 대화</span>
+        <span className="text-[11px] text-mute">
+          {demo ? '화면 미리보기' : '새로고침하면 이 대화 화면은 초기화돼요'}
+        </span>
       </header>
 
       <div className="flex min-h-[420px] flex-col gap-[14px] px-[24px] pt-[20px] pb-[18px]">
@@ -51,7 +60,7 @@ export function PlanChat({ messages, onSend, busy = false, error = '' }: PlanCha
                       key={reply}
                       type="button"
                       disabled={busy}
-                      onClick={() => send(reply)}
+                      onClick={() => void send(reply)}
                       className="rounded-[9px] border border-blue-200 bg-card px-[13px] py-[8px] text-[11.5px] font-bold text-blue-700 hover:bg-blue-50"
                     >
                       {reply}
@@ -88,7 +97,7 @@ export function PlanChat({ messages, onSend, busy = false, error = '' }: PlanCha
         className="flex items-center gap-[10px] border-t border-line px-[20px] py-[16px]"
         onSubmit={(e) => {
           e.preventDefault()
-          send(draft)
+          void send(draft)
         }}
       >
         <div className="flex-1">
