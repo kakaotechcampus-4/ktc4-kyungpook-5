@@ -1,0 +1,464 @@
+{
+  "report_version": 2,
+  "session_id": "real-20261028-01",
+  "status": "completed",
+  "started_at": "2026-10-28T14:57:51.547549+09:00",
+  "fixture_sha256": "13e868674c1cf5f20eef93b0c3c5a199a181caf1b5167178d467ba30869e391b",
+  "fixture_version": 1,
+  "profile": {
+    "rounds": 10,
+    "warmup": true,
+    "interval_seconds": 1.0,
+    "concurrency": 1,
+    "reference_date": "2026-10-28",
+    "timezone": "Asia/Seoul"
+  },
+  "environment": {
+    "mode": "real_model",
+    "python": "3.13.14",
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "dependencies": {
+      "langgraph": "1.2.12",
+      "langchain-openai": "1.6.2",
+      "pydantic": "2.13.5",
+      "openai": "3.16.2"
+    },
+    "commit": "be76b60bad58f93b96e30ecfa5489970df3994fb",
+    "dirty": false,
+    "source_sha256": {
+      "__init__.py": "53eccfb07f81884ab0dff3c15c5db39751b1a1c260779f83947901e5be22ad67",
+      "contracts.py": "1f10690f8f9e5d9e0ad4f1b6bd2f956b8b54eaca9b9621a912348bb99be11de3",
+      "facade.py": "279db64479aaaa2432832aad27c1973010c46cb6c0c3ea0bc6df4ca19d0b169b",
+      "ports.py": "965b8a802e992a98e7f2fafd0859efe9c2595fd80ceee27794b7bcbd8ec99207",
+      "config.py": "404f157db3148d4638deecb93712ebc01626df74f0ccc5560ef1130ac4c3db7a",
+      "llm.py": "47e55dbcb69ce4ea9cc887b3e5e5857a3f5368f178aed53d3f4a4916ab468e6b",
+      "errors.py": "68d223bf71b58a42c786ee3a9e63322827b81cb41bc6a9e5f47870c426dab296",
+      "features/planning/agent/generation_tools.py": "0a586b5750d93f86678464a80b2529d4b31dce3aeb9b5843416247321d669bdd",
+      "features/planning/agent/graph.py": "83292a96948abb8a37edb94948c855e503a0b054ea9c02ecbc3f19d04b879b88",
+      "features/planning/agent/nodes.py": "ae031e46adeeff9cd6bba9fcaa05898800f6ce644f4fc45ac1148b9dee230b82",
+      "features/planning/agent/record_tool.py": "49c78509084ac094835d7b08a00e8b94bd701767b9796a7f45e621b85dd7e587",
+      "features/planning/agent/schemas.py": "98a149880147d89b018ca3aed23f3f6e6fedcdbaee0892d0a2699b07e687199d",
+      "features/planning/agent/state.py": "9bb22837b9f662ef8e1d8b398fd398ee2032bc5fcd6f75718f5d24130df07180",
+      "features/planning/agent/tools.py": "a7af857e94efc4619a9a021dbb57b2a59ae4f6672a66648daf869aa733fc2c6a",
+      "features/planning/generation/__init__.py": "d64c4710852440e504ea0b350647283c050637a2fbafa6864c0b81feeba87f26",
+      "features/planning/generation/catalog.py": "9728dd2591ab6d648e60e921917a49fd3159261ff735b8e020e71b2151a74927",
+      "features/planning/generation/entrypoints.py": "ee0734da3a0013f61f864bc518c8182ab96cd776e67d9ebc6438f4a20b825aff",
+      "features/planning/generation/graph.py": "eda198366d633da09d75ad0f30fb63dc6540a166031a7ff28e94618f36652a76",
+      "features/planning/generation/model.py": "916cb7a1de4af503d7b467561f9a432253a84221a5ad84d961072e35f452c9d1",
+      "features/planning/generation/offers.py": "330a785334f9ce1c7e3094b4e1b242375cf2157474da25087bf1df75277e413a",
+      "features/planning/generation/readiness.py": "04db68d9be1f14cdc857f6e8bc467410954f21baf7f9211f5f66365915a6eb1d",
+      "features/planning/generation/schemas.py": "78c19e499702e2aec6ea55c8da85e8c1b2507c13331182816b0bc7a7dd886253",
+      "features/planning/legacy/__init__.py": "ccb2cf6104f535a3f11a69d8519c70478e7c869fe671625aa31589c10712973e",
+      "features/planning/legacy/lookup.py": "f9ba70f85e03e171191727da47f4ecfa37751337e4a68785116a9d08a774cee7",
+      "features/planning/legacy/nodes.py": "729f2e11f2cac2bd017712cc74ccb74908b4c2e69a05308982e7854a961d441b",
+      "features/planning/legacy/questions.py": "c4c61a997fef981ce3c7a8f299993a915ca175779b0963ff67d1557d9f1e8c2a",
+      "features/planning/legacy/records.py": "7c41800667c79c90f8ef4249e5b98cbc4e3237ff5f8222290341533e9698fd8b",
+      "features/planning/legacy/schemas.py": "d85c6a8abe05c72c72fb60408939eda4fae4567aab5adf3b8ab757c79ee36247",
+      "features/planning/legacy/turn_assembly.py": "6789cc7014116c7bbb2a35e4289d45232550560783327b6d79b5539b7fa9c9cb",
+      "features/planning/legacy/turn_flow.py": "1d78bf73d46fce3a2513bf51fa033cafa4336ed2373ff2d20ac3f21172e976aa",
+      "features/planning/legacy/turn_policy.py": "03eddee6dd029c8901c181e4a8d958ec14cd71ac8157cc8f606938b571d119a8",
+      "features/planning/legacy/turn_schemas.py": "d452ffb1d2669f92a1e698ec506c8b3cb03a4fe04ea6546469bd427791dd11ea",
+      "features/planning/public_workflow.py": "29806c1ad6e788ff26eea9efd3599e8302e9729cb5ff5fb158743e0e0c44631c",
+      "features/planning/schemas.py": "76322b809f170e2d4a26f86e018d51a67dad5f981ffc9bcb00962e0c07ed7651",
+      "features/planning/state_codec.py": "a76ac37d00d37d8db01280067729473c2b1888941a9b4fc536fd1935f649035b",
+      "features/planning/agent/prompts/chat.md": "98dd9aa8491a07c9b154c9ffe5ebcb8c6e53d4a4d22469199f6da35b158f69b7",
+      "features/planning/generation/prompts/compose.md": "57b54f2ab15a4fbd775aac42a06c63e0cbbf33a380dcff10b177bd0d3fb94902",
+      "features/planning/legacy/README.md": "b490dbbe3906fff65377c5eb6cccd627260370c29411218a8292273107041ebc",
+      "features/planning/legacy/prompts/decide_lookup.md": "3c2a3bbdfb7ba10f6fe7b3640431310db436d6bd42df213aa103406761658b82",
+      "features/planning/legacy/prompts/extract_conditions.md": "b4aaf9d1c66d57c7739526bb90dd6661224c1ed650fdede7ed30d00c8df8735b",
+      "scripts/measure_planning_latency.py": "af32bc0ca437423bb585ad86a3e0cbf2bf03fc2e9ec626ae9a69ef2d66045e58",
+      "scripts/planning_latency_inputs.py": "e9ffc6fd6983a81fd65d05d03d30a9cc7173f79e13f0178c24eb396da3a2c2a2",
+      "scripts/planning_latency_checks.py": "5daaf38ca129b9f03404bdfbe96f89fb79c7e2a91162e3bc19f745282d64ab5c",
+      "scripts/planning_latency_observation.py": "4f15f06133239ae66b534ca08205f4d8a468c919240211bc987dfb67fa278404"
+    },
+    "model": "gpt-5.6-luna",
+    "model_options": {
+      "temperature": "not_set",
+      "reasoning": "not_set",
+      "sdk_max_retries": 2,
+      "request_timeout_seconds": 60.0,
+      "generation_max_tokens": 8192,
+      "generation_streaming": true
+    },
+    "coverage": {
+      "timing": "public_function_with_nested_spans",
+      "stage_timings": "planning_function_wrappers_v1",
+      "model_call_attempts": "wrapped_invoker_attempts",
+      "http_attempts": null,
+      "token_usage": null,
+      "model_input_chars": null,
+      "unavailable_reason": "SDK 내부 HTTP 시도와 토큰은 미관측. 구간의 메시지 문자 수는 text만 포함"
+    }
+  },
+  "planned_attempts": [
+    {
+      "attempt_id": "real-20261028-01-warmup-0000-C1",
+      "phase": "warmup",
+      "round": 0,
+      "case_id": "C1",
+      "request_sha256": "0c270e791a8607bc6df6aed8f82733b96e468a05604e75d4ebfa03eedbb92cda",
+      "normalized_input_sha256": "b07716de59e6b0563b12a8e2965d43dbc0a1b4243550a18d687ad1c5c20d559c"
+    },
+    {
+      "attempt_id": "real-20261028-01-warmup-0000-C2",
+      "phase": "warmup",
+      "round": 0,
+      "case_id": "C2",
+      "request_sha256": "abc0e1fb964aff04c00678e009231d1c237feacc21e325af364f8d75b4800ce6",
+      "normalized_input_sha256": "4d8e8f95e69f4f9f5a15c46fbcc9a6e133f9e0b4c5231b98f6f87b401088693d"
+    },
+    {
+      "attempt_id": "real-20261028-01-warmup-0000-G1",
+      "phase": "warmup",
+      "round": 0,
+      "case_id": "G1",
+      "request_sha256": "14459108af87ac9214a16710c521a884ee6a7081d17f987528e0e91b83b206ad",
+      "normalized_input_sha256": "bc21f55ba82651531953cf3b52297bad84b0a8f53f3c92456e74435492530aa1"
+    },
+    {
+      "attempt_id": "real-20261028-01-warmup-0000-G2",
+      "phase": "warmup",
+      "round": 0,
+      "case_id": "G2",
+      "request_sha256": "340da197b77f53fb2ef67b9dca955cd0de52240246b6bbc4a7a40cc4f24a78c6",
+      "normalized_input_sha256": "8083bb5425c4c640245763425c3255ae4e45cef75f9f36ccf13832a4ae26aaa8"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0001-C1",
+      "phase": "measurement",
+      "round": 1,
+      "case_id": "C1",
+      "request_sha256": "80021cb635e839dba6ff0b08bb94d712d2779a35f9fd242f38ec8525434efe64",
+      "normalized_input_sha256": "b07716de59e6b0563b12a8e2965d43dbc0a1b4243550a18d687ad1c5c20d559c"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0001-C2",
+      "phase": "measurement",
+      "round": 1,
+      "case_id": "C2",
+      "request_sha256": "4243a51424ccbf6a4d5f46ee83b842c820a1a17a44a191614da2b19046dc3739",
+      "normalized_input_sha256": "4d8e8f95e69f4f9f5a15c46fbcc9a6e133f9e0b4c5231b98f6f87b401088693d"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0001-G1",
+      "phase": "measurement",
+      "round": 1,
+      "case_id": "G1",
+      "request_sha256": "c8794eae0c4a8c1237f498d2db460c27228bfa03ec0149455deb485471bfb21b",
+      "normalized_input_sha256": "bc21f55ba82651531953cf3b52297bad84b0a8f53f3c92456e74435492530aa1"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0001-G2",
+      "phase": "measurement",
+      "round": 1,
+      "case_id": "G2",
+      "request_sha256": "97add7641a1e09a9563d466c3e8632a8754cad7815846954441c2a0d15533023",
+      "normalized_input_sha256": "8083bb5425c4c640245763425c3255ae4e45cef75f9f36ccf13832a4ae26aaa8"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0002-G2",
+      "phase": "measurement",
+      "round": 2,
+      "case_id": "G2",
+      "request_sha256": "600ead9e599dd477e50c084758bc9cf04957094e9162b5bc3346ef6dcbe4e2ed",
+      "normalized_input_sha256": "8083bb5425c4c640245763425c3255ae4e45cef75f9f36ccf13832a4ae26aaa8"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0002-G1",
+      "phase": "measurement",
+      "round": 2,
+      "case_id": "G1",
+      "request_sha256": "3e88dcbd9c980df5f85e6f7bfda485ffa0e26fbb2ce93e472ecf82f1596b1978",
+      "normalized_input_sha256": "bc21f55ba82651531953cf3b52297bad84b0a8f53f3c92456e74435492530aa1"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0002-C2",
+      "phase": "measurement",
+      "round": 2,
+      "case_id": "C2",
+      "request_sha256": "398767b4bc1a4c6edf74d189cafddea9ce3bce3809ef396729d059c28de9fc99",
+      "normalized_input_sha256": "4d8e8f95e69f4f9f5a15c46fbcc9a6e133f9e0b4c5231b98f6f87b401088693d"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0002-C1",
+      "phase": "measurement",
+      "round": 2,
+      "case_id": "C1",
+      "request_sha256": "6c5f1ef6f00ece9c54e95cbb7647525042c90dd274ca1b3d38b58941429922ec",
+      "normalized_input_sha256": "b07716de59e6b0563b12a8e2965d43dbc0a1b4243550a18d687ad1c5c20d559c"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0003-C1",
+      "phase": "measurement",
+      "round": 3,
+      "case_id": "C1",
+      "request_sha256": "32d24aadf986f9c948937d73048339b1354372d6e772a1ac394687c35ee49772",
+      "normalized_input_sha256": "b07716de59e6b0563b12a8e2965d43dbc0a1b4243550a18d687ad1c5c20d559c"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0003-C2",
+      "phase": "measurement",
+      "round": 3,
+      "case_id": "C2",
+      "request_sha256": "720ceb3de2e51845503db17d2a3680c766533a1aec1397af762d23ad918777fc",
+      "normalized_input_sha256": "4d8e8f95e69f4f9f5a15c46fbcc9a6e133f9e0b4c5231b98f6f87b401088693d"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0003-G1",
+      "phase": "measurement",
+      "round": 3,
+      "case_id": "G1",
+      "request_sha256": "29dc0783db313b77a6d89ead99847ddd22fc8868e0ee071d0b5c29e0e779fc9c",
+      "normalized_input_sha256": "bc21f55ba82651531953cf3b52297bad84b0a8f53f3c92456e74435492530aa1"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0003-G2",
+      "phase": "measurement",
+      "round": 3,
+      "case_id": "G2",
+      "request_sha256": "28d8c3f94d89cdb1ec98b989dfcc8bf504afe79de2a870cdc1a7cc1c16b7c9ba",
+      "normalized_input_sha256": "8083bb5425c4c640245763425c3255ae4e45cef75f9f36ccf13832a4ae26aaa8"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0004-G2",
+      "phase": "measurement",
+      "round": 4,
+      "case_id": "G2",
+      "request_sha256": "814fa70367afc29d6a3e0a57e0156aa270bb5e0059dd9fdf02ee4bc669c368b0",
+      "normalized_input_sha256": "8083bb5425c4c640245763425c3255ae4e45cef75f9f36ccf13832a4ae26aaa8"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0004-G1",
+      "phase": "measurement",
+      "round": 4,
+      "case_id": "G1",
+      "request_sha256": "c4c4dc6595315664913905c9a220cb839383a5f92d54cd5e2c1f77204b8e9916",
+      "normalized_input_sha256": "bc21f55ba82651531953cf3b52297bad84b0a8f53f3c92456e74435492530aa1"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0004-C2",
+      "phase": "measurement",
+      "round": 4,
+      "case_id": "C2",
+      "request_sha256": "e097f12f5eb888f946704ef6059f337f8b3df03d27e4b5186b25e33e44b29dd3",
+      "normalized_input_sha256": "4d8e8f95e69f4f9f5a15c46fbcc9a6e133f9e0b4c5231b98f6f87b401088693d"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0004-C1",
+      "phase": "measurement",
+      "round": 4,
+      "case_id": "C1",
+      "request_sha256": "be13528c5a3e38d9afbf8df28b894617904383f7aaa1c68fd34d3e140badfd1e",
+      "normalized_input_sha256": "b07716de59e6b0563b12a8e2965d43dbc0a1b4243550a18d687ad1c5c20d559c"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0005-C1",
+      "phase": "measurement",
+      "round": 5,
+      "case_id": "C1",
+      "request_sha256": "7b968c5dbe04462cd5b4711ef73e1cb305efbdae00dc468687f603af0aa235fb",
+      "normalized_input_sha256": "b07716de59e6b0563b12a8e2965d43dbc0a1b4243550a18d687ad1c5c20d559c"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0005-C2",
+      "phase": "measurement",
+      "round": 5,
+      "case_id": "C2",
+      "request_sha256": "44f9c4159bdd2236379539dbbb7177f13315ab27fd6e5d861762952352d76e9c",
+      "normalized_input_sha256": "4d8e8f95e69f4f9f5a15c46fbcc9a6e133f9e0b4c5231b98f6f87b401088693d"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0005-G1",
+      "phase": "measurement",
+      "round": 5,
+      "case_id": "G1",
+      "request_sha256": "335107516cad46eb0562253afcfcee1073dc835013931b5f458ae7cb76bb825c",
+      "normalized_input_sha256": "bc21f55ba82651531953cf3b52297bad84b0a8f53f3c92456e74435492530aa1"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0005-G2",
+      "phase": "measurement",
+      "round": 5,
+      "case_id": "G2",
+      "request_sha256": "6de1c4dd499bc62737e90dc6c9c1ac1d8c6a4b6516813eb17b750fd6490d7666",
+      "normalized_input_sha256": "8083bb5425c4c640245763425c3255ae4e45cef75f9f36ccf13832a4ae26aaa8"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0006-G2",
+      "phase": "measurement",
+      "round": 6,
+      "case_id": "G2",
+      "request_sha256": "3cabf67f7fa1efaca7c973b337b67be02d8a44f7ead7234cc256ada13aa255ec",
+      "normalized_input_sha256": "8083bb5425c4c640245763425c3255ae4e45cef75f9f36ccf13832a4ae26aaa8"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0006-G1",
+      "phase": "measurement",
+      "round": 6,
+      "case_id": "G1",
+      "request_sha256": "397bdda3ff887a7e69f6022b1d4a4e1d55e5f7892759bc4c4b70731408ce7cda",
+      "normalized_input_sha256": "bc21f55ba82651531953cf3b52297bad84b0a8f53f3c92456e74435492530aa1"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0006-C2",
+      "phase": "measurement",
+      "round": 6,
+      "case_id": "C2",
+      "request_sha256": "74bb8c07d999eaaea2e122027f00bece62aee214925df4984ecb517bd93c2c4b",
+      "normalized_input_sha256": "4d8e8f95e69f4f9f5a15c46fbcc9a6e133f9e0b4c5231b98f6f87b401088693d"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0006-C1",
+      "phase": "measurement",
+      "round": 6,
+      "case_id": "C1",
+      "request_sha256": "d45625851762e80c72f670c6315fb3ee900ecf5458dfc611afbeace098c129ed",
+      "normalized_input_sha256": "b07716de59e6b0563b12a8e2965d43dbc0a1b4243550a18d687ad1c5c20d559c"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0007-C1",
+      "phase": "measurement",
+      "round": 7,
+      "case_id": "C1",
+      "request_sha256": "592f8c70c1ab8bc13f4ece949bfe1ae33e342a51e0ff538a57025fc803f3d028",
+      "normalized_input_sha256": "b07716de59e6b0563b12a8e2965d43dbc0a1b4243550a18d687ad1c5c20d559c"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0007-C2",
+      "phase": "measurement",
+      "round": 7,
+      "case_id": "C2",
+      "request_sha256": "dc0c3c421d1e3cad890f62d405043d96426f3dad7e9281d729287d11ac94b5c5",
+      "normalized_input_sha256": "4d8e8f95e69f4f9f5a15c46fbcc9a6e133f9e0b4c5231b98f6f87b401088693d"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0007-G1",
+      "phase": "measurement",
+      "round": 7,
+      "case_id": "G1",
+      "request_sha256": "0b8800085c0d9ab7ded263e3a97518faddcd966cdce660403b7037b44d34b353",
+      "normalized_input_sha256": "bc21f55ba82651531953cf3b52297bad84b0a8f53f3c92456e74435492530aa1"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0007-G2",
+      "phase": "measurement",
+      "round": 7,
+      "case_id": "G2",
+      "request_sha256": "55671b666f1064be6882e01d84485e4e59ed281c89109e9b1642aac3569cdcf5",
+      "normalized_input_sha256": "8083bb5425c4c640245763425c3255ae4e45cef75f9f36ccf13832a4ae26aaa8"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0008-G2",
+      "phase": "measurement",
+      "round": 8,
+      "case_id": "G2",
+      "request_sha256": "cd32eaa75c16280a9f495157818bc86e0b7162898e4a690f9e9d1411e12547f5",
+      "normalized_input_sha256": "8083bb5425c4c640245763425c3255ae4e45cef75f9f36ccf13832a4ae26aaa8"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0008-G1",
+      "phase": "measurement",
+      "round": 8,
+      "case_id": "G1",
+      "request_sha256": "b992b7234082e779394b5d3c45cc08d34240193b42453861cf1001772c2d2d3f",
+      "normalized_input_sha256": "bc21f55ba82651531953cf3b52297bad84b0a8f53f3c92456e74435492530aa1"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0008-C2",
+      "phase": "measurement",
+      "round": 8,
+      "case_id": "C2",
+      "request_sha256": "c0139c024cf996b275965697c0c02a7ec4476d889ca7f03f5ef2b1a4504036ad",
+      "normalized_input_sha256": "4d8e8f95e69f4f9f5a15c46fbcc9a6e133f9e0b4c5231b98f6f87b401088693d"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0008-C1",
+      "phase": "measurement",
+      "round": 8,
+      "case_id": "C1",
+      "request_sha256": "03493148e8f99ef1b39e0bc6b76eba09b7a447536377e0d249f3826918981ff1",
+      "normalized_input_sha256": "b07716de59e6b0563b12a8e2965d43dbc0a1b4243550a18d687ad1c5c20d559c"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0009-C1",
+      "phase": "measurement",
+      "round": 9,
+      "case_id": "C1",
+      "request_sha256": "fe6ae52a1ee07f73d24d373e4b4989966e34f26309c82a8ccb6e1503f22686cf",
+      "normalized_input_sha256": "b07716de59e6b0563b12a8e2965d43dbc0a1b4243550a18d687ad1c5c20d559c"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0009-C2",
+      "phase": "measurement",
+      "round": 9,
+      "case_id": "C2",
+      "request_sha256": "273c0db420213816d345abcbe2fb0a62cd80feb706c9a30c35c895f4ac68dc3a",
+      "normalized_input_sha256": "4d8e8f95e69f4f9f5a15c46fbcc9a6e133f9e0b4c5231b98f6f87b401088693d"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0009-G1",
+      "phase": "measurement",
+      "round": 9,
+      "case_id": "G1",
+      "request_sha256": "02933ba9c19e83f20951c4024d0dd30367725abc96d770f1388a675e98020c3f",
+      "normalized_input_sha256": "bc21f55ba82651531953cf3b52297bad84b0a8f53f3c92456e74435492530aa1"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0009-G2",
+      "phase": "measurement",
+      "round": 9,
+      "case_id": "G2",
+      "request_sha256": "bd2a1d6ec09a2bc815d44c359e3b588062679b215517dd7972e2506ddb09cec7",
+      "normalized_input_sha256": "8083bb5425c4c640245763425c3255ae4e45cef75f9f36ccf13832a4ae26aaa8"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0010-G2",
+      "phase": "measurement",
+      "round": 10,
+      "case_id": "G2",
+      "request_sha256": "96bde99adf9479a91231cb87d89441f02cb1f65dc8e977212b57e994e08d09e8",
+      "normalized_input_sha256": "8083bb5425c4c640245763425c3255ae4e45cef75f9f36ccf13832a4ae26aaa8"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0010-G1",
+      "phase": "measurement",
+      "round": 10,
+      "case_id": "G1",
+      "request_sha256": "32884eed52347bf96b55ebf03168e170aa2843b732cb8fe96bef783d865efffb",
+      "normalized_input_sha256": "bc21f55ba82651531953cf3b52297bad84b0a8f53f3c92456e74435492530aa1"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0010-C2",
+      "phase": "measurement",
+      "round": 10,
+      "case_id": "C2",
+      "request_sha256": "0c27df4075e88a3c5eff878e6e77febf94e4fcbfc69ee08afd8ae3b0f8626831",
+      "normalized_input_sha256": "4d8e8f95e69f4f9f5a15c46fbcc9a6e133f9e0b4c5231b98f6f87b401088693d"
+    },
+    {
+      "attempt_id": "real-20261028-01-measurement-0010-C1",
+      "phase": "measurement",
+      "round": 10,
+      "case_id": "C1",
+      "request_sha256": "9c1ca06f8094a7f30d19e5d73e145c1609884acc3acdfe296112df7eb5fb7cb1",
+      "normalized_input_sha256": "b07716de59e6b0563b12a8e2965d43dbc0a1b4243550a18d687ad1c5c20d559c"
+    }
+  ],
+  "counts": {
+    "warmup": {
+      "started": 4,
+      "finished": 4,
+      "success": 4,
+      "failed": 0,
+      "interrupted": 0
+    },
+    "measurement": {
+      "started": 40,
+      "finished": 40,
+      "success": 29,
+      "failed": 11,
+      "interrupted": 0
+    }
+  },
+  "finished_at": "2026-10-28T15:05:35.364868+09:00"
+}
