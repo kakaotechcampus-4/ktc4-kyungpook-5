@@ -17,6 +17,7 @@ from app.core.enums import (
     MemberRole,
     StepActor,
     StepCode,
+    StepPhase,
     StepState,
 )
 from app.schemas.common import CamelModel, PageMeta, UtcDateTime
@@ -42,6 +43,8 @@ class ActionOut(CamelModel):
     type: ActionType
     title: str
     subtitle: str | None
+    # 승인 대상 본문(예: 토리가 준비한 공지 초안). 결정 검토 모달이 보여준다.
+    content: str | None
     irreversible: bool
     approve_needed: bool
     status: ActionStatus
@@ -57,6 +60,8 @@ class ActionOut(CamelModel):
     options: list[ActionOption] | None
     allow_manual: bool | None
     can_approve: bool
+    # 세부 수정 가능 여부 (#106). APPROVED에서 고치면 다시 PENDING이 된다.
+    editable: bool
 
 
 class ActionListResponse(CamelModel):
@@ -91,6 +96,29 @@ class EventListResponse(CamelModel):
     meta: PageMeta
 
 
+class CurrentStepOut(CamelModel):
+    id: str
+    step_order: int
+    name: str
+
+
+class EventDetailOut(CamelModel):
+    """L2 헤더. 목록 카드와 달리 현재 단계를 id까지 내려 Step 모달을 바로 연다."""
+
+    id: str
+    title: str
+    status: EventStatus
+    start_date: date | None
+    end_date: date | None
+    dday: int | None
+    location: str | None
+    headcount: int | None
+    current_step: CurrentStepOut | None
+    # EventOut과 같은 이유로 항상 null (accounting 기준으로 재정의 예정)
+    payment: Any | None
+    budget: Any | None
+
+
 class DoneActionOut(CamelModel):
     id: str
     title: str
@@ -107,6 +135,9 @@ class RemainingActionOut(CamelModel):
 class StepOut(CamelModel):
     id: str
     step_order: int
+    # P2는 단계를 묶음(phase)별로 나눠 그리고, 카탈로그 코드로 단계를 구분한다.
+    code: StepCode
+    phase: StepPhase
     name: str
     actor: StepActor
     state: StepState
