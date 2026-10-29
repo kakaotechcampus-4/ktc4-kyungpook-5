@@ -288,3 +288,4 @@ class PlanScreenOut(CamelModel):
     excluded_steps: list[ExcludedStepOut]
     summary: PlanSummaryOut
     base_revision: int
+    generation_readiness: GenerationReadinessOut | None = None

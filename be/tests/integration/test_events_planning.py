@@ -276,3 +276,19 @@ async def test_계획_이력과_단계는_소속만_순서대로_조회한다(cl
     outsider = _login(client,"outsider")
     assert client.get(f"/api/v1/events/{event_id}/plan/messages", headers=outsider).status_code == 403
     assert client.get(f"/api/v1/events/{event_id}/plan/steps", headers=outsider).status_code == 403
+
+
+async def test_계획_복원에_저장된_준비상태를_반환한다(client, app_db, monkeypatch):
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+    initial = client.get(f'/api/v1/events/{event_id}/plan', headers=headers)
+    assert initial.status_code == 200 and initial.json()['data']['generationReadiness'] is None
+    async def fake_chat(request, *, records=None):
+        return _fake_chat_result(event_type='MT', headcount=30)
+    monkeypatch.setattr('app.ai.chat_planning', fake_chat)
+    result = client.post(f'/api/v1/events/{event_id}/plan/chat', headers=headers,
+                         json={'messageId':'restore-readiness','message':'MT 30명','baseRevision':0})
+    assert result.status_code == 200
+    restored = client.get(f'/api/v1/events/{event_id}/plan', headers=headers)
+    assert restored.status_code == 200
+    assert restored.json()['data']['generationReadiness'] == result.json()['data']['generationReadiness']

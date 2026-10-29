@@ -514,4 +514,5 @@ async def get_plan_screen(
             "manual_steps": actor_counts.get(StepActor.MANUAL, 0),
         },
         "base_revision": conversation.base_revision if conversation is not None else 0,
+        "generation_readiness": conversation.generation_readiness if conversation is not None else None,
     }
