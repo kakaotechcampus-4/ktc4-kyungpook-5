@@ -4,8 +4,8 @@
 laya와 torch는 BE 의존성에 넣지 않는다. 잴 때만 붙인다. 키는 필요 없다.
 
     cd be && uv run --with laya==0.4.7 python app/ai/scripts/check_laya_judge.py \\
-        [--model <저장소 또는 학습한 체크포인트 경로>] [--threads N] [--repeat 3] [--eval-set [--holdout]]
-        [--threshold 0.5] [--sweep 0.5 0.7 0.9] [--json 결과.json]
+        [--model <저장소 또는 학습한 체크포인트 경로> ...] [--threads N] [--repeat 3] [--eval-set [--holdout]]
+        [--threshold 0.5] [--sweep 0.5 0.7 0.9] [--luna luna결과.json] [--json 결과.json]
 
 - 문항: tests/fixtures/eval/meeting_judge.jsonl. luna(check_meeting_judge.py)와 같은 문항이다.
   이 문항은 학습 데이터에 넣지 않는다. 넣으면 학습 후 값이 의미가 없어진다.
@@ -14,6 +14,10 @@ laya와 torch는 BE 의존성에 넣지 않는다. 잴 때만 붙인다. 키는 
   P(true)가 임계값(--threshold, 기본 0.5) 이상이면 조회로 본다. AUROC는 기준값과 관계없이 조회할 발화에 더 높은 확률을 줬는지 본다
 - 임계값 표: 같은 확률로 임계값 후보(--sweep)마다 재현율·오개입률을 다시 센다. 홀드아웃은 넣지 않는다.
   임계값은 개발용에서 고르고, 홀드아웃은 고른 값을 확인하는 데만 쓴다
+- --model에 체크포인트를 여러 개 주면 발화마다 모두 판단해 조회 확률을 평균한다(세 시드 평균, #117).
+  임계값과 AUROC는 평균으로 보고, 모델별 확률은 기록에만 남긴다. 지연은 발화 하나를 모든 모델이 판단한 시간이다
+- --luna에 같은 문항을 잰 luna 결과(check_meeting_judge.py --json)를 주면 luna가 잡은 조회 중 놓친 것을 센다.
+  1단계 기준이 "luna가 잡은 조회를 하나도 놓치지 않음"이라서다. 정답은 luna 결과가 아니라 지금 평가 문항에서 읽는다
 - CPU에서만 돈다. 배포 서버에 GPU가 없기 때문이다
 - 지연: 예열 1회 뒤 문항 전체를 --repeat번 판단한다. 판단 값은 첫 회를 쓰고, 회차마다 값이 같은지도 낸다
 - 모델은 Hugging Face 캐시에서 읽는다. 처음 한 번은 받는다(기본 모델 644MB)
@@ -91,49 +95,84 @@ def summarize(records: list[dict]) -> dict:
     }
 
 
+def luna_caught(path: Path) -> set[str]:
+    """luna가 조회로 판단한 문항 id. 정답과 맞았는지는 부르는 쪽이 지금 평가 문항의 정답으로 가린다"""
+    return {r["id"] for r in json.loads(path.read_text())["records"] if r.get("pred")}
+
+
+def luna_missed(records: list[dict], caught: set[str], threshold: float | None = None) -> dict:
+    """조회할 발화 중 luna가 잡았는데 Laya가 놓친 것. 둘 다 허용은 채점하지 않으므로 뺀다.
+    threshold를 주면 그 임계값으로 다시 판단한다(임계값 표)"""
+    target = [r for r in records if r["truth"] and not r.get("either") and r["id"] in caught]
+    missed = [r["id"] for r in target if not (r["p_true"] >= threshold if threshold is not None else r["pred"])]
+    return {"missed": f"{len(missed)} / {len(target)}", "ids": missed}
+
+
+def _revision(args, model: str) -> str | None:
+    if args.revision is not None:
+        return args.revision
+    return BASE_REVISION if model == BASE_MODEL else None
+
+
 def run(args) -> dict:
     if args.threads:
         torch.set_num_threads(args.threads)
     path, key, groups, requests = eval_items(args)
     items = [(row, build_judge_input(request)) for row, request in requests]
     questions = judge_questions()
-    revision = args.revision if args.revision is not None else (BASE_REVISION if args.model == BASE_MODEL else None)
+    revisions = [_revision(args, model) for model in args.model]
 
     rss_before = _max_rss_mb()
     started = time.perf_counter()
-    agent = laya.load(args.model, device="cpu", revision=revision)
+    agents = [laya.load(model, device="cpu", revision=rev) for model, rev in zip(args.model, revisions)]
     load_s = round(time.perf_counter() - started, 2)
-    agent.predict(items[0][1], questions)  # 예열. 첫 호출은 느리다
+    for agent in agents:
+        agent.predict(items[0][1], questions)  # 예열. 첫 호출은 느리다
 
     passes = []
     for _ in range(args.repeat):
-        p_true, ms = [], []
+        p_models, ms = [], []
         for _, state in items:
+            # 실제로 쓸 때처럼 발화 하나를 모든 모델이 차례로 판단한 시간을 잰다
             started = time.perf_counter()
-            answer = agent.predict(state, questions)["answers"][RECORD_LOOKUP]
+            p_models.append([agent.predict(state, questions)["answers"][RECORD_LOOKUP]["noul"] for agent in agents])
             ms.append((time.perf_counter() - started) * 1000)
-            p_true.append(answer["noul"])
-        passes.append((p_true, ms))
+        passes.append((p_models, ms))
 
-    first = passes[0][0]
+    def average(p_models: list[list[float]]) -> list[float]:
+        return [sum(ps) / len(ps) for ps in p_models]
+
+    first = average(passes[0][0])
     records = []
-    for (row, _), p in zip(items, first):
+    for (row, _), p, ps in zip(items, first, passes[0][0]):
         pred = p >= args.threshold
-        records.append({**eval_record(row), "p_true": round(p, 4), "pred": pred})
-        print(f"  {'O' if pred == row['needs_lookup'] else 'X'} {row['id']:6} P={p:.3f}  {row['heard']}")
+        # 모델이 여럿이면 시드마다 확률이 얼마나 갈리는지 볼 수 있게 모델별 확률도 남긴다
+        each = {"p_models": [round(x, 4) for x in ps]} if len(agents) > 1 else {}
+        records.append({**eval_record(row), "p_true": round(p, 4), **each, "pred": pred})
+        detail = "  (" + " / ".join(f"{x:.2f}" for x in ps) + ")" if len(agents) > 1 else ""
+        print(f"  {'O' if pred == row['needs_lookup'] else 'X'} {row['id']:6} P={p:.3f}{detail}  {row['heard']}")
+
+    caught = luna_caught(args.luna) if args.luna else None
+    sweep_records = [r for r in records if r.get("split") != "holdout"]
+    sweep = threshold_sweep(sweep_records, args.sweep)
+    if caught is not None:
+        for row in sweep:
+            row["luna_caught_missed"] = luna_missed(sweep_records, caught, row["threshold"])["missed"]
 
     ms = sorted(m for _, pass_ms in passes for m in pass_ms)
     return {
         "settings": {
             **_git(),
-            "model": args.model,
-            "revision": revision,
+            # 모델 하나면 예전 결과와 같은 모양(문자열)으로 남긴다
+            "model": args.model[0] if len(args.model) == 1 else args.model,
+            "revision": revisions[0] if len(revisions) == 1 else revisions,
             "laya": laya.__version__,
             "torch": torch.__version__,
             "device": "cpu",
             "threads": torch.get_num_threads(),
             "questions_version": QUESTIONS_VERSION,
             "threshold": args.threshold,
+            "luna": str(args.luna) if args.luna else None,
             "eval": path.name,
             key: groups,
             "repeat": args.repeat,
@@ -141,10 +180,12 @@ def run(args) -> dict:
         },
         "summary": summarize(records),
         f"by_{key}": {name: summarize([r for r in records if r[key] == name]) for name in groups},
+        **({"luna_caught_missed": {name: luna_missed([r for r in records if r[key] == name], caught) for name in groups}}
+           if caught is not None else {}),
         **({"breakdown": {name: breakdown([r for r in records if r["split"] == name]) for name in groups}}
            if key == "split" else {}),
         # 임계값은 홀드아웃을 보지 않고 고른다. 홀드아웃은 고른 값을 확인하는 데만 쓴다
-        "threshold_sweep": threshold_sweep([r for r in records if r.get("split") != "holdout"], args.sweep),
+        "threshold_sweep": sweep,
         "latency": {
             "load_s": load_s,
             "p50_ms": round(median(ms), 1),
@@ -152,7 +193,7 @@ def run(args) -> dict:
             "max_ms": round(ms[-1], 1),
             # 회차마다 같은 입력에 같은 확률이 나왔는지. 0이면 판단 값은 한 번 재면 된다
             "max_p_diff_between_passes": round(
-                max(abs(a - b) for p_true, _ in passes[1:] for a, b in zip(first, p_true)), 6
+                max(abs(a - b) for p_models, _ in passes[1:] for a, b in zip(first, average(p_models))), 6
             ) if len(passes) > 1 else None,
         },
         "memory": {"max_rss_mb_before_load": rss_before, "max_rss_mb": _max_rss_mb()},
@@ -162,13 +203,17 @@ def run(args) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default=BASE_MODEL, help="Hugging Face 저장소 또는 학습한 체크포인트 경로")
+    parser.add_argument(
+        "--model", nargs="+", default=[BASE_MODEL],
+        help="Hugging Face 저장소 또는 학습한 체크포인트 경로. 여러 개면 조회 확률을 평균한다",
+    )
     parser.add_argument("--revision", help=f"모델 커밋. 기본 모델이면 {BASE_REVISION[:7]}")
     parser.add_argument("--threads", type=int, help="torch CPU 스레드 수. 주지 않으면 torch 기본값")
     parser.add_argument("--repeat", type=int, default=3, help="지연을 재려고 문항 전체를 판단하는 횟수")
     parser.add_argument("--threshold", type=float, default=THRESHOLD, help=f"P(true)가 이 값 이상이면 조회로 본다. 기본 {THRESHOLD}")
     parser.add_argument("--sweep", type=float, nargs="+", default=SWEEP, help="임계값 표의 후보. 기본 0.05~0.95, 0.05 간격")
     add_eval_args(parser)
+    parser.add_argument("--luna", type=Path, help="같은 문항을 잰 luna 결과. luna가 잡은 조회 중 놓친 것을 센다")
     parser.add_argument("--json", type=Path, help="결과를 저장할 파일")
     args = parser.parse_args()
     if args.eval_set and args.set:
@@ -184,14 +229,16 @@ def main() -> int:
     print("요약", json.dumps(report["summary"], ensure_ascii=False))
     for name, summary in report.get("by_set", report.get("by_split", {})).items():
         print(f"  {name}", json.dumps(summary, ensure_ascii=False))
+    for name, missed in report.get("luna_caught_missed", {}).items():
+        print(f"  {name} luna가 잡았는데 놓침", json.dumps(missed, ensure_ascii=False))
     for name, counts in report.get("breakdown", {}).items():
         print(f"  {name} 묶음별", json.dumps(counts["by_bundle"], ensure_ascii=False))
         print(f"  {name} 태그별", json.dumps(counts["by_tag"], ensure_ascii=False))
-    print("임계값별 (홀드아웃 제외)\n  임계값  재현율  놓침     오개입률  오탐        둘 다 허용에서 조회")
+    print("임계값별 (홀드아웃 제외)\n  임계값  재현율  놓침     오개입률  오탐        둘 다 허용에서 조회  luna가 잡았는데 놓침")
     for row in report["threshold_sweep"]:
         print(
             f"  {row['threshold']:<6}  {row['recall']:<6}  {row['missed']:<7}  {row['false_alarm_per_100']!s:<8}"
-            f"  {row['false_positive']:<10}  {row.get('either_lookup', '')}"
+            f"  {row['false_positive']:<10}  {row.get('either_lookup', ''):<18}  {row.get('luna_caught_missed', '')}"
         )
     print("지연", json.dumps(report["latency"], ensure_ascii=False))
     print("메모리", json.dumps(report["memory"], ensure_ascii=False))
