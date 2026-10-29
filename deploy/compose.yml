@@ -16,6 +16,7 @@ services:
       - "127.0.0.1:8000:8000"
     networks:
       - internal
+      - database
 
   web:
     image: ${FRONTEND_IMAGE:?set FRONTEND_IMAGE}
@@ -36,6 +37,9 @@ services:
 
 networks:
   internal:
+  database:
+    external: true
+    name: ${DB_NETWORK:-unyounghae-db}
 
 volumes:
   caddy_data:

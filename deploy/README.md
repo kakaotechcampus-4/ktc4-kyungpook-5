@@ -25,6 +25,9 @@ with `DATABASE_URL` and the required provider settings, and explicitly provision
 mounts that directory at `/app/var/storage`; it is not created by deployment.
 `REMINDER_DISPATCHER_ENABLED` should remain false until Push configuration and
 recipient behavior have been verified. STT and AI provider settings are separate.
+The database must be attached to the separately managed external Docker network
+`unyounghae-db` (override with `DB_NETWORK`). Compose does not create or remove
+the database container or its persistent volume; do not publish its port.
 
 The image contains Alembic files. Inspect the existing database revision and
 backup before running `uv run --no-sync alembic upgrade head` against the selected
