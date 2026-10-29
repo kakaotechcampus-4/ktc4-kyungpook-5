@@ -1,4 +1,5 @@
-import { apiGet, apiPost, apiPostForm } from '@/shared/api/client'
+import { apiGet, apiGetPage, apiPost, apiPostForm } from '@/shared/api/client'
+import type { components } from '@/shared/api/schema'
 import type { ClubRecord, RecordDetail, UploadRecordInput } from '@/features/records/types'
 
 export function uploadRecord({ clubId, category, file }: UploadRecordInput) {
@@ -13,8 +14,12 @@ export function getRecord(recordId: string) {
   return apiGet<RecordDetail>(`/records/${encodeURIComponent(recordId)}`)
 }
 
-export function getRecords(clubId: string) {
-  return apiGet<ClubRecord[]>(`/records?clubId=${encodeURIComponent(clubId)}`)
+export const RECORD_PAGE_SIZE = 20
+
+export function getRecords(clubId: string, page: number) {
+  return apiGetPage<ClubRecord, components['schemas']['PageMeta']>(
+    `/records?clubId=${encodeURIComponent(clubId)}&page=${page}&size=${RECORD_PAGE_SIZE}`,
+  )
 }
 
 export function retryRecordIndex(recordId: string) {

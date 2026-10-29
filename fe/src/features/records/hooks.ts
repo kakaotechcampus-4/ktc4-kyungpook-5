@@ -1,25 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRecord, getRecords, retryRecordIndex, uploadRecord } from '@/features/records/api'
-import type { ClubRecord, UploadRecordInput } from '@/features/records/types'
+import type { UploadRecordInput } from '@/features/records/types'
 
 const listKey = (clubId: string) => ['records', clubId, 'list'] as const
 
 // 실제 API의 업로드/목록 결과만 표시한다. 실패를 예시 결과로 바꾸지 않는다.
-export function useRecordUploads(clubId: string) {
+export function useRecordUploads(clubId: string, page: number) {
   const queryClient = useQueryClient()
   const records = useQuery({
-    queryKey: listKey(clubId),
-    queryFn: () => getRecords(clubId),
+    queryKey: [...listKey(clubId), page],
+    queryFn: () => getRecords(clubId, page),
     enabled: Boolean(clubId),
     retry: false,
   })
   const upload = useMutation({
     mutationFn: (input: Omit<UploadRecordInput, 'clubId'>) => uploadRecord({ ...input, clubId }),
-    onSuccess: (record) => {
-      queryClient.setQueryData<ClubRecord[]>(listKey(clubId), (previous = []) => [
-        record,
-        ...previous.filter((item) => item.id !== record.id),
-      ])
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: listKey(clubId) })
     },
   })
@@ -33,9 +29,6 @@ export function useRetryRecordIndex(clubId: string, recordId: string) {
     mutationFn: () => retryRecordIndex(recordId),
     onSuccess: (record) => {
       queryClient.setQueryData(['records', clubId, recordId], record)
-      queryClient.setQueryData<ClubRecord[]>(listKey(clubId), (previous) =>
-        previous?.map((item) => (item.id === record.id ? record : item)),
-      )
       void queryClient.invalidateQueries({ queryKey: listKey(clubId) })
     },
   })

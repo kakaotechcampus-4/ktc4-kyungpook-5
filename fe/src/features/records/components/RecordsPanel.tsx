@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { RECORD_PAGE_SIZE } from '@/features/records/api'
 import { useRecordDetail, useRecordUploads, useRetryRecordIndex } from '@/features/records/hooks'
 import {
   formatFileSize,
@@ -82,7 +83,11 @@ export function RecordsPanel({ clubId, title = '회의 자료' }: { clubId: stri
 }
 
 function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) {
-  const { records, upload, refresh } = useRecordUploads(clubId)
+  const [page, setPage] = useState(1)
+  const { records, upload, refresh } = useRecordUploads(clubId, page)
+  const rows = records.data?.data
+  const totalCount = records.data?.meta?.totalCount ?? rows?.length ?? 0
+  const pageCount = Math.max(1, Math.ceil(totalCount / RECORD_PAGE_SIZE))
   const [category, setCategory] = useState<RecordCategory>('ETC')
   const [file, setFile] = useState<File | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
@@ -101,6 +106,7 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
     }
     try {
       await upload.mutateAsync({ category, file })
+      setPage(1)
       setFile(null)
       setFileInputKey((value) => value + 1)
     } catch {
@@ -166,7 +172,7 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
       <div className="mt-[20px] border-t border-line pt-[16px]">
         <div className="flex items-center justify-between gap-[10px]">
           <h3 className="text-[12px] font-bold text-ink2">
-            팀 자료 {records.data ? `· ${records.data.length}건` : ''}
+            팀 자료 {records.data ? `· ${totalCount}건` : ''}
           </h3>
           <Button
             variant="ghost"
@@ -187,15 +193,45 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
             {recordErrorMessage(records.error)} 자료 목록을 불러오지 못했어요.
           </p>
         )}
-        {records.data && records.data.length > 0 ? (
+        {rows && rows.length > 0 ? (
           <ul className="mt-[6px]" aria-live="polite">
-            {records.data.map((record) => (
+            {rows.map((record) => (
               <RecordStatusRow key={record.id} clubId={clubId} record={record} />
             ))}
           </ul>
         ) : records.isSuccess ? (
-          <p className="py-[18px] text-[12px] text-mute">아직 이 팀에 올린 자료가 없어요.</p>
+          <p className="py-[18px] text-[12px] text-mute">
+            {page === 1
+              ? '아직 이 팀에 올린 자료가 없어요.'
+              : '이 페이지에 표시할 자료가 없어요. 이전 페이지를 확인해 주세요.'}
+          </p>
         ) : null}
+        {records.data && (pageCount > 1 || page > 1) && (
+          <nav
+            aria-label="자료 목록 페이지"
+            className="mt-3 flex items-center justify-center gap-3"
+          >
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page <= 1 || records.isFetching}
+              onClick={() => setPage((current) => current - 1)}
+            >
+              이전
+            </Button>
+            <span className="text-[12px] text-ink2">
+              {page} / {pageCount}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page >= pageCount || records.isFetching}
+              onClick={() => setPage((current) => current + 1)}
+            >
+              다음
+            </Button>
+          </nav>
+        )}
       </div>
     </Card>
   )
