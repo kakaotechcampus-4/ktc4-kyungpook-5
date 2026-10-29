@@ -7,7 +7,9 @@ enum은 core/enums.py의 StrEnum을 그대로 쓴다. 값이 곧 API 코드라 �
 """
 
 from datetime import date
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+
+from pydantic import Field, StringConstraints
 
 from app.core.enums import (
     ActionStatus,
@@ -185,9 +187,13 @@ class DraftListResponse(CamelModel):
 
 
 class PlanChatIn(CamelModel):
-    message_id: str
-    message: str
-    base_revision: int
+    # AI 계약(PlanningUserMessage)과 같은 제약. 여기서 막지 않으면 AI 요청을 만들 때
+    # 검증 오류가 나 500이 된다.
+    message_id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+    message: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)
+    ]
+    base_revision: int = Field(ge=0)
 
 
 class PlanMessageOut(CamelModel):
@@ -217,7 +223,7 @@ class PlannedStepListResponse(CamelModel):
 
 
 class PlanGenerateIn(CamelModel):
-    base_revision: int
+    base_revision: int = Field(ge=0)
     use_current_conditions: bool = False
 
 

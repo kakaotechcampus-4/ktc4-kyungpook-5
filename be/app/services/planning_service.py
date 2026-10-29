@@ -10,7 +10,7 @@ PROCESSING 기록, (2) 세션 없이 app.ai 호출, (3) 새 짧은 세션으로 
 """
 
 import json
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError as PydanticValidationError
@@ -373,7 +373,8 @@ async def _prepare(
             "base_revision": base_revision,
             "draft": draft,
             "resume_state": resume_state,
-            "reference_date": date.today(),
+            # 서버 시간대는 UTC라 date.today()는 KST 0~9시에 하루 전이 된다.
+            "reference_date": datetime.now(_KST).date(),
             "timezone": "Asia/Seoul",
         }
         request = build_request(context)
@@ -395,10 +396,16 @@ async def _finish(
         event = await get_event(
             session, club_id=prepared.club_id, event_id=prepared.event_id
         )
-        conversation = await _get_or_create_conversation(
-            session, event_id=event.id, member_id=prepared.member_id
+        # _prepare()가 만들어 둔 대화를 잠그고 읽는다. 잠그지 않으면 거의 동시에 끝난
+        # 두 요청이 둘 다 옛 revision을 보고 저장해 한쪽 상태를 덮어쓴다.
+        conversation = await session.scalar(
+            select(Conversation)
+            .where(Conversation.event_id == event.id)
+            .order_by(Conversation.created_at.desc())
+            .limit(1)
+            .with_for_update()
         )
-        if conversation.base_revision != prepared.base_revision:
+        if conversation is None or conversation.base_revision != prepared.base_revision:
             # AI를 기다리는 동안 다른 요청이 먼저 저장했다. 이번 결과는 버린다.
             raise VersionConflict()
 

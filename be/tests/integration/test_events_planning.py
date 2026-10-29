@@ -10,7 +10,7 @@ import json
 import threading
 import uuid
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import anyio
 import pytest
@@ -421,4 +421,58 @@ async def test_AI가_실패하면_같은_키로_다시_시도할_수_있다(
     assert failed.json()["error"]["code"] == "AI_UNAVAILABLE"
     assert retried.status_code == 200, retried.text
     assert call_count == 2
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"messageId": "msg-1", "message": "   ", "baseRevision": 0},
+        {"messageId": "msg-1", "message": "가" * 4001, "baseRevision": 0},
+        {"messageId": " ", "message": "MT 가자", "baseRevision": 0},
+        {"messageId": "msg-1", "message": "MT 가자", "baseRevision": -1},
+    ],
+)
+async def test_잘못된_대화_입력은_422(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch, body: dict
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    async def must_not_call(request, *, records=None):
+        raise AssertionError("검증에서 막혀야 한다")
+
+    monkeypatch.setattr("app.ai.chat_planning", must_not_call)
+
+    res = client.post(
+        f"/api/v1/events/{event_id}/plan/chat", headers=headers, json=body
+    )
+
+    assert res.status_code == 422, res.text
+    assert res.json()["error"]["code"] == "VALIDATION_FAILED"
+
+
+async def test_기준일은_KST_날짜로_넘긴다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+    seen: list[date] = []
+
+    class KstEarlyMorning(datetime):
+        """UTC 10/29 15:30 = KST 10/30 00:30. UTC 기준이면 하루 전이 된다."""
+
+        @classmethod
+        def now(cls, tz=None):
+            moment = datetime(2026, 10, 29, 15, 30, tzinfo=UTC)
+            return moment.astimezone(tz) if tz else moment
+
+    async def fake_chat_planning(request, *, records=None):
+        seen.append(request.reference_date)
+        return _fake_chat_result(event_type="MT")
+
+    monkeypatch.setattr("app.services.planning_service.datetime", KstEarlyMorning)
+    monkeypatch.setattr("app.ai.chat_planning", fake_chat_planning)
+
+    assert _chat(client, headers, event_id).status_code == 200
+    assert seen == [date(2026, 10, 30)]
 
