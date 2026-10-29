@@ -360,4 +360,4 @@ BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(cl
 
 ## 메인 토리 대화 의도
 
-`classify_tori_intent(ToriIntentRequest(message, reference_date, timezone))`는 `record_search`, `task_list`, `event_planning`, `meeting`, `clarify`, `unsupported` 중 하나와 선택 필드를 반환한다. 검색어는 발화에 근거하며, 일정·할 일은 범위(self/all), 유형(task/schedule/all), 명시적으로 해석 가능한 날짜 범위만 반환한다. 이 결과는 추정 분류이지 권한·실행 지시가 아니다. BE는 인증된 소속과 계정으로 실제 조회하고 변경·예약을 실행하지 않는다. 모델 오류는 AI 오류로 전파하며 실제 근거 없이 답을 만들지 않는다.
+`classify_tori_intent(ToriIntentRequest(message, reference_date, timezone))`는 `record_search`, `task_list`, `event_planning`, `meeting`, `clarify`, `unsupported` 중 하나와 선택 필드를 반환한다. 검색어는 발화에 근거하며, 일정·할 일은 범위(self/all), 유형(task/schedule/all), 명시적으로 해석 가능한 날짜 범위만 반환한다. 현재 계약에는 회의·행사 식별이나 특정인 지정이 없으므로 해당 대상을 한정한 일정·할 일 요청은 일반 조회로 바꾸지 않고 unsupported 또는 clarify로 분류한다. 날짜만 정한 조회는 계속 허용한다. 이 결과는 추정 분류이지 권한·실행 지시가 아니다. BE는 인증된 소속과 계정으로 실제 조회하고 변경·예약을 실행하지 않는다. 모델 오류는 AI 오류로 전파하며 실제 근거 없이 답을 만들지 않는다.

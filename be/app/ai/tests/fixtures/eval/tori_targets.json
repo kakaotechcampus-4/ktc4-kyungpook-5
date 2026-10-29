@@ -1,0 +1,9 @@
+[
+  {"message": "지난 회의 할 일 보여줘", "intent": "unsupported"},
+  {"message": "10월 15일 운영회의에서 나온 할 일 알려줘", "intent": "unsupported"},
+  {"message": "MT 행사 할 일을 보여줘", "intent": "unsupported"},
+  {"message": "민수의 할 일 보여줘", "intent": "unsupported"},
+  {"message": "지난주 내 할 일 보여줘", "intent": "task_list", "date_from": "2026-10-19", "date_to": "2026-10-25"},
+  {"message": "10월 15일 일정 보여줘", "intent": "task_list", "date_from": "2026-10-15", "date_to": "2026-10-15"},
+  {"message": "지난 회의 회의록 찾아줘", "intent": "record_search"}
+]
