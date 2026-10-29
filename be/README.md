@@ -6,7 +6,7 @@
 독립 후보 추출 계약과 실제 공급자 설정이 없으면 해당 기능의 실패를 명시합니다.
 실행·API·상태·검증 범위는 [회의 베타 연결](docs/meeting-beta.md)과 [WS 계약](docs/meeting-audio.md)을 보세요.
 기존 test-support/HTTP STT·Discord 처리의 개발 fixture와 OCR 더미는 실연동이 아닙니다.
-행사(`/events`) API는 아직 DB 없이 고정 응답만 내리는 mock입니다 (이슈 #30).
+행사(`/events`) 조회와 P1·P2 계획 API도 실제 DB로 동작합니다 (#41, #187). 행사 쓰기(승인·거절·단계 완료·수정)는 아직 없습니다.
 모델 확정 내역과 그 근거는 [BE 스키마 검토안](../docs/week6/be/운영해_BE_스키마_검토안.md)에 있습니다.
 
 서비스 사용자는 동아리 **회장·대표(`OWNER`)와 임원(`MANAGER`)**입니다.
@@ -230,8 +230,6 @@ PostgreSQL만 따로 띄우려면 `docker compose up -d db`를 실행합니다. 
 - 호스트에 PostgreSQL이 이미 5432 포트를 쓰고 있으면 포트가 겹칩니다.
 - `alembic` 의존성이 추가됐으므로 기존 api 이미지는 `docker compose up --build`로 다시 빌드합니다.
 
-아래 mock API는 DB에 접속하지 않으므로 DB 없이도 실행됩니다.
-
 ## 마이그레이션
 
 ```bash
@@ -273,7 +271,7 @@ uv run pytest
 ```bash
 TEST_DATABASE_URL=... TEST_MODE=true uv run pytest
 ```
-`tests/integration/`은 mock API의 응답 계약(`{data, meta}` 봉투, camelCase 키, enum 문자열,
+`tests/integration/`은 API의 응답 계약(`{data, meta}` 봉투, camelCase 키, enum 문자열,
 에러 봉투)을 고정합니다. 공통 코드(`schemas`의 `CamelModel`, `core/exceptions.py`)를 바꿀 때
 이 테스트가 먼저 깨지도록 두는 것이 목적입니다 (이슈 #33).
 
@@ -311,7 +309,7 @@ TEST_MODE=true uv run python scripts/run_dev.py   # macOS/Linux는 TEST_MODE=tru
 
 curl 주석과 다르게 동작하는 부분입니다.
 
-- `service-flow` 08 `POST /events`는 없습니다. 행사 API는 아직 mock이라 회의·지출의 `eventId`는 비워 둡니다.
+- `service-flow` 08 `POST /events`는 P1 행사 생성(#187)으로 생겼지만 curl 흐름에는 아직 반영하지 않아, 회의·지출의 `eventId`는 비워 둡니다.
 - `meeting` M01 기록 업로드는 파싱 뒤 실제 색인을 시도합니다. 성공하면 `INDEXED`, 설정/모델 오류면 `COMPLETED`와 `indexError`를 반환합니다. 새 영구 검색은 `INDEXED`만 조회합니다. 기존 개발용 판단 fixture의 단순 검색은 실서비스 검색과 별개입니다.
 - `meeting` M09 HTTP `finish`는 활성 WS가 없을 때 바로 종료합니다. 활성 WS에서는 409로 안내하므로 WS `end`→`audio.end_ack`(FINALIZING)→`audio.completed`를 기다립니다.
 - `discord` D01 실제 연결은 `status=DISCONNECTED`입니다(curl 주석은 CONNECTED). 실제 bot 수집기가 없어 D02 `sync` 작업은 `FAILED`(`DISCORD_COLLECTOR_UNAVAILABLE`)로 남습니다. D03부터의 FIXTURE 연결은 `MONITORING`입니다.
@@ -319,30 +317,36 @@ curl 주석과 다르게 동작하는 부분입니다.
 - `Idempotency-Key` 헤더는 받기만 하고 아직 적용하지 않습니다(`core/idempotency.py`는 #131에서 만들어 둠).
 - mini `characterState`: 대기·처리 중 작업이 있으면 `WORKING`, 검토 안 한 할 일 후보가 있으면 `ATTENTION`, 아니면 `IDLE`. 실패 작업은 `jobs[]`에만 표시합니다.
 
-## mock API
+## 행사 조회 API (#41)
 
-| 엔드포인트 | 상태 |
-| --- | --- |
-| `GET /api/v1/events/{eventId}/actions` | 구현 완료 |
-| `GET /api/v1/events` | 구현 완료 |
-| `GET /api/v1/events/{eventId}/steps` | 구현 완료 |
+모두 로그인이 필요하고, 그 행사가 속한 동아리의 대표·운영진만 볼 수 있습니다(일반 동아리원·다른 동아리는 403).
+행사 데이터는 P1·P2 계획 생성(`POST /events/{id}/plan/generate`)으로 만들어집니다.
 
-**유효한 `eventId`는 `evt_9f2c8a` 하나뿐입니다.** 다른 값은 404 `EVENT_NOT_FOUND`를 반환합니다.
+| 엔드포인트 | 화면 | 비고 |
+| --- | --- | --- |
+| `GET /api/v1/events?clubId=&status=&page=&size=` | M1·L1 카드 | `clubId` 필수. 시작일이 가까운 순, 날짜 없는 행사는 뒤 |
+| `GET /api/v1/events/{eventId}` | L2 헤더 | `currentStep`을 id까지 내려 Step 모달을 바로 연다 |
+| `GET /api/v1/events/{eventId}/steps` | L2 진행 상황·P2 묶음 | `phase`·`code` 포함. 거절·실패한 행동은 한 일·남은 일 어디에도 없음 |
+| `GET /api/v1/events/{eventId}/actions` | M1 승인 대기·L2 | 아래 쿼리. 처리 안 된 것은 마감 임박 순, 처리된 것은 최근 처리 순 |
 
 ```bash
-# M1 승인 대기 (확인 요청 제외)
-curl "localhost:8000/api/v1/events/evt_9f2c8a/actions?status=PENDING&excludeType=CONFIRMATION"
+H="Authorization: Bearer <accessToken>"
 
-# L2 처리된 승인
-curl "localhost:8000/api/v1/events/evt_9f2c8a/actions?status=APPROVED,DONE,DENIED"
+# M1 승인 대기 (확인 요청 제외)
+curl -H "$H" "localhost:8000/api/v1/events/<eventId>/actions?status=PENDING&excludeType=CONFIRMATION"
+
+# L2 처리된 승인 최근 3건
+curl -H "$H" "localhost:8000/api/v1/events/<eventId>/actions?status=APPROVED,DONE,DENIED&size=3"
 
 # L2 확인 요청
-curl "localhost:8000/api/v1/events/evt_9f2c8a/actions?type=CONFIRMATION"
+curl -H "$H" "localhost:8000/api/v1/events/<eventId>/actions?type=CONFIRMATION"
 ```
 
-mock 단계의 한계입니다.
+계산 규칙은 `services/event_rules.py`에 있습니다.
 
-- 인증이 없어 `canApprove`는 항상 `true`입니다.
-- `amount`는 컬럼이 있는데도 전건 `null`입니다. 이슈 #30의 합의를 따른 것이며, FE가 금액 표시를 검증해야 하면 채웁니다.
-- 확인 요청의 `options` / `allowManual`은 `actions.payload`(JSONB)에 담아 응답에서 펼칩니다. `type=CONFIRMATION`인 건에만 값이 있고 나머지는 `null`입니다.
-- fixture는 `app/services/event_service.py`에 있습니다. DB 연결 시 `list_actions()` 본문만 쿼리로 교체하면 라우터·스키마는 그대로 씁니다.
+- 단계 상태: 처음으로 `completed_at`이 비어 있는 단계가 `CURRENT`, 그 앞은 `DONE`, 뒤는 `TODO`.
+- `dday`: KST 오늘 기준 시작일까지 남은 날 수. `pendingApprovalCount`는 `PENDING`이면서 확인 요청이 아닌 행동 수.
+- `canApprove`: 요청자가 대표·운영진이고 행동이 `PENDING`일 때만 `true`. 승인 API도 같은 함수(`can_resolve`)로 검사한다.
+- `editable`: `PENDING`·`APPROVED`일 때 `true` (#106 — 승인된 내용을 고치면 다시 `PENDING`).
+- 확인 요청의 `options` / `allowManual`은 `actions.payload`(JSONB)에서 펼친다. `type=CONFIRMATION`인 건에만 값이 있다.
+- `payment`·`budget`은 항상 `null`이다 (accounting 기준 재정의 예정, FE 연동 기준서 §5.1). `amount`는 계획 생성이 채우지 않아 지금은 비어 있다.

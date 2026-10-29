@@ -1,7 +1,7 @@
 """행사 관련 엔드포인트.
 
-list_events/list_actions/list_steps는 아직 mock이다(#30, #41). create_event 이후
-P1·P2 계획 흐름(#187)만 실제 DB로 동작한다.
+조회(목록·상세·단계·행동, #41)와 P1·P2 계획 흐름(#187) 모두 실제 DB로 동작하며,
+동아리 소속을 확인한 뒤에만 응답한다.
 """
 
 from fastapi import APIRouter, Depends, Header, Query
@@ -20,6 +20,7 @@ from app.schemas.events import (
     DraftOut,
     EventCreateIn,
     EventCreateOut,
+    EventDetailOut,
     EventListResponse,
     PlanChatIn,
     PlanGenerateIn,
@@ -45,14 +46,19 @@ async def _get_event_for_account(
 
 
 @router.get("", response_model=EventListResponse)
-def list_events(
-    club_id: str | None = Query(None, alias="clubId"),
+async def list_events(
+    # /records·/events/drafts처럼 어느 동아리 목록인지 명시한다. 한 계정이 여러
+    # 동아리에 속할 수 있어 서버가 추측하지 않는다.
+    club_id: str = Query(alias="clubId"),
     status: EventStatus | None = Query(None),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
 ) -> EventListResponse:
-    rows, total_count = event_service.list_events(
-        club_id=club_id, status=status, page=page, size=size
+    await ensure_member(session, club_id=club_id, account=account)
+    rows, total_count = await event_service.list_events(
+        session, club_id=club_id, status=status, page=page, size=size
     )
     return EventListResponse.model_validate(
         {"data": rows, "meta": {"page": page, "size": size, "total_count": total_count}}
@@ -82,6 +88,20 @@ async def create_event(
         session, club_id=body.club_id, title=body.title
     )
     return Envelope(data=EventCreateOut.model_validate(event))
+
+
+# /drafts보다 뒤에 둔다 — 앞에 두면 "drafts"가 event_id로 해석된다.
+@router.get("/{event_id}", response_model=Envelope[EventDetailOut])
+async def get_event(
+    event_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[EventDetailOut]:
+    event, _member = await _get_event_for_account(
+        session, event_id=event_id, account=account
+    )
+    detail = await event_service.get_event_detail(session, event=event)
+    return Envelope(data=EventDetailOut.model_validate(detail))
 
 
 @router.post("/{event_id}/plan/chat", response_model=Envelope[PlanViewOut])
@@ -161,7 +181,7 @@ def _parse_statuses(raw: str | None) -> list[ActionStatus] | None:
 
 
 @router.get("/{event_id}/actions", response_model=ActionListResponse)
-def list_event_actions(
+async def list_event_actions(
     event_id: str,
     status: str | None = Query(
         None, description="쉼표로 여러 개. 예: PENDING, APPROVED,DONE,DENIED"
@@ -172,10 +192,18 @@ def list_event_actions(
     ),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
 ) -> ActionListResponse:
-    rows, total_count = event_service.list_actions(
-        event_id,
-        statuses=_parse_statuses(status),
+    statuses = _parse_statuses(status)
+    _event, member = await _get_event_for_account(
+        session, event_id=event_id, account=account
+    )
+    rows, total_count = await event_service.list_actions(
+        session,
+        event_id=event_id,
+        member=member,
+        statuses=statuses,
         action_type=type,
         exclude_type=exclude_type,
         page=page,
@@ -187,6 +215,11 @@ def list_event_actions(
 
 
 @router.get("/{event_id}/steps", response_model=StepListResponse)
-def list_event_steps(event_id: str) -> StepListResponse:
-    rows = event_service.list_steps(event_id)
+async def list_event_steps(
+    event_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> StepListResponse:
+    await _get_event_for_account(session, event_id=event_id, account=account)
+    rows = await event_service.list_steps(session, event_id=event_id)
     return StepListResponse.model_validate({"data": rows, "meta": None})
