@@ -65,16 +65,18 @@ async def _exchange_kakao_code(code: str) -> tuple[str, str]:
     if not settings.kakao_rest_api_key or not settings.kakao_redirect_uri:
         raise ValidationFailed({"code": "카카오 로그인이 설정되지 않았습니다."})
 
+    token_data = {
+        "grant_type": "authorization_code",
+        "client_id": settings.kakao_rest_api_key,
+        "redirect_uri": settings.kakao_redirect_uri,
+        "code": code,
+    }
+    client_secret = settings.kakao_client_secret.get_secret_value()
+    if client_secret:
+        token_data["client_secret"] = client_secret
+
     async with httpx.AsyncClient(timeout=10) as client:
-        token_res = await client.post(
-            KAKAO_TOKEN_URL,
-            data={
-                "grant_type": "authorization_code",
-                "client_id": settings.kakao_rest_api_key,
-                "redirect_uri": settings.kakao_redirect_uri,
-                "code": code,
-            },
-        )
+        token_res = await client.post(KAKAO_TOKEN_URL, data=token_data)
         if token_res.status_code != 200:
             raise Unauthorized("카카오 인가 코드 교환에 실패했습니다.")
         kakao_access_token = token_res.json()["access_token"]
