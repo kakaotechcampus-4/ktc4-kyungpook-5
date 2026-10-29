@@ -190,6 +190,32 @@ class PlanChatIn(CamelModel):
     base_revision: int
 
 
+class PlanMessageOut(CamelModel):
+    id: str
+    seq: int
+    role: Literal["USER", "ASSISTANT"]
+    content: str
+
+
+class PlanMessageListResponse(CamelModel):
+    data: list[PlanMessageOut]
+    meta: None = None
+
+
+class PlannedStepOut(CamelModel):
+    id: str
+    step_order: int
+    name: str
+    actor: StepActor
+    starts_at: UtcDateTime | None
+    deadline: UtcDateTime | None
+
+
+class PlannedStepListResponse(CamelModel):
+    data: list[PlannedStepOut]
+    meta: None = None
+
+
 class PlanGenerateIn(CamelModel):
     base_revision: int
     use_current_conditions: bool = False

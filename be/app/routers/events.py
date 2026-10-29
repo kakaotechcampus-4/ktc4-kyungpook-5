@@ -6,6 +6,7 @@
 
 from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.core.deps import ensure_member, get_current_account
 from app.core.enums import ActionStatus, ActionType, EventStatus
@@ -13,7 +14,9 @@ from app.core.exceptions import ValidationFailed
 from app.db.session import get_session
 from app.models.auth import Account
 from app.models.clubs import Member
-from app.models.events import Event
+from app.models.events import Event, Step
+from app.models.chat import Conversation, Message
+from app.core.enums import MessageRole
 from app.schemas.events import (
     ActionListResponse,
     DraftListResponse,
@@ -23,6 +26,10 @@ from app.schemas.events import (
     EventDetailOut,
     EventListResponse,
     PlanChatIn,
+    PlanMessageOut,
+    PlanMessageListResponse,
+    PlannedStepOut,
+    PlannedStepListResponse,
     PlanGenerateIn,
     PlanScreenOut,
     PlanViewOut,
@@ -126,6 +133,38 @@ async def chat_plan(
         base_revision=body.base_revision, idempotency_key=idempotency_key,
     )
     return Envelope(data=PlanViewOut.model_validate(view))
+
+
+@router.get("/{event_id}/plan/messages", response_model=PlanMessageListResponse)
+async def list_plan_messages(
+    event_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> PlanMessageListResponse:
+    event, _member = await _get_event_for_account(session, event_id=event_id, account=account)
+    conversation = await session.scalar(
+        select(Conversation).where(Conversation.event_id == event.id)
+        .order_by(Conversation.created_at.desc()).limit(1)
+    )
+    if conversation is None:
+        return PlanMessageListResponse(data=[])
+    rows = await session.scalars(
+        select(Message).where(Message.conversation_id == conversation.id,
+                              Message.role.in_([MessageRole.USER, MessageRole.ASSISTANT]))
+        .order_by(Message.seq)
+    )
+    return PlanMessageListResponse(data=[PlanMessageOut.model_validate(row) for row in rows])
+
+
+@router.get("/{event_id}/plan/steps", response_model=PlannedStepListResponse)
+async def list_planned_steps(
+    event_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> PlannedStepListResponse:
+    event, _member = await _get_event_for_account(session, event_id=event_id, account=account)
+    rows = await session.scalars(select(Step).where(Step.event_id == event.id).order_by(Step.step_order))
+    return PlannedStepListResponse(data=[PlannedStepOut.model_validate(row) for row in rows])
 
 
 @router.post("/{event_id}/plan/generate", response_model=Envelope[PlanViewOut])

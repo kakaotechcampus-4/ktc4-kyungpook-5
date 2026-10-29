@@ -257,3 +257,22 @@ async def test_다른_동아리_사람은_행사_계획에_접근할_수_없다(
 
     assert res.status_code == 403
     assert res.json()["error"]["code"] == "FORBIDDEN"
+
+
+async def test_계획_이력과_단계는_소속만_순서대로_조회한다(client, app_db, monkeypatch):
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+    async def fake_chat(request, *, records=None):
+        return _fake_chat_result(event_type="MT", headcount=20, reply="장소를 정해요.")
+    monkeypatch.setattr("app.ai.chat_planning", fake_chat)
+    res = client.post(f"/api/v1/events/{event_id}/plan/chat", headers=headers,
+                      json={"messageId":"m1","message":"MT 20명","baseRevision":0})
+    assert res.status_code == 200
+    messages = client.get(f"/api/v1/events/{event_id}/plan/messages", headers=headers)
+    assert messages.status_code == 200
+    assert [(m["role"],m["content"]) for m in messages.json()["data"]] == [("USER","MT 20명"),("ASSISTANT","장소를 정해요.")]
+    steps = client.get(f"/api/v1/events/{event_id}/plan/steps", headers=headers)
+    assert steps.status_code == 200 and steps.json()["data"] == []
+    outsider = _login(client,"outsider")
+    assert client.get(f"/api/v1/events/{event_id}/plan/messages", headers=outsider).status_code == 403
+    assert client.get(f"/api/v1/events/{event_id}/plan/steps", headers=outsider).status_code == 403
