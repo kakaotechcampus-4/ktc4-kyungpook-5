@@ -24,9 +24,11 @@ LLM이 사용자와 대화하고 필요한 Tool을 선택하는 행사계획 기
 
 테스트 UI는 [tests/ui/planning](../../tests/ui/planning/README.md)의 독립 앱으로 관리한다(#174). 제품 `fe/`를 수정·참조하지 않으며, FE팀에는 동작 예시·계약·요청 사항을 전달한다. 실행 주소는 `http://127.0.0.1:5174/`이며 기존 제품 FE의 `/dev/planning` 경로는 제거했다.
 
+최초 초안의 제외 단계는 `code + name + reason`을 제공한다(#198). 고정 이름은 모델 대신 코드가 붙이며, 이름 없는 이전 저장 JSON도 복원 시 보완한다. [입력에서 화면까지의 예시](walkthrough.md#제외한-단계의-이름은-누가-붙이나-198)와 [검증 결과](evaluation.md#제외-단계-이름과-저장-호환-198-2026-10-28)를 참고한다. 제품 BE/FE 연결과 P2 편집은 별도 범위다.
+
 ## 현재 후속 작업
 
-- [#194](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/194): 이력 사용량과 한도 임박 정보를 공개 결과에 제공. 현재 미구현이다.
+- [#194](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/194): AI 공개 결과의 `view.history_usage`와 독립 UI 안내를 구현했다. 제품 필드 합의와 연결은 #187에서 확인한다.
 - [#195](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/195): 긴 대화 압축의 설계와 평가 기준. 자동 압축 구현은 별도 범위다.
 - [#196](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/196): [응답 시간 기준 측정](latency-baseline.md)의 고정 입력/기록/집계와 실제 모델 3세션 측정을 완료했다. 준비 실행 12건과 본측정 120건의 [원본과 분석](evaluation-results/planning-latency-real-2026-10-28/README.md)을 보존했다. 다음은 조건 변경의 기대 상태 확인과 계획 검증 실패 원인 진단이다. 합성 입력의 반복 결과를 서비스 평균이나 완료 시간 보장으로 안내하지 않는다.
 - [#177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177): P2 데이터와 수정 후 AI 검토 협의. 현재 생성 결과와 예정 계약을 구분한다.

@@ -80,7 +80,7 @@ __all__ = (
 from .contracts import (
     PlanningChatRequest, PlanningPreviewRequest, PlanningUserMessage,
     PlanningResumeState, PlanningPublicResult, PlanningView,
-    PlanningGenerationReadiness, PlanningDraft, PlanningConditions,
+    PlanningGenerationReadiness, PlanningDraft, PlanningConditions, PlanningHistoryUsage,
 )
 from .features.planning.state_codec import parse_resume_state
 
@@ -88,7 +88,7 @@ __all__ += (
     "PlanningChatRequest", "PlanningPreviewRequest", "PlanningUserMessage",
     "PlanningResumeState", "PlanningPublicResult", "PlanningView",
     "PlanningGenerationReadiness", "PlanningStateError", "PlanningDraft",
-    "PlanningConditions", "parse_resume_state",
+    "PlanningConditions", "parse_resume_state", "PlanningHistoryUsage",
 )
 
 # P1 실행 계약 초안 (#181). 제품 저장/HTTP는 BE가 연결한다.

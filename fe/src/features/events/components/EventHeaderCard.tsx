@@ -30,7 +30,6 @@ export function EventHeaderCard({
     { label: '장소', value: event.location ?? '—' },
     { label: '참가', value: event.headcount ? `${event.headcount}명` : '—' },
     { label: '현재 단계', value: event.currentStep?.name ?? '—', accent: true },
-    { label: '담당', value: event.manager ?? '—' },
   ]
 
   return (

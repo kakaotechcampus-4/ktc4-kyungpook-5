@@ -86,6 +86,7 @@ BE의 `expected_headcount`와 AI의 `headcount`는 어댑터에서 변환한다.
 | 화면용 `view` | `generation_readiness` | 코드로 판단한 생성 가능 여부와 차단 사유 |
 | 화면용 `view` | `generation_result` | 이번 생성의 generated / needs_clarification / failed. 생성 안 했으면 null |
 | 화면용 `view` | `preview_is_current` | 보관된 초안이 현재 조건 기준인지 여부 |
+| 화면용 `view` | `history_usage` | 현재 이력 수, 최대 이력 수, 한도 임박 여부. 과거 응답은 null 가능 |
 | BE 보관용 | `next_state` | 다음 요청에서 돌려줄 Agent 상태 |
 
 `changed_fields`는 값 변경 알림용 보조 정보다. 값이 그대로여도 잠정 여부나 보류 주제는 바뀔 수 있으므로 **화면은 항상 반환된 draft 전체로 갱신**한다. 단계 편집 명령이나 DB patch로 쓰지 않는다.
@@ -93,6 +94,23 @@ BE의 `expected_headcount`와 AI의 `headcount`는 어댑터에서 변환한다.
 생성 가능 여부는 행사 유형, 유효한 조건, 미해결 변경 여부를 공통 코드로 확인한다. 날짜와 인원이 미정이어도 허용한다. LLM이 생성 권유를 했는지는 별도 상태이며 버튼 활성화 조건이 아니다. 공개 응답과 두 생성 경로는 `generation/readiness.py`의 공통 판정을 사용한다.
 
 생성 성공에만 이번 preview가 있다. 이전 성공 초안은 next_state에 보존되며, 이번 실패를 이전 초안의 성공으로 표시하면 안 된다. 재접속 때 마지막 초안을 화면으로 복원하는 투영 방법도 공개 어댑터에서 제공할 필요가 있다. 초안의 상세 필드는 [P2 계약 이슈 #177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177)을 따로 맞춘다.
+
+### 제외 단계의 고정 이름 (#198)
+
+[#190의 AI 요청과 후속 답변](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/pull/190#issuecomment-6452350544)에 따라 최종 `EventPlanPreview.excluded_steps`는 `code`, `name`, `reason`을 제공한다. 이름은 AI 공통 `planning_catalog.py`의 13개 고정 이름에서 코드가 붙인다. BE는 제품 응답에 이름과 이유를 매핑하고 FE는 이를 표시한다. 실제 제품 연결은 #187에서 확인한다.
+
+```text
+모델 출력: {code: BOOK_VENUE, reason: 별도 시설 예약을 포함하지 않았어요.}
+  → 포함/제외 검증
+  → 고정 이름 보완
+최종 응답: {code: BOOK_VENUE, name: 예약, reason: 별도 시설 예약을 포함하지 않았어요.}
+```
+
+LLM 출력에는 기존 `ExcludedPlanStep(code, reason)`을 유지한다. 최종 응답은 `ExcludedPreviewStep`으로 구분하므로 모델이 name을 새로 작성하지 않는다. 포함 단계도 같은 이름 목록을 참조한다. 이름 보완에 추가 모델 호출은 없다.
+
+기존 형식 버전 1의 저장 JSON에는 name이 없을 수 있다. 공개 타입을 읽을 때 누락된 이름만 코드로 보완하며, 새로 직렬화한 JSON에는 이름이 포함된다. 명시된 이름이 카탈로그와 다르거나 null/빈 문자열이면 오류로 구분한다. 코드, 제외 이유, 초안 ID, 현재 조건과 대화/Tool 이력은 유지한다. BE가 상태 payload를 직접 수정하거나 복원을 위해 모델을 다시 호출할 필요는 없다.
+
+이름 목록은 공개 계약과 생성 코드가 함께 읽는 공통 데이터다. 공개 계약에서 내부 features 모듈이나 Graph를 import하지 않는다. P2 단계 제외/복원 API, 편집값 보관, 수정 후 AI 검토와 경고 source 변경은 이번 범위 밖이다.
 
 ## 5. 이어가기 상태는 BE가 보관하고 AI가 해석한다
 
@@ -109,7 +127,7 @@ BE의 `expected_headcount`와 AI의 `headcount`는 어댑터에서 변환한다.
 
 draft를 입력에도 두는 이유는 Event가 조건의 기준이고 Agent 상태는 대화 기록이기 때문이다. 대신 BE는 조건과 상태를 **같은 결과로 함께 저장**해야 한다. FE의 직접 조건 편집 경로는 아직 합의되지 않았으므로 별도 동기화 계약 없이 병행하지 않는다.
 
-현재 이력은 Tool 메시지 포함 최대 60개다. 입력과 반환 상태를 검사하며 처리 후 60개를 넘으면 `PlanningStateError(code="history_limit")`로 정상 결과 채택을 거절한다. 임의 절단이나 자동 초기화는 하지 않는다. 한도 임박 안내 정보는 #194의 미구현 항목이고, 압축은 #195의 후속 설계다. 남은 사용자 대화 횟수나 자동 압축을 보장하지 않는다.
+현재 이력은 Tool 메시지 포함 최대 60개다. 입력과 반환 상태를 검사하며 처리 후 60개를 넘으면 `PlanningStateError(code="history_limit")`로 정상 결과 채택을 거절한다. 임의 절단이나 자동 초기화는 하지 않는다. 한도 임박 정보는 `view.history_usage`로 제공한다(#194, 14절). 제품 전달 필드 합의와 연결은 남아 있고 압축은 #195의 후속 설계다. 남은 사용자 대화 횟수나 자동 압축을 보장하지 않는다.
 
 ## 6. 예시로 따라가기
 
@@ -412,3 +430,35 @@ PlanningStateError는 ValueError 계열이다. 현재 API에서는 상태 JSON �
 
 
 실제 실행 결과(2026-10-25): 상담/복원/짧은 수락, 채팅 생성, 버튼 생성이 통과했다. [평가 기록](evaluation.md#공개-함수-실제-모델-연결-검증-184-2026-10-25)에 조건과 한계를 기록했다. 답변의 요약 항목 수와 실제 초안의 단계 수가 다를 수 있으므로 FE는 `generation_result.preview.steps`를 기준으로 표시한다. 이 검증은 메모리의 JSON 문자열 왕복이며 실제 DB 저장 검증이 아니다.
+
+## 14. 대화 이력 안내 (#194)
+
+**AI 측 구현안이다. BE/FE의 HTTP 필드 합의와 제품 연결은 #187에서 확인해야 한다.** 새 공개 결과는 `view.history_usage`를 제공한다. 과거에 저장한 화면 응답에 이 필드가 없으면 `null`로 읽으며 0개나 안내 불필요로 추정하지 않는다. Agent 저장 상태의 형식 버전 1은 유지한다.
+
+```json
+{
+  "history_usage": {
+    "message_count": 48,
+    "max_messages": 60,
+    "near_limit": true
+  }
+}
+```
+
+| 필드 | 의미 |
+| --- | --- |
+| message_count | 이번 처리 후 실제 보관할 이력 메시지 수. 사용자, AI, Tool 결과를 포함 |
+| max_messages | 현재 저장/복원 한도인 60개. 사용자 대화 횟수가 아님 |
+| near_limit | 48개 이상이면 true. 남은 대화 횟수나 다음 요청 성공 보장 아님 |
+
+안내 기준은 한도의 80%인 48개로 시작한다. 단독 Tool 3회를 순서대로 사용하는 턴은 사용자 1개, AI 호출 요청 3개, Tool 결과 3개, 최종 답변 1개로 8개가 추가될 수 있어 한도 직전보다 앞에서 알린다. 한 AI 메시지에 여러 Tool 요청이 있거나 실행 한도 초과 결과가 추가될 수 있으므로 8개를 모든 턴의 절대 상한으로 간주하지 않는다. 48은 측정으로 최적화한 값이 아닌 초기 안내 정책이며 사용자 대화 횟수로 환산하지 않는다.
+
+계산 위치는 `public_workflow.build_result()`다. 모델이 반환한 숫자를 사용하거나 BE/FE가 `next_state` 내부를 분석하게 하지 않는다. 조건 변경 없는 상담도 이력은 늘고, 버튼 생성은 이력을 추가하지 않는다. JSON 저장/복원 후에도 같은 이력 수가 나온다. 60개는 보관 가능하지만 다음 채팅을 처리할 수 있다는 뜻은 아니며 61개 이상이 된 턴은 기존 `history_limit` 오류로 채택하지 않는다. 안내를 추가해도 이력 절단이나 자동 압축은 수행하지 않는다.
+
+재접속은 BE가 저장한 `view.history_usage`를 그대로 전달한다. 이전 응답에 정보가 없으면 null을 유지하며, 사용량을 알아내려고 모델을 재호출하지 않는다. HTTP의 camelCase 변환 예시는 `historyUsage: {messageCount: 48, maxMessages: 60, nearLimit: true}`이며 최종 제품 계약은 BE와 맞춘다.
+
+독립 테스트 UI는 테스트 API가 같은 계산으로 반환한 `history_usage.near_limit`에 따라 다음 문구만 표시한다. 제품 `fe/`를 수정하지 않는다.
+
+> 대화가 길어지고 있어요. 현재 정한 내용을 확인해 주세요.
+
+프롬프트, Tool 선택, 생성 가능 기준은 유지한다. 컨텍스트 압축은 #195, 서버 작업 취소와 제품 연결은 별도 범위다.

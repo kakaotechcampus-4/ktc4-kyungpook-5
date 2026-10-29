@@ -62,7 +62,6 @@ export default function EventCancelPage() {
     { label: '장소', value: event?.location ?? '—' },
     { label: '참가', value: event?.headcount ? `${event.headcount}명` : '—' },
     { label: '정리 단계', value: current?.name ?? '정리 완료', highlight: true },
-    { label: '담당', value: event?.manager ?? '—' },
   ]
 
   // 행사 상세와 같은 방식. 받기 전에는 그리지 않고, 실패하면 자리값 대신 오류 화면을 보인다.

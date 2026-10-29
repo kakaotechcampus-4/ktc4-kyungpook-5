@@ -9,6 +9,8 @@ import { PlanSummaryPanel } from '@/features/planning/components/PlanSummaryPane
 import { StepFlow } from '@/features/planning/components/StepFlow'
 import {
   DEMO_FACTS,
+  DEMO_GENERATING_LINE,
+  DEMO_GENERATING_MARKS,
   DEMO_MESSAGES,
   DEMO_PLAN_META,
   DEMO_PLAN_STEPS,
@@ -17,7 +19,6 @@ import {
   DEMO_WARNING,
   EMPTY_SUMMARY,
   FIRST_MESSAGE,
-  PLAN_STEPS,
 } from '@/features/planning/mock'
 import type { ChatMessage } from '@/features/planning/types'
 import { Button } from '@/shared/ui/Button'
@@ -51,7 +52,11 @@ export default function PlanningPage() {
 
   if (generating) {
     return (
-      <PlanGeneratingScreen steps={PLAN_STEPS} current={0} onCancel={() => setGenerating(false)} />
+      <PlanGeneratingScreen
+        conditionLine={demo ? DEMO_GENERATING_LINE : '아직 정한 조건이 없어요'}
+        marks={demo ? DEMO_GENERATING_MARKS : []}
+        onCancel={() => setGenerating(false)}
+      />
     )
   }
 

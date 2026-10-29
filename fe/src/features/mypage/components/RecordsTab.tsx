@@ -6,19 +6,23 @@ import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 
 const CATEGORIES: Array<{ value: RecordCategory; label: string; desc: string }> = [
-  { value: 'PLAN', label: '회칙 · 규칙', desc: '회칙, 환불·승인 기준이 담긴 문서' },
-  { value: 'NOTICE', label: '과거 행사 기록', desc: '지난 행사의 결과보고와 명단' },
+  { value: 'RULES', label: '회칙 · 규칙', desc: '회칙, 환불·승인 기준이 담긴 문서' },
+  { value: 'EVENT_HISTORY', label: '과거 행사 기록', desc: '지난 행사의 결과보고와 명단' },
   { value: 'LEDGER', label: '입출금 장부', desc: '회비 수납과 지출 내역' },
-  { value: 'ETC', label: '기타', desc: '위 세 가지에 속하지 않는 파일' },
+  { value: 'RECEIPT', label: '영수증', desc: '지출 증빙으로 올린 영수증' },
+  { value: 'ETC', label: '기타', desc: '위 네 가지에 속하지 않는 파일' },
 ]
 
 const PARSE: Record<
   ParseStatus,
   { label: string; tone: 'done' | 'approved' | 'pending' | 'failed' }
 > = {
-  INDEXED: { label: '읽음', tone: 'done' },
+  QUEUED: { label: '읽기 대기', tone: 'approved' },
   PARSING: { label: '읽는 중', tone: 'approved' },
   NEEDS_REVIEW: { label: '형식 확인 필요', tone: 'pending' },
+  // 읽기는 끝났지만 아직 색인 전이라 AI가 찾지는 못한다.
+  COMPLETED: { label: '정리됨', tone: 'approved' },
+  INDEXED: { label: '읽음', tone: 'done' },
   FAILED: { label: '읽지 못함', tone: 'failed' },
 }
 
