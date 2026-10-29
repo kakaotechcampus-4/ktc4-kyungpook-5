@@ -1,7 +1,19 @@
 # 운영해 · Frontend
 
 동아리 행사 보조 에이전트 "운영해"의 프론트엔드입니다.
-아직 초기 세팅 단계이며, 실제 `npm create vite` 스캐폴딩 전에 폴더 구조와 컨벤션을 먼저 합의하기 위한 문서입니다.
+화면은 대부분 구현돼 있고 서버 연동이 남았습니다. 어느 화면이 어느 API에 붙는지는
+`docs/week10/fe/운영해_FE_연동_기준서.md`를 봅니다.
+
+```bash
+npm install
+npm run dev            # http://localhost:5173
+npm run build          # tsc -b && vite build
+npm run lint
+npm run gen:api-types  # BE가 localhost:8000에 떠 있어야 한다
+```
+
+서버 없이 화면만 보려면 주소에 `?demo`를 붙입니다(예: `/planning?demo`).
+붙이지 않으면 빈 상태 화면이 나옵니다.
 
 ## 기술 스택
 
@@ -12,7 +24,7 @@
 | 스타일 | **Tailwind** (확정) | — |
 | 언어 | TypeScript | — |
 | 라우팅 | React Router | — |
-| 서버 상태 관리 | ⚠️ **미정** (TanStack Query 유력) | 라이브러리는 아직 확정 안 됐지만, **"컴포넌트에서 fetch 직접 호출 금지, `features/*/hooks.ts`의 훅을 거친다"는 규칙만 먼저 고정**한다. 구조 영향이 커서 라이브러리보다 규칙을 먼저 못 박음 |
+| 서버 상태 관리 | **TanStack Query** (확정) | **"컴포넌트에서 fetch 직접 호출 금지, `features/*/hooks.ts`의 훅을 거친다"는 규칙**이 먼저이고 라이브러리는 그 뒤다 |
 | 클라이언트 상태 관리 | **Zustand** (확정) | 전역 상태(로그인 유저 정보 등)는 Zustand로 관리. 화면 로컬 상태는 여전히 `useState` 사용 |
 | HTTP 클라이언트 | axios | — |
 | 린트 · 포맷 | ESLint + Prettier | — |
@@ -34,70 +46,57 @@
 
 ```
 fe/
-├── public/                      정적 파일 (파비콘 등). 빌드 시 그대로 복사됨
+├── public/                      정적 파일. 빌드 시 그대로 복사됨
 ├── src/
-│   ├── main.tsx                 진입점. 딱 5줄
+│   ├── main.tsx                 진입점
 │   ├── app/
 │   │   ├── router.tsx           라우트 정의
-│   │   ├── providers.tsx        QueryClient, 인증 컨텍스트 등 전역 래퍼
-│   │   └── layout/
-│   │       ├── AppLayout.tsx    상단바 + 사이드바 + 본문 자리
-│   │       ├── Sidebar.tsx      메인/행사 계획/행사 목록/동아리 기록/마이 페이지
-│   │       └── TopBar.tsx       로고 + 우측 영역
+│   │   ├── providers.tsx        QueryClient 등 전역 래퍼
+│   │   └── layout/AppLayout.tsx 상단바 + 본문 자리
 │   ├── pages/                   화면 하나당 파일 하나. 조립만 한다
-│   │   ├── LoginPage.tsx
-│   │   ├── SignupPage.tsx
-│   │   ├── DashboardPage.tsx
-│   │   ├── PlanningPage.tsx
-│   │   ├── EventListPage.tsx
-│   │   ├── EventDetailPage.tsx
-│   │   ├── RecordsPage.tsx
-│   │   └── MyPage.tsx
+│   │   ├── LoginPage.tsx  SignupPage.tsx
+│   │   ├── MainPage.tsx                     M1 메인
+│   │   ├── PlanningPage.tsx  PlanStepsPage.tsx    P1 · P2
+│   │   ├── EventListPage.tsx  EventDetailPage.tsx  EventCancelPage.tsx
+│   │   ├── MyPage.tsx                       내 정보 · 동아리원 · 자료
+│   │   ├── DevUiPage.tsx                    /dev/ui — 공용 컴포넌트 모아보기
+│   │   └── NotFoundPage.tsx
 │   ├── features/                실제 코드가 사는 곳
-│   │   ├── auth/
-│   │   ├── dashboard/
-│   │   ├── planning/
-│   │   ├── events/
-│   │   ├── approvals/
-│   │   ├── ledger/
-│   │   └── records/
-│   │       ├── api.ts            서버 호출 함수 + 응답 타입
-│   │       ├── hooks.ts          useXxx 커스텀 훅
-│   │       ├── types.ts          도메인 타입
-│   │       └── components/       해당 feature 전용 컴포넌트
-│   ├── shared/                   여러 feature가 함께 쓰는 것
-│   │   ├── ui/                   Button, Card, Chip, StepBar, ProgressBar
+│   │   ├── auth/                components, mock, types
+│   │   ├── dashboard/           components, hooks, mock, types
+│   │   ├── events/              api, components, hooks, mock, types
+│   │   ├── mypage/              components, mock, types
+│   │   └── planning/            catalogue, components, mock, types
+│   ├── shared/                  여러 feature가 함께 쓰는 것
+│   │   ├── ui/                  Button, Card, Chip, Modal, Toast, Tori, StateScreen …
 │   │   ├── api/
-│   │   │   ├── client.ts         실제 fetch를 호출하는 유일한 곳
-│   │   │   └── types.ts          공통 응답·에러 타입
-│   │   └── lib/                  format.ts, cn.ts
-│   └── styles/
-│       └── index.css             디자인 토큰(@theme) + 전역 스타일
+│   │   │   ├── client.ts        axios를 쓰는 유일한 곳
+│   │   │   ├── models.ts        schema.d.ts의 긴 경로에 이름만 붙인 곳
+│   │   │   ├── schema.d.ts      BE openapi.json에서 생성. 손으로 고치지 않는다
+│   │   │   └── types.ts         공통 응답·에러 타입
+│   │   ├── auth/                로그인 사용자 전역 상태(zustand)
+│   │   └── lib/                 format, labels, cn, dialog, toast, clipboard
+│   └── styles/index.css         디자인 토큰(@theme) + 전역 스타일
 ├── .env.example
-├── .gitignore
-├── .prettierrc                  Prettier 서식 규칙
-├── .prettierignore
-├── eslint.config.js             ESLint 규칙
-├── index.html
-├── package.json
-├── tsconfig.json                아래 두 개를 참조만 함
-├── tsconfig.app.json            src/ 용. @/ 별칭도 여기
-├── tsconfig.node.json           설정 파일(vite.config.ts 등) 용
-└── vite.config.ts
+├── .prettierrc  .prettierignore  eslint.config.js
+├── index.html  package.json  vite.config.ts
+└── tsconfig.json  tsconfig.app.json  tsconfig.node.json
 ```
 
-> `src/` 아래 파일들은 아직 구조 확정을 위한 자리표시(placeholder)입니다.
-> 프로젝트 스캐폴딩은 완료되었고(#20), 내용은 각 기능 이슈에서 채워 넣습니다.
+> `features/`에 `api.ts`·`hooks.ts`가 다 있지는 않습니다. 아직 서버에 붙지 않은
+> feature는 `mock.ts`만 두고, 연동할 때 그 둘을 추가합니다.
 
 ## 데이터가 흐르는 경로 (예: 승인 버튼)
 
 ```
-ApprovalCard.tsx          버튼 클릭
-  → hooks.ts              useApprove() 호출
-  → api.ts                approveItem(id)
-  → shared/api/client.ts  apiPost('/approvals/1/approve')
+ActionCard.tsx                        버튼 클릭
+  → features/events/hooks.ts          useApproveAction() 호출
+  → features/events/api.ts            approveAction(actionId)
+  → shared/api/client.ts              apiPost('/actions/act_21/approve')
   → FastAPI
 ```
+
+> 승인·거절 경로는 아직 BE에 없습니다(#41). 위는 붙을 자리를 보이는 예시입니다.
 
 ## API 관련 (BE와 합의된 사항, FE 구현 시 참고)
 
@@ -106,10 +105,10 @@ ApprovalCard.tsx          버튼 클릭
 - 응답 포맷: **envelope 방식** (`{ "data": ..., "meta": ... }`) — raw로 안 감쌈
 - 인증: `Authorization: Bearer <token>` 헤더 (OAuth: Google·Kakao)
 - 개인정보 필드(연락처 등)는 서버에서 마스킹되어 내려옴
-- API 문서: FastAPI 자동 생성 Swagger, FE와의 스펙 공유는 노션 표
+- API 문서: FastAPI 자동 생성 Swagger(`http://localhost:8000/docs`)
 
-> 위 항목들도 원본 문서(5장) 상 세부 규칙(에러 포맷, 페이지네이션 파라미터명, 상태 코드별 처리 등)이
-> 아직 `___`로 비어 있는 부분이 많습니다. BE 쪽에서 5장이 마저 채워지면 이 문서에도 반영이 필요합니다.
+> 어느 화면이 어느 API에 붙고 무엇이 아직 없는지는 `docs/week10/fe/운영해_FE_연동_기준서.md`에 있습니다.
+> 행사 계획(P1·P2)의 계약은 `be/app/ai/contracts.py`가 기준입니다.
 
 ## API 응답 포맷
 

@@ -1,11 +1,9 @@
 // 전체 화면 상태 3종(계획 생성 중 · 참여 요청 대기 · 서버 오류)과 그 공통 틀.
 // 데이터·이동은 props로 받고, 어느 라우트에 둘지는 화면 이슈에서 정한다.
-import type { ReactNode } from 'react'
-import { cn } from '@/shared/lib/cn'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
-import { ProgressBar } from '@/shared/ui/ProgressBar'
 import { Tori } from '@/shared/ui/Tori'
 
 interface StateScreenProps {
@@ -27,62 +25,81 @@ export function StateScreen({ title, desc, children }: StateScreenProps) {
   )
 }
 
+// 계획 생성은 AI 호출 한 번이라 중간 진행을 알 수 없다. 그래서 진행률 막대나
+// 「조건 정리 → 단계 짜기」 같은 단계 표시를 두지 않는다 — 모르는 것을 그리면
+// 가짜 진행이 된다(#179). 대신 경과 시간과 평균 소요, 지금 쓰는 조건을 보인다.
 interface PlanGeneratingProps {
-  steps: Array<{ label: string; desc?: string }>
-  // 지금 하고 있는 단계 순번(0부터). 앞은 끝난 단계, 뒤는 남은 단계.
-  current: number
+  // 「이 조건으로 만들어요」 한 줄. 예: "2026 봄 MT · 1박 2일 · 1인 45,000원"
+  conditionLine: string
+  // 잠정·보류·미정 표시. tentative면 눈에 띄게 둔다.
+  marks?: Array<{ label: string; tentative?: boolean }>
+  // 실측에 기반한 평균 소요(초). 진행률이 아니라 기다림의 눈금이다.
+  averageSeconds?: number
   onCancel: () => void
 }
 
-export function PlanGeneratingScreen({ steps, current, onCancel }: PlanGeneratingProps) {
+function elapsedLabel(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+}
+
+export function PlanGeneratingScreen({
+  conditionLine,
+  marks = [],
+  averageSeconds = 20,
+  onCancel,
+}: PlanGeneratingProps) {
+  const [seconds, setSeconds] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds((value) => value + 1), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
   return (
-    <StateScreen
-      title="계획을 만들고 있어요"
-      desc="보통 20초 정도 걸려요. 창을 닫아도 계속 만들어둘게요."
-    >
-      <Card className="flex w-[560px] max-w-full flex-col gap-[16px] px-[26px] pt-[24px] pb-[26px]">
-        <ProgressBar value={current + 1} max={steps.length} />
-        {steps.map((step, i) => {
-          const state = i < current ? 'done' : i === current ? 'current' : 'todo'
-          return (
-            <div key={step.label} className="flex items-center gap-[13px]">
-              <span
-                className={cn(
-                  'flex size-[24px] shrink-0 items-center justify-center rounded-full font-bold',
-                  state === 'done' && 'bg-blue-600 text-[11px] text-white',
-                  state === 'current' && 'border-[2.5px] border-blue-600 text-[9px] text-blue-600',
-                  state === 'todo' && 'bg-track',
-                )}
-              >
-                {state === 'done' ? '✓' : state === 'current' ? '●' : null}
-              </span>
-              <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-                <p
-                  className={cn(
-                    'text-[14px]',
-                    state === 'current' ? 'font-bold text-blue-700' : 'font-medium',
-                    state === 'todo' ? 'text-mute' : state === 'done' && 'text-ink2',
-                  )}
-                >
-                  {step.label}
-                </p>
-                {state === 'current' && step.desc && (
-                  <p className="text-caption text-mute">{step.desc}</p>
-                )}
-              </div>
-              {state === 'current' && (
-                <Chip tone="approved" size="sm">
-                  진행 중
+    <div className="flex justify-center py-[50px]">
+      <Card className="flex w-[560px] max-w-full flex-col items-center gap-[18px] px-[40px] pt-[36px] pb-[34px]">
+        <Tori size={76} />
+        <div className="flex flex-col items-center gap-[9px] text-center">
+          <h1 className="text-[22px] font-bold">계획을 만들고 있어요</h1>
+          <p className="text-[13.5px] leading-[21px] text-mute">
+            지금까지 정한 조건으로 준비 순서를 짜고 있어요. 보통 {averageSeconds}초쯤 걸려요.
+          </p>
+        </div>
+
+        {/* 끝까지 몇 퍼센트인지 모르므로 차오르지 않는다. 살아 있다는 표시만 한다. */}
+        <div className="flex gap-[6px]" aria-hidden>
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="size-[6px] animate-pulse rounded-full bg-blue-300"
+              style={{ animationDelay: `${i * 0.25}s` }}
+            />
+          ))}
+        </div>
+
+        <p className="text-[15px] font-medium text-mute tabular-nums" aria-live="off">
+          {elapsedLabel(seconds)}
+        </p>
+
+        <div className="flex w-full flex-col gap-[7px] rounded-[12px] bg-bg px-[18px] pt-[14px] pb-[15px]">
+          <p className="text-label text-mute">이 조건으로 만들어요</p>
+          <p className="text-[14px] font-medium text-ink">{conditionLine}</p>
+          {marks.length > 0 && (
+            <div className="flex flex-wrap gap-[6px] pt-[2px]">
+              {marks.map((mark) => (
+                <Chip key={mark.label} tone={mark.tentative ? 'approved' : 'neutral'} size="sm">
+                  {mark.label}
                 </Chip>
-              )}
+              ))}
             </div>
-          )
-        })}
+          )}
+        </div>
+
+        <Button variant="secondary" onClick={onCancel}>
+          그만두기
+        </Button>
       </Card>
-      <Button variant="secondary" size="lg" onClick={onCancel}>
-        취소하고 돌아가기
-      </Button>
-    </StateScreen>
+    </div>
   )
 }
 

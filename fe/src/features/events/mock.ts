@@ -176,13 +176,7 @@ export const DEMO_STEPS: Record<string, EventStep[]> = {
   ),
 }
 
-// 담당은 명세에 없어 시연용으로만 적는다(types.ts TODO 참고)
-const DEMO_MANAGERS: Record<string, string> = {
-  evt_9f2c8a: '박수겸 · 총무',
-  evt_c41d07: '김지훈 · 회장',
-}
-
-// L2 상단 카드. 목록 한 줄에 현재 단계·담당을 붙인다.
+// L2 상단 카드. 목록 한 줄에 현재 단계를 붙인다.
 export const DEMO_EVENT_DETAILS: Record<string, EventDetail> = Object.fromEntries(
   DEMO_EVENTS.map((e) => {
     const current = DEMO_STEPS[e.id]?.find((s) => s.state === 'CURRENT')
@@ -198,7 +192,6 @@ export const DEMO_EVENT_DETAILS: Record<string, EventDetail> = Object.fromEntrie
       currentStep: current
         ? { id: current.id, stepOrder: current.stepOrder, name: current.name }
         : null,
-      manager: DEMO_MANAGERS[e.id] ?? null,
     }
     return [e.id, detail]
   }),

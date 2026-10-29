@@ -1,5 +1,6 @@
 // P2 오른쪽: 이 계획이 어떤 모양인지 한눈에. 일곱 줄로 고정이라 계획이 바뀌어도 자리가 안 흔들린다.
 import type { PlanSummary, PlanWarning } from '@/features/planning/types'
+import { formatCurrency, formatPlanPeriod } from '@/shared/lib/format'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { ToriNote } from '@/shared/ui/ToriNote'
@@ -12,6 +13,14 @@ interface PlanSummaryPanelProps {
   onStart: () => void
 }
 
+// "1회 · 1인 45,000원". 수금 단계가 없으면 「없음」이고, 0원이면 「무료」다.
+function collectionText(collection: PlanSummary['collection']): string {
+  if (!collection) return '없음'
+  const fee =
+    collection.feePerPerson === 0 ? '무료' : `1인 ${formatCurrency(collection.feePerPerson)}`
+  return `${collection.times}회 · ${fee}`
+}
+
 export function PlanSummaryPanel({ summary, warning, onFixSteps, onStart }: PlanSummaryPanelProps) {
   // 승인 필요만 파랗게 둔다. 운영진이 직접 손대야 하는 횟수라 제일 먼저 보여야 한다.
   const rows: Array<[string, string, boolean?]> = [
@@ -19,9 +28,10 @@ export function PlanSummaryPanel({ summary, warning, onFixSteps, onStart }: Plan
     ['AI 실행', `${summary.aiSteps}개`],
     ['승인 필요', `${summary.approvalSteps}곳`, true],
     ['직접 수행', `${summary.manualSteps}개`],
-    ['수금', summary.collect],
-    ['공지', summary.notice],
-    ['기간', summary.period],
+    ['수금', collectionText(summary.collection)],
+    ['공지', summary.noticeCount > 0 ? `${summary.noticeCount}회` : '없음'],
+    // 준비 기간이다. 행사 당일과 다르다.
+    ['준비 기간', formatPlanPeriod(summary.periodStart, summary.periodEnd)],
   ]
 
   return (

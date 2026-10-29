@@ -342,12 +342,11 @@ export default function DevUiPage() {
       <Section title="상태 화면">
         <Card>
           <PlanGeneratingScreen
-            current={0}
-            steps={[
-              { label: '과거 기록 확인', desc: '올린 자료가 있으면 먼저 봅니다' },
-              { label: '단계 고르기' },
-              { label: '일정 계산' },
-              { label: '수금·공지 정리' },
+            conditionLine="2026 봄 MT · 1박 2일 · 1인 45,000원"
+            marks={[
+              { label: '32명 잠정', tentative: true },
+              { label: '일정 나중에' },
+              { label: '장소 미정' },
             ]}
             onCancel={noop}
           />
