@@ -12,6 +12,7 @@ from .contracts import (
     IndexRecordResult,
     RecordBlock,
     RecordSource,
+    RecordDiscoveryRequest,
     SourceLocation,
 )
 from .errors import (
@@ -24,7 +25,7 @@ from .errors import (
     AIRetryableError,
     AITimeoutError,
 )
-from .facade import index_record, judge_utterance
+from .facade import index_record, judge_utterance, search_related_records
 from .features.meeting.context import MEETING_CONTEXT_UTTERANCES
 from .features.meeting.schemas import (
     JudgeTrace,
@@ -42,6 +43,8 @@ from .ports import ChunkSearchQuery, RecordSearchPort, RetrievedChunk
 __all__ = (
     # 기록 색인
     "index_record",
+    "search_related_records",
+    "RecordDiscoveryRequest",
     "IndexRecordRequest",
     "IndexRecordResult",
     "IndexedChunk",

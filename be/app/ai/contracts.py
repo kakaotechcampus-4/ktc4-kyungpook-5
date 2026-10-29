@@ -282,6 +282,14 @@ class RecordConflict(ContractModel):
     values: tuple[RecordFact, ...] = Field(min_length=2)
 
 
+class RecordDiscoveryRequest(ContractModel):
+    """권한 확인된 소속에서 검색어와 가까운 자료 청크를 찾는 요청."""
+
+    club_id: NonBlankStr
+    query: NonBlankStr
+    limit: int = Field(default=20, strict=True, ge=1, le=50)
+
+
 class RecordSearchResult(ContractModel):
     """기록 검색 결과. 관련 기록이 없는 것도 정상 결과다"""
 
