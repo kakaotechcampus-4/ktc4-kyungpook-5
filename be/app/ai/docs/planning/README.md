@@ -28,6 +28,8 @@ LLM이 사용자와 대화하고 필요한 Tool을 선택하는 행사계획 기
 
 ## 현재 후속 작업
 
+- [#205](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/205): 생성 보류 요청이 날짜 질문 보류로 확장되는 문제를 조사한다. 지침의 두 보류 대상을 구분하고 같은 입력의 기존/수정 지침을 비교한다. 잠정/명시 차이는 이번 수정의 주 실패 지표에서 제외하며 기존 #196 점수는 보존한다.
+
 - [#194](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/194): AI 공개 결과의 `view.history_usage`와 독립 UI 안내를 구현했다. 제품 필드 합의와 연결은 #187에서 확인한다.
 - [#195](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/195): 긴 대화 압축의 설계와 평가 기준. 자동 압축 구현은 별도 범위다.
 - [#196](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/196): [응답 시간 기준 측정](latency-baseline.md)의 고정 입력/기록/집계와 실제 모델 3세션 측정을 완료했다. 준비 실행 12건과 본측정 120건의 [원본과 분석](evaluation-results/planning-latency-real-2026-10-28/README.md)을 보존했다. 다음은 조건 변경의 기대 상태 확인과 계획 검증 실패 원인 진단이다. 합성 입력의 반복 결과를 서비스 평균이나 완료 시간 보장으로 안내하지 않는다.
