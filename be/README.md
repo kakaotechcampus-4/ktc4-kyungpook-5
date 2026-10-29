@@ -1,9 +1,17 @@
 # 운영해 · BE
 
-인증·동아리·영수 내역·회의·기록 업로드·Discord·할 일 후보·mini 활동 API는 실제 DB로 동작합니다
-(#131, #133, #135, 팀장 요청 curl 흐름). OCR·STT·Jev 판단·기록 검색·Discord 수집은 **결정론적 더미**이고
-실제 AI·외부 연동은 후속 이슈입니다. 행사(`/events`) API는 아직 DB 없이 고정 응답만 내리는 mock입니다 (이슈 #30).
+인증·동아리·영수 내역·회의·기록·할 일 후보·확정 항목·예약·Push 구독은 실제 DB로 동작합니다.
+자료는 실제 `index_record`와 pgvector 저장소, 음성은 WS PCM→BE VAD→Whisper 어댑터로 연결합니다.
+회의 판단은 최신 AI의 `judge_utterance(request, records=...)`와 결합해야 합니다.
+독립 후보 추출 계약과 실제 공급자 설정이 없으면 해당 기능의 실패를 명시합니다.
+실행·API·상태·검증 범위는 [회의 베타 연결](docs/meeting-beta.md)과 [WS 계약](docs/meeting-audio.md)을 보세요.
+기존 test-support/HTTP STT·Discord 처리의 개발 fixture와 OCR 더미는 실연동이 아닙니다.
+행사(`/events`) API는 아직 DB 없이 고정 응답만 내리는 mock입니다 (이슈 #30).
 모델 확정 내역과 그 근거는 [BE 스키마 검토안](../docs/week6/be/운영해_BE_스키마_검토안.md)에 있습니다.
+
+서비스 사용자는 동아리 **회장·대표(`OWNER`)와 임원(`MANAGER`)**입니다.
+별도 `ADMIN` 역할은 없으며, 일반 동아리원은 서비스 이용 대상이 아닙니다.
+기존 `MEMBER` 명단 행은 보존하지만 소속 API·WS 접근/초대/알림 대상에서 제외합니다.
 
 ## 기술 스택
 
@@ -17,7 +25,7 @@
 | 파일 저장 | AWS S3 (`infra/s3.py`) | 영수증·기록 원본 업로드 |
 | 기록 파일 파싱 | pypdf · openpyxl | PDF·XLSX를 `parse_result`로 변환 (`services/record_parser.py`). CSV는 표준 `csv` |
 | 패키지 관리 | uv | AI와 동일하게 `pyproject.toml` 기반 |
-| 인증 | 미정 | JWT vs 세션 등 방식 확정 전, `core/security.py`에서 구현 |
+| 인증 | DB 세션·opaque Bearer | 기존 로그인/소속/역할 검증 유지 |
 | 배포 환경 | AWS EC2 + Docker Compose | RDS 병행 여부 미정 |
 | 테스트 | pytest | `tests/unit`은 `event_rules.py` 순수 함수, `tests/integration`은 라우터 엔드투엔드 |
 | 린트 · 포맷 | 미정 | 첫 구현에서 도구와 실행 명령 결정 |
@@ -27,7 +35,7 @@
 - FE 명세 반영이 필요한 5건 — [검토안 §4](../docs/week6/be/운영해_BE_스키마_검토안.md)
 - 회의·확인이 필요한 항목 — [검토안 §5](../docs/week6/be/운영해_BE_스키마_검토안.md)
 - `transactions`(개별 입금 내역) 테이블 — 금액 안건 확정 후 추가. `participants`(행사별 참가 신청)는 #107로 추가됨
-- `app.ai`의 `facade.py`/`ports.py` 함수명과 입출력 필드 — BE↔AI는 HTTP가 아니라 함수 호출이라 "엔드포인트"는 아니지만 계약 자체는 아직 미확정
+- `app.ai`의 독립 후보 추출 계약과 실제 공급자 설정 — 회의 판단은 공개 `judge_utterance(request, records=...)`를 사용하며 BE↔AI는 HTTP가 아닌 함수 호출
 - S3 버킷 구조와 접근 권한 — 영수증 등 민감 파일이 포함되어 NF6(민감정보 최소 수집)과 연결됨
 
 RAG 임베딩 저장 위치는 PostgreSQL pgvector(`vector(1536)`)로 확정
@@ -35,7 +43,7 @@ RAG 임베딩 저장 위치는 PostgreSQL pgvector(`vector(1536)`)로 확정
 ## 반드시 지켜야 할 규칙
 
 1. 금액·정원·매칭·환불 판정 같은 결정론적 계산은 `services/event_rules.py`의 순수 함수로 구현한다. 라우터와 AI 서비스는 이 결과를 그대로 받아 쓸 뿐, 계산을 직접 하거나 보정하지 않는다 (NF1).
-2. 공지·예약·송금·환불 등 외부에 영향을 주는 액션은 `Approval` 레코드가 승인 상태로 존재할 때만 실행한다. 승인 레코드 없이 실행되는 코드 경로를 두지 않는다 (NF3).
+2. 외부에 영향을 주는 실행은 사용자 확인을 거친다 (NF3). 회의 예약 알림은 OWNER/MANAGER의 명시적 confirm으로 확정 항목/담당/수신자/시각을 저장한 뒤 실행한다. 기존 행사 공지·송금·환불의 승인 계약을 이 확인으로 대체하지 않는다.
 3. Agent 호출 이력과 승인 이력은 빠짐없이 기록하고 수정·삭제하지 않는다. 상태가 바뀌면 새 레코드를 추가해 이전 상태를 덮어쓰지 않는다 (NF4).
 4. 라우터는 `services/`를 거쳐서만 모델과 계산을 조합한다. 다른 도메인의 `event_rules.py`나 `models/`를 직접 끌어와 우회하지 않는다.
 
@@ -87,7 +95,7 @@ be/
 │   │   ├── s3.py
 │   │   └── storage.py         # 업로드 파일 저장 (S3 연동 전까지 로컬 디스크 STORAGE_DIR)
 │   └── ai/                    # AI 모듈. 별도 서버 아님 — BE 프로세스 내부
-│       ├── __init__.py        # BE가 쓰는 단일 공개 진입점 (현재 공개 함수 없음)
+│       ├── __init__.py        # BE가 쓰는 단일 공개 진입점 (회의 판단은 최신 AI 필요)
 │       ├── facade.py          # BE → AI: 공개 기능 구현 위치
 │       ├── ports.py           # AI → BE: BE가 주입하는 조회·계산 인터페이스
 │       ├── contracts.py       # BE↔AI 공개 요청·응답 데이터 계약
@@ -150,7 +158,7 @@ AI는 BE의 모델·DB·서비스를 직접 import하지 않습니다.
 BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE 하나뿐이고, BE ↔ AI는 같은 프로세스 안의 함수 호출입니다.
 
 - **FE → BE (HTTP)**: 행사 생성, 질문·답변, 대안 비교, 승인, 수납 대조, 취소·환불, 정산 조회 등 서비스의 주 REST API(`routers/clubs.py`, `routers/events.py`, `routers/records.py`).
-- **BE → AI (함수 호출)**: BE가 `app/ai/facade.py`의 공개 함수를 호출합니다. 별도 서버·엔드포인트가 없습니다.
+- **BE → AI (함수 호출)**: BE는 `app.ai`에 재공개된 함수·DTO·port만 사용합니다. 별도 AI 서버·내부 HTTP 엔드포인트가 없습니다.
 - **AI → BE (함수 호출)**: AI의 `tools/`가 계산·조회가 필요할 때 `app/ai/ports.py`에 정의된 인터페이스를 호출합니다. BE가 구현체를 주입하며 AI는 BE의 라우터·서비스·모델을 직접 import하지 않습니다.
 
 함수명·입출력 필드 계약은 아직 미확정입니다. 공통 요청·응답 형식은 `app/schemas/`에서 라우터별로 관리하고, 에러 응답 형식(예: `MINIMUM_HEADCOUNT_VIOLATED`, `APPROVAL_REQUIRED`)은 `core/exceptions.py`를 통해 전 엔드포인트에서 동일한 구조를 씁니다.
@@ -304,8 +312,8 @@ TEST_MODE=true uv run python scripts/run_dev.py   # macOS/Linux는 TEST_MODE=tru
 curl 주석과 다르게 동작하는 부분입니다.
 
 - `service-flow` 08 `POST /events`는 없습니다. 행사 API는 아직 mock이라 회의·지출의 `eventId`는 비워 둡니다.
-- `meeting` M01 기록 업로드는 파싱까지만 해 `parseStatus=COMPLETED`입니다. AI 색인(청크 저장)이 없어 `INDEXED`가 되지 않으며, 더미 검색은 `COMPLETED` 기록도 찾습니다.
-- `meeting` M09 `finish`는 밀린 처리가 없어 FINALIZING을 거치지 않고 바로 `COMPLETED`입니다.
+- `meeting` M01 기록 업로드는 파싱 뒤 실제 색인을 시도합니다. 성공하면 `INDEXED`, 설정/모델 오류면 `COMPLETED`와 `indexError`를 반환합니다. 새 영구 검색은 `INDEXED`만 조회합니다. 기존 개발용 판단 fixture의 단순 검색은 실서비스 검색과 별개입니다.
+- `meeting` M09 HTTP `finish`는 활성 WS가 없을 때 바로 종료합니다. 활성 WS에서는 409로 안내하므로 WS `end`→`audio.end_ack`(FINALIZING)→`audio.completed`를 기다립니다.
 - `discord` D01 실제 연결은 `status=DISCONNECTED`입니다(curl 주석은 CONNECTED). 실제 bot 수집기가 없어 D02 `sync` 작업은 `FAILED`(`DISCORD_COLLECTOR_UNAVAILABLE`)로 남습니다. D03부터의 FIXTURE 연결은 `MONITORING`입니다.
 - Discord 이벤트 주입은 `MESSAGE_CREATE`만 받습니다(수정·삭제는 오류 테스트 범위).
 - `Idempotency-Key` 헤더는 받기만 하고 아직 적용하지 않습니다(`core/idempotency.py`는 #131에서 만들어 둠).

@@ -3,6 +3,8 @@
 from datetime import date
 from typing import Any
 
+from pydantic import Field
+
 from app.core.enums import ContextSourceType, TaskSuggestionStatus
 from app.schemas.common import CamelModel, UtcDateTime
 
@@ -15,6 +17,10 @@ class TaskSuggestionOut(CamelModel):
     description: str | None
     suggested_assignee: str | None
     due_date: date | None
+    kind: str | None = None
+    due_at: UtcDateTime | None = None
+    scheduled_at: UtcDateTime | None = None
+    unresolved_fields: list[str] = Field(default_factory=list)
     evidence: list[dict[str, Any]]
     status: TaskSuggestionStatus
     version: int

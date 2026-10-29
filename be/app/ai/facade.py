@@ -58,3 +58,9 @@ async def generate_planning_preview(request: "PlanningPreviewRequest") -> "Plann
     """P1 버튼 생성. 메시지를 추가하지 않고 기존 검색 근거와 조건으로 초안을 만든다."""
     from .features.planning.public_workflow import generate_preview
     return await generate_preview(request)
+
+
+async def extract_task_suggestions(request: "TaskExtractionRequest") -> "TaskExtractionResult":
+    """회의 발화에서 확인할 후보를 제안한다. 저장과 예약은 BE가 맡는다."""
+    from .features.meeting.task_extraction import extract_task_suggestions as extract
+    return await extract(request)

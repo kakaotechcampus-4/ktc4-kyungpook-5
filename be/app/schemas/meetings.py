@@ -13,6 +13,7 @@ class MeetingCreateIn(CamelModel):
 
 class MeetingOut(CamelModel):
     id: str
+    club_id: str
     title: str | None
     language: str
     status: MeetingStatus
