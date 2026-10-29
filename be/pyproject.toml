@@ -50,4 +50,5 @@ testpaths = ["tests", "app/ai/tests"]
 pythonpath = ["."]
 markers = [
     "db: PostgreSQL 테스트 DB가 필요한 테스트. 연결할 수 없으면 건너뛴다",
+    "real_ai: 실제 AI_API_KEY로 진짜 모델을 호출하는 테스트. index_record 기본 mock을 끈다",
 ]

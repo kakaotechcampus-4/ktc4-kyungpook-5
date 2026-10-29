@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # 카카오 로그인(OAuth). 비워두면 /auth/kakao/callback 호출 시 실패한다.
     kakao_rest_api_key: str = ""
     kakao_redirect_uri: str = ""
+    # 카카오 디벨로퍼스에서 REST API 키의 클라이언트 시크릿을 활성화했을 때만 채운다.
+    # 비활성화 상태면 비워둔다 — 토큰 교환 요청에 아예 안 실린다.
+    kakao_client_secret: SecretStr = SecretStr("")
 
     # TEST_MODE=true일 때만 /test-support/* 라우트를 등록한다. 운영 환경은 404.
     test_mode: bool = False
