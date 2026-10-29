@@ -25,6 +25,7 @@ export class MeetingAudioTransport {
   private socket: WebSocket | null = null
   private ready = false
   private ending = false
+  private endAcknowledged = false
   private completed = false
   private disposed = false
   private failed = false
@@ -195,6 +196,14 @@ export class MeetingAudioTransport {
         break
       case 'audio.end_ack':
         if (this.ending) {
+          if (event.lastAudioSeq !== this.sentFrames || event.status !== 'FINALIZING') {
+            this.fail(
+              new Error('마지막 음성 수신 확인이 맞지 않아요. 저장된 전사를 확인해 주세요.'),
+            )
+            return
+          }
+          if (this.endAcknowledged) return
+          this.endAcknowledged = true
           clearTimeout(this.endTimer)
           this.callbacks.onProcessing()
         }
@@ -202,8 +211,10 @@ export class MeetingAudioTransport {
       case 'audio.completed':
         if (!this.ending) return
         if (
+          !this.endAcknowledged ||
+          event.lastAudioSeq !== this.sentFrames ||
           event.status !== 'COMPLETED' ||
-          (typeof event.errorCount === 'number' && event.errorCount > 0)
+          event.errorCount !== 0
         ) {
           this.fail(
             new Error(
@@ -234,7 +245,11 @@ export class MeetingAudioTransport {
           return
         }
         this.fail(
-          new Error('서버가 음성을 처리하지 못했어요. 전사 결과를 확인한 뒤 다시 시도해 주세요.'),
+          new Error(
+            event.code === 'AUDIO_RESUME_UNSUPPORTED'
+              ? '이 회의의 저장된 전사를 확인하고 새 회의에서 마이크를 시작해 주세요.'
+              : '서버가 음성을 처리하지 못했어요. 전사 결과를 확인한 뒤 다시 시도해 주세요.',
+          ),
         )
         break
     }
