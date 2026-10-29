@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useMe } from '@/features/auth/hooks'
-import { RecordsPanel } from '@/features/records'
+import { RecordSearch, RecordsPanel } from '@/features/records'
 import { useAuthStore } from '@/shared/auth/store'
 import { Card } from '@/shared/ui/Card'
 import { Button } from '@/shared/ui/Button'
@@ -50,6 +50,7 @@ export default function RecordsPage() {
           회의로 이동
         </Link>
       </header>
+      <RecordSearch key={`${me.id}:${clubId}`} clubId={clubId} userId={me.id} />
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_240px]">
         <RecordsPanel key={clubId} clubId={clubId} title="자료 업로드·목록" />
         <Card className="space-y-3 p-5">

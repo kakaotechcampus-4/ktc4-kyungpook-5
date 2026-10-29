@@ -1,4 +1,11 @@
-import { apiDownload, apiGet, apiGetPage, apiPost, apiPostForm } from '@/shared/api/client'
+import {
+  apiDownload,
+  apiGet,
+  apiGetEnvelope,
+  apiGetPage,
+  apiPost,
+  apiPostForm,
+} from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
 import type { ClubRecord, RecordDetail, UploadRecordInput } from '@/features/records/types'
 
@@ -28,4 +35,12 @@ export function retryRecordIndex(recordId: string) {
 
 export function downloadRecord(recordId: string, fileName: string) {
   return apiDownload(`/records/${encodeURIComponent(recordId)}/file`, fileName)
+}
+
+export function searchRecords(clubId: string, query: string, page: number) {
+  const params = new URLSearchParams({ clubId, query, page: String(page), size: '20' })
+  return apiGetEnvelope<
+    components['schemas']['RecordSearchData'],
+    components['schemas']['PageMeta']
+  >(`/records/search?${params}`)
 }

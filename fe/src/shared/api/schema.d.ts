@@ -384,6 +384,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/records/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Records */
+        get: operations["search_records_api_v1_records_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/records": {
         parameters: {
             query?: never;
@@ -995,6 +1012,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/test-support/auth/kakao-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kakao Login Bypass
+         * @description 카카오 동의 화면 없이 테스트 프로필로 바로 세션을 발급한다.
+         */
+        post: operations["kakao_login_bypass_api_v1_test_support_auth_kakao_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/test-support/clubs/{club_id}/meetings/{meeting_id}/transcripts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Inject Transcript
+         * @description 실제 Whisper 없이 전사 텍스트를 직접 주입한다 (meeting.curl.sh M05).
+         *
+         *     STT가 만든 전사와 같은 경로(meeting_service)로 저장한다. final이면 판단 작업이
+         *     자동으로 생기고, 연결된 WebSocket이 있으면 결과가 그쪽으로도 나간다.
+         *     분기를 입력으로 지정하지 않는다 — 판단은 문장만 보고 한다.
+         */
+        post: operations["inject_transcript_api_v1_test_support_clubs__club_id__meetings__meeting_id__transcripts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/test-support/clubs/{club_id}/discord-connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Fixture Connection
+         * @description 실제 bot credential 없이 이벤트 주입용 연결을 만든다. 외부 Discord에 접속하지 않는다.
+         */
+        post: operations["create_fixture_connection_api_v1_test_support_clubs__club_id__discord_connections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/test-support/clubs/{club_id}/discord-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Inject Discord Event
+         * @description 수집기가 받은 Discord 이벤트를 흉내 낸다. 메시지를 외부로 보내지 않는다.
+         */
+        post: operations["inject_discord_event_api_v1_test_support_clubs__club_id__discord_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1575,6 +1676,12 @@ export interface components {
             /** Meta */
             meta?: null;
         };
+        /** Envelope[FixtureDiscordEventOut] */
+        Envelope_FixtureDiscordEventOut_: {
+            data: components["schemas"]["FixtureDiscordEventOut"];
+            /** Meta */
+            meta?: null;
+        };
         /** Envelope[InvitationAcceptOut] */
         Envelope_InvitationAcceptOut_: {
             data: components["schemas"]["InvitationAcceptOut"];
@@ -1674,6 +1781,12 @@ export interface components {
         /** Envelope[TaskSuggestionOut] */
         Envelope_TaskSuggestionOut_: {
             data: components["schemas"]["TaskSuggestionOut"];
+            /** Meta */
+            meta?: null;
+        };
+        /** Envelope[TestSupportTranscriptOut] */
+        Envelope_TestSupportTranscriptOut_: {
+            data: components["schemas"]["TestSupportTranscriptOut"];
             /** Meta */
             meta?: null;
         };
@@ -1888,6 +2001,56 @@ export interface components {
          * @enum {string}
          */
         ExpenseSource: "MANUAL" | "CSV_IMPORT" | "OCR_IMPORT";
+        /** FixtureConnectionCreateIn */
+        FixtureConnectionCreateIn: {
+            mode: components["schemas"]["DiscordConnectionMode"];
+            /** Guildid */
+            guildId: string;
+            /** Channelids */
+            channelIds: string[];
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+        };
+        /** FixtureDiscordEventIn */
+        FixtureDiscordEventIn: {
+            /** Connectionid */
+            connectionId: string;
+            /** Eventtype */
+            eventType: string;
+            /** Eventid */
+            eventId: string;
+            /** Guildid */
+            guildId: string;
+            /** Channelid */
+            channelId: string;
+            /** Messageid */
+            messageId: string;
+            /** Authorid */
+            authorId?: string | null;
+            /**
+             * Sourceoccurredat
+             * Format: date-time
+             */
+            sourceOccurredAt: string;
+            /** Content */
+            content?: string | null;
+        };
+        /** FixtureDiscordEventOut */
+        FixtureDiscordEventOut: {
+            /** Eventid */
+            eventId: string;
+            /** Messageid */
+            messageId: string;
+            /** Sourceversion */
+            sourceVersion: number;
+            /** Duplicate */
+            duplicate: boolean;
+            /** Jobid */
+            jobId: string | null;
+        };
         /** GenerationReadinessOut */
         GenerationReadinessOut: {
             /** Cangenerate */
@@ -2463,6 +2626,62 @@ export interface components {
          * @enum {string}
          */
         RecordParseStatus: "QUEUED" | "PARSING" | "NEEDS_REVIEW" | "COMPLETED" | "INDEXED" | "FAILED";
+        /** RecordSearchData */
+        RecordSearchData: {
+            /** Items */
+            items: components["schemas"]["RecordSearchItem"][];
+            /**
+             * Semanticstatus
+             * @enum {string}
+             */
+            semanticStatus: "AVAILABLE" | "UNAVAILABLE" | "NO_INDEXED_RECORDS";
+            /** Indexedcount */
+            indexedCount: number;
+            /** Unindexedcount */
+            unindexedCount: number;
+            /** Semanticcandidatelimit */
+            semanticCandidateLimit: number;
+        };
+        /** RecordSearchExcerpt */
+        RecordSearchExcerpt: {
+            /** Text */
+            text: string;
+            location?: components["schemas"]["RecordSearchLocation"] | null;
+        };
+        /** RecordSearchItem */
+        RecordSearchItem: {
+            /** Id */
+            id: string;
+            /** Filename */
+            fileName: string;
+            fileType: components["schemas"]["RecordFileType"];
+            category: components["schemas"]["RecordCategory"];
+            /** Size */
+            size: number;
+            parseStatus: components["schemas"]["RecordParseStatus"];
+            /** Indexerror */
+            indexError?: {
+                [key: string]: unknown;
+            } | null;
+            /** Createdat */
+            createdAt: string;
+            /** Matchtypes */
+            matchTypes: ("FILENAME" | "CONTENT" | "SEMANTIC")[];
+            /** Excerpts */
+            excerpts: components["schemas"]["RecordSearchExcerpt"][];
+            /** Semanticscore */
+            semanticScore?: number | null;
+        };
+        /** RecordSearchLocation */
+        RecordSearchLocation: {
+            /** Label */
+            label: string;
+        };
+        /** RecordSearchResponse */
+        RecordSearchResponse: {
+            data: components["schemas"]["RecordSearchData"];
+            meta: components["schemas"]["PageMeta"];
+        };
         /** RefreshIn */
         RefreshIn: {
             /** Refreshtoken */
@@ -2722,6 +2941,57 @@ export interface components {
          * @enum {string}
          */
         TaskSuggestionStatus: "PROPOSED" | "ACCEPTED";
+        /**
+         * TestSupportTranscriptIn
+         * @description 실제 Whisper 없이 전사 텍스트를 직접 주입한다 (meeting.curl.sh M05와 동일한 패턴).
+         */
+        TestSupportTranscriptIn: {
+            /** Seq */
+            seq: number;
+            /** Startms */
+            startMs: number;
+            /** Endms */
+            endMs: number;
+            /** Final */
+            final: boolean;
+            /** Text */
+            text: string;
+            /** Speakerlabel */
+            speakerLabel?: string | null;
+            /** Expectedversion */
+            expectedVersion?: number | null;
+        };
+        /** TestSupportTranscriptOut */
+        TestSupportTranscriptOut: {
+            /** Id */
+            id: string;
+            /** Sourceid */
+            sourceId: string;
+            /** Sourceversion */
+            sourceVersion: number;
+            /** Seq */
+            seq: number;
+            /** Text */
+            text: string;
+            /** Final */
+            final: boolean;
+            /** Version */
+            version: number;
+            /** Speakerlabel */
+            speakerLabel: string | null;
+            /** Startms */
+            startMs: number | null;
+            /** Endms */
+            endMs: number | null;
+            /** Decisionjobid */
+            decisionJobId: string | null;
+            /** Createdat */
+            createdAt: string;
+            /** Modifiedat */
+            modifiedAt: string;
+            /** Jobid */
+            jobId: string | null;
+        };
         /** TranscriptListOut */
         TranscriptListOut: {
             /** Cursor */
@@ -3632,6 +3902,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_MeetingOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_records_api_v1_records_search_get: {
+        parameters: {
+            query: {
+                clubId: string;
+                query: string;
+                page?: number;
+                size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordSearchResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5064,6 +5370,151 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StepListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    kakao_login_bypass_api_v1_test_support_auth_kakao_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KakaoLoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_SessionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inject_transcript_api_v1_test_support_clubs__club_id__meetings__meeting_id__transcripts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestSupportTranscriptIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_TestSupportTranscriptOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_fixture_connection_api_v1_test_support_clubs__club_id__discord_connections_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FixtureConnectionCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_DiscordConnectionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inject_discord_event_api_v1_test_support_clubs__club_id__discord_events_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FixtureDiscordEventIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_FixtureDiscordEventOut_"];
                 };
             };
             /** @description Validation Error */

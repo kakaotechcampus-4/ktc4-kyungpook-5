@@ -48,6 +48,10 @@ export function apiGet<T>(path: string): Promise<T> {
   return request<T>(path).then((body) => body.data)
 }
 
+export function apiGetEnvelope<T, M = ApiMeta>(path: string): Promise<ApiSuccess<T, M>> {
+  return request<T, M>(path)
+}
+
 // 목록 조회는 meta.totalCount("12건 중 5건 표시")까지 필요해서 봉투째 돌려준다.
 export function apiGetPage<T, M = ApiMeta>(path: string): Promise<ApiSuccess<T[], M>> {
   return request<T[], M>(path)
