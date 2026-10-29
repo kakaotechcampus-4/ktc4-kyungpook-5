@@ -8,7 +8,13 @@ from collections.abc import Sequence
 from datetime import date, datetime
 from typing import Protocol
 
-from app.core.enums import ActionStatus, ActionType, MemberRole, StepState
+from app.core.enums import (
+    SERVICE_ROLES,
+    ActionStatus,
+    ActionType,
+    MemberRole,
+    StepState,
+)
 
 # 되돌릴 수 없고(irreversible) 승인이 필요한(approve_needed) 외부 영향 행동.
 # NF3: 공지·예약·송금·환불 등 외부에 영향을 주는 액션은 Approval 레코드가
@@ -37,8 +43,9 @@ def action_defaults(action_type: ActionType) -> tuple[bool, bool]:
     return False, False
 
 
-# 승인·거절·확인요청 응답을 할 수 있는 역할 (FE 명세 v1 — 승인·계획 변경은 운영진만).
-_RESOLVER_ROLES: frozenset[MemberRole] = frozenset({MemberRole.OWNER, MemberRole.MANAGER})
+# 승인·거절·확인요청 응답을 할 수 있는 역할. 서비스 이용 대상(SERVICE_ROLES)과 같게 둬서
+# 역할 정책이 바뀌면 조회 권한(ensure_member)과 canApprove가 함께 따라가게 한다.
+_RESOLVER_ROLES: frozenset[MemberRole] = frozenset(SERVICE_ROLES)
 
 
 def can_resolve(role: MemberRole, status: ActionStatus) -> bool:
