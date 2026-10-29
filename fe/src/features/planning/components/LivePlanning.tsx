@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { usePlanningChat, usePlanningDrafts } from '@/features/planning/hooks'
 import { PlanChat } from '@/features/planning/components/PlanChat'
@@ -85,6 +86,7 @@ function Conversation({
   userId: string | undefined
 }) {
   const live = usePlanningChat(clubId, eventId, userId, onCreated)
+  const [showFailure, setShowFailure] = useState(Boolean(failedText))
   if (eventId && live.snapshot.isLoading)
     return (
       <Card className="p-5" role="status">
@@ -108,11 +110,15 @@ function Conversation({
       <div className="flex flex-col items-start gap-5 lg:flex-row">
         <PlanChat
           messages={live.messages}
-          onSend={live.send}
+          onSend={async (text) => {
+            const success = await live.send(text)
+            if (success) setShowFailure(false)
+            return success
+          }}
           busy={live.busy}
           error={
             live.error ||
-            (failedText ? '이전 요청 결과를 확인해 주세요. 서버에 반영됐을 수 있어요.' : '')
+            (showFailure ? '이전 요청 결과를 확인해 주세요. 서버에 반영됐을 수 있어요.' : '')
           }
           persisted={!!eventId}
           initialDraft={failedText}
