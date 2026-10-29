@@ -1,6 +1,5 @@
 // 테스트 UI의 생성 계약. 버튼 요청에는 사용자 발화를 만들지 않는다.
 import type { AgentDraft } from './agent-playground'
-import { STEP_CATALOGUE } from './catalogue'
 import type { Fact } from './playground'
 import type { PlanStep, StepActor, StepPhase } from './types'
 
@@ -18,7 +17,7 @@ export interface PlanPreview {
     deadline: string | null
     actions: { type: string; title: string; due_date: string | null }[]
   }[]
-  excluded_steps: { code: string; reason: string }[]
+  excluded_steps: { code: string; name: string; reason: string }[]
   assumptions: { content: string; sources: Fact['sources'] }[]
   open_questions: string[]
   warnings: string[]
@@ -172,16 +171,4 @@ export function toPreviewSteps(preview: PlanPreview): PlanStep[] {
       ...new Set(step.actions.map((action) => ACTIONS[action.type] ?? action.type)),
     ].join(' · '),
   }))
-}
-
-// 기존 FE 카탈로그와 BE의 다른 코드를 명시적으로 변환한다. 단계 표시는 서버의 이름을 사용한다.
-const FE_CODE: Record<string, string> = {
-  ASSIGN_ROLES: 'ASSIGN_STAFF',
-  RESEARCH_VENUE: 'SCOUT_VENUE',
-  DEMAND_SURVEY: 'SURVEY_DEMAND',
-  CONFIRM_DETAILS: 'CONFIRM_HEADCOUNT',
-  PRE_EVENT_NOTICE: 'PRE_NOTICE',
-}
-export function excludedStepName(code: string): string {
-  return STEP_CATALOGUE.find((step) => step.code === (FE_CODE[code] ?? code))?.name ?? code
 }

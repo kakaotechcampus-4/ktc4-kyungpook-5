@@ -132,7 +132,7 @@ AI: 날짜는 비워두고, 이 조건으로 준비 순서를 먼저 잡아볼�
 | --- | --- |
 | `basis_draft` | 어느 조건으로 만든 결과인지 보존 |
 | `steps` | 1개 이상. 허용 code, 단계 목적, 묶음 안 순서, 시작·마감, 예정 행동 |
-| `excluded_steps` | 카탈로그에서 포함하지 않은 단계의 code·이유 |
+| `excluded_steps` | 모델은 code와 이유 작성. 최종 응답에는 코드가 고정 name을 추가 (#198) |
 | `assumptions` | AI가 둔 가정과 근거 출처. 사용자 조건과 분리, 없으면 빈 목록 |
 | `open_questions` | 날짜·장소 등 아직 정할 내용. 모두 즉시 되묻는 질문 목록은 아님 |
 | `warnings` | 일정 충돌·준비 기간 부족·확인할 제약 |
@@ -178,7 +178,7 @@ AI: 날짜는 비워두고, 이 조건으로 준비 순서를 먼저 잡아볼�
 - [turn_policy.py](../../features/planning/turn_policy.py): legacy 생성 가능 판정. 행사 유형 검사 등은 참고하되 이를 대화 권유 타이밍으로 그대로 사용하지 않는다.
 - [contracts.py](../../contracts.py)의 공개 `PlanGenerateRequest`/`PlanDraft`: 초안 타입은 존재하지만 새 Agent의 잠정/보류·권유 상태가 없고, PlannedStep에는 code·목적이 없다. 이를 새 내부 계약이 이미 대체했다고 보지 않는다.
 - [단계 카탈로그](legacy/step-catalog.md): legacy 표시가 있지만 AI-PLAN-05와 StepCode가 참조하는 기준 목록이다. 고정 단계의 원칙은 유지하며 새 생성 입력에 사용할 메타정보를 5-2에서 검증한다. 취소 단계는 생성 카탈로그에서 제외한다.
-- [FE catalogue.ts](../../../../../fe/src/features/planning/catalogue.ts): 일부 코드가 BE와 다르다. 예: ASSIGN_STAFF↔ASSIGN_ROLES, SCOUT_VENUE↔RESEARCH_VENUE, SURVEY_DEMAND↔DEMAND_SURVEY, CONFIRM_HEADCOUNT↔CONFIRM_DETAILS, PRE_NOTICE↔PRE_EVENT_NOTICE. 테스트 UI의 generation-playground.ts에 명시적 변환을 두었고 서버 단계는 서버 이름을 표시한다. 공개 코드 통일은 팀 협의 대상이다.
+- [FE catalogue.ts](../../../../../fe/src/features/planning/catalogue.ts): 초기 연결 때 일부 코드가 BE와 달랐다. 예: ASSIGN_STAFF↔ASSIGN_ROLES, SCOUT_VENUE↔RESEARCH_VENUE, SURVEY_DEMAND↔DEMAND_SURVEY, CONFIRM_HEADCOUNT↔CONFIRM_DETAILS, PRE_NOTICE↔PRE_EVENT_NOTICE. 현재 AI 테스트 UI는 포함/제외 단계 모두 응답의 name을 표시하며 이름 조회용 변환은 제거했다(#198). 제품의 코드/저장 매핑은 BE/FE 연결에서 확인한다.
 - [FE PlanningPage.tsx](../../../../../fe/src/pages/PlanningPage.tsx): 현재 P2 전환은 타이머·샘플 데이터 기반이다([#82](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/82), 관련 병합 PR [#103](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/pull/103)·[#126](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/pull/126)). 실제 생성 결과 연결과 테스트 UI 연결은 별도 작업이다. 이번 설계가 Figma 최신 화면을 재검증한 결과는 아니다.
 
 BE·FE와 합의할 것은 권유/보류·초안 보관 주체, 새 내부 결과와 공개 DTO 사이의 변환, Step code·임시 표시 ID, 조건 변경 후 이전 초안 표시, 성공 후 P2 전환 방식이다. 대화에서 생성 요청을 받는 경로와 화면 버튼 경로는 같은 생성 처리를 쓰되 버튼 이벤트의 신뢰 가능한 입력은 별도로 정한다. 채팅 로그에 없는 클릭을 사용자 발화인 것처럼 꾸며 넣지 않는다. 저장·운영 시작 버튼의 API는 이번에 확정하지 않는다.
@@ -203,7 +203,7 @@ BE·FE와 합의할 것은 권유/보류·초안 보관 주체, 새 내부 결�
 - 버튼 `POST /__planning-test/agent/generate`: request_id·draft·generation·history·기준일/시간대를 받는다. current_message는 받지 않는다. 같은 이력 검증을 거쳐 실제 사용자/AI 텍스트와 마지막 기록 사실만 구성해 별도 버튼 함수로 전달한다. 응답은 `{result: GenerationUpdate, elapsed_ms, fixture_count, source: button}`이며 답변/이력을 새로 만들지 않는다.
 - FE는 draft/history/generation을 하나의 세션 상태로 보관한다. 버튼 생성은 generation만 갱신하고 채팅 이력·말풍선을 추가하지 않는다. 성공한 generated 결과에서만 P2로 이동한다. 실패 응답에서도 채팅의 유효한 조건 변경은 유지한다.
 - 생성/전송 중 입력·초기화·다음 버튼을 잠근다. 네트워크 오류는 요청 전체의 스냅샷과 같은 ID로 재시도하고, 그동안 다른 요청을 막는다. 응답을 받은 생성 실패는 설명하고 현재 상태로 다시 생성할 수 있게 한다.
-- P2는 테스트 앱에 복사한 StepFlow를 읽기 전용으로 사용한다. 제품 FE의 컴포넌트를 import하지 않는다. 서버가 준 이름·묶음·담당·목적·미정 일정을 표시하며 FE/BE 코드 차이는 제외 단계 이름을 찾는 명시적 변환에 둔다. 가정·출처·미확인·경고·제외 사유도 표시한다. 수정/저장/운영 시작 버튼은 이번 테스트에 제공하지 않는다.
+- P2는 테스트 앱에 복사한 StepFlow를 읽기 전용으로 사용한다. 제품 FE의 컴포넌트를 import하지 않는다. 서버가 준 이름·묶음·담당·목적·미정 일정을 표시하며 제외 단계도 code를 다시 번역하지 않고 응답의 name과 reason을 표시한다(#198). 가정·출처·미확인·경고도 표시한다. 수정/저장/운영 시작 버튼은 이번 테스트에 제공하지 않는다.
 - 채팅으로 돌아가도 초안은 유지한다. 조건이 바뀌면 preview_is_current로 이전 초안임을 표시한다. 새 대화/새로고침은 브라우저 상태를 비운다.
 
 실제 모델 사례는 실행 전 기대 결과를 고정하고 실패도 남긴다. API 없는 회귀와 실제 모델·UI 결과를 구분해 [평가 기록](evaluation.md)에 기록한다.

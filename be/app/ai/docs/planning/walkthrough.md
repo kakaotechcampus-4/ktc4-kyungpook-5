@@ -304,6 +304,40 @@ ButtonPlanGenerationRequest(request_id="click-1", draft=MT·50명·날짜 미정
 
 `generate_with_context()`는 성공한 preview만 상태에 채택한다. 같은 클릭 ID·같은 기준으로 성공 요청을 다시 보내면 모델 호출 없이 같은 preview를 반환한다. 같은 ID에 다른 조건을 넣으면 재확인을 요구한다. 아직 마지막 성공 한 건만 보관하므로 임의의 오래된 요청 전체를 중복 제거하는 서버 저장소는 아니다. 별도 버튼 HTTP/FE 연결은 아래 5-3 절을 따른다.
 
+### 제외한 단계의 이름은 누가 붙이나? (#198)
+
+예를 들어 생성 모델이 사전 수요 조사를 제외했다고 하자. 이 선택이 적절한지와 별개로, 화면에서 `DEMAND_SURVEY`라는 코드만 보여 주면 운영진이 이해하기 어렵다. 모델이 고정 이름을 다시 작성할 필요도 없다.
+
+```text
+① LLM의 구조화 출력: PlanComposition.excluded_steps
+   {"code": "DEMAND_SURVEY", "reason": "이미 참여 의사를 확인한 행사여서 제외했어요."}
+
+② validate_plan(): 포함/제외 목록과 기존 계획 규칙 검사
+   → BY_CODE[item.code].name 조회
+   → ExcludedPreviewStep(code=..., name="사전 수요 조사", reason=...)
+
+③ 최종 EventPlanPreview.excluded_steps
+   {"code": "DEMAND_SURVEY", "name": "사전 수요 조사", "reason": "이미 참여 의사를 확인한 행사여서 제외했어요."}
+
+④ BE가 제품 응답에 매핑 → FE가 name과 reason을 표시
+   사전 수요 조사
+   이미 참여 의사를 확인한 행사여서 제외했어요.
+```
+
+핵심 코드는 [validate_plan()](../../features/planning/generation/graph.py)의 아래 부분이다. LLM이 고른 코드와 이유를 그대로 두고 이름만 붙인다. 채팅 생성과 버튼 생성 모두 같은 Node를 지나므로 결과 형식도 같다. 생성 모델 호출은 기존 1회다.
+
+```python
+excluded_steps = tuple(ExcludedPreviewStep(
+    code=item.code, name=BY_CODE[item.code].name, reason=item.reason,
+) for item in composition.excluded_steps)
+```
+
+이름의 원본은 공통 [planning_catalog.py](../../planning_catalog.py)의 `PLANNING_STEP_NAMES`다. 포함 단계와 제외 단계 모두 이 목록을 읽는다. 공개 [contracts.py](../../contracts.py)는 내부 Graph에 의존하지 않고 같은 이름 목록을 사용한다. 모델용 `ExcludedPlanStep(code, reason)`과 최종 화면용 `ExcludedPreviewStep(code, name, reason)`을 나눠, LLM 출력 스키마와 프롬프트는 유지했다.
+
+**예전에 저장한 JSON에는 name이 없는데 괜찮을까?** 공개 타입의 `restore_missing_name()`이 누락된 이름만 고정 목록으로 보완한다. `parse_resume_state()`로 복원하거나 공개 요청의 `resume_state`에 dict를 넣는 두 방식 모두 적용된다. 버전 1을 유지하며 기존 초안 ID, 조건, 제외 이유와 대화 이력을 보존한다. 이름이 명시돼 있는데 틀렸거나 코드가 유효하지 않으면 오류를 반환한다. 모델을 다시 부르거나 상태를 초기화하지 않는다.
+
+이 기능은 최초 생성 결과를 읽기 쉽게 만드는 보완이다. P1에 단계 편집 Tool을 추가한 것이 아니며, P2의 사용자 삭제/복원과 AI 영향 검토는 별도 범위다. 테스트 UI의 표시와 사진은 [검증 기록](evaluation.md#제외-단계-이름과-저장-호환-198-2026-10-28)에 있다. 실제 제품 BE/FE 연결은 #187에서 확인한다.
+
 ### 생성 호출이 긴 JSON을 끝까지 받는 방법 (#176)
 
 입력이 `워크숍 / 약 40명 / 25,000원 / 10월 31일~11월 2일`이면 모델은 여러 준비 단계·일정·행동을 JSON 한 덩어리로 작성한다. 짧은 채팅 답변보다 출력이 길다.
@@ -414,7 +448,7 @@ generate() — '다음: 흐름 만들기' 클릭
 
 이 경로에서 버튼 요청은 current_message가 없다. 로컬 API는 `validate_planning_history()`로 채팅과 같은 이력 검사를 하고, `plan_messages()`와 `latest_reference_facts()`로 실제 문맥·최근 근거만 준비한다. 클릭을 사용자 말풍선으로 만들지 않는다.
 
-[AgentPlanPreview.tsx](../../tests/ui/planning/src/features/planning/components/AgentPlanPreview.tsx)가 검증된 preview를 테스트 앱 안의 StepFlow에 전달한다. [generation-playground.ts](../../tests/ui/planning/src/features/planning/generation-playground.ts)의 `toPreviewSteps()`는 서버 이름·묶음·담당·목적·예정 행동을 표시 타입으로 바꾼다. 미정 날짜는 '미정'이다. 수정 콜백을 전달하지 않아 수정 버튼도 보이지 않는다. 제외 단계의 FE/BE 코드 차이는 명시적인 변환표로 이름을 찾는다.
+[AgentPlanPreview.tsx](../../tests/ui/planning/src/features/planning/components/AgentPlanPreview.tsx)가 검증된 preview를 테스트 앱 안의 StepFlow에 전달한다. [generation-playground.ts](../../tests/ui/planning/src/features/planning/generation-playground.ts)의 `toPreviewSteps()`는 서버 이름·묶음·담당·목적·예정 행동을 표시 타입으로 바꾼다. 미정 날짜는 '미정'이다. 수정 콜백을 전달하지 않아 수정 버튼도 보이지 않는다. 제외 단계도 서버 응답의 name과 reason을 그대로 표시한다. 이름 조회를 위한 FE/BE 코드 변환표는 제거했다(#198).
 
 버튼 활성화는 행사 유형이 있고 미해결 변경이 없는지 확인한다. 권유 상태가 deferred여도 사용자가 직접 누르면 요청할 수 있다. 전송 중에는 입력·초기화·다음 버튼을 잠그고, 버튼 요청에는 별도 생성 중 화면을 표시한다. 단계별 진행률을 알 수 없는 상태에서 가짜 퍼센트는 표시하지 않는다.
 

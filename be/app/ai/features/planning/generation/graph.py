@@ -12,6 +12,7 @@ from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
 
 from ....errors import AIInvalidResponseError, AIOutputLimitError, AIRetryableError, AITimeoutError
+from ....contracts import ExcludedPreviewStep
 from .catalog import BY_CODE, CATALOG, PHASE_ORDER
 from .model import invoke_plan_composition
 from .schemas import (
@@ -114,8 +115,12 @@ def validate_plan(state: GenerationGraphState) -> dict:
     questions = list(composition.open_questions)
     if conditions.start_date is None and "행사 날짜" not in questions:
         questions.append("행사 날짜")
+    # LLM은 code/reason만 쓴다. 검증된 제외 목록에 고정 이름을 붙여 화면 결과를 만든다.
+    excluded_steps = tuple(ExcludedPreviewStep(
+        code=item.code, name=BY_CODE[item.code].name, reason=item.reason,
+    ) for item in composition.excluded_steps)
     return {"preview": EventPlanPreview(id=str(uuid4()), basis_draft=request.basis_draft.model_copy(deep=True),
-        trigger=request.trigger, steps=tuple(steps), excluded_steps=composition.excluded_steps,
+        trigger=request.trigger, steps=tuple(steps), excluded_steps=excluded_steps,
         assumptions=tuple(assumptions), open_questions=tuple(questions), warnings=composition.warnings)}
 
 

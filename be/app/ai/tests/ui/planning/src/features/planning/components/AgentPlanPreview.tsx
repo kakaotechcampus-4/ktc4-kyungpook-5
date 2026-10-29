@@ -1,5 +1,5 @@
 import type { PlanPreview } from '@/features/planning/generation-playground'
-import { excludedStepName, toPreviewSteps } from '@/features/planning/generation-playground'
+import { toPreviewSteps } from '@/features/planning/generation-playground'
 import { toAgentFacts } from '@/features/planning/agent-playground'
 import { PlanFacts } from './PlanFacts'
 import { StepFlow } from './StepFlow'
@@ -77,7 +77,7 @@ export function AgentPlanPreview({ preview, current }: { preview: PlanPreview; c
             )}
             {preview.excluded_steps.map((step) => (
               <div key={step.code} className="text-caption">
-                <p className="font-bold">{excludedStepName(step.code)}</p>
+                <p className="font-bold">{step.name}</p>
                 <p className="mt-1 text-ink2">{step.reason}</p>
               </div>
             ))}
