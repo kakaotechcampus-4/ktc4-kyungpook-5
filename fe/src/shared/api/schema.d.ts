@@ -1012,6 +1012,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clubs/{club_id}/tori/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Message */
+        post: operations["message_api_v1_clubs__club_id__tori_messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/test-support/auth/kakao-login": {
         parameters: {
             query?: never;
@@ -1787,6 +1804,12 @@ export interface components {
         /** Envelope[TestSupportTranscriptOut] */
         Envelope_TestSupportTranscriptOut_: {
             data: components["schemas"]["TestSupportTranscriptOut"];
+            /** Meta */
+            meta?: null;
+        };
+        /** Envelope[ToriMessageOut] */
+        Envelope_ToriMessageOut_: {
+            data: components["schemas"]["ToriMessageOut"];
             /** Meta */
             meta?: null;
         };
@@ -2991,6 +3014,54 @@ export interface components {
             modifiedAt: string;
             /** Jobid */
             jobId: string | null;
+        };
+        /** ToriMessageIn */
+        ToriMessageIn: {
+            /** Message */
+            message: string;
+        };
+        /** ToriMessageOut */
+        ToriMessageOut: {
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "record_search" | "task_list" | "event_planning" | "meeting" | "clarify" | "unsupported";
+            /** Reply */
+            reply: string;
+            records?: components["schemas"]["RecordSearchData"] | null;
+            /** Recordtotalcount */
+            recordTotalCount?: number | null;
+            tasks?: components["schemas"]["ToriTasks"] | null;
+            /** Navigation */
+            navigation?: ("/planning" | "/meetings") | null;
+        };
+        /** ToriTasks */
+        ToriTasks: {
+            /** Items */
+            items: components["schemas"]["ConfirmedTaskOut"][];
+            /** Hasmore */
+            hasMore: boolean;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "self" | "all";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "task" | "schedule" | "all";
+            /** Datefrom */
+            dateFrom?: string | null;
+            /** Dateto */
+            dateTo?: string | null;
+            /**
+             * Timezone
+             * @default Asia/Seoul
+             * @constant
+             */
+            timezone: "Asia/Seoul";
         };
         /** TranscriptListOut */
         TranscriptListOut: {
@@ -5370,6 +5441,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StepListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    message_api_v1_clubs__club_id__tori_messages_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToriMessageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ToriMessageOut_"];
                 };
             };
             /** @description Validation Error */
