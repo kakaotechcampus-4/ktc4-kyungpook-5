@@ -15,7 +15,7 @@ import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,9 +61,23 @@ async def resolve(
             return IdempotencyResult(record=existing, is_replay=True)
         if datetime.now(UTC) - existing.modified_at < STALE_PROCESSING_AFTER:
             raise IdempotencyInProgress()
-        # 오래된 PROCESSING은 처리하던 서버가 사라진 것으로 보고 이어받는다.
-        existing.modified_at = datetime.now(UTC)
-        await session.flush()
+        # 오래된 PROCESSING은 처리하던 서버가 사라진 것으로 보고 이어받는다. 같은 키의
+        # 재요청 둘이 동시에 이 행을 읽을 수 있어, 읽은 시각 그대로일 때만 갱신하는
+        # 조건부 UPDATE로 한 요청만 이어받게 한다. 늦은 쪽은 앞 요청이 커밋할 때까지
+        # 행 잠금에서 기다린 뒤 조건이 맞지 않아 0건이 된다(PR #209 리뷰).
+        taken = await session.execute(
+            update(IdempotencyKey)
+            .where(
+                IdempotencyKey.id == existing.id,
+                IdempotencyKey.status == "PROCESSING",
+                IdempotencyKey.modified_at == existing.modified_at,
+            )
+            .values(modified_at=datetime.now(UTC))
+            .execution_options(synchronize_session=False)
+        )
+        if taken.rowcount != 1:
+            raise IdempotencyInProgress()
+        await session.refresh(existing)
         return IdempotencyResult(record=existing, is_replay=False)
 
     record = IdempotencyKey(
