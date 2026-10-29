@@ -356,3 +356,8 @@ BE는 기존 회의 payload에 IANA `timezone`과 offset이 있는 `occurred_at`
 ## 자료함의 관련 자료 검색
 
 BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(club_id=..., query=..., limit=...), records=port)`를 호출한다. 기존 임베딩과 청크 검색을 사용해 `RetrievedChunk` 목록을 반환하며 각 청크에는 원문 텍스트, 문서 ID·이름·위치, 분류, 유사도가 있다. 유사도는 추천 순위이지 정답 확률이나 적합성 보장이 아니다. 검색 결과가 없으면 빈 튜플, 임베딩 실패는 AI 오류가 전파된다. 검색 port의 DB 오류도 숨기지 않는다. 색인 중/실패 등 상태, 권한, 파일명·본문 검색과 문서별 병합은 BE가 담당한다.
+
+
+## 메인 토리 대화 의도
+
+`classify_tori_intent(ToriIntentRequest(message, reference_date, timezone))`는 `record_search`, `task_list`, `event_planning`, `meeting`, `clarify`, `unsupported` 중 하나와 선택 필드를 반환한다. 검색어는 발화에 근거하며, 일정·할 일은 범위(self/all), 유형(task/schedule/all), 명시적으로 해석 가능한 날짜 범위만 반환한다. 이 결과는 추정 분류이지 권한·실행 지시가 아니다. BE는 인증된 소속과 계정으로 실제 조회하고 변경·예약을 실행하지 않는다. 모델 오류는 AI 오류로 전파하며 실제 근거 없이 답을 만들지 않는다.

@@ -103,3 +103,7 @@ __all__ += ('chat_planning', 'generate_planning_preview', 'planning_generation_r
 from .facade import extract_task_suggestions
 from .features.meeting.task_extraction import TaskExtractionRequest, TaskExtractionResult, TaskSuggestion
 __all__ += ("extract_task_suggestions", "TaskExtractionRequest", "TaskExtractionResult", "TaskSuggestion")
+
+# 메인 대화는 분류만 제공하며 조회 권한과 실행은 BE가 담당한다.
+from .features.tori.intent import ToriIntentRequest, ToriIntentResult, classify_tori_intent
+__all__ += ("ToriIntentRequest", "ToriIntentResult", "classify_tori_intent")
