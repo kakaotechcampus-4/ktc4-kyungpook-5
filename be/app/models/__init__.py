@@ -14,7 +14,7 @@ from app.models.common import IdempotencyKey
 from app.models.discord import DiscordConnection, DiscordMessage
 from app.models.events import Action, Event, Participant, Step
 from app.models.meetings import Meeting, MeetingAudioChunk, TranscriptSegment
-from app.models.records import Record
+from app.models.records import Record, RecordChunk
 from app.models.tasks import TaskSuggestion
 
 __all__ = [

@@ -7,6 +7,7 @@ test_support.py의 주입 경로로 넣는다.
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     Form,
@@ -123,6 +124,7 @@ async def get_meeting(
 )
 async def upload_audio_chunk(
     meeting_id: str,
+    background_tasks: BackgroundTasks,
     seq: int = Form(..., ge=1),
     start_ms: int = Form(..., alias="startMs", ge=0),
     end_ms: int = Form(..., alias="endMs", ge=0),
@@ -140,6 +142,7 @@ async def upload_audio_chunk(
         file_name=file.filename or f"chunk-{seq}",
         mime_type=file.content_type,
         content=await file.read(),
+        background_tasks=background_tasks,
     )
     return Envelope(data=AudioChunkOut(chunk_id=chunk.id, seq=chunk.seq, job_id=chunk.job_id))
 

@@ -259,9 +259,12 @@ class ContextDecisionStatus(CodeEnum):
     """판단 기록의 유효성. route(무엇을 하기로 했는지)와 따로 본다.
 
     STALE: 근거 원문이 바뀌어 이 판단을 더 이상 최신 결과로 보여주지 않는다.
+    FAILED: AI 호출 자체가 실패했다. 실패도 기록해야 어떤 말에서 자주 실패하는지
+    셀 수 있다(#141).
     """
 
     SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
     STALE = "STALE"
 
 

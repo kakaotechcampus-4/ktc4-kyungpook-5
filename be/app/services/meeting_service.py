@@ -1,22 +1,31 @@
-"""회의 세션·음성 청크·전사 도메인 오케스트레이션 (#135).
+"""회의 세션·음성 청크·전사 도메인 오케스트레이션 (#135 → #141).
 
-최종 전사가 생기면 자동으로 Jev 판단 작업을 만든다(services/context_service.py).
-음성 청크의 STT와 판단은 더미다. 실제 작업 큐가 없어 요청 안에서 바로 처리한다.
+최종 전사가 생기면 Jev 판단 작업을 백그라운드로 돌린다(services/context_service.py).
+실제 판단은 검색까지 하면 수 초 걸려(#141), 요청 안에서 기다리면 다음 발화 처리가
+밀린다 — 그래서 FastAPI BackgroundTasks로 따로 실행하고, 끝나면 WebSocket으로
+결과를 보낸다. 이 프로젝트엔 작업 큐가 없어 택한 방식이다(개발 서버 단일 프로세스
+기준). asyncio.create_task는 쓰지 않는다 — anyio 구조적 동시성에서 요청 범위를
+벗어나면 취소될 수 있어(테스트 클라이언트에서 실제로 재현됨), BackgroundTasks를
+쓴다.
+
+음성 청크의 STT는 아직 더미다(#118).
 
 WebSocket 연결 레지스트리는 프로세스 메모리에만 있다 — 워커가 여러 개면 안 쓰인다.
 이번 범위는 단일 개발 서버 기준이라 괜찮다.
 """
 
 import hashlib
+import logging
 from collections import defaultdict
 from datetime import UTC, datetime
 
-from fastapi import WebSocket
+from fastapi import BackgroundTasks, WebSocket
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import AgentJobKind, AgentJobStage, JudgeRoute, MeetingStatus
+from app.core.enums import AgentJobKind, AgentJobStage, MeetingStatus
 from app.core.exceptions import ApiError, VersionConflict
+from app.db.session import get_sessionmaker
 from app.infra.storage import save_file
 from app.models.agent import AgentJob, ContextDecision
 from app.models.meetings import Meeting, MeetingAudioChunk, TranscriptSegment
@@ -24,6 +33,8 @@ from app.services import agent_job_service, context_service
 from app.services.meeting_stt_stub import transcribe_chunk
 
 # --- WebSocket 연결 레지스트리 -------------------------------------------
+
+logger = logging.getLogger(__name__)
 
 _connections: dict[str, set[WebSocket]] = defaultdict(set)
 
@@ -137,6 +148,7 @@ def _judgment_message(
         "sourceVersion": segment.version,
         "jobId": job.id,
         "contextDecisionId": decision.id,
+        "status": decision.status.value,
         "route": decision.route.value,
         "kind": decision.kind.value,
         "question": decision.question,
@@ -148,6 +160,57 @@ def _judgment_message(
             "toolCalls": decision.tool_calls,
         },
     }
+
+
+class _WsMeetingProgress:
+    """app.ai.MeetingProgressPort 구현체. AI가 실제로 그 단계에 들어갈 때만 보낸다
+    (예전처럼 route를 보고 BE가 추측해서 SEARCHING을 미리 보내지 않는다)."""
+
+    def __init__(self, meeting_id: str, segment_id: str, seq: int) -> None:
+        self._meeting_id = meeting_id
+        self._segment_id = segment_id
+        self._seq = seq
+
+    async def stage_changed(self, utterance_id: str, stage: str) -> None:
+        await _broadcast(
+            self._meeting_id,
+            {
+                "type": "stage",
+                "segmentId": self._segment_id,
+                "seq": self._seq,
+                "stage": stage,
+            },
+        )
+
+
+async def _judge_in_background(meeting_id: str, segment_id: str, seq: int) -> None:
+    """요청과 무관한 자기 세션으로 판단을 돌린다 — AI 호출 중 요청 세션을 쥐지 않기
+    위해서다(db/session.py, #187에서 확인). 늦게 끝나도 결과를 버리지 않는다."""
+    try:
+        async with get_sessionmaker()() as session:
+            meeting = await session.get(Meeting, meeting_id)
+            segment = await session.get(TranscriptSegment, segment_id)
+            if meeting is None or segment is None:
+                return
+            job, decision = await context_service.decide_meeting_segment(
+                session, meeting=meeting, segment=segment,
+                progress=_WsMeetingProgress(meeting_id, segment_id, seq),
+            )
+            await session.commit()
+            await session.refresh(segment)
+        await _broadcast(meeting_id, _judgment_message(segment, job, decision))
+    except Exception:
+        # app.ai.AIError는 context_service 안에서 이미 FAILED로 기록하고 돌아온다.
+        # 여기 걸리는 건 BE 쪽 예상 못 한 예외다 — 그래도 화면이 무한정 기다리지
+        # 않도록 알린다.
+        logger.exception(
+            "meeting judgment background task failed meeting_id=%s segment_id=%s",
+            meeting_id, segment_id,
+        )
+        await _broadcast(
+            meeting_id,
+            {"type": "judgment_failed", "segmentId": segment_id, "seq": seq},
+        )
 
 
 async def _save_segment(
@@ -162,8 +225,9 @@ async def _save_segment(
     start_ms: int | None,
     end_ms: int | None,
     audio_chunk_id: str | None = None,
-) -> tuple[TranscriptSegment, ContextDecision | None, list[dict]]:
-    """전사를 저장하고 final이면 판단까지 한다. 커밋 뒤 WebSocket으로 보낼 메시지도 돌려준다."""
+) -> TranscriptSegment:
+    """전사를 저장한다. final이어도 판단은 여기서 하지 않는다 — 호출한 쪽이 커밋한
+    뒤 판단을 백그라운드로 따로 건다(#141, _judge_in_background 참고)."""
     existing = await session.scalar(
         select(TranscriptSegment).where(
             TranscriptSegment.meeting_id == meeting.id, TranscriptSegment.seq == seq
@@ -202,21 +266,7 @@ async def _save_segment(
         )
 
     await session.flush()
-    if not is_final:
-        return segment, None, []
-
-    messages = [
-        {"type": "stage", "segmentId": segment.id, "seq": segment.seq, "stage": "JUDGING"}
-    ]
-    job, decision = await context_service.decide_meeting_segment(
-        session, meeting=meeting, segment=segment
-    )
-    if decision.route == JudgeRoute.RAG:
-        messages.append(
-            {"type": "stage", "segmentId": segment.id, "seq": segment.seq, "stage": "SEARCHING"}
-        )
-    messages.append(_judgment_message(segment, job, decision))
-    return segment, decision, messages
+    return segment
 
 
 async def submit_transcript(
@@ -232,12 +282,14 @@ async def submit_transcript(
     start_ms: int | None,
     end_ms: int | None,
 ) -> TranscriptSegment:
-    """실제 Whisper 대신 텍스트를 직접 받는다(test-support). final이면 판단까지 하고
-    WebSocket에 결과를 밀어준다."""
+    """실제 Whisper 대신 텍스트를 직접 받는다(test-support 전용 — 실제 라우터는
+    add_audio_chunk만 쓴다). 테스트가 결과를 바로 확인할 수 있도록 판단을 요청 안에서
+    동기로 끝낸다 — 백그라운드(add_audio_chunk 쪽)와 달리 여기선 커넥션을 오래
+    쥐는 게 문제되지 않는다(테스트 전용 경로, 동시 요청이 없다)."""
     meeting = await get_meeting(session, club_id=club_id, meeting_id=meeting_id)
     if meeting.status != MeetingStatus.RECORDING:
         raise MeetingNotRecording()
-    segment, _decision, messages = await _save_segment(
+    segment = await _save_segment(
         session,
         meeting,
         seq=seq,
@@ -248,11 +300,17 @@ async def submit_transcript(
         start_ms=start_ms,
         end_ms=end_ms,
     )
+    job = decision = None
+    if is_final:
+        job, decision = await context_service.decide_meeting_segment(
+            session, meeting=meeting, segment=segment,
+            progress=_WsMeetingProgress(meeting_id, segment.id, segment.seq),
+        )
     await session.commit()
-    # created_at/modified_at은 DB가 채워 응답 전에 다시 읽는다.
+    # created_at/modified_at, decision_job_id는 DB가 채워 응답 전에 다시 읽는다.
     await session.refresh(segment)
-    for message in messages:
-        await _broadcast(meeting_id, message)
+    if job is not None and decision is not None:
+        await _broadcast(meeting_id, _judgment_message(segment, job, decision))
     return segment
 
 
@@ -266,6 +324,7 @@ async def add_audio_chunk(
     file_name: str,
     mime_type: str | None,
     content: bytes,
+    background_tasks: BackgroundTasks,
 ) -> MeetingAudioChunk:
     """음성 청크를 저장하고 더미 STT → 판단까지 처리한다.
 
@@ -308,7 +367,7 @@ async def add_audio_chunk(
             TranscriptSegment.meeting_id == meeting.id
         )
     )
-    segment, decision, messages = await _save_segment(
+    segment = await _save_segment(
         session,
         meeting,
         seq=(last_seq or 0) + 1,
@@ -320,18 +379,16 @@ async def add_audio_chunk(
         end_ms=end_ms,
         audio_chunk_id=chunk.id,
     )
+    # 판단(CONTEXT_DECISION)은 별도 작업이라 여기 STT 작업 결과엔 안 담는다 —
+    # 백그라운드로 돌아 이 요청 안에서는 아직 모른다.
     agent_job_service.succeed(
-        session,
-        job,
-        {
-            "audioChunkId": chunk.id,
-            "segmentIds": [segment.id],
-            "contextDecisionIds": [decision.id] if decision else [],
-        },
+        session, job, {"audioChunkId": chunk.id, "segmentIds": [segment.id]}
     )
     await session.commit()
-    for message in messages:
-        await _broadcast(meeting.id, message)
+    # FastAPI BackgroundTasks를 쓴다 — asyncio.create_task는 요청 범위를 벗어나면
+    # 취소될 수 있다(anyio 구조적 동시성). BackgroundTasks는 응답을 보낸 뒤에도
+    # 요청 수명 안에서 끝까지 돈다.
+    background_tasks.add_task(_judge_in_background, meeting.id, segment.id, segment.seq)
     return chunk
 
 
