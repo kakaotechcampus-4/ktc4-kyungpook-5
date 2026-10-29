@@ -20,7 +20,7 @@ from app.ai.tests.test_plan_generation_graph import Model
 
 def request(**extra):
     data = dict(request_id='r1', club_id='club1', event_id='event1', conversation_id='conv1',
-        base_revision=3, draft=PlanningDraft(conditions=PlanningConditions(event_type='MT', fee_per_person=25000)),
+        base_revision=3, draft=PlanningDraft(conditions=PlanningConditions(event_type='MT', fee_per_person=25000), deferred_topics=('dates', 'headcount', 'location')),
         reference_date='2026-10-25', message=PlanningUserMessage(id='u1', content='대략 50명으로 잡자'))
     data.update(extra)
     return PlanningChatRequest(**data)
@@ -195,3 +195,36 @@ def test_without_records_search_tool_is_disabled(monkeypatch):
         return AIMessage(content='조건을 이야기해 주세요.')
     monkeypatch.setattr(graph,'call_agent_model',model)
     assert run(chat_planning(request())).view.record_lookup is None
+
+
+def test_unanswered_topics_block_button_then_explicit_deferrals_survive_restore(monkeypatch):
+    from app.ai.features.planning.generation.readiness import generation_blocks
+    from app.ai.features.planning.generation.schemas import PlanningGenerationState
+    draft = PlanningDraft(conditions=PlanningConditions(event_type="MT"))
+    assert generation_blocks(draft, PlanningGenerationState()) == (
+        "dates_unanswered", "headcount_unanswered", "location_unanswered")
+    async def unexpected(*args, **kwargs):
+        pytest.fail("미답변 상태에서 생성 모델을 호출하면 안 됩니다")
+    monkeypatch.setattr(workflow, "run_plan_generation", unexpected)
+    blocked = run(generate_planning_preview(button(request(draft=draft))))
+    assert blocked.view.generation_result.status == "needs_clarification"
+    assert blocked.view.generation_readiness.reasons[0] == "dates_unanswered"
+    answered = PlanningDraft(conditions=PlanningConditions(event_type="MT", headcount=40),
+                             deferred_topics=("dates", "location"))
+    restored = PlanningDraft.model_validate_json(answered.model_dump_json())
+    assert restored.conditions.start_date is None and restored.conditions.location is None
+    assert generation_blocks(restored, PlanningGenerationState()) == ()
+    assert generation_blocks(restored, PlanningGenerationState(condition_change_pending=True),
+                             use_current_conditions=True) == ()
+
+
+def test_readiness_recomputed_for_restored_state_and_rejects_mismatch(monkeypatch):
+    from app.ai import planning_generation_readiness, PlanningStateError
+    scripted(monkeypatch, [AIMessage(content='일정을 알려주세요.')])
+    initial = PlanningDraft(conditions=PlanningConditions(event_type='MT'))
+    result = run(chat_planning(request(draft=initial)))
+    restored = parse_resume_state(result.next_state.model_dump_json())
+    assert planning_generation_readiness(initial, resume_state=restored).reasons == (
+        'dates_unanswered', 'headcount_unanswered', 'location_unanswered')
+    with pytest.raises(PlanningStateError):
+        planning_generation_readiness(PlanningDraft(), resume_state=restored)

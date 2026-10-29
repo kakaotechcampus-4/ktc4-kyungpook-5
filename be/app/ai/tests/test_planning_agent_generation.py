@@ -19,7 +19,7 @@ from app.ai.tests.test_plan_generation_graph import Model
 
 
 def request(text="날짜는 나중에 정하자", id="u1", **changes):
-    data=dict(draft=PlanningDraft(conditions=PlanningConditions(event_type="MT",headcount=50,fee_per_person=25000)),
+    data=dict(draft=PlanningDraft(conditions=PlanningConditions(event_type="MT",headcount=50,fee_per_person=25000), deferred_topics=("dates", "location")),
               current_message=PlanningMessage(id=id,role="user",text=text),reference_date="2026-10-24")
     data.update(changes)
     return PlanningAgentTurnInput(**data)
@@ -116,7 +116,7 @@ def test_direct_mixed_request_changes_conditions_then_generates_without_new_conf
 
 def test_failed_date_change_blocks_generation_and_other_field_does_not_clear_it():
     req=request("시작을 4월로 바꾸고 만들어줘",draft=PlanningDraft(conditions=PlanningConditions(
-        event_type="MT",start_date="2027-03-20",end_date="2027-03-21")))
+        event_type="MT",start_date="2027-03-20",end_date="2027-03-21"), deferred_topics=("headcount", "location")))
     first,_,model=run(req,[AIMessage(content="",tool_calls=[change_call(req,"start_date","2027-04-20"),gen_call(req)]),
                          AIMessage(content="날짜 변경을 반영하지 못했어요.")])
     assert first.generation.condition_change_pending and not model.calls

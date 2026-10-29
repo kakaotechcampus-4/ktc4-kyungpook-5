@@ -689,7 +689,8 @@ class PlanningPreviewRequest(PlanningRequestContext):
 
 class PlanningGenerationReadiness(ContractModel):
     can_generate: bool
-    reasons: tuple[Literal['event_type_missing', 'condition_change_pending'], ...] = ()
+    reasons: tuple[Literal['event_type_missing', 'dates_unanswered', 'headcount_unanswered',
+                           'location_unanswered', 'condition_change_pending'], ...] = ()
 
     @model_validator(mode='after')
     def validate_reasons(self) -> Self:

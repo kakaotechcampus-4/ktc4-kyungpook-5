@@ -93,7 +93,8 @@ __all__ += (
 
 # P1 실행 계약 초안 (#181). 제품 저장/HTTP는 BE가 연결한다.
 from .facade import chat_planning, generate_planning_preview
-__all__ += ('chat_planning', 'generate_planning_preview')
+from .features.planning.public_workflow import planning_generation_readiness
+__all__ += ('chat_planning', 'generate_planning_preview', 'planning_generation_readiness')
 
 # 회의 일정·할 일 후보 (자료 조회와 독립)
 from .facade import extract_task_suggestions
