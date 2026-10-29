@@ -308,6 +308,29 @@ async def _save_idempotency_response(record_id: str, *, status_code: int, body: 
             await session.commit()
 
 
+async def _release_idempotency(record_id: str) -> None:
+    sessionmaker = get_sessionmaker()
+    async with sessionmaker() as session:
+        await idempotency.release(session, record_id)
+        await session.commit()
+
+
+async def _run_once(idem: idempotency.IdempotencyResult | None, work) -> dict:
+    """멱등키가 있으면 처리 결과를 저장하고, 실패하면 키를 풀어 같은 키로 다시
+    시도할 수 있게 한다. 풀지 않으면 재시도가 처리 중(409)으로 막힌다."""
+    if idem is not None and idem.is_replay:
+        return idem.record.response_body
+    try:
+        out = await work()
+    except Exception:
+        if idem is not None:
+            await _release_idempotency(idem.record.id)
+        raise
+    if idem is not None:
+        await _save_idempotency_response(idem.record.id, status_code=200, body=out)
+    return out
+
+
 class _PreparedTurn:
     __slots__ = ("request", "club_id", "event_id", "member_id", "base_revision")
 
@@ -411,26 +434,22 @@ async def chat(
             session, key=idempotency_key, club_id=club_id, member_id=member_id,
             endpoint=endpoint, request_body=request_body,
         )
-    if idem is not None and idem.is_replay:
-        return idem.record.response_body
 
-    prepared, _event = await _prepare(
-        club_id=club_id, event_id=event_id, member_id=member_id,
-        base_revision=base_revision,
-        build_request=lambda ctx: ai.PlanningChatRequest(
-            **ctx, message=ai.PlanningUserMessage(id=message_id, content=message_content)
-        ),
-    )
+    async def work() -> dict:
+        prepared, _event = await _prepare(
+            club_id=club_id, event_id=event_id, member_id=member_id,
+            base_revision=base_revision,
+            build_request=lambda ctx: ai.PlanningChatRequest(
+                **ctx, message=ai.PlanningUserMessage(id=message_id, content=message_content)
+            ),
+        )
+        try:
+            result = await ai.chat_planning(prepared.request)
+        except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
+            raise _translate_ai_error(error) from error
+        return await _finish(prepared, result, user_message_text=message_content)
 
-    try:
-        result = await ai.chat_planning(prepared.request)
-    except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
-        raise _translate_ai_error(error) from error
-
-    out = await _finish(prepared, result, user_message_text=message_content)
-    if idem is not None:
-        await _save_idempotency_response(idem.record.id, status_code=200, body=out)
-    return out
+    return await _run_once(idem, work)
 
 
 async def generate(
@@ -454,26 +473,22 @@ async def generate(
             session, key=idempotency_key, club_id=club_id, member_id=member_id,
             endpoint=endpoint, request_body=request_body,
         )
-    if idem is not None and idem.is_replay:
-        return idem.record.response_body
 
-    prepared, _event = await _prepare(
-        club_id=club_id, event_id=event_id, member_id=member_id,
-        base_revision=base_revision,
-        build_request=lambda ctx: ai.PlanningPreviewRequest(
-            **ctx, use_current_conditions=use_current_conditions
-        ),
-    )
+    async def work() -> dict:
+        prepared, _event = await _prepare(
+            club_id=club_id, event_id=event_id, member_id=member_id,
+            base_revision=base_revision,
+            build_request=lambda ctx: ai.PlanningPreviewRequest(
+                **ctx, use_current_conditions=use_current_conditions
+            ),
+        )
+        try:
+            result = await ai.generate_planning_preview(prepared.request)
+        except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
+            raise _translate_ai_error(error) from error
+        return await _finish(prepared, result, user_message_text=None)
 
-    try:
-        result = await ai.generate_planning_preview(prepared.request)
-    except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
-        raise _translate_ai_error(error) from error
-
-    out = await _finish(prepared, result, user_message_text=None)
-    if idem is not None:
-        await _save_idempotency_response(idem.record.id, status_code=200, body=out)
-    return out
+    return await _run_once(idem, work)
 
 
 async def get_plan_screen(

@@ -5,14 +5,20 @@ app.ai.chat_planning()/generate_planning_preview()는 실제 모델 호출이라
 검증한다. 실제 모델과의 연동 자체는 app/ai/tests에서 따로 확인한다.
 """
 
+import hashlib
+import json
+import threading
 import uuid
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 
+import anyio
 import pytest
 from fastapi.testclient import TestClient
 
 import app.ai as ai
 from app.db import session as db_session
+from app.models.common import IdempotencyKey
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
 
@@ -297,3 +303,122 @@ async def test_계획_복원에_현재_정책으로_준비상태를_계산한다
         'canGenerate': False,
         'reasons': ['dates_unanswered', 'location_unanswered'],
     }
+
+
+# --- #187 후속: 멱등키 동시 요청·입력 검증·기준일·새 응답 필드 ----------------
+
+CHAT_BODY = {"messageId": "msg-1", "message": "MT 가자", "baseRevision": 0}
+
+
+def _chat(client: TestClient, headers: dict, event_id: str, key: str | None = None):
+    extra = {"Idempotency-Key": key} if key else {}
+    return client.post(
+        f"/api/v1/events/{event_id}/plan/chat", headers={**headers, **extra}, json=CHAT_BODY
+    )
+
+
+async def test_같은_키의_첫_요청이_처리_중이면_AI를_다시_부르지_않고_409(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#203 멘토 리뷰: 첫 요청이 AI를 기다리는 동안 같은 키로 다시 보내면 두 번 호출됐다."""
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+    started, release = threading.Event(), threading.Event()
+    call_count = 0
+
+    async def slow_chat_planning(request, *, records=None):
+        nonlocal call_count
+        call_count += 1
+        started.set()
+        await anyio.to_thread.run_sync(release.wait)
+        return _fake_chat_result(event_type="MT")
+
+    monkeypatch.setattr("app.ai.chat_planning", slow_chat_planning)
+
+    first: list = []
+    worker = threading.Thread(
+        target=lambda: first.append(_chat(client, headers, event_id, "idem-slow"))
+    )
+    worker.start()
+    assert started.wait(10)
+
+    second = _chat(client, headers, event_id, "idem-slow")
+    release.set()
+    worker.join(10)
+
+    assert second.status_code == 409, second.text
+    assert second.json()["error"]["code"] == "IDEMPOTENCY_IN_PROGRESS"
+    assert first[0].status_code == 200, first[0].text
+    assert call_count == 1
+    # 처리가 끝난 뒤 같은 키로 다시 보내면 저장된 응답을 그대로 받는다.
+    replay = _chat(client, headers, event_id, "idem-slow")
+    assert replay.json() == first[0].json()
+    assert call_count == 1
+
+
+async def _leftover_processing_key(
+    client: TestClient, headers: dict, club_id: str, key: str, *, age: timedelta
+) -> None:
+    """처리하던 서버가 사라져 PROCESSING으로 남은 키를 흉내 낸다."""
+    members = client.get(f"/api/v1/clubs/{club_id}/members", headers=headers).json()
+    body_hash = hashlib.sha256(json.dumps(CHAT_BODY, sort_keys=True).encode()).hexdigest()
+    async with db_session.get_sessionmaker()() as session:
+        session.add(
+            IdempotencyKey(
+                club_id=club_id,
+                member_id=members["data"][0]["id"],
+                endpoint="POST /events/{event_id}/plan/chat",
+                idempotency_key=key,
+                request_body_hash=body_hash,
+                status="PROCESSING",
+                modified_at=datetime.now(UTC) - age,
+            )
+        )
+        await session.commit()
+
+
+async def test_오래_남은_처리_중_키는_새_요청이_이어받는다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    async def fake_chat_planning(request, *, records=None):
+        return _fake_chat_result(event_type="MT")
+
+    monkeypatch.setattr("app.ai.chat_planning", fake_chat_planning)
+    await _leftover_processing_key(
+        client, headers, club_id, "idem-fresh", age=timedelta(seconds=10)
+    )
+    await _leftover_processing_key(
+        client, headers, club_id, "idem-stale", age=timedelta(minutes=10)
+    )
+
+    assert _chat(client, headers, event_id, "idem-fresh").status_code == 409
+    assert _chat(client, headers, event_id, "idem-stale").status_code == 200
+
+
+async def test_AI가_실패하면_같은_키로_다시_시도할_수_있다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+    call_count = 0
+
+    async def flaky_chat_planning(request, *, records=None):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise ai.AIRetryableError("일시 오류")
+        return _fake_chat_result(event_type="MT")
+
+    monkeypatch.setattr("app.ai.chat_planning", flaky_chat_planning)
+
+    failed = _chat(client, headers, event_id, "idem-retry")
+    retried = _chat(client, headers, event_id, "idem-retry")
+
+    assert failed.status_code == 503
+    assert failed.json()["error"]["code"] == "AI_UNAVAILABLE"
+    assert retried.status_code == 200, retried.text
+    assert call_count == 2
+
