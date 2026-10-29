@@ -11,3 +11,6 @@ export const loginWithKakao = (code: string) =>
 export const getMe = () => apiGet<CurrentAccount>('/me')
 export const logout = (refreshToken: string) =>
   apiPost<void>('/auth/logout', { refreshToken } satisfies Schemas['LogoutIn'])
+
+export const signup = (body: Schemas['SignupIn']) =>
+  apiPost<Schemas['SignupOut']>('/auth/signup', body)

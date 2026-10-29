@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { getMe, login, loginWithKakao, logout, type LoginInput } from '@/features/auth/api'
+import { getMe, login, loginWithKakao, logout, signup, type LoginInput } from '@/features/auth/api'
 import { ApiError } from '@/shared/api/types'
 import { getRefreshToken, useAuthStore } from '@/shared/auth/store'
 
@@ -156,4 +156,8 @@ export function useNotificationClub(requestedClubId: string | null): Notificatio
   if (!requestedClubId) return { status: 'idle', error: null }
   if (!identity || !me || outcome?.identity !== identity) return { status: 'waiting', error: null }
   return outcome.result
+}
+
+export function useSignup() {
+  return useMutation({ mutationFn: signup })
 }
