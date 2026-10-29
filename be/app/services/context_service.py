@@ -1,17 +1,20 @@
 """Jev 판단 오케스트레이션 — 판단 작업 생성, 분기별 도구 호출, 판단·할 일 후보 저장.
 
-최종 전사·허용 채널 메시지가 들어오면 자동으로 판단 작업을 만든다. PM이 판단 API를
-따로 부르지 않는다. 판단·검색·생성은 더미(meeting_judge_stub, context_tools_stub)다.
+최종 전사가 들어오면 자동으로 판단 작업을 만들고 app.ai.judge_utterance를 실제로
+부른다(#141). Discord 메시지 판단은 아직 더미다(meeting_judge_stub 패턴 재사용,
+#116 범위).
 
 NONE 분기는 판단 기록만 남기고 검색·생성·할 일 도구를 부르지 않는다.
 """
 
 import time
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.ai as ai
 from app.core.enums import (
     AgentJobKind,
     AgentJobStage,
@@ -23,14 +26,12 @@ from app.core.enums import (
 from app.core.exceptions import ApiError
 from app.models.agent import AgentJob, ContextDecision
 from app.models.discord import DiscordMessage
+from app.models.events import Event
 from app.models.meetings import Meeting, TranscriptSegment
 from app.models.tasks import TaskSuggestion
 from app.services import agent_job_service, context_tools_stub
-from app.services.meeting_judge_stub import (
-    STUB_MODEL_NAME,
-    STUB_PROMPT_VERSION,
-    judge_utterance_stub,
-)
+from app.services.meeting_judge_stub import STUB_MODEL_NAME, STUB_PROMPT_VERSION
+from app.services.record_search_port import DbRecordSearchPort
 
 POLICY_VERSION = f"{STUB_PROMPT_VERSION}+{context_tools_stub.STUB_TOOLS_VERSION}"
 # Discord 판단에 함께 보는 앞 메시지 수(이번 메시지 포함).
@@ -54,54 +55,101 @@ def _tool_call(tool: str, started: float, **extra: Any) -> dict[str, Any]:
     }
 
 
+def _to_utterance(meeting: Meeting, segment: TranscriptSegment) -> "ai.MeetingUtterance":
+    """회의 시작 시각 + 녹음 안 오프셋(ms) = 실제 말한 시각."""
+    base = meeting.started_at or datetime.now(UTC)
+    return ai.MeetingUtterance(
+        utterance_id=segment.id,
+        seq=segment.seq,
+        version=segment.version,
+        text=segment.text,
+        started_at=base + timedelta(milliseconds=segment.start_ms or 0),
+        ended_at=base + timedelta(milliseconds=segment.end_ms or 0),
+    )
+
+
+async def _previous_final_segments(
+    session: AsyncSession, *, meeting_id: str, before_seq: int
+) -> list[TranscriptSegment]:
+    rows = await session.scalars(
+        select(TranscriptSegment)
+        .where(
+            TranscriptSegment.meeting_id == meeting_id,
+            TranscriptSegment.is_final.is_(True),
+            TranscriptSegment.seq < before_seq,
+        )
+        .order_by(TranscriptSegment.seq.desc())
+        .limit(ai.MEETING_CONTEXT_UTTERANCES)
+    )
+    return list(reversed(list(rows)))
+
+
 async def decide_meeting_segment(
-    session: AsyncSession, *, meeting: Meeting, segment: TranscriptSegment
+    session: AsyncSession,
+    *,
+    meeting: Meeting,
+    segment: TranscriptSegment,
+    progress: "ai.MeetingProgressPort | None" = None,
 ) -> tuple[AgentJob, ContextDecision]:
     """확정 전사 하나를 판단한다. 커밋은 호출하는 쪽이 한다."""
     job = await agent_job_service.create_job(
         session, club_id=meeting.club_id, kind=AgentJobKind.CONTEXT_DECISION
     )
     agent_job_service.start(session, job, AgentJobStage.DECIDING)
-    judged = judge_utterance_stub(segment.text)
 
-    kind = JudgeKind.NO_LOOKUP
-    output: str | None = None
-    citations: list[dict[str, Any]] | None = None
-    tool_calls: list[dict[str, Any]] = []
-    if judged.route == JudgeRoute.RAG:
-        agent_job_service.set_stage(session, job, AgentJobStage.RETRIEVING)
-        started = time.perf_counter()
-        hits = await context_tools_stub.search_records(
-            session, club_id=meeting.club_id, query=judged.question or segment.text
-        )
-        tool_calls.append(
-            _tool_call(
-                "records.search",
-                started,
-                input={"clubId": meeting.club_id, "query": judged.question},
-                resultCount=len(hits),
+    context_segments = await _previous_final_segments(
+        session, meeting_id=meeting.id, before_seq=segment.seq
+    )
+    event: ai.MeetingEvent | None = None
+    if meeting.event_id:
+        linked_event = await session.get(Event, meeting.event_id)
+        if linked_event is not None:
+            event = ai.MeetingEvent(
+                event_id=linked_event.id, title=linked_event.title,
+                event_type=linked_event.event_type, start_date=linked_event.start_date,
             )
+
+    request = ai.JudgeUtteranceRequest(
+        meeting_id=meeting.id, club_id=meeting.club_id,
+        utterance=_to_utterance(meeting, segment),
+        context=tuple(_to_utterance(meeting, s) for s in context_segments),
+        event=event,
+    )
+
+    try:
+        result = await ai.judge_utterance(
+            request, records=DbRecordSearchPort(session), progress=progress
         )
-        citations = [
-            {
-                "recordId": hit.record_id,
-                "fileName": hit.file_name,
-                "location": {"label": hit.location_label},
-                "text": hit.text,
-            }
-            for hit in hits
-        ]
-        if hits:
-            kind = JudgeKind.ANSWER
-            output = context_tools_stub.answer_from_hits(hits)
-        else:
-            kind = JudgeKind.NOT_FOUND
-    elif judged.route == JudgeRoute.LLM:
-        agent_job_service.set_stage(session, job, AgentJobStage.GENERATING)
-        started = time.perf_counter()
-        output = context_tools_stub.generate_text(segment.text)
-        tool_calls.append(_tool_call("llm.generate", started))
-        kind = JudgeKind.ANSWER
+    except ai.AIError as error:
+        decision = ContextDecision(
+            club_id=meeting.club_id, job_id=job.id,
+            source_type=ContextSourceType.MEETING_TRANSCRIPT, meeting_id=meeting.id,
+            sources=[{"sourceId": segment.id, "sourceVersion": segment.version}],
+            status=ContextDecisionStatus.FAILED,
+            route=JudgeRoute.NONE, kind=JudgeKind.NO_LOOKUP,
+            reason_summary=f"판단 실패: {type(error).__name__}",
+            tool_calls=[],
+            model_version=STUB_MODEL_NAME, policy_version=POLICY_VERSION,
+        )
+        session.add(decision)
+        await session.flush()
+        agent_job_service.fail(session, job, {"error": type(error).__name__})
+        segment.decision_job_id = job.id
+        return job, decision
+
+    citations = [
+        {"recordId": source.record_id, "fileName": source.file_name,
+         "location": {"label": source.location.label}}
+        for source in result.sources
+    ]
+    tool_calls = [
+        {
+            "tool": call.tool, "status": call.status, "durationMs": call.duration_ms,
+            **({"resultCount": call.result_count} if call.result_count is not None else {}),
+            **({"promptVersion": call.prompt_version} if call.prompt_version else {}),
+        }
+        for call in result.trace.tool_calls
+    ]
 
     decision = ContextDecision(
         club_id=meeting.club_id,
@@ -110,15 +158,20 @@ async def decide_meeting_segment(
         meeting_id=meeting.id,
         sources=[{"sourceId": segment.id, "sourceVersion": segment.version}],
         status=ContextDecisionStatus.SUCCEEDED,
-        route=judged.route,
-        kind=kind,
-        reason_summary=judged.reason,
-        question=judged.question,
-        output=output,
-        citations=citations,
+        # result.route/kind는 app.ai 쪽 Literal["RAG","NONE"] 문자열이다. DB 컬럼은
+        # JudgeRoute/JudgeKind라 명시적으로 바꿔야 한다 — 안 그러면 커밋 전까지는
+        # 그냥 str이라 decision.route.value 같은 접근에서 바로 터진다.
+        route=JudgeRoute(result.route),
+        kind=JudgeKind(result.kind),
+        # 판단 이유까지 받으면 0.65초 느려져 실시간 경로에서는 받지 않는다(#111).
+        # 회의가 끝난 뒤 #117에서 채운다.
+        reason_summary=None,
+        question=result.question,
+        output=result.answer,
+        citations=citations or None,
         tool_calls=tool_calls,
-        model_version=STUB_MODEL_NAME,
-        policy_version=POLICY_VERSION,
+        model_version=result.trace.model,
+        policy_version=result.trace.prompt_version,
     )
     session.add(decision)
     await session.flush()

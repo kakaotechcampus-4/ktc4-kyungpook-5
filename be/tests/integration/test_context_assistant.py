@@ -1,7 +1,9 @@
 """Jev 판단·Discord 할 일 후보·mini 활동 API의 실제 DB 동작 테스트.
 
-팀장 요청 curl(meeting·discord·activity)의 정상 흐름을 따른다. 판단·검색·생성·STT는
-더미(services/meeting_judge_stub.py, context_tools_stub.py, meeting_stt_stub.py)다.
+회의 판단은 app.ai.judge_utterance를 실제로 부른다(#141) — 실제 모델 호출(수 초,
+AI_API_KEY 필요)이라 기본값은 monkeypatch로 고정하고(_default_judge_utterance),
+내용을 검증해야 하는 테스트만 따로 바꾼다. Discord·생성·STT는 여전히 더미다
+(services/context_tools_stub.py, meeting_stt_stub.py).
 """
 
 import uuid
@@ -10,6 +12,7 @@ from collections.abc import AsyncIterator
 import pytest
 from fastapi.testclient import TestClient
 
+import app.ai as ai
 from app.db import session as db_session
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
@@ -30,6 +33,34 @@ async def app_db(
     monkeypatch.setenv("DATABASE_URL", migrated_db_url)
     yield
     await db_session.get_engine().dispose()
+
+
+def _fake_judge(
+    *, route: str = "NONE", kind: str = "NO_LOOKUP", question: str | None = None,
+    answer: str | None = None, sources: tuple = (),
+):
+    async def fake(request, *, records, progress=None):
+        return ai.JudgeUtteranceResult(
+            utterance_id=request.utterance.utterance_id,
+            source_version=request.utterance.version,
+            route=route, kind=kind, question=question, answer=answer, sources=sources,
+            trace=ai.JudgeTrace(
+                model="fake-model", prompt_version="fake-v1", judge_ms=1,
+                tool_calls=(
+                    (ai.ToolCall(tool="records.search", input=question or "", status="OK",
+                                 duration_ms=1, result_count=len(sources)),)
+                    if route == "RAG" else ()
+                ),
+            ),
+        )
+
+    return fake
+
+
+@pytest.fixture(autouse=True)
+def _default_judge_utterance(monkeypatch: pytest.MonkeyPatch) -> None:
+    """회의 판단 테스트 대부분은 route 자체가 관심사가 아니라 NONE으로 고정해둔다."""
+    monkeypatch.setattr("app.ai.judge_utterance", _fake_judge())
 
 
 def _login(client: TestClient, tag: str) -> dict:
@@ -77,9 +108,21 @@ def _decision_of_job(client: TestClient, headers: dict, club_id: str, job_id: st
     ).json()["data"]
 
 
-async def test_회칙을_올리면_RAG_판단이_그_기록을_출처로_인용한다(
-    client: TestClient, app_db: None
+async def test_회칙을_올리면_INDEXED로_바뀌고_RAG_판단이_출처를_인용한다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    async def fake_index_record(request):
+        return ai.IndexRecordResult(
+            chunks=(
+                ai.IndexedChunk(
+                    text=request.blocks[0].text, location=request.blocks[0].location,
+                    block_indexes=(0,), embedding=tuple([0.1] * ai.EMBEDDING_DIMENSIONS),
+                ),
+            )
+        )
+
+    monkeypatch.setattr("app.ai.index_record", fake_index_record)
+
     headers, club_id = _owner_with_club(client)
     upload = client.post(
         "/api/v1/records",
@@ -90,9 +133,24 @@ async def test_회칙을_올리면_RAG_판단이_그_기록을_출처로_인용�
     assert upload.status_code == 201, upload.text
     record_id = upload.json()["data"]["id"]
     detail = client.get(f"/api/v1/records/{record_id}", headers=headers).json()["data"]
-    assert detail["parseStatus"] == "COMPLETED"
-    assert detail["parseResult"]["blocks"]
+    # 파싱만이 아니라 app.ai.index_record로 청크까지 저장됐다(#141) — 실제 임베딩
+    # 호출은 DbRecordSearchPort 테스트(test_record_chunks.py)에서 따로 확인한다.
+    assert detail["parseStatus"] == "INDEXED"
 
+    monkeypatch.setattr(
+        "app.ai.judge_utterance",
+        _fake_judge(
+            route="RAG", kind="ANSWER",
+            question="행사 취소 공지는 며칠 전에 해야 하나요?",
+            answer="7일 전까지 공지해야 합니다.",
+            sources=(
+                ai.RecordSource(
+                    record_id=record_id, file_name="rules.csv",
+                    location=ai.SourceLocation(label="2행"),
+                ),
+            ),
+        ),
+    )
     meeting_id = _start_meeting(client, headers, club_id)
     segment = _say(
         client, headers, club_id, meeting_id, 1,
@@ -108,23 +166,6 @@ async def test_회칙을_올리면_RAG_판단이_그_기록을_출처로_인용�
     assert decision["citations"][0]["recordId"] == record_id
     assert decision["citations"][0]["location"]["label"] == "2행"
     assert "7일 전" in decision["output"]
-
-
-async def test_문장_작성_요청은_LLM_분기이고_검색하지_않는다(
-    client: TestClient, app_db: None
-) -> None:
-    headers, club_id = _owner_with_club(client)
-    meeting_id = _start_meeting(client, headers, club_id)
-    segment = _say(
-        client, headers, club_id, meeting_id, 1,
-        "다음 모임 장소를 같이 정하자는 문장을 친근하고 짧게 바꿔 주세요.",
-    )
-
-    decision = _decision_of_job(client, headers, club_id, segment["jobId"])
-
-    assert decision["route"] == "LLM"
-    assert [call["tool"] for call in decision["toolCalls"]] == ["llm.generate"]
-    assert decision["output"]
 
 
 async def test_음성_청크를_올리면_전사와_판단이_이어지고_같은_청크_재전송은_재사용된다(
@@ -145,7 +186,9 @@ async def test_음성_청크를_올리면_전사와_판단이_이어지고_같�
     ).json()["data"]
     assert stt_job["kind"] == "MEETING_STT"
     assert stt_job["status"] == "SUCCEEDED"
-    assert len(stt_job["result"]["contextDecisionIds"]) == 1
+    # 판단(CONTEXT_DECISION)은 별도 작업이라 STT 작업 결과엔 더 이상 안 담는다(#141
+    # — 백그라운드로 따로 돈다).
+    assert "contextDecisionIds" not in stt_job["result"]
 
     retry = client.post(
         f"/api/v1/meetings/{meeting_id}/audio-chunks",

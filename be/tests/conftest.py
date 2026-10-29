@@ -12,6 +12,7 @@ from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy.engine import make_url
 
+import app.ai as ai
 from app.core.config import get_settings
 from app.db import session as db_session
 from app.main import app
@@ -89,6 +90,27 @@ def alembic_cfg(db_url: str) -> Config:
 def migrated_db_url(db_url: str, alembic_cfg: Config) -> str:
     command.upgrade(alembic_cfg, "head")
     return db_url
+
+
+@pytest.fixture(autouse=True)
+def _default_index_record(monkeypatch: pytest.MonkeyPatch) -> None:
+    """기록 업로드는 성공하면 app.ai.index_record를 부른다(#141). 실제 임베딩
+    호출은 비용·시간이 들고 AI_API_KEY가 필요해, 레코드 업로드를 직접 다루지
+    않는 테스트에서도 모르고 걸리지 않도록 기본값을 전역으로 고정해둔다.
+    색인 내용 자체를 검증하는 테스트(test_record_chunks.py 등)는 각자
+    monkeypatch.setattr로 이 기본값을 덮어쓴다."""
+
+    async def fake(request: "ai.IndexRecordRequest") -> "ai.IndexRecordResult":
+        return ai.IndexRecordResult(
+            chunks=(
+                ai.IndexedChunk(
+                    text=request.blocks[0].text, location=request.blocks[0].location,
+                    block_indexes=(0,), embedding=tuple([0.1] * ai.EMBEDDING_DIMENSIONS),
+                ),
+            )
+        )
+
+    monkeypatch.setattr("app.ai.index_record", fake)
 
 
 @pytest.fixture

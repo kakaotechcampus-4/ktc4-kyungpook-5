@@ -1,8 +1,9 @@
-"""회의 세션·전사 API의 응답 계약과 실제 동작 테스트 (#135).
+"""회의 세션·전사 API의 응답 계약과 실제 동작 테스트 (#135 → #141).
 
 meeting.curl.sh의 M02, M05~M09(실제 음성 대신 test-support 경로)가 실제 DB로
-끝까지 도는지 확인한다. 판단은 더미(services/meeting_judge_stub.py)이고, 결과는
-전사 응답의 jobId → agent-jobs → context-decisions 순서로 조회한다.
+끝까지 도는지 확인한다. app.ai.judge_utterance는 실제 모델 호출(수 초, AI_API_KEY
+필요)이라 monkeypatch로 고정해 저장·WebSocket·동시성만 검증한다. 결과는 전사
+응답의 jobId → agent-jobs → context-decisions 순서로 조회한다.
 """
 
 import uuid
@@ -11,6 +12,7 @@ from collections.abc import AsyncIterator
 import pytest
 from fastapi.testclient import TestClient
 
+import app.ai as ai
 from app.db import session as db_session
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
@@ -77,6 +79,35 @@ def _start_meeting(client: TestClient, headers: dict, club_id: str) -> str:
     return res.json()["data"]["id"]
 
 
+def _fake_judge(
+    *, route: str, kind: str, question: str | None = None, answer: str | None = None,
+    sources: tuple = (), with_search_stage: bool = False,
+):
+    """app.ai.judge_utterance를 고정 결과로 대체한다. progress가 있으면 실제 AI처럼
+    JUDGING→(SEARCHING)을 순서대로 쏜다."""
+
+    async def fake(request, *, records, progress=None):
+        if progress is not None:
+            await progress.stage_changed(request.utterance.utterance_id, "JUDGING")
+            if with_search_stage:
+                await progress.stage_changed(request.utterance.utterance_id, "SEARCHING")
+        return ai.JudgeUtteranceResult(
+            utterance_id=request.utterance.utterance_id,
+            source_version=request.utterance.version,
+            route=route, kind=kind, question=question, answer=answer, sources=sources,
+            trace=ai.JudgeTrace(
+                model="fake-model", prompt_version="fake-v1", judge_ms=1,
+                tool_calls=(
+                    (ai.ToolCall(tool="records.search", input=question or "", status="OK",
+                                 duration_ms=1, result_count=len(sources)),)
+                    if with_search_stage else ()
+                ),
+            ),
+        )
+
+    return fake
+
+
 async def test_회의를_시작하면_RECORDING_상태다(client: TestClient, app_db: None) -> None:
     access_token, club_id = _owner_with_club(client)
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -89,8 +120,11 @@ async def test_회의를_시작하면_RECORDING_상태다(client: TestClient, ap
 
 
 async def test_물음표_없는_발화는_NONE으로_판단된다(
-    client: TestClient, app_db: None
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr(
+        "app.ai.judge_utterance", _fake_judge(route="NONE", kind="NO_LOOKUP")
+    )
     access_token, club_id = _owner_with_club(client)
     headers = {"Authorization": f"Bearer {access_token}"}
     meeting_id = _start_meeting(client, headers, club_id)
@@ -109,7 +143,16 @@ async def test_물음표_없는_발화는_NONE으로_판단된다(
     assert decision["toolCalls"] == []
 
 
-async def test_물음표_있는_발화는_RAG로_판단된다(client: TestClient, app_db: None) -> None:
+async def test_물음표_있는_발화는_RAG로_판단된다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "app.ai.judge_utterance",
+        _fake_judge(
+            route="RAG", kind="NOT_FOUND", question="작년 MT 숙소비 얼마였지?",
+            with_search_stage=True,
+        ),
+    )
     access_token, club_id = _owner_with_club(client)
     headers = {"Authorization": f"Bearer {access_token}"}
     meeting_id = _start_meeting(client, headers, club_id)
@@ -127,17 +170,61 @@ async def test_물음표_있는_발화는_RAG로_판단된다(client: TestClient
     )
 
     assert res.status_code == 201, res.text
+    # 이 동아리에는 올린 기록이 없어 찾지 못한다(가짜 응답도 그걸 흉내낸다).
     decision = _decision(client, headers, club_id, res.json()["data"]["jobId"])
     assert decision["route"] == "RAG"
-    # 이 동아리에는 올린 기록이 없어 찾지 못한다.
     assert decision["kind"] == "NOT_FOUND"
     assert decision["question"] == "작년 MT 숙소비 얼마였지?"
     assert decision["toolCalls"][0]["tool"] == "records.search"
 
 
-async def test_같은_seq_정정은_expectedVersion_없으면_409(
-    client: TestClient, app_db: None
+async def test_AI_호출이_실패하면_FAILED로_기록되고_처리하지_못함으로_알린다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    async def failing(request, *, records, progress=None):
+        raise ai.AITimeoutError("판단 호출이 제한 시간을 넘었습니다.")
+
+    monkeypatch.setattr("app.ai.judge_utterance", failing)
+
+    access_token, club_id = _owner_with_club(client)
+    headers = {"Authorization": f"Bearer {access_token}"}
+    meeting_id = _start_meeting(client, headers, club_id)
+
+    with client.websocket_connect(
+        f"/api/v1/meetings/{meeting_id}/stream?token={access_token}"
+    ) as ws:
+        res = client.post(
+            f"/api/v1/test-support/clubs/{club_id}/meetings/{meeting_id}/transcripts",
+            headers=headers,
+            json={"seq": 1, "startMs": 0, "endMs": 3000, "final": True, "text": "질문입니다?"},
+        )
+        assert res.status_code == 201, res.text
+
+        job_id = res.json()["data"]["jobId"]
+        job = client.get(f"/api/v1/agent-jobs/{job_id}", headers=headers).json()["data"]
+        assert job["status"] == "FAILED"
+        assert job["error"]["error"] == "AITimeoutError"
+
+        decisions = client.get(
+            f"/api/v1/clubs/{club_id}/context-decisions?meetingId={meeting_id}",
+            headers=headers,
+        ).json()["data"]
+        assert len(decisions) == 1
+        assert decisions[0]["status"] == "FAILED"
+        assert decisions[0]["route"] == "NONE"
+        assert decisions[0]["kind"] == "NO_LOOKUP"
+
+        judgment_msg = ws.receive_json()
+        assert judgment_msg["type"] == "judgment"
+        assert judgment_msg["status"] == "FAILED"
+
+
+async def test_같은_seq_정정은_expectedVersion_없으면_409(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "app.ai.judge_utterance", _fake_judge(route="NONE", kind="NO_LOOKUP")
+    )
     access_token, club_id = _owner_with_club(client)
     headers = {"Authorization": f"Bearer {access_token}"}
     meeting_id = _start_meeting(client, headers, club_id)
@@ -158,8 +245,22 @@ async def test_같은_seq_정정은_expectedVersion_없으면_409(
 
 
 async def test_expectedVersion과_함께_정정하면_버전이_오르고_다시_판단한다(
-    client: TestClient, app_db: None
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    calls = {"n": 0}
+
+    async def fake(request, *, records, progress=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            impl = _fake_judge(route="NONE", kind="NO_LOOKUP")
+        else:
+            impl = _fake_judge(
+                route="RAG", kind="NOT_FOUND", question="작년 MT 숙소비 얼마였지?"
+            )
+        return await impl(request, records=records, progress=progress)
+
+    monkeypatch.setattr("app.ai.judge_utterance", fake)
+
     access_token, club_id = _owner_with_club(client)
     headers = {"Authorization": f"Bearer {access_token}"}
     meeting_id = _start_meeting(client, headers, club_id)
@@ -243,8 +344,15 @@ async def test_다른_동아리_사람은_회의를_못_본다(client: TestClien
 
 
 async def test_WebSocket으로_판단_결과가_실시간으로_전달된다(
-    client: TestClient, app_db: None
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr(
+        "app.ai.judge_utterance",
+        _fake_judge(
+            route="RAG", kind="NOT_FOUND", question="작년 MT 숙소비 얼마였지?",
+            with_search_stage=True,
+        ),
+    )
     access_token, club_id = _owner_with_club(client)
     headers = {"Authorization": f"Bearer {access_token}"}
     meeting_id = _start_meeting(client, headers, club_id)
