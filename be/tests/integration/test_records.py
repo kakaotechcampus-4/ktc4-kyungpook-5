@@ -204,3 +204,28 @@ async def test_자료검색_공개AI와_pgvector_및_부분실패(client, app_db
     assert response.status_code == 200
     assert response.json()['data']['semanticStatus'] == 'UNAVAILABLE'
     assert response.json()['data']['items'][0]['matchTypes'] == ['FILENAME']
+
+
+async def test_토리_자료검색_실제DB_및_AI오류(client, app_db, monkeypatch, tmp_path):
+    import app.ai as ai
+    from app.core.config import get_settings
+    monkeypatch.setenv('STORAGE_DIR', str(tmp_path))
+    get_settings.cache_clear()
+    async def no_index(_request):
+        raise ai.AIConfigError('fixture')
+    async def classify(_request):
+        return ai.ToriIntentResult(intent='record_search', query='예산')
+    monkeypatch.setattr(ai, 'index_record', no_index)
+    monkeypatch.setattr(ai, 'classify_tori_intent', classify)
+    headers, club_id = _owner_with_club(client)
+    _upload(client, headers, club_id, 'ETC', '예산.csv')
+    res = client.post(f'/api/v1/clubs/{club_id}/tori/messages', headers=headers, json={'message':'예산 자료'})
+    assert res.status_code == 200, res.text
+    data = res.json()['data']
+    assert data['recordTotalCount'] == 1 and data['records']['items'][0]['fileName'] == '예산.csv'
+    assert data['records']['semanticStatus'] == 'NO_INDEXED_RECORDS'
+    async def fail(_request):
+        raise ai.AIConfigError('fixture')
+    monkeypatch.setattr(ai, 'classify_tori_intent', fail)
+    res = client.post(f'/api/v1/clubs/{club_id}/tori/messages', headers=headers, json={'message':'예산 자료'})
+    assert res.status_code == 500 and res.json()['error']['code'] == 'AI_MISCONFIGURED'

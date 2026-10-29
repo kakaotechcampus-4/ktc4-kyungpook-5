@@ -26,6 +26,7 @@ from app.routers import (
     confirmed_tasks,
     reminder_recipients,
     push,
+    tori,
 )
 
 
@@ -73,6 +74,7 @@ app.include_router(confirmed_tasks.router)
 app.include_router(reminder_recipients.router)
 app.include_router(push.router)
 app.include_router(events.router)
+app.include_router(tori.router)
 
 if get_settings().test_mode:
     from app.routers import test_support

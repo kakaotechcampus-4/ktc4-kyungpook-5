@@ -301,3 +301,39 @@ async def test_confirmed_meeting_filter_and_idempotent_retry_after_source_change
         response = client.get(base + f"?meetingId={meeting}", headers=case["headers"][0])
         assert response.status_code == 200, response.text
         assert len(response.json()["data"]) == count
+
+
+async def test_토리_본인_확정_할일만_조회하고_소속을_검증한다(client, case, monkeypatch):
+    import app.ai as ai
+    body = _body(case)
+    body['assigneeAccountId'] = case['accounts'][0]
+    response = client.post(f"/api/v1/clubs/{case['club']}/task-suggestions/{case['suggestion']}/confirm", headers=case['headers'][0], json=body)
+    assert response.status_code == 200, response.text
+    async def classify(_request):
+        return ai.ToriIntentResult(intent='task_list', scope='self', kind='task')
+    monkeypatch.setattr(ai, 'classify_tori_intent', classify)
+    url = f"/api/v1/clubs/{case['club']}/tori/messages"
+    result = client.post(url, headers=case['headers'][0], json={'message':'내 할 일'})
+    assert result.status_code == 200, result.text
+    assert [item['title'] for item in result.json()['data']['tasks']['items']] == [body['title']]
+    assert result.json()['data']['tasks']['scope'] == 'self'
+    other = client.post(url, headers=case['headers'][1], json={'message':'내 할 일'})
+    assert other.status_code == 200 and other.json()['data']['tasks']['items'] == []
+    assert client.post(url, headers=case['headers'][4], json={'message':'내 할 일'}).status_code == 403
+    assert client.post(url, json={'message':'내 할 일'}).status_code == 401
+
+
+async def test_토리_화면이동과_지원불가_요청은_변경하지_않는다(client, case, monkeypatch):
+    import app.ai as ai
+    async def classify(request):
+        return ai.ToriIntentResult(intent='meeting' if request.message == '회의' else 'unsupported')
+    monkeypatch.setattr(ai, 'classify_tori_intent', classify)
+    url = f"/api/v1/clubs/{case['club']}/tori/messages"
+    meeting = client.post(url, headers=case['headers'][0], json={'message':'회의'})
+    denied = client.post(url, headers=case['headers'][0], json={'message':'알림 예약'})
+    assert meeting.status_code == denied.status_code == 200
+    assert meeting.json()['data']['navigation'] == '/meetings'
+    assert denied.json()['data']['intent'] == 'unsupported'
+    assert denied.json()['data']['navigation'] is None
+    after = client.get(f"/api/v1/clubs/{case['club']}/confirmed-tasks", headers=case['headers'][0])
+    assert after.json()['data'] == []
