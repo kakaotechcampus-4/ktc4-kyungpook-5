@@ -7,14 +7,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import ensure_member, get_current_account
 from app.core.enums import RecordCategory
+from app.core.exceptions import ValidationFailed
 from app.db.session import get_session
 from app.models.auth import Account
 from app.schemas.common import Envelope, PageMeta
-from app.schemas.records import RecordDetailOut, RecordListResponse, RecordOut
-from app.services import record_service
+from app.schemas.records import RecordDetailOut, RecordListResponse, RecordOut, RecordSearchResponse
+from app.services import record_service, record_discovery_service
 from app.infra.storage import read_file
 
 router = APIRouter(prefix="/api/v1/records", tags=["records"])
+
+
+@router.get("/search", response_model=RecordSearchResponse)
+async def search_records(
+    club_id: str = Query(..., alias="clubId"),
+    query: str = Query(..., min_length=1, max_length=200),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> RecordSearchResponse:
+    query = query.strip()
+    if not query:
+        raise ValidationFailed({"query": "검색어를 입력해 주세요."})
+    await ensure_member(session, club_id=club_id, account=account)
+    data, total = await record_discovery_service.search_records(
+        session, club_id=club_id, query=query, page=page, size=size
+    )
+    return RecordSearchResponse(data=data, meta=PageMeta(page=page, size=size, total_count=total))
 
 
 @router.get("", response_model=RecordListResponse)

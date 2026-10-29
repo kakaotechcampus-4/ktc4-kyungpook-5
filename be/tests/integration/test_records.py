@@ -135,3 +135,72 @@ async def test_원본_다운로드는_같은_동아리만_허용(client: TestCli
     outsider = _login(client, "rec-download-outsider")
     denied = client.get(f"/api/v1/records/{record_id}/file", headers=outsider)
     assert denied.status_code == 403
+
+
+async def test_자료검색_본문과_파일명_페이지_권한(client, app_db, monkeypatch, tmp_path):
+    import app.ai as ai
+    from app.core.config import get_settings
+
+    monkeypatch.setenv('STORAGE_DIR', str(tmp_path))
+    get_settings.cache_clear()
+    async def no_index(_request):
+        raise ai.AIConfigError('fixture')
+    monkeypatch.setattr(ai, 'index_record', no_index)
+    headers, club_id = _owner_with_club(client)
+    for name, content in [('budget.csv', '항목,금액\n간식,5000\n'), ('간식.csv', '이름,값\n물,10\n')]:
+        response = client.post('/api/v1/records', headers=headers, data={'clubId': club_id},
+                               files={'file': (name, content.encode(), 'text/csv')})
+        assert response.status_code == 201
+    other, other_club = _owner_with_club(client)
+    _upload(client, other, other_club, 'ETC', '간식-secret.csv')
+    params = {'clubId': club_id, 'query': '간식', 'size': 1}
+    first = client.get('/api/v1/records/search', headers=headers, params=params)
+    second = client.get('/api/v1/records/search', headers=headers, params={**params, 'page': 2})
+    assert first.status_code == second.status_code == 200
+    assert first.json()['meta']['totalCount'] == 2
+    assert first.json()['data']['semanticStatus'] == 'NO_INDEXED_RECORDS'
+    assert first.json()['data']['unindexedCount'] == 2
+    a, b = first.json()['data']['items'][0], second.json()['data']['items'][0]
+    assert a['fileName'] == '간식.csv' and a['matchTypes'] == ['FILENAME']
+    assert b['fileName'] == 'budget.csv' and b['matchTypes'] == ['CONTENT']
+    assert '간식' in b['excerpts'][0]['text'] and b['excerpts'][0]['location']['label']
+    assert client.get('/api/v1/records/search', headers=headers, params={'clubId': other_club, 'query':'간식'}).status_code == 403
+    assert client.get('/api/v1/records/search', headers=headers, params={'clubId': club_id, 'query':'  '}).status_code == 422
+    assert client.get('/api/v1/records/search', headers=headers, params={'clubId': club_id, 'query':'%'}).json()['meta']['totalCount'] == 0
+
+
+async def test_자료검색_공개AI와_pgvector_및_부분실패(client, app_db, monkeypatch, tmp_path):
+    import app.ai as ai
+    from app.ai.features.retrieval import nodes
+    from app.core.config import get_settings
+    monkeypatch.setenv('STORAGE_DIR', str(tmp_path))
+    get_settings.cache_clear()
+    vector = (1.0,) + (0.0,) * 1535
+    async def fake_index(request):
+        return ai.IndexRecordResult(chunks=(ai.IndexedChunk(text='숙소 예약 확인', location=ai.SourceLocation(label='2행'), block_indexes=(0,), embedding=vector),))
+    monkeypatch.setattr(ai, 'index_record', fake_index)
+    original_find = nodes.find_chunks
+    async def embed(_texts):
+        return [list(vector)]
+    async def find(request, *, port):
+        return await original_find(request, port=port, embed=embed)
+    monkeypatch.setattr(nodes, 'find_chunks', find)
+    headers, club_id = _owner_with_club(client)
+    other, other_club = _owner_with_club(client)
+    mine = _upload(client, headers, club_id, 'ETC', '숙소.csv')
+    _upload(client, other, other_club, 'ETC', 'other.csv')
+    response = client.get('/api/v1/records/search', headers=headers, params={'clubId': club_id, 'query':'숙소'})
+    assert response.status_code == 200
+    data = response.json()['data']
+    assert data['semanticStatus'] == 'AVAILABLE' and data['indexedCount'] == 1
+    assert response.json()['meta']['totalCount'] == 1
+    item = data['items'][0]
+    assert item['id'] == mine and item['matchTypes'] == ['FILENAME', 'SEMANTIC']
+    assert item['excerpts'][0]['location']['label'] == '2행'
+    async def unavailable(request, *, port):
+        raise ai.AIConfigError('fixture')
+    monkeypatch.setattr(nodes, 'find_chunks', unavailable)
+    response = client.get('/api/v1/records/search', headers=headers, params={'clubId': club_id, 'query':'숙소'})
+    assert response.status_code == 200
+    assert response.json()['data']['semanticStatus'] == 'UNAVAILABLE'
+    assert response.json()['data']['items'][0]['matchTypes'] == ['FILENAME']
