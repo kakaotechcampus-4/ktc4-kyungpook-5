@@ -227,7 +227,8 @@ async def test_운영진만_대기_중인_행동을_처리할_수_있다(
     assert owner_view[ids["pending_soon"]] is True
     assert owner_view[ids["approved_recent"]] is False
     assert can_approve(manager_headers)[ids["pending_soon"]] is True
-    assert not any(can_approve(member_headers).values())
+    # 일반 동아리원은 서비스 이용 대상이 아니라 목록 자체를 볼 수 없다.
+    assert client.get(_url(event_id), headers=member_headers).status_code == 403
 
 
 async def test_대기와_승인된_행동만_고칠_수_있다(client: TestClient, app_db: None) -> None:

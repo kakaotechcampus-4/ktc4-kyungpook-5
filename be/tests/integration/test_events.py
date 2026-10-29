@@ -278,13 +278,23 @@ async def test_단계는_묶음과_한_일_남은_일을_함께_내려준다(
     assert all("approveNeeded" in a for a in step["remainingActions"])
 
 
-async def test_일반_동아리원도_단계를_볼_수_있다(client: TestClient, app_db: None) -> None:
+async def test_운영진은_보고_일반_동아리원은_볼_수_없다(
+    client: TestClient, app_db: None
+) -> None:
+    """서비스 이용 대상은 대표·운영진이다(SERVICE_ROLES). 일반 동아리원은 403이다."""
     _headers, club_id = owner_with_club(client)
     event_id = await add_event(club_id)
     await add_step(event_id, 10)
-    member_headers = await member_of(client, club_id, MemberRole.MEMBER)
+    manager_headers = await member_of(client, club_id, MemberRole.MANAGER, "manager")
+    member_headers = await member_of(client, club_id, MemberRole.MEMBER, "member")
 
-    res = client.get(f"{EVENTS_URL}/{event_id}/steps", headers=member_headers)
-
-    assert res.status_code == 200, res.text
-    assert len(res.json()["data"]) == 1
+    for url, params in (
+        (EVENTS_URL, {"clubId": club_id}),
+        (f"{EVENTS_URL}/{event_id}", None),
+        (f"{EVENTS_URL}/{event_id}/steps", None),
+        (f"{EVENTS_URL}/{event_id}/actions", None),
+    ):
+        manager = client.get(url, headers=manager_headers, params=params)
+        member = client.get(url, headers=member_headers, params=params)
+        assert manager.status_code == 200, (url, manager.text)
+        assert member.status_code == 403, (url, member.text)
