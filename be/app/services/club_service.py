@@ -98,7 +98,7 @@ async def accept_invitation(
 ) -> Member:
     token_hash = hash_token(token)
     invitation = await session.scalar(
-        select(Invitation).where(Invitation.token_hash == token_hash)
+        select(Invitation).where(Invitation.token_hash == token_hash).with_for_update()
     )
     if invitation is None:
         raise ValidationFailed({"token": "유효하지 않은 초대입니다."})

@@ -4,12 +4,17 @@ service-flow.curl.sh 01~10번이 실제 DB로 끝까지 도는지 확인한다.
 """
 
 import uuid
+import asyncio
 from collections.abc import AsyncIterator
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.db import session as db_session
+from app.core.exceptions import ValidationFailed
+from app.models.auth import Account
+from app.services import club_service
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
 
@@ -205,6 +210,30 @@ async def test_초대_수락하면_해당_역할로_가입된다(
     assert me_res.json()["data"]["clubs"] == [
         {"id": club_id, "name": "초대 테스트 동아리", "role": "MANAGER"}
     ]
+
+
+async def test_초대_동시_수락은_한_번만_성공한다(client: TestClient, app_db: None) -> None:
+    owner_email = _unique_email("invite-lock-owner")
+    _signup(client, owner_email)
+    owner_token, _ = _login(client, owner_email)
+    club_id = client.post("/api/v1/clubs", headers={"Authorization": f"Bearer {owner_token}"},
+                          json={"name": "동시 초대"}).json()["data"]["id"]
+    invite = client.post(f"/api/v1/clubs/{club_id}/invitations",
+                         headers={"Authorization": f"Bearer {owner_token}"},
+                         json={"role": "MANAGER"}).json()["data"]
+    emails = [_unique_email("invite-lock-a"), _unique_email("invite-lock-b")]
+    accounts = []
+    for email in emails:
+        _signup(client, email)
+        accounts.append(email)
+    factory = db_session.get_sessionmaker()
+    async def accept(email: str):
+        async with factory() as session:
+            account = await session.scalar(select(Account).where(Account.email == email))
+            return await club_service.accept_invitation(session, token=invite["token"], account=account)
+    results = await asyncio.gather(*(accept(email) for email in accounts), return_exceptions=True)
+    assert sum(not isinstance(result, Exception) for result in results) == 1
+    assert sum(isinstance(result, ValidationFailed) for result in results) == 1
 
 
 async def test_권한_없는_멤버는_초대를_못_만든다(client: TestClient, app_db: None) -> None:
