@@ -5,7 +5,7 @@ editable, 보낸 키만 덮는 부분 수정, 금액의 Event 파생 — 을 실
 """
 
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -131,7 +131,7 @@ async def test_payload는_보낸_키만_덮고_나머지는_남는다(
     )
 
     res = client.patch(
-        f"/api/v1/actions/{action_id}", headers=headers, json={"payload": {"audience": "신입생"}}
+        f"/api/v1/actions/{action_id}", headers=headers, json={"expectedVersion": 1, "payload": {"audience": "신입생"}}
     )
     assert res.status_code == 200, res.text
     payload = res.json()["data"]["actions"][0]["payload"]
@@ -146,7 +146,7 @@ async def test_수금_금액을_고치면_행사_참가비가_따라_바뀐다(
     step_id = await add_step(event_id, 1, code=StepCode.COLLECT_FEES)
     action_id = await add_action(event_id, step_id=step_id, type=ActionType.NOTICE)
 
-    res = client.patch(f"/api/v1/actions/{action_id}", headers=headers, json={"amount": 45000})
+    res = client.patch(f"/api/v1/actions/{action_id}", headers=headers, json={"expectedVersion": 1, "amount": 45000})
     assert res.status_code == 200, res.text
     assert await _fee_of(event_id) == 45000
 
@@ -159,7 +159,7 @@ async def test_예약_계약금은_행사로_올라가지_않는다(
     step_id = await add_step(event_id, 1, code=StepCode.BOOK_VENUE)
     action_id = await add_action(event_id, step_id=step_id, type=ActionType.CONTRACT)
 
-    client.patch(f"/api/v1/actions/{action_id}", headers=headers, json={"amount": 300000})
+    client.patch(f"/api/v1/actions/{action_id}", headers=headers, json={"expectedVersion": 1, "amount": 300000})
     assert await _fee_of(event_id) is None
 
 
@@ -173,7 +173,7 @@ async def test_승인된_행동을_고치면_다시_승인_대기가_된다(
         event_id, step_id=step_id, status=ActionStatus.APPROVED, resolved_at=datetime.now(UTC)
     )
 
-    res = client.patch(f"/api/v1/actions/{action_id}", headers=headers, json={"title": "고친 제목"})
+    res = client.patch(f"/api/v1/actions/{action_id}", headers=headers, json={"expectedVersion": 1, "title": "고친 제목"})
     assert res.status_code == 200, res.text
 
     steps = client.get(f"/api/v1/events/{event_id}/plan/steps", headers=headers)
@@ -197,7 +197,9 @@ async def test_일반_동아리원은_세부를_고칠_수_없다(
 async def test_없는_단계와_행동은_404다(client: TestClient, app_db: None) -> None:
     headers, _club_id = owner_with_club(client)
     assert client.patch("/api/v1/steps/stp_none", headers=headers, json={}).status_code == 404
-    assert client.patch("/api/v1/actions/act_none", headers=headers, json={}).status_code == 404
+    assert client.patch(
+            "/api/v1/actions/act_none", headers=headers, json={"expectedVersion": 1}
+        ).status_code == 404
 
 
 async def test_단계_구성은_순서를_바꾸고_빼고_다시_넣을_수_있다(
@@ -297,7 +299,7 @@ async def test_진행_중인_행사는_단계_구성을_바꿀_수_없다(
 
 async def test_계획을_시작하고_완료까지_간다(client: TestClient, app_db: None) -> None:
     headers, club_id = owner_with_club(client)
-    event_id = await add_event(club_id, status=EventStatus.PLANNING)
+    event_id = await add_event(club_id, status=EventStatus.PLANNING, start_date=date(2026, 11, 5))
     await add_step(event_id, 1, code=StepCode.ASSIGN_ROLES)
 
     start = client.post(f"/api/v1/events/{event_id}/start", headers=headers)
@@ -317,3 +319,26 @@ async def test_단계가_없는_행사는_시작할_수_없다(client: TestClien
 
     res = client.post(f"/api/v1/events/{event_id}/start", headers=headers)
     assert res.status_code == 409
+
+
+async def test_본_뒤에_바뀐_행동은_덮어쓰지_않는다(client: TestClient, app_db: None) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id)
+    step_id = await add_step(event_id, 1)
+    action_id = await add_action(event_id, step_id=step_id)
+
+    first = client.patch(
+        f"/api/v1/actions/{action_id}",
+        headers=headers,
+        json={"expectedVersion": 1, "title": "먼저 고친 제목"},
+    )
+    assert first.status_code == 200, first.text
+
+    # 같은 version으로 한 번 더 보내면 거절하고 다시 불러오게 한다.
+    stale = client.patch(
+        f"/api/v1/actions/{action_id}",
+        headers=headers,
+        json={"expectedVersion": 1, "title": "낡은 화면에서 보낸 제목"},
+    )
+    assert stale.status_code == 409
+    assert stale.json()["error"]["code"] == "VERSION_CONFLICT"

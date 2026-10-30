@@ -11,12 +11,24 @@ import {
   type StepAction,
 } from '@/features/planning/stepDetail'
 import type { components } from '@/shared/api/schema'
+import { ApiError } from '@/shared/api/types'
 import { Field, ErrorBanner } from '@/shared/ui/AuthShell'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
 
 type Step = components['schemas']['PlannedStepOut']
+
+function saveErrorMessage(cause: unknown): string {
+  if (cause instanceof ApiError) {
+    // 내가 보고 있는 동안 다른 사람이 고쳤다. 덮어쓰지 않고 다시 불러오게 한다.
+    if (cause.code === 'VERSION_CONFLICT')
+      return '내용이 그사이 바뀌었어요. 창을 닫고 다시 열어 주세요.'
+    if (cause.code === 'NOT_EDITABLE') return '이미 끝난 내용이라 고칠 수 없어요.'
+    return cause.message || '저장하지 못했어요.'
+  }
+  return '저장하지 못했어요. 연결 상태를 확인해 주세요.'
+}
 
 // <input type="date">는 yyyy-MM-dd만 받는다. 돌려줄 때는 그날 0시(한국)를 붙여
 // 서버가 주는 ISO 와 같은 모양으로 맞춘다.
@@ -75,9 +87,7 @@ function StepDetailForm({
       await save.mutateAsync({ step, draft })
       onSaved()
     } catch (cause) {
-      setError(
-        cause instanceof Error && cause.message ? cause.message : '저장하지 못했어요.',
-      )
+      setError(saveErrorMessage(cause))
     }
   }
 

@@ -24,6 +24,7 @@ from app.core.exceptions import (
     AIUnavailable,
     ApiError,
     EventNotFound,
+    EventNotPlanning,
     PlanningStateConflict,
     VersionConflict,
 )
@@ -196,7 +197,11 @@ def _translate_ai_error(error: Exception) -> ApiError:
 async def _materialize_preview(
     session: AsyncSession, event: Event, preview: "ai.EventPlanPreview"
 ) -> None:
-    """임시 미리보기를 실제 Step/Action으로 바꾼다. 항상 전체 교체 — 부분 patch는 #41."""
+    """임시 미리보기를 실제 Step/Action으로 바꾼다. 항상 전체 교체 — 부분 patch는 #41.
+
+    계획 중(PLANNING)인 행사만 여기까지 온다(_finish에서 확인). 확정된 행사의 단계·행동은
+    운영 중 처리 기록이 있어 지우면 안 된다.
+    """
     await session.execute(delete(Action).where(Action.event_id == event.id))
     await session.execute(delete(Step).where(Step.event_id == event.id))
     await session.flush()
@@ -407,9 +412,17 @@ async def _finish(
 ) -> dict:
     sessionmaker = get_sessionmaker()
     async with sessionmaker() as session:
-        event = await get_event(
-            session, club_id=prepared.club_id, event_id=prepared.event_id
+        # 행사를 잠그고 읽는다. AI를 기다리는 수십 초 사이 계획이 확정(/start, 같은 행 잠금)
+        # 됐을 수 있다. 확정된 행사에 대화·생성 결과를 저장하면 운영 중 조건이 바뀌고 처리
+        # 기록이 지워진다(#41). 라우터의 상태 확인은 AI 호출 전에 빨리 거절하는 용도이고,
+        # 최종 보증은 여기서 한다.
+        event = await session.scalar(
+            select(Event).where(Event.id == prepared.event_id).with_for_update()
         )
+        if event is None or event.club_id != prepared.club_id:
+            raise EventNotFound()
+        if event.status != EventStatus.PLANNING:
+            raise EventNotPlanning()
         # _prepare()가 만들어 둔 대화를 잠그고 읽는다. 잠그지 않으면 거의 동시에 끝난
         # 두 요청이 둘 다 옛 revision을 보고 저장해 한쪽 상태를 덮어쓴다.
         conversation = await session.scalar(

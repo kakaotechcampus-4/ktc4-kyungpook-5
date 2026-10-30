@@ -22,7 +22,12 @@ from app.ai.planning_catalog import (
     PLANNING_STEP_NAMES,
     PLANNING_STEP_PHASES,
 )
-from app.core.exceptions import EventStateConflict, NotEditable, ValidationFailed
+from app.core.exceptions import (
+    EventStateConflict,
+    NotEditable,
+    ValidationFailed,
+    VersionConflict,
+)
 from app.models.clubs import Member
 from app.models.events import Action, Event, Step
 from app.services import event_rules
@@ -212,10 +217,11 @@ async def list_steps(session: AsyncSession, *, event_id: str) -> list[dict]:
     return result
 
 
-def action_out(action: Action, *, member: Member) -> dict:
+def action_out(action: Action, *, member: Member, event_status: EventStatus) -> dict:
     """ActionOut 한 건. step·resolver를 미리 불러온 Action이어야 한다.
 
-    member는 요청한 동아리원이다 — canApprove가 요청자 기준이라 필요하다.
+    member는 요청한 동아리원이다 — canApprove가 요청자 기준이라 필요하다. 처리는 운영 중
+    행사에서만 받으므로 행사 상태도 함께 본다.
     승인·거절 API도 처리 결과를 이 함수로 내려 조회와 모양을 맞춘다.
     """
     payload = action.payload if action.type == ActionType.CONFIRMATION else None
@@ -246,8 +252,17 @@ def action_out(action: Action, *, member: Member) -> dict:
         "allow_manual": payload.get("allow_manual"),
         # 유형별 설정값(#106 ①). CONFIRMATION은 위에서 이미 펼쳤으므로 비운다.
         "payload": None if action.type == ActionType.CONFIRMATION else action.payload,
-        "can_approve": event_rules.can_resolve(member.role, action.status),
+        "can_approve": event_rules.can_approve(
+            member.role,
+            action.status,
+            action_type=action.type,
+            approve_needed=action.approve_needed,
+            event_status=event_status,
+        ),
         "editable": event_rules.is_editable(action.status),
+        "resolved_choice": payload.get("resolved_choice"),
+        "manual_value": payload.get("manual_value"),
+        "version": action.version,
     }
 
 
@@ -256,6 +271,7 @@ async def list_actions(
     *,
     event_id: str,
     member: Member,
+    event_status: EventStatus,
     statuses: list[ActionStatus] | None,
     action_type: ActionType | None,
     exclude_type: ActionType | None,
@@ -286,7 +302,9 @@ async def list_actions(
         .offset((page - 1) * size)
         .limit(size)
     )
-    return [action_out(a, member=member) for a in actions], total or 0
+    return [
+        action_out(a, member=member, event_status=event_status) for a in actions
+    ], total or 0
 
 
 def planned_step_out(step: Step) -> dict:
@@ -317,6 +335,7 @@ def planned_step_out(step: Step) -> dict:
                     None if action.type == ActionType.CONFIRMATION else action.payload
                 ),
                 "editable": event_rules.is_editable(action.status),
+                "version": action.version,
             }
             for action in step.actions
         ],
@@ -344,7 +363,12 @@ async def update_step(
 
 
 async def update_action(
-    session: AsyncSession, *, action: Action, values: dict, payload_values: dict | None,
+    session: AsyncSession,
+    *,
+    action: Action,
+    values: dict,
+    payload_values: dict | None,
+    expected_version: int,
 ) -> Action:
     """Action 세부를 고친다 (#106 ④).
 
@@ -356,6 +380,9 @@ async def update_action(
     """
     if not event_rules.is_editable(action.status):
         raise NotEditable()
+    # 본 뒤에 내용이 바뀌었으면 덮어쓰지 않고 다시 불러오게 한다(#41과 같은 규칙).
+    if action.version != expected_version:
+        raise VersionConflict()
     for key, value in values.items():
         setattr(action, key, value)
     if payload_values:
@@ -367,6 +394,7 @@ async def update_action(
                 event.fee_per_person = action.amount
             elif action.step.code == StepCode.SETTLE_EXPENSES:
                 event.budget_total = action.amount
+    action.version += 1
     # 승인된 내용을 고쳤으면 다시 승인을 받는다 (event_rules.is_editable 주석).
     if action.status == ActionStatus.APPROVED:
         action.status = ActionStatus.PENDING
@@ -476,3 +504,4 @@ async def change_event_status(
     event.status = to
     await session.commit()
     return event
+

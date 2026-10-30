@@ -893,6 +893,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{event_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Event
+         * @description 계획을 확정해 운영을 시작한다(PLANNING → ON_GOING). 이후 승인·완료 처리를 받는다.
+         */
+        post: operations["start_event_api_v1_events__event_id__start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/{event_id}/plan/chat": {
         parameters: {
             query?: never;
@@ -943,23 +963,6 @@ export interface paths {
         head?: never;
         /** Replace Plan Steps */
         patch: operations["replace_plan_steps_api_v1_events__event_id__plan_steps_patch"];
-        trace?: never;
-    };
-    "/api/v1/events/{event_id}/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Start Event */
-        post: operations["start_event_api_v1_events__event_id__start_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/api/v1/events/{event_id}/complete": {
@@ -1047,7 +1050,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/steps/{step_id}": {
+    "/api/v1/actions/{action_id}/approve": {
         parameters: {
             query?: never;
             header?: never;
@@ -1056,12 +1059,69 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
+        /** Approve Action */
+        post: operations["approve_action_api_v1_actions__action_id__approve_post"];
         delete?: never;
         options?: never;
         head?: never;
-        /** Update Step */
-        patch: operations["update_step_api_v1_steps__step_id__patch"];
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/actions/{action_id}/deny": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deny Action */
+        post: operations["deny_action_api_v1_actions__action_id__deny_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/actions/{action_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve Action
+         * @description 확인 요청에 답한다. 승인·거절이 아니라 선택지 중 하나(또는 MANUAL)를 고른다.
+         */
+        post: operations["resolve_action_api_v1_actions__action_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/actions/{action_id}/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Action Done
+         * @description 운영진이 직접 실행을 마쳤다는 기록. 앱은 발송·이체를 대신하지 않는다.
+         */
+        post: operations["mark_action_done_api_v1_actions__action_id__done_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/actions/{action_id}": {
@@ -1077,8 +1137,51 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update Action */
+        /**
+         * Update Action
+         * @description 행동 세부를 고친다 (#106 ④).
+         *
+         *     승인·처리(/approve 등)와 달리 계획 중에도 부른다. 그래서 운영 중을 요구하는
+         *     _operating_member를 쓰지 않고 소속·권한만 본다.
+         */
         patch: operations["update_action_api_v1_actions__action_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/steps/{step_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Step */
+        post: operations["complete_step_api_v1_steps__step_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/steps/{step_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Step
+         * @description 단계 일정을 고친다 (#106 ④). 계획 화면의 세부 수정 모달이 부른다.
+         */
+        patch: operations["update_step_api_v1_steps__step_id__patch"];
         trace?: never;
     };
     "/api/v1/clubs/{club_id}/tori/messages": {
@@ -1186,6 +1289,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionDenyIn */
+        ActionDenyIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+            /** Reason */
+            reason?: string | null;
+        };
         /** ActionListResponse */
         ActionListResponse: {
             /** Data */
@@ -1240,6 +1350,12 @@ export interface components {
             canApprove: boolean;
             /** Editable */
             editable: boolean;
+            /** Resolvedchoice */
+            resolvedChoice: string | null;
+            /** Manualvalue */
+            manualValue: string | null;
+            /** Version */
+            version: number;
         };
         /**
          * ActionPayloadOut
@@ -1267,6 +1383,15 @@ export interface components {
             /** Approvalmode */
             approvalMode?: ("BATCH" | "EACH") | null;
         };
+        /** ActionResolveIn */
+        ActionResolveIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+            /** Choice */
+            choice: string;
+            /** Manualvalue */
+            manualValue?: string | null;
+        };
         /**
          * ActionStatus
          * @description PENDING → APPROVED → DONE / FAILED, 또는 PENDING → DENIED.
@@ -1286,8 +1411,12 @@ export interface components {
          *
          *     payload는 통째로 바꾸지 않고 보낸 키만 덮는다 — 모달이 그리지 않는 키
          *     (예: CONFIRMATION의 선택지)를 지우면 안 된다.
+         *
+         *     승인·처리와 같은 version을 쓴다. 본 적 없는 내용을 덮어쓰지 않기 위해서다.
          */
         ActionUpdateIn: {
+            /** Expectedversion */
+            expectedVersion: number;
             /** Title */
             title?: string | null;
             /** Subtitle */
@@ -1297,6 +1426,14 @@ export interface components {
             /** Duedate */
             dueDate?: string | null;
             payload?: components["schemas"]["ActionPayloadOut"] | null;
+        };
+        /**
+         * ActionVersionIn
+         * @description 승인·실행 완료 요청. 클라이언트가 본 행동의 version을 보낸다.
+         */
+        ActionVersionIn: {
+            /** Expectedversion */
+            expectedVersion: number;
         };
         /** ActivityConnectionOut */
         ActivityConnectionOut: {
@@ -1735,6 +1872,12 @@ export interface components {
             /** Emailverified */
             emailVerified: boolean;
         };
+        /** Envelope[ActionOut] */
+        Envelope_ActionOut_: {
+            data: components["schemas"]["ActionOut"];
+            /** Meta */
+            meta?: null;
+        };
         /** Envelope[ActivitySnapshotOut] */
         Envelope_ActivitySnapshotOut_: {
             data: components["schemas"]["ActivitySnapshotOut"];
@@ -1798,6 +1941,12 @@ export interface components {
         /** Envelope[EventDetailOut] */
         Envelope_EventDetailOut_: {
             data: components["schemas"]["EventDetailOut"];
+            /** Meta */
+            meta?: null;
+        };
+        /** Envelope[EventStartOut] */
+        Envelope_EventStartOut_: {
+            data: components["schemas"]["EventStartOut"];
             /** Meta */
             meta?: null;
         };
@@ -1918,6 +2067,12 @@ export interface components {
         /** Envelope[SignupOut] */
         Envelope_SignupOut_: {
             data: components["schemas"]["SignupOut"];
+            /** Meta */
+            meta?: null;
+        };
+        /** Envelope[StepCompleteOut] */
+        Envelope_StepCompleteOut_: {
+            data: components["schemas"]["StepCompleteOut"];
             /** Meta */
             meta?: null;
         };
@@ -2061,6 +2216,19 @@ export interface components {
             payment: unknown | null;
             /** Budget */
             budget: unknown | null;
+        };
+        /**
+         * EventStartOut
+         * @description 계획 확정(행사 시작) 결과. FE 명세 v1의 :confirm을 #213 요청대로 /start로 연다.
+         */
+        EventStartOut: {
+            /** Id */
+            id: string;
+            status: components["schemas"]["EventStatus"];
+            /** Title */
+            title: string;
+            /** Startdate */
+            startDate: string | null;
         };
         /**
          * EventStatus
@@ -2564,6 +2732,8 @@ export interface components {
             payload: components["schemas"]["ActionPayloadOut"] | null;
             /** Editable */
             editable: boolean;
+            /** Version */
+            version: number;
         };
         /** PlannedStepListResponse */
         PlannedStepListResponse: {
@@ -2978,6 +3148,19 @@ export interface components {
          * @enum {string}
          */
         StepCode: "ASSIGN_ROLES" | "RESEARCH_VENUE" | "DEMAND_SURVEY" | "RECRUIT_NOTICE" | "CHECK_RESPONSES" | "CONFIRM_DETAILS" | "BOOK_VENUE" | "COLLECT_FEES" | "PRE_EVENT_NOTICE" | "EVENT_DAY" | "SETTLE_EXPENSES" | "REFUND_FEES" | "RECORD_FEEDBACK" | "CANCEL_NOTIFY_PARTICIPANTS" | "CANCEL_VENUE" | "CANCEL_REFUND" | "CANCEL_RECORD";
+        /**
+         * StepCompleteOut
+         * @description 단계 완료 처리 결과. 미처리 행동이 남아 있으면 FE가 확인 문구를 띄운다.
+         */
+        StepCompleteOut: {
+            /** Id */
+            id: string;
+            /** Completedat */
+            completedAt: string;
+            completedBy: components["schemas"]["ResolvedBy"] | null;
+            /** Pendingactioncount */
+            pendingActionCount: number;
+        };
         /** StepListResponse */
         StepListResponse: {
             /** Data */
@@ -5401,6 +5584,39 @@ export interface operations {
             };
         };
     };
+    start_event_api_v1_events__event_id__start_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EventStartOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     chat_plan_api_v1_events__event_id__plan_chat_post: {
         parameters: {
             query?: never;
@@ -5529,39 +5745,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlannedStepListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    start_event_api_v1_events__event_id__start_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                event_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_EventStatusOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5754,20 +5937,20 @@ export interface operations {
             };
         };
     };
-    update_step_api_v1_steps__step_id__patch: {
+    approve_action_api_v1_actions__action_id__approve_post: {
         parameters: {
             query?: never;
             header?: {
                 authorization?: string | null;
             };
             path: {
-                step_id: string;
+                action_id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["StepUpdateIn"];
+                "application/json": components["schemas"]["ActionVersionIn"];
             };
         };
         responses: {
@@ -5777,7 +5960,118 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Envelope_PlannedStepOut_"];
+                    "application/json": components["schemas"]["Envelope_ActionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deny_action_api_v1_actions__action_id__deny_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionDenyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ActionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_action_api_v1_actions__action_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionResolveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ActionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_action_done_api_v1_actions__action_id__done_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionVersionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ActionOut_"];
                 };
             };
             /** @description Validation Error */
@@ -5805,6 +6099,76 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ActionUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PlannedStepOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_step_api_v1_steps__step_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                step_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_StepCompleteOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_step_api_v1_steps__step_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                step_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepUpdateIn"];
             };
         };
         responses: {

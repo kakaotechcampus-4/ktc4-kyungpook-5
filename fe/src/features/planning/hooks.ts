@@ -231,6 +231,9 @@ export function useSaveStepDetail() {
           JSON.stringify(next.payload) !== JSON.stringify(action.payload)
         if (changed) {
           await planningApi.updateAction(action.id, {
+            // 조회에서 받은 version을 그대로 돌려보낸다. 그사이 내용이 바뀌었으면
+            // 서버가 409로 거절하고 다시 불러오게 한다.
+            expectedVersion: action.version,
             title: next.title,
             amount: next.amount,
             payload: next.payload,
