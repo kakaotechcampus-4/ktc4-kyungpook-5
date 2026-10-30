@@ -15,6 +15,7 @@ from datetime import UTC, date, datetime, timedelta
 import anyio
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 import app.ai as ai
 from app.db import session as db_session
@@ -258,6 +259,34 @@ async def test_생성_성공하면_Step_Action이_규칙대로_만들어진다(
     assert summary["aiSteps"] == 1
     assert summary["approvalSteps"] == 1
     assert plan.json()["data"]["warnings"] == ["일정이 비어 있습니다"]
+
+
+async def test_재생성은_사용자가_편집한_계획을_조용히_덮지_않는다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    async def fake_generate(request):
+        return _fake_generation_result()
+
+    monkeypatch.setattr("app.ai.generate_planning_preview", fake_generate)
+    first = client.post(f"/api/v1/events/{event_id}/plan/generate", headers=headers,
+                        json={"baseRevision": 0})
+    assert first.status_code == 200, first.text
+    steps = client.get(f"/api/v1/events/{event_id}/plan/steps", headers=headers).json()["data"]
+    from app.models.events import Action
+    async with db_session.get_sessionmaker()() as session:
+        action = await session.scalar(select(Action).where(Action.event_id == event_id))
+        assert action is not None
+        action.title = "사용자 수정"
+        await session.commit()
+    from app.models.events import Event
+    from app.services.planning_service import _has_manual_plan_edits
+    async with db_session.get_sessionmaker()() as session:
+        event = await session.get(Event, event_id)
+        assert event is not None
+        assert await _has_manual_plan_edits(session, event)
 
 
 async def test_다른_동아리_사람은_행사_계획에_접근할_수_없다(
