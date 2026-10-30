@@ -431,6 +431,10 @@ async def replace_plan_steps(
     묶음은 카탈로그가 정하므로 보낸 순서를 그대로 쓰지 않고 묶음 순서로 한 번
     정렬한다. 사전 준비 단계가 마무리 뒤로 가는 구성을 막기 위해서다.
     """
+    locked_event = await session.scalar(select(Event).where(Event.id == event.id).with_for_update())
+    if locked_event is None:
+        raise EventStateConflict("행사를 찾을 수 없습니다.")
+    event = locked_event
     if event.status != EventStatus.PLANNING:
         raise EventStateConflict("계획 중인 행사만 단계 구성을 바꿀 수 있습니다.")
     if not codes:

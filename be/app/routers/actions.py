@@ -124,7 +124,6 @@ async def update_action(
         select(Action)
         .where(Action.id == action_id)
         .options(selectinload(Action.step).selectinload(Step.actions), selectinload(Action.event))
-        .with_for_update()
     )
     if action is None:
         raise ActionNotFound()
