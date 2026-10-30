@@ -64,11 +64,51 @@ class ActionOut(CamelModel):
     can_approve: bool
     # 세부 수정 가능 여부 (#106). APPROVED에서 고치면 다시 PENDING이 된다.
     editable: bool
+    # 확인 요청에서 고른 선택지 key(또는 MANUAL)와 직접 입력한 답. 처리 전에는 null.
+    resolved_choice: str | None
+    manual_value: str | None
+    # 처리·수정 요청의 expectedVersion으로 그대로 보낸다 (#41 낙관적 잠금).
+    version: int
 
 
 class ActionListResponse(CamelModel):
     data: list[ActionOut]
     meta: PageMeta
+
+
+# --- 행동 처리 (#41) ------------------------------------------------------
+
+
+class ActionVersionIn(CamelModel):
+    """승인·실행 완료 요청. 클라이언트가 본 행동의 version을 보낸다."""
+
+    expected_version: int = Field(ge=1)
+
+
+class ActionDenyIn(ActionVersionIn):
+    # 선택 입력. 결정 검토 모달의 입력 제한과 같다.
+    reason: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, max_length=500)
+    ] = None
+
+
+class ActionResolveIn(ActionVersionIn):
+    # options[].key 중 하나, 또는 MANUAL(직접 처리)
+    choice: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+    # choice=MANUAL일 때 사용자가 직접 입력한 답. 답변 모달의 입력 제한과 같다.
+    manual_value: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, max_length=200)
+    ] = None
+
+
+class StepCompleteOut(CamelModel):
+    """단계 완료 처리 결과. 미처리 행동이 남아 있으면 FE가 확인 문구를 띄운다."""
+
+    id: str
+    completed_at: UtcDateTime
+    # 행동이 모두 끝나 자동으로 완료된 단계는 null이다.
+    completed_by: ResolvedBy | None
+    pending_action_count: int
 
 
 class StepProgressOut(CamelModel):
@@ -96,6 +136,15 @@ class EventOut(CamelModel):
 class EventListResponse(CamelModel):
     data: list[EventOut]
     meta: PageMeta
+
+
+class EventStartOut(CamelModel):
+    """계획 확정(행사 시작) 결과. FE 명세 v1의 :confirm을 #213 요청대로 /start로 연다."""
+
+    id: str
+    status: EventStatus
+    title: str
+    start_date: date | None
 
 
 class CurrentStepOut(CamelModel):

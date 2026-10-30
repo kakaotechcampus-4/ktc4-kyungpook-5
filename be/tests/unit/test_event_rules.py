@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from app.core.enums import ActionStatus, ActionType, MemberRole, StepState
+from app.core.enums import ActionStatus, ActionType, EventStatus, MemberRole, StepState
 from app.services import event_rules
 
 
@@ -79,3 +79,55 @@ def test_확인_요청은_승인도_되돌릴_것도_없다() -> None:
     assert event_rules.action_defaults(ActionType.CONFIRMATION) == (False, False)
     assert event_rules.action_defaults(ActionType.TRANSFER) == (True, True)
     assert event_rules.action_defaults(ActionType.NOTICE) == (False, True)
+
+
+def test_확인_요청만_resolve_대상이다() -> None:
+    assert event_rules.is_confirmation(ActionType.CONFIRMATION) is True
+    assert event_rules.is_confirmation(ActionType.NOTICE) is False
+
+
+@pytest.mark.parametrize(
+    ("status", "approve_needed", "expected"),
+    [
+        (ActionStatus.APPROVED, True, True),
+        (ActionStatus.PENDING, True, False),
+        (ActionStatus.PENDING, False, True),
+        (ActionStatus.DONE, True, False),
+        (ActionStatus.DENIED, True, False),
+    ],
+)
+def test_승인된_뒤에만_실행_완료를_남긴다(
+    status: ActionStatus, approve_needed: bool, expected: bool
+) -> None:
+    assert event_rules.can_mark_done(status, approve_needed=approve_needed) is expected
+
+
+def test_행동이_모두_DONE이어야_단계가_끝난다() -> None:
+    done, approved = ActionStatus.DONE, ActionStatus.APPROVED
+    assert event_rules.is_step_done([done, done]) is True
+    assert event_rules.is_step_done([done, approved]) is False
+    assert event_rules.is_step_done([done, ActionStatus.DENIED]) is False
+    # 행동이 없는 단계는 사람이 직접 완료한다.
+    assert event_rules.is_step_done([]) is False
+
+
+@pytest.mark.parametrize("status", list(EventStatus))
+def test_운영_중에만_처리를_받는다(status: EventStatus) -> None:
+    assert event_rules.is_operating(status) is (status == EventStatus.ON_GOING)
+
+
+def test_canApprove는_처리_API가_받는_조건과_같다() -> None:
+    def ok(**overrides) -> bool:
+        args = dict(
+            action_type=ActionType.TRANSFER, approve_needed=True, event_status=EventStatus.ON_GOING
+        ) | overrides
+        return event_rules.can_approve(MemberRole.MANAGER, ActionStatus.PENDING, **args)
+
+    assert ok() is True
+    assert ok(approve_needed=False) is False
+    assert ok(action_type=ActionType.CONFIRMATION, approve_needed=False) is True
+    assert ok(event_status=EventStatus.PLANNING) is False
+    assert event_rules.can_approve(
+        MemberRole.MEMBER, ActionStatus.PENDING, action_type=ActionType.TRANSFER,
+        approve_needed=True, event_status=EventStatus.ON_GOING,
+    ) is False

@@ -204,10 +204,11 @@ async def list_steps(session: AsyncSession, *, event_id: str) -> list[dict]:
     return result
 
 
-def action_out(action: Action, *, member: Member) -> dict:
+def action_out(action: Action, *, member: Member, event_status: EventStatus) -> dict:
     """ActionOut 한 건. step·resolver를 미리 불러온 Action이어야 한다.
 
-    member는 요청한 동아리원이다 — canApprove가 요청자 기준이라 필요하다.
+    member는 요청한 동아리원이다 — canApprove가 요청자 기준이라 필요하다. 처리는 운영 중
+    행사에서만 받으므로 행사 상태도 함께 본다.
     승인·거절 API도 처리 결과를 이 함수로 내려 조회와 모양을 맞춘다.
     """
     payload = action.payload if action.type == ActionType.CONFIRMATION else None
@@ -236,8 +237,17 @@ def action_out(action: Action, *, member: Member) -> dict:
         # CONFIRMATION 선택지는 payload(JSONB)에 들어 있다. 응답 평탄화는 여기서만 한다.
         "options": payload.get("options"),
         "allow_manual": payload.get("allow_manual"),
-        "can_approve": event_rules.can_resolve(member.role, action.status),
+        "can_approve": event_rules.can_approve(
+            member.role,
+            action.status,
+            action_type=action.type,
+            approve_needed=action.approve_needed,
+            event_status=event_status,
+        ),
         "editable": event_rules.is_editable(action.status),
+        "resolved_choice": payload.get("resolved_choice"),
+        "manual_value": payload.get("manual_value"),
+        "version": action.version,
     }
 
 
@@ -246,6 +256,7 @@ async def list_actions(
     *,
     event_id: str,
     member: Member,
+    event_status: EventStatus,
     statuses: list[ActionStatus] | None,
     action_type: ActionType | None,
     exclude_type: ActionType | None,
@@ -276,4 +287,6 @@ async def list_actions(
         .offset((page - 1) * size)
         .limit(size)
     )
-    return [action_out(a, member=member) for a in actions], total or 0
+    return [
+        action_out(a, member=member, event_status=event_status) for a in actions
+    ], total or 0

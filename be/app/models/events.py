@@ -156,6 +156,11 @@ class Action(IdMixin, TimestampMixin, Base):
     status: Mapped[ActionStatus] = mapped_column(
         enum_column(ActionStatus), nullable=False, default=ActionStatus.PENDING
     )
+    # 낙관적 잠금. 승인·거절·응답·내용 수정이 성공할 때마다 +1 (#41, #106).
+    # 클라이언트가 본 버전과 다르면 본 적 없는 내용을 승인하지 않도록 409로 막는다.
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
     amount: Mapped[int | None] = mapped_column(Integer)
     due_date: Mapped[date | None] = mapped_column(Date)
     # 유형별 설정값. 키는 ActionType마다 다르며 schemas에서 고정한다(#69, #106).

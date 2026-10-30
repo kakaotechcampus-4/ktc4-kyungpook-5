@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 from app.routers import (
     accounting,
+    actions,
     agent,
     auth,
     clubs,
@@ -26,6 +27,7 @@ from app.routers import (
     confirmed_tasks,
     reminder_recipients,
     push,
+    steps,
     tori,
 )
 
@@ -74,6 +76,8 @@ app.include_router(confirmed_tasks.router)
 app.include_router(reminder_recipients.router)
 app.include_router(push.router)
 app.include_router(events.router)
+app.include_router(actions.router)
+app.include_router(steps.router)
 app.include_router(tori.router)
 
 if get_settings().test_mode:

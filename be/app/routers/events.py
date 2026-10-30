@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.core.deps import ensure_member, get_current_account
 from app.core.enums import ActionStatus, ActionType, EventStatus
-from app.core.exceptions import ValidationFailed
+from app.core.exceptions import EventNotPlanning, ValidationFailed
 from app.db.session import get_session
 from app.models.auth import Account
 from app.models.clubs import Member
@@ -23,6 +23,7 @@ from app.schemas.events import (
     DraftOut,
     EventCreateIn,
     EventCreateOut,
+    EventStartOut,
     EventDetailOut,
     EventListResponse,
     PlanChatIn,
@@ -36,7 +37,7 @@ from app.schemas.events import (
     StepListResponse,
 )
 from app.schemas.common import Envelope
-from app.services import event_service, planning_service
+from app.services import action_service, event_service, planning_service
 
 router = APIRouter(prefix="/api/v1/events", tags=["events"])
 
@@ -111,6 +112,28 @@ async def get_event(
     return Envelope(data=EventDetailOut.model_validate(detail))
 
 
+def _ensure_planning(event: Event) -> None:
+    """계획 대화·생성은 계획 중인 행사에서만 받는다(FE 명세 v1 EVENT_NOT_PLANNING).
+
+    멱등키 기록·AI 호출 전에 빨리 거절하는 용도다. AI를 기다리는 사이 확정되는 경우는
+    planning_service._finish가 저장 직전에 행사를 잠그고 다시 확인한다.
+    """
+    if event.status != EventStatus.PLANNING:
+        raise EventNotPlanning()
+
+
+@router.post("/{event_id}/start", response_model=Envelope[EventStartOut])
+async def start_event(
+    event_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[EventStartOut]:
+    """계획을 확정해 운영을 시작한다(PLANNING → ON_GOING). 이후 승인·완료 처리를 받는다."""
+    await _get_event_for_account(session, event_id=event_id, account=account)
+    event = await action_service.start_event(session, event_id=event_id)
+    return Envelope(data=EventStartOut.model_validate(event))
+
+
 @router.post("/{event_id}/plan/chat", response_model=Envelope[PlanViewOut])
 async def chat_plan(
     event_id: str,
@@ -122,6 +145,7 @@ async def chat_plan(
     event, member = await _get_event_for_account(
         session, event_id=event_id, account=account
     )
+    _ensure_planning(event)
     # chat()은 AI 호출 전후로 세션을 직접 열고 닫는다 — 여기서 받은 session은
     # 권한 확인에만 쓰고 그대로 넘기지 않는다(db/session.py 참고). 권한 확인
     # 쿼리가 연 트랜잭션을 AI 호출 내내 쥐고 있지 않도록 여기서 바로 닫는다
@@ -178,6 +202,7 @@ async def generate_plan(
     event, member = await _get_event_for_account(
         session, event_id=event_id, account=account
     )
+    _ensure_planning(event)
     # 위 chat_plan과 같은 이유로 AI 호출 전에 요청 세션을 닫는다(#192 리뷰).
     await session.close()
     view = await planning_service.generate(
@@ -235,13 +260,14 @@ async def list_event_actions(
     session: AsyncSession = Depends(get_session),
 ) -> ActionListResponse:
     statuses = _parse_statuses(status)
-    _event, member = await _get_event_for_account(
+    event, member = await _get_event_for_account(
         session, event_id=event_id, account=account
     )
     rows, total_count = await event_service.list_actions(
         session,
         event_id=event_id,
         member=member,
+        event_status=event.status,
         statuses=statuses,
         action_type=type,
         exclude_type=exclude_type,
