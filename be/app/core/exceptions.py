@@ -114,6 +114,35 @@ class ImportNotReady(ApiError):
         super().__init__("아직 확정할 수 있는 상태가 아닙니다.")
 
 
+class StepNotFound(ApiError):
+    status_code = 404
+    code = "STEP_NOT_FOUND"
+
+    def __init__(self) -> None:
+        super().__init__("해당 단계를 찾을 수 없습니다.")
+
+
+class ActionNotFound(ApiError):
+    status_code = 404
+    code = "ACTION_NOT_FOUND"
+
+    def __init__(self) -> None:
+        super().__init__("해당 작업을 찾을 수 없습니다.")
+
+
+class NotEditable(ApiError):
+    """끝난 단계나 더 고칠 수 없는 Action을 수정하려 할 때 (#106 ③).
+
+    무엇이 잠겼는지는 응답의 editable로 이미 알 수 있으므로 이유만 전한다.
+    """
+
+    status_code = 409
+    code = "NOT_EDITABLE"
+
+    def __init__(self) -> None:
+        super().__init__("이미 끝난 내용이라 고칠 수 없습니다.")
+
+
 class ValidationFailed(ApiError):
     status_code = 422
     code = "VALIDATION_FAILED"

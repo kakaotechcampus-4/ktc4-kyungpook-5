@@ -6,6 +6,7 @@
 
 from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 
 from app.core.deps import ensure_member, get_current_account
@@ -163,8 +164,17 @@ async def list_planned_steps(
     session: AsyncSession = Depends(get_session),
 ) -> PlannedStepListResponse:
     event, _member = await _get_event_for_account(session, event_id=event_id, account=account)
-    rows = await session.scalars(select(Step).where(Step.event_id == event.id).order_by(Step.step_order))
-    return PlannedStepListResponse(data=[PlannedStepOut.model_validate(row) for row in rows])
+    # 세부 수정 모달이 단계별 Action을 쓴다. 비동기 세션에서는 지연 로딩이 막혀
+    # 여기서 함께 불러온다(#106).
+    rows = await session.scalars(
+        select(Step)
+        .where(Step.event_id == event.id)
+        .options(selectinload(Step.actions))
+        .order_by(Step.step_order)
+    )
+    return PlannedStepListResponse(
+        data=[PlannedStepOut.model_validate(event_service.planned_step_out(row)) for row in rows]
+    )
 
 
 @router.post("/{event_id}/plan/generate", response_model=Envelope[PlanViewOut])

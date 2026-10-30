@@ -14,7 +14,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.enums import ActionStatus, ActionType, EventStatus, StepState
+from app.core.enums import ActionStatus, ActionType, EventStatus, StepCode, StepState
+from app.core.exceptions import NotEditable
 from app.models.clubs import Member
 from app.models.events import Action, Event, Step
 from app.services import event_rules
@@ -236,6 +237,8 @@ def action_out(action: Action, *, member: Member) -> dict:
         # CONFIRMATION 선택지는 payload(JSONB)에 들어 있다. 응답 평탄화는 여기서만 한다.
         "options": payload.get("options"),
         "allow_manual": payload.get("allow_manual"),
+        # 유형별 설정값(#106 ①). CONFIRMATION은 위에서 이미 펼쳤으므로 비운다.
+        "payload": None if action.type == ActionType.CONFIRMATION else action.payload,
         "can_approve": event_rules.can_resolve(member.role, action.status),
         "editable": event_rules.is_editable(action.status),
     }
@@ -277,3 +280,91 @@ async def list_actions(
         .limit(size)
     )
     return [action_out(a, member=member) for a in actions], total or 0
+
+
+def planned_step_out(step: Step) -> dict:
+    """PlannedStepOut 한 건. actions를 미리 불러온 Step이어야 한다.
+
+    계획 화면의 세부 수정 모달이 쓰는 모양이다. 승인 흐름의 action_out과 달리
+    resolver·canApprove를 넣지 않는다 — 계획 중에는 아직 쓰이지 않는다.
+    """
+    return {
+        "id": step.id,
+        "code": step.code,
+        "step_order": step.step_order,
+        "name": step.name,
+        "actor": step.actor,
+        "starts_at": step.starts_at,
+        "deadline": step.deadline,
+        "editable": event_rules.is_step_editable(step.completed_at),
+        "actions": [
+            {
+                "id": action.id,
+                "type": action.type,
+                "title": action.title,
+                "subtitle": action.subtitle,
+                "amount": action.amount,
+                "due_date": action.due_date,
+                # CONFIRMATION의 payload는 선택지라 세부 수정 대상이 아니다.
+                "payload": (
+                    None if action.type == ActionType.CONFIRMATION else action.payload
+                ),
+                "editable": event_rules.is_editable(action.status),
+            }
+            for action in step.actions
+        ],
+    }
+
+
+async def update_step(
+    session: AsyncSession, *, step: Step, starts_at: datetime | None, deadline: datetime | None,
+    fields: set[str],
+) -> Step:
+    """단계 일정을 고친다 (#106 ④). 보낸 밭만 바꾼다.
+
+    fields는 요청에 실제로 실려 온 키다. None을 "비우기"로 받아야 해서
+    값만 보고는 생략과 구분할 수 없다.
+    """
+    if not event_rules.is_step_editable(step.completed_at):
+        raise NotEditable()
+    if "starts_at" in fields:
+        step.starts_at = starts_at
+    if "deadline" in fields:
+        step.deadline = deadline
+    await session.commit()
+    await session.refresh(step, ["actions"])
+    return step
+
+
+async def update_action(
+    session: AsyncSession, *, action: Action, values: dict, payload_values: dict | None,
+) -> Action:
+    """Action 세부를 고친다 (#106 ④).
+
+    payload는 통째로 바꾸지 않고 보낸 키만 덮는다 — 모달이 그리지 않는 키
+    (CONFIRMATION의 선택지 등)를 지우면 안 된다.
+
+    금액을 고치면 행사 쪽 파생값을 다시 맞춘다(#106 ②). 참가비 수금과 지출
+    정산만 Event로 올라가고, 예약 계약금·환급액은 그 Action 안에서만 쓴다.
+    """
+    if not event_rules.is_editable(action.status):
+        raise NotEditable()
+    for key, value in values.items():
+        setattr(action, key, value)
+    if payload_values:
+        action.payload = {**(action.payload or {}), **payload_values}
+    if "amount" in values and action.step is not None:
+        event = await session.get(Event, action.event_id)
+        if event is not None:
+            if action.step.code == StepCode.COLLECT_FEES:
+                event.fee_per_person = action.amount
+            elif action.step.code == StepCode.SETTLE_EXPENSES:
+                event.budget_total = action.amount
+    # 승인된 내용을 고쳤으면 다시 승인을 받는다 (event_rules.is_editable 주석).
+    if action.status == ActionStatus.APPROVED:
+        action.status = ActionStatus.PENDING
+        action.resolved_at = None
+        action.resolved_by = None
+    await session.commit()
+    await session.refresh(action)
+    return action

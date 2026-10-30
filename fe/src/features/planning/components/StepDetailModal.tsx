@@ -1,69 +1,120 @@
-// 단계 세부 수정(#106). 일정은 모든 단계에 공통이고, 나머지 밭은 그 단계에 붙은
-// Action 유형이 정한다. 저장은 아직 이 브라우저에만 남는다(#213).
+// 단계 세부 수정(#106). 일정은 Step, 나머지는 그 단계의 Action 에 저장된다.
+// 밭 구성은 서버가 내려준 Action 의 type 이 정한다.
 import { useState } from 'react'
-import type { CatalogueStep } from '@/features/planning/catalogue'
-import type { LocalSchedule } from '@/features/planning/localPlan'
-import { DERIVES_TO_EVENT, fieldsForStep, type FieldSpec } from '@/features/planning/stepDetail'
+import { useSaveStepDetail } from '@/features/planning/hooks'
+import {
+  amountLabel,
+  DERIVES_TO_EVENT,
+  fieldsForAction,
+  type ActionPayload,
+  type FieldSpec,
+  type StepAction,
+} from '@/features/planning/stepDetail'
+import type { components } from '@/shared/api/schema'
+import { Field, ErrorBanner } from '@/shared/ui/AuthShell'
 import { Button } from '@/shared/ui/Button'
-import { Field } from '@/shared/ui/AuthShell'
 import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
 
+type Step = components['schemas']['PlannedStepOut']
+
 // <input type="date">는 yyyy-MM-dd만 받는다. 돌려줄 때는 그날 0시(한국)를 붙여
-// 서버가 줄 ISO 와 같은 모양으로 맞춘다.
+// 서버가 주는 ISO 와 같은 모양으로 맞춘다.
 const toDateInput = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : '')
 const fromDateInput = (value: string) => (value ? `${value}T00:00:00+09:00` : null)
 
-interface StepDetailModalProps {
-  step: CatalogueStep | null
-  value: LocalSchedule
-  onClose: () => void
-  onSave: (next: LocalSchedule) => void
+interface Draft {
+  startsAt: string | null
+  deadline: string | null
+  actions: Record<string, { title: string; amount: number | null; payload: ActionPayload }>
 }
 
-export function StepDetailModal({ step, value, onClose, onSave }: StepDetailModalProps) {
+function toDraft(step: Step): Draft {
+  return {
+    startsAt: step.startsAt,
+    deadline: step.deadline,
+    actions: Object.fromEntries(
+      step.actions.map((action) => [
+        action.id,
+        { title: action.title, amount: action.amount, payload: { ...action.payload } },
+      ]),
+    ),
+  }
+}
+
+export function StepDetailModal({
+  step,
+  onClose,
+  onSaved,
+}: {
+  step: Step | null
+  onClose: () => void
+  onSaved: () => void
+}) {
   if (!step) return null
-  return (
-    <StepDetailForm key={step.code} step={step} value={value} onClose={onClose} onSave={onSave} />
-  )
+  return <StepDetailForm key={step.id} step={step} onClose={onClose} onSaved={onSaved} />
 }
 
 function StepDetailForm({
   step,
-  value,
   onClose,
-  onSave,
-}: StepDetailModalProps & { step: CatalogueStep }) {
-  const [draft, setDraft] = useState<LocalSchedule>(value)
-  const fields = fieldsForStep(step.code)
-  const derives = DERIVES_TO_EVENT[step.code]
-  const set = (patch: Partial<LocalSchedule>) => setDraft((current) => ({ ...current, ...patch }))
+  onSaved,
+}: {
+  step: Step
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [draft, setDraft] = useState<Draft>(() => toDraft(step))
+  const [error, setError] = useState('')
+  const save = useSaveStepDetail()
+  const locked = !step.editable
+
+  const submit = async () => {
+    setError('')
+    try {
+      await save.mutateAsync({ step, draft })
+      onSaved()
+    } catch (cause) {
+      setError(
+        cause instanceof Error && cause.message ? cause.message : '저장하지 못했어요.',
+      )
+    }
+  }
 
   return (
     <Modal
       open
       onClose={onClose}
       title={step.name}
-      subtitle={`${step.actor} · ${step.actions}`}
+      subtitle={step.actions.map((action) => action.title).join(' · ') || '붙은 작업이 없어요'}
       width={620}
-      footerNote="저장해도 이 브라우저에만 남습니다 (#213)"
+      footerNote={locked ? '이미 끝난 단계라 고칠 수 없어요' : undefined}
       footer={
         <span className="flex gap-[8px]">
           <Button variant="secondary" onClick={onClose}>
-            취소
+            {locked ? '닫기' : '취소'}
           </Button>
-          <Button onClick={() => onSave(draft)}>저장</Button>
+          {!locked && (
+            <Button disabled={save.isPending} onClick={() => void submit()}>
+              {save.isPending ? '저장하는 중…' : '저장'}
+            </Button>
+          )}
         </span>
       }
     >
       <div className="flex flex-col gap-[16px]">
+        {error && <ErrorBanner title={error} />}
+
         <div className="flex flex-wrap gap-[14px]">
           <div className="min-w-[150px] flex-1">
             <Field label="시작일">
               <Input
                 type="date"
+                disabled={locked}
                 value={toDateInput(draft.startsAt)}
-                onChange={(e) => set({ startsAt: fromDateInput(e.target.value) })}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, startsAt: fromDateInput(e.target.value) }))
+                }
               />
             </Field>
           </div>
@@ -71,25 +122,37 @@ function StepDetailForm({
             <Field label="마감일">
               <Input
                 type="date"
+                disabled={locked}
                 value={toDateInput(draft.deadline)}
-                onChange={(e) => set({ deadline: fromDateInput(e.target.value) })}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, deadline: fromDateInput(e.target.value) }))
+                }
               />
             </Field>
           </div>
         </div>
 
-        {fields.length === 0 ? (
+        {step.actions.length === 0 ? (
           <p className="text-[12px] text-mute">
-            이 단계는 일정 말고 고칠 것이 없어요. {step.actions}만 붙어 있습니다.
+            이 단계에는 붙은 작업이 없어서 일정 말고 고칠 것이 없어요.
           </p>
         ) : (
-          fields.map((spec) => (
-            <DetailField
-              key={spec.key}
-              spec={spec}
-              draft={draft}
-              onChange={set}
-              note={spec.kind === 'money' ? derives : undefined}
+          step.actions.map((action) => (
+            <ActionFields
+              key={action.id}
+              action={action}
+              stepCode={step.code}
+              locked={locked || !action.editable}
+              value={draft.actions[action.id]}
+              onChange={(patch) =>
+                setDraft((d) => ({
+                  ...d,
+                  actions: {
+                    ...d.actions,
+                    [action.id]: { ...d.actions[action.id], ...patch },
+                  },
+                }))
+              }
             />
           ))
         )}
@@ -98,23 +161,87 @@ function StepDetailForm({
   )
 }
 
-function DetailField({
-  spec,
-  draft,
+function ActionFields({
+  action,
+  stepCode,
+  locked,
+  value,
   onChange,
-  note,
+}: {
+  action: StepAction
+  stepCode: string
+  locked: boolean
+  value: Draft['actions'][string]
+  onChange: (patch: Partial<Draft['actions'][string]>) => void
+}) {
+  const fields = fieldsForAction(action)
+  const derives = DERIVES_TO_EVENT[stepCode]
+  const setPayload = (patch: Partial<ActionPayload>) =>
+    onChange({ payload: { ...value.payload, ...patch } })
+
+  return (
+    <section className="flex flex-col gap-[12px] rounded-[11px] border border-line p-[14px]">
+      <p className="text-[11px] font-bold text-mute">
+        {action.type}
+        {locked && ' · 승인이 끝나 고칠 수 없어요'}
+      </p>
+
+      <Field label="제목">
+        <Input
+          disabled={locked}
+          value={value.title}
+          onChange={(e) => onChange({ title: e.target.value })}
+        />
+      </Field>
+
+      {/* 금액이 없는 유형에는 금액 칸을 그리지 않는다. 서버가 null 로 둔 채 쓰지 않는다 */}
+      {(action.amount !== null || stepCode in DERIVES_TO_EVENT) && (
+        <Field label={amountLabel(stepCode)} hint={derives ?? '원'}>
+          <Input
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            disabled={locked}
+            value={value.amount ?? ''}
+            onChange={(e) =>
+              onChange({ amount: e.target.value === '' ? null : Number(e.target.value) })
+            }
+          />
+        </Field>
+      )}
+
+      {fields.map((spec) => (
+        <PayloadField
+          key={spec.key}
+          spec={spec}
+          locked={locked}
+          payload={value.payload}
+          onChange={setPayload}
+        />
+      ))}
+    </section>
+  )
+}
+
+function PayloadField({
+  spec,
+  locked,
+  payload,
+  onChange,
 }: {
   spec: FieldSpec
-  draft: LocalSchedule
-  onChange: (patch: Partial<LocalSchedule>) => void
-  note?: string
+  locked: boolean
+  payload: ActionPayload
+  onChange: (patch: Partial<ActionPayload>) => void
 }) {
   if (spec.kind === 'check') {
     return (
       <label className="flex items-center gap-[9px] text-[12.5px] font-bold text-ink2">
         <input
           type="checkbox"
-          checked={draft.receiptRequired === true}
+          disabled={locked}
+          checked={payload.receiptRequired === true}
           onChange={(e) => onChange({ receiptRequired: e.target.checked })}
         />
         {spec.label}
@@ -132,7 +259,8 @@ function DetailField({
               key={mode}
               type="button"
               size="sm"
-              variant={draft.approvalMode === mode ? 'primary' : 'secondary'}
+              disabled={locked}
+              variant={payload.approvalMode === mode ? 'primary' : 'secondary'}
               onClick={() => onChange({ approvalMode: mode })}
             >
               {mode === 'BATCH' ? '묶어서' : '건별'}
@@ -143,39 +271,13 @@ function DetailField({
     )
   }
 
-  if (spec.kind === 'date') {
-    return (
-      <Field label={spec.label}>
-        <Input
-          type="date"
-          value={toDateInput(draft.dueDate)}
-          onChange={(e) => onChange({ dueDate: fromDateInput(e.target.value) })}
-        />
-      </Field>
-    )
-  }
-
-  if (spec.kind === 'money') {
-    return (
-      <Field label={spec.label} hint={note ?? '원'}>
-        <Input
-          type="number"
-          min={0}
-          step={1}
-          inputMode="numeric"
-          value={draft.amount ?? ''}
-          onChange={(e) => onChange({ amount: e.target.value === '' ? null : Number(e.target.value) })}
-        />
-      </Field>
-    )
-  }
-
-  const key = spec.key as 'title' | 'channel' | 'audience' | 'sendTiming' | 'vendor' | 'cancelTerms' | 'account'
+  const key = spec.key as 'channel' | 'audience' | 'sendTiming' | 'vendor' | 'cancelTerms' | 'account'
   return (
     <Field label={spec.label} hint={spec.hint}>
       <Input
-        value={draft[key] ?? ''}
+        disabled={locked}
         placeholder={spec.hint}
+        value={payload[key] ?? ''}
         onChange={(e) => onChange({ [key]: e.target.value })}
       />
     </Field>

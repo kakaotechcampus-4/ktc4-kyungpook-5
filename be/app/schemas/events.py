@@ -9,7 +9,7 @@ enum은 core/enums.py의 StrEnum을 그대로 쓴다. 값이 곧 API 코드라 �
 from datetime import date
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, StringConstraints
+from pydantic import Field, StringConstraints, model_serializer
 
 from app.core.enums import (
     ActionStatus,
@@ -40,6 +40,40 @@ class ActionOption(CamelModel):
     label: str
 
 
+class ActionPayloadOut(CamelModel):
+    """Action 유형별 설정값 (#106 ①).
+
+    키는 ActionType마다 다르고, 해당 없는 키는 내려보내지 않는다 — FE는 없는
+    키의 입력 밭을 그리지 않는다. CONFIRMATION의 선택지는 ActionOut의
+    options·allow_manual로 평탄화해 내려보내므로 여기 담지 않는다.
+    """
+
+    model_config = CamelModel.model_config | {"extra": "ignore"}
+
+    # NOTICE · EXTERNAL_SEND
+    channel: str | None = None
+    audience: str | None = None
+    # EXTERNAL_SEND
+    send_timing: str | None = None
+    # CONTRACT
+    vendor: str | None = None
+    cancel_terms: str | None = None
+    # TRANSFER
+    account: str | None = None
+    # EXPENSE
+    receipt_required: bool | None = None
+    approval_mode: Literal["BATCH", "EACH"] | None = None
+
+    @model_serializer(mode="wrap")
+    def _omit_absent(self, handler):
+        """해당 없는 키는 아예 빼고 내려보낸다 (#106 ①).
+
+        FE는 키가 없으면 그 입력 밭을 그리지 않는다. null로 내려보내면
+        "값이 비었다"와 "이 유형에는 없는 설정이다"를 구분할 수 없다.
+        """
+        return {key: value for key, value in handler(self).items() if value is not None}
+
+
 class ActionOut(CamelModel):
     id: str
     type: ActionType
@@ -61,6 +95,9 @@ class ActionOut(CamelModel):
     # CONFIRMATION 전용. payload에서 펼쳐 담으며 다른 타입은 항상 null이다.
     options: list[ActionOption] | None
     allow_manual: bool | None
+    # 유형별 설정값 (#106 ①). 세부 수정 모달이 어떤 밭을 그릴지 이걸로 정한다.
+    # CONFIRMATION은 위 options·allow_manual로 이미 펼쳤으므로 여기서는 비운다.
+    payload: ActionPayloadOut | None
     can_approve: bool
     # 세부 수정 가능 여부 (#106). APPROVED에서 고치면 다시 PENDING이 된다.
     editable: bool
@@ -208,13 +245,56 @@ class PlanMessageListResponse(CamelModel):
     meta: None = None
 
 
+class PlannedStepActionOut(CamelModel):
+    """계획 화면이 쓰는 Action 요약 (#106).
+
+    세부 수정 모달이 필요한 것만 담는다. 승인 흐름에 쓰는 ActionOut과 달리
+    content·resolver·canApprove는 넣지 않는다 — 계획 중에는 아직 쓰이지 않는다.
+    """
+
+    id: str
+    type: ActionType
+    title: str
+    subtitle: str | None
+    amount: int | None
+    due_date: date | None
+    payload: ActionPayloadOut | None
+    editable: bool
+
+
 class PlannedStepOut(CamelModel):
     id: str
+    # 고정 카탈로그 코드(#69). FE가 이름 문자열로 단계를 되찾지 않게 함께 내려보낸다.
+    code: StepCode
     step_order: int
     name: str
     actor: StepActor
     starts_at: UtcDateTime | None
     deadline: UtcDateTime | None
+    # 세부 수정 가능 여부 (#106 ③). 끝난 단계는 고칠 수 없다.
+    editable: bool
+    actions: list[PlannedStepActionOut]
+
+
+class StepUpdateIn(CamelModel):
+    """단계 일정 수정 (#106 ④). 보낸 밭만 바뀐다."""
+
+    starts_at: UtcDateTime | None = None
+    deadline: UtcDateTime | None = None
+
+
+class ActionUpdateIn(CamelModel):
+    """Action 세부 수정 (#106 ④). 보낸 밭만 바뀐다.
+
+    payload는 통째로 바꾸지 않고 보낸 키만 덮는다 — 모달이 그리지 않는 키
+    (예: CONFIRMATION의 선택지)를 지우면 안 된다.
+    """
+
+    title: str | None = None
+    subtitle: str | None = None
+    amount: int | None = None
+    due_date: date | None = None
+    payload: ActionPayloadOut | None = None
 
 
 class PlannedStepListResponse(CamelModel):

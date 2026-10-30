@@ -1012,6 +1012,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/steps/{step_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Step */
+        patch: operations["update_step_api_v1_steps__step_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/actions/{action_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Action */
+        patch: operations["update_action_api_v1_actions__action_id__patch"];
+        trace?: never;
+    };
     "/api/v1/clubs/{club_id}/tori/messages": {
         parameters: {
             query?: never;
@@ -1166,10 +1200,37 @@ export interface components {
             options: components["schemas"]["ActionOption"][] | null;
             /** Allowmanual */
             allowManual: boolean | null;
+            payload: components["schemas"]["ActionPayloadOut"] | null;
             /** Canapprove */
             canApprove: boolean;
             /** Editable */
             editable: boolean;
+        };
+        /**
+         * ActionPayloadOut
+         * @description Action 유형별 설정값 (#106 ①).
+         *
+         *     키는 ActionType마다 다르고, 해당 없는 키는 내려보내지 않는다 — FE는 없는
+         *     키의 입력 밭을 그리지 않는다. CONFIRMATION의 선택지는 ActionOut의
+         *     options·allow_manual로 평탄화해 내려보내므로 여기 담지 않는다.
+         */
+        ActionPayloadOut: {
+            /** Channel */
+            channel?: string | null;
+            /** Audience */
+            audience?: string | null;
+            /** Sendtiming */
+            sendTiming?: string | null;
+            /** Vendor */
+            vendor?: string | null;
+            /** Cancelterms */
+            cancelTerms?: string | null;
+            /** Account */
+            account?: string | null;
+            /** Receiptrequired */
+            receiptRequired?: boolean | null;
+            /** Approvalmode */
+            approvalMode?: ("BATCH" | "EACH") | null;
         };
         /**
          * ActionStatus
@@ -1184,6 +1245,24 @@ export interface components {
          * @enum {string}
          */
         ActionType: "EXTERNAL_SEND" | "TRANSFER" | "EXPENSE" | "CONTRACT" | "NOTICE" | "CONFIRMATION";
+        /**
+         * ActionUpdateIn
+         * @description Action 세부 수정 (#106 ④). 보낸 밭만 바뀐다.
+         *
+         *     payload는 통째로 바꾸지 않고 보낸 키만 덮는다 — 모달이 그리지 않는 키
+         *     (예: CONFIRMATION의 선택지)를 지우면 안 된다.
+         */
+        ActionUpdateIn: {
+            /** Title */
+            title?: string | null;
+            /** Subtitle */
+            subtitle?: string | null;
+            /** Amount */
+            amount?: number | null;
+            /** Duedate */
+            dueDate?: string | null;
+            payload?: components["schemas"]["ActionPayloadOut"] | null;
+        };
         /** ActivityConnectionOut */
         ActivityConnectionOut: {
             /** Id */
@@ -1735,6 +1814,12 @@ export interface components {
             /** Meta */
             meta?: null;
         };
+        /** Envelope[PlannedStepOut] */
+        Envelope_PlannedStepOut_: {
+            data: components["schemas"]["PlannedStepOut"];
+            /** Meta */
+            meta?: null;
+        };
         /** Envelope[PushDeleteOut] */
         Envelope_PushDeleteOut_: {
             data: components["schemas"]["PushDeleteOut"];
@@ -1949,6 +2034,8 @@ export interface components {
         /** ExcludedStepOut */
         ExcludedStepOut: {
             code: components["schemas"]["StepCode"];
+            /** Name */
+            name?: string | null;
             /** Reason */
             reason: string;
         };
@@ -2095,6 +2182,18 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HistoryUsageOut
+         * @description 대화 이력 사용량 (#194). Tool 메시지까지 센 값이라 남은 대화 횟수가 아니다.
+         */
+        HistoryUsageOut: {
+            /** Messagecount */
+            messageCount: number;
+            /** Maxmessages */
+            maxMessages: number;
+            /** Nearlimit */
+            nearLimit: boolean;
         };
         /** InvitationAcceptIn */
         InvitationAcceptIn: {
@@ -2355,6 +2454,7 @@ export interface components {
             /** Excludedsteps */
             excludedSteps: components["schemas"]["ExcludedStepOut"][];
             summary: components["schemas"]["PlanSummaryOut"];
+            historyUsage?: components["schemas"]["HistoryUsageOut"] | null;
             /** Baserevision */
             baseRevision: number;
             generationReadiness?: components["schemas"]["GenerationReadinessOut"] | null;
@@ -2380,8 +2480,32 @@ export interface components {
             recordLookup: components["schemas"]["RecordLookupOut"] | null;
             generationReadiness: components["schemas"]["GenerationReadinessOut"];
             generationResult: components["schemas"]["GenerationResultOut"] | null;
+            historyUsage?: components["schemas"]["HistoryUsageOut"] | null;
             /** Baserevision */
             baseRevision: number;
+        };
+        /**
+         * PlannedStepActionOut
+         * @description 계획 화면이 쓰는 Action 요약 (#106).
+         *
+         *     세부 수정 모달이 필요한 것만 담는다. 승인 흐름에 쓰는 ActionOut과 달리
+         *     content·resolver·canApprove는 넣지 않는다 — 계획 중에는 아직 쓰이지 않는다.
+         */
+        PlannedStepActionOut: {
+            /** Id */
+            id: string;
+            type: components["schemas"]["ActionType"];
+            /** Title */
+            title: string;
+            /** Subtitle */
+            subtitle: string | null;
+            /** Amount */
+            amount: number | null;
+            /** Duedate */
+            dueDate: string | null;
+            payload: components["schemas"]["ActionPayloadOut"] | null;
+            /** Editable */
+            editable: boolean;
         };
         /** PlannedStepListResponse */
         PlannedStepListResponse: {
@@ -2394,6 +2518,7 @@ export interface components {
         PlannedStepOut: {
             /** Id */
             id: string;
+            code: components["schemas"]["StepCode"];
             /** Steporder */
             stepOrder: number;
             /** Name */
@@ -2403,6 +2528,10 @@ export interface components {
             startsAt: string | null;
             /** Deadline */
             deadline: string | null;
+            /** Editable */
+            editable: boolean;
+            /** Actions */
+            actions: components["schemas"]["PlannedStepActionOut"][];
         };
         /** PushDeleteOut */
         PushDeleteOut: {
@@ -2842,6 +2971,16 @@ export interface components {
          * @enum {string}
          */
         StepState: "DONE" | "CURRENT" | "TODO";
+        /**
+         * StepUpdateIn
+         * @description 단계 일정 수정 (#106 ④). 보낸 밭만 바뀐다.
+         */
+        StepUpdateIn: {
+            /** Startsat */
+            startsAt?: string | null;
+            /** Deadline */
+            deadline?: string | null;
+        };
         /** TaskReminderOut */
         TaskReminderOut: {
             /** Id */
@@ -5441,6 +5580,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StepListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_step_api_v1_steps__step_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                step_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PlannedStepOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_action_api_v1_actions__action_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PlannedStepOut_"];
                 };
             };
             /** @description Validation Error */

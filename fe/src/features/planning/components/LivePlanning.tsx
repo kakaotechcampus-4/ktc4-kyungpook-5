@@ -122,11 +122,7 @@ function Conversation({
   const screen = live.snapshot.data?.screen
   // 단계 수정 화면에서 저장한 구성이 있으면 그걸 반영해 보여준다(#213 전까지 로컬).
   const localPlan = eventId ? planningApi.local(eventId) : null
-  const steps = applyLocalCodes(
-    live.snapshot.data?.steps ?? [],
-    localPlan?.codes ?? null,
-    localPlan?.schedule,
-  )
+  const steps = applyLocalCodes(live.snapshot.data?.steps ?? [], localPlan?.codes ?? null)
   const lookup = live.view?.recordLookup
   const readiness = live.view?.generationReadiness ?? screen?.generationReadiness ?? null
   const lastMessage = live.snapshot.data?.messages.at(-1)
