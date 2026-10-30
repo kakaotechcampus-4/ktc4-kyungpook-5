@@ -375,6 +375,7 @@ class PlanGenerateIn(CamelModel):
     base_revision: int = Field(ge=0)
     use_current_conditions: bool = False
     replace_edited_plan: bool = False
+    edited_plan_at: UtcDateTime | None = None
 
 
 class ConditionMetaOut(CamelModel):
