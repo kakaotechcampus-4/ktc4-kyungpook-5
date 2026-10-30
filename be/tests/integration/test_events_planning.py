@@ -330,6 +330,9 @@ async def test_재생성_편집충돌_확인시각과_추가편집을_HTTP로_�
         action = await session.scalar(select(Action).where(Action.event_id == event_id))
         assert action is not None
         action.title = "다른 사용자 편집"
+        from app.models.events import Event
+        event = await session.get(Event, event_id)
+        event.modified_at = datetime.now(UTC)
         await session.commit()
     stale = client.post(f"/api/v1/events/{event_id}/plan/generate", headers=headers,
                         json={"baseRevision": 2, "replaceEditedPlan": True, "editedPlanAt": edited_at})
