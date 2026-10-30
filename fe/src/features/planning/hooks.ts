@@ -197,20 +197,6 @@ export function useStartEvent(eventId: string | null) {
   })
 }
 
-// 저장한 단계 구성을 서버 응답 위에 덮어 보여준다. 뺀 단계는 빼고, 순서도
-// 저장한 대로 다시 세운다. 서버가 구성을 받기 시작하면(#213 3단계) 사라진다.
-export function applyLocalCodes(
-  steps: S['PlannedStepOut'][],
-  codes: string[] | null,
-): S['PlannedStepOut'][] {
-  if (!codes) return steps
-  const byCode = new Map<string, S['PlannedStepOut']>(steps.map((step) => [step.code, step]))
-  return codes
-    .map((code) => byCode.get(code))
-    .filter((step): step is S['PlannedStepOut'] => step !== undefined)
-    .map((step, index) => ({ ...step, stepOrder: index + 1 }))
-}
-
 // 세부 수정 저장 (#106 ④). 일정은 Step, 나머지는 Action 으로 간다.
 // 바뀐 것만 보낸다 — PATCH 가 보낸 밭만 덮으므로 건드리지 않은 값은 그대로 남는다.
 export function useSaveStepDetail() {

@@ -143,6 +143,20 @@ class NotEditable(ApiError):
         super().__init__("이미 끝난 내용이라 고칠 수 없습니다.")
 
 
+class EventStateConflict(ApiError):
+    """지금 상태에서 할 수 없는 전환을 요청했을 때 (#213 3단계).
+
+    계획 중인 행사만 단계 구성을 바꾸고 시작할 수 있다. 이미 벌어진 일이 있는
+    단계를 빼면 기록이 어긋난다(#105).
+    """
+
+    status_code = 409
+    code = "EVENT_STATE_CONFLICT"
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class ValidationFailed(ApiError):
     status_code = 422
     code = "VALIDATION_FAILED"

@@ -11,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from app.core.enums import ActionStatus, ActionType, MemberRole, StepCode
+from app.core.enums import ActionStatus, ActionType, EventStatus, MemberRole, StepCode
 from app.db import session as db_session
 from app.models.events import Event
 from tests.integration.event_seed import (
@@ -198,3 +198,122 @@ async def test_없는_단계와_행동은_404다(client: TestClient, app_db: Non
     headers, _club_id = owner_with_club(client)
     assert client.patch("/api/v1/steps/stp_none", headers=headers, json={}).status_code == 404
     assert client.patch("/api/v1/actions/act_none", headers=headers, json={}).status_code == 404
+
+
+async def test_단계_구성은_순서를_바꾸고_빼고_다시_넣을_수_있다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id, status=EventStatus.PLANNING)
+    await add_step(event_id, 1, code=StepCode.ASSIGN_ROLES)
+    await add_step(event_id, 2, code=StepCode.RECRUIT_NOTICE)
+
+    # 하나를 빼고 없던 단계를 넣는다.
+    res = client.patch(
+        f"/api/v1/events/{event_id}/plan/steps",
+        headers=headers,
+        json={"codes": ["RECRUIT_NOTICE", "SETTLE_EXPENSES", "EVENT_DAY"]},
+    )
+    assert res.status_code == 200, res.text
+    by_code = {step["code"]: step for step in res.json()["data"]}
+    assert list(by_code) == ["RECRUIT_NOTICE", "SETTLE_EXPENSES", "EVENT_DAY"]
+
+    # 새로 넣은 단계도 계획이 만들어 주던 Action을 함께 갖는다.
+    assert [action["type"] for action in by_code["SETTLE_EXPENSES"]["actions"]] == ["EXPENSE"]
+    # Action이 붙지 않는 단계는 비어 있다.
+    assert by_code["EVENT_DAY"]["actions"] == []
+
+
+async def test_남은_단계는_고쳐_둔_일정을_잃지_않는다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id, status=EventStatus.PLANNING)
+    keep = await add_step(event_id, 1, code=StepCode.ASSIGN_ROLES)
+    await add_step(event_id, 2, code=StepCode.RECRUIT_NOTICE)
+    client.patch(
+        f"/api/v1/steps/{keep}", headers=headers, json={"deadline": "2026-11-08T00:00:00+09:00"}
+    )
+
+    res = client.patch(
+        f"/api/v1/events/{event_id}/plan/steps",
+        headers=headers,
+        json={"codes": ["ASSIGN_ROLES"]},
+    )
+    assert res.status_code == 200, res.text
+    step = res.json()["data"][0]
+    assert step["id"] == keep
+    assert step["deadline"] is not None
+
+
+async def test_묶음_차례를_거스르는_구성은_바로잡힌다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id, status=EventStatus.PLANNING)
+    await add_step(event_id, 1, code=StepCode.ASSIGN_ROLES)
+
+    # 마무리 단계를 사전 준비 앞에 보내도 묶음 차례가 이긴다.
+    res = client.patch(
+        f"/api/v1/events/{event_id}/plan/steps",
+        headers=headers,
+        json={"codes": ["EVENT_DAY", "ASSIGN_ROLES"]},
+    )
+    assert [step["code"] for step in res.json()["data"]] == ["ASSIGN_ROLES", "EVENT_DAY"]
+
+
+async def test_단계를_모두_빼거나_중복해_보내면_422다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id, status=EventStatus.PLANNING)
+    await add_step(event_id, 1, code=StepCode.ASSIGN_ROLES)
+    url = f"/api/v1/events/{event_id}/plan/steps"
+
+    assert client.patch(url, headers=headers, json={"codes": []}).status_code == 422
+    assert (
+        client.patch(
+            url, headers=headers, json={"codes": ["ASSIGN_ROLES", "ASSIGN_ROLES"]}
+        ).status_code
+        == 422
+    )
+
+
+async def test_진행_중인_행사는_단계_구성을_바꿀_수_없다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id, status=EventStatus.ON_GOING)
+    await add_step(event_id, 1, code=StepCode.ASSIGN_ROLES)
+
+    res = client.patch(
+        f"/api/v1/events/{event_id}/plan/steps",
+        headers=headers,
+        json={"codes": ["ASSIGN_ROLES"]},
+    )
+    assert res.status_code == 409
+    assert res.json()["error"]["code"] == "EVENT_STATE_CONFLICT"
+
+
+async def test_계획을_시작하고_완료까지_간다(client: TestClient, app_db: None) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id, status=EventStatus.PLANNING)
+    await add_step(event_id, 1, code=StepCode.ASSIGN_ROLES)
+
+    start = client.post(f"/api/v1/events/{event_id}/start", headers=headers)
+    assert start.status_code == 200, start.text
+    assert start.json()["data"]["status"] == "ON_GOING"
+
+    # 같은 전환을 두 번 하면 거절한다.
+    assert client.post(f"/api/v1/events/{event_id}/start", headers=headers).status_code == 409
+
+    done = client.post(f"/api/v1/events/{event_id}/complete", headers=headers)
+    assert done.json()["data"]["status"] == "COMPLETE"
+
+
+async def test_단계가_없는_행사는_시작할_수_없다(client: TestClient, app_db: None) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id, status=EventStatus.PLANNING)
+
+    res = client.post(f"/api/v1/events/{event_id}/start", headers=headers)
+    assert res.status_code == 409

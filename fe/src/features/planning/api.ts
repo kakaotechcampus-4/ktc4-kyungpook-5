@@ -1,5 +1,4 @@
 import { apiGet, apiPatch, apiPost } from '@/shared/api/client'
-import { loadLocalPlan, saveLocalPlan } from '@/features/planning/localPlan'
 import type { components } from '@/shared/api/schema'
 
 type S = components['schemas']
@@ -22,13 +21,13 @@ export const planningApi = {
   updateAction: (actionId: string, body: S['ActionUpdateIn']) =>
     apiPatch<S['PlannedStepOut']>(`/actions/${encodeURIComponent(actionId)}`, body),
 
-  // --- 아래 둘은 아직 서버 경로가 없다(#213 3단계) -----------------------------
-  // 화면 흐름을 먼저 잇기 위해 이 브라우저에만 적어둔다. 엔드포인트가 생기면
-  // 본문만 apiPost 한 줄로 바꾸면 되고, 부르는 쪽은 손대지 않아도 된다.
-  //   saveSteps → PATCH /events/{eventId}/plan/steps   (어떤 단계를 넣고 뺄지)
-  //   start     → POST  /events/{eventId}/start
+  // 단계 구성·상태 전이 (#213 3단계)
   saveSteps: (eventId: string, codes: string[]) =>
-    Promise.resolve(saveLocalPlan(eventId, { codes })),
-  start: (eventId: string) => Promise.resolve(saveLocalPlan(eventId, { started: true })),
-  local: (eventId: string) => loadLocalPlan(eventId),
+    apiPatch<S['PlannedStepOut'][]>(`/events/${encodeURIComponent(eventId)}/plan/steps`, {
+      codes,
+    }),
+  start: (eventId: string) =>
+    apiPost<S['EventStatusOut']>(`/events/${encodeURIComponent(eventId)}/start`),
+  complete: (eventId: string) =>
+    apiPost<S['EventStatusOut']>(`/events/${encodeURIComponent(eventId)}/complete`),
 }

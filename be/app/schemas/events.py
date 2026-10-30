@@ -276,6 +276,21 @@ class PlannedStepOut(CamelModel):
     actions: list[PlannedStepActionOut]
 
 
+class PlanStepsUpdateIn(CamelModel):
+    """단계 구성 저장 (#213 3단계).
+
+    배열 순서가 곧 묶음 안의 순서다. 일정은 PATCH /steps/{id}가 맡으므로
+    여기서는 받지 않는다 — 한 번에 두 가지를 바꾸면 무엇이 실패했는지 흐려진다.
+    """
+
+    codes: list[StepCode]
+
+
+class EventStatusOut(CamelModel):
+    id: str
+    status: EventStatus
+
+
 class StepUpdateIn(CamelModel):
     """단계 일정 수정 (#106 ④). 보낸 밭만 바뀐다."""
 

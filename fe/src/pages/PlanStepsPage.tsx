@@ -2,7 +2,6 @@
 // 계획 중에만 들어올 수 있다 — 진행 중인 행사의 단계는 여기서 못 바꾼다.
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { planningApi } from '@/features/planning/api'
 import { DEMO_INCLUDED, STEP_CATALOGUE } from '@/features/planning/catalogue'
 import { codesFromSteps, usePlanSteps, useSavePlanSteps } from '@/features/planning/hooks'
 import { ExcludedSteps } from '@/features/planning/components/ExcludedSteps'
@@ -25,9 +24,7 @@ export default function PlanStepsPage() {
   // 포함한 단계의 코드. 배열 순서가 곧 묶음 안의 순서다.
   const [codes, setCodes] = useState<string[] | null>(demo ? Object.keys(DEMO_INCLUDED) : null)
   const [editing, setEditing] = useState<string | null>(null)
-  const saved = eventId ? planningApi.local(eventId) : null
-  const resolved =
-    codes ?? saved?.codes ?? (serverSteps.data ? codesFromSteps(serverSteps.data) : null)
+  const resolved = codes ?? (serverSteps.data ? codesFromSteps(serverSteps.data) : null)
   // 일정은 서버가 들고 있다. 화면에는 StepCode 로 찾아 쓴다.
   const byCode = new Map<string, (typeof serverSteps.data & object)[number]>(
     (serverSteps.data ?? []).map((step) => [step.code, step]),
@@ -94,12 +91,6 @@ export default function PlanStepsPage() {
           어떤 행사의 단계인지 알 수 없어요. 계획 화면에서 다시 들어와 주세요.
         </p>
       )}
-      {!demo && eventId && (
-        <p className="text-mute">
-          저장해도 이 브라우저에만 남습니다. 서버에는 반영되지 않아요(#213).
-        </p>
-      )}
-
       <div className="flex items-start gap-[20px]">
         <StepBoard
           included={included}

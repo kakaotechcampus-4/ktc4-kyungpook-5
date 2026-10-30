@@ -9,9 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 
-from app.core.deps import ensure_member, get_current_account
+from app.core.deps import WRITER_ROLES, ensure_member, get_current_account
 from app.core.enums import ActionStatus, ActionType, EventStatus
-from app.core.exceptions import ValidationFailed
+from app.core.exceptions import Forbidden, ValidationFailed
 from app.db.session import get_session
 from app.models.auth import Account
 from app.models.clubs import Member
@@ -29,6 +29,8 @@ from app.schemas.events import (
     PlanChatIn,
     PlanMessageOut,
     PlanMessageListResponse,
+    EventStatusOut,
+    PlanStepsUpdateIn,
     PlannedStepOut,
     PlannedStepListResponse,
     PlanGenerateIn,
@@ -175,6 +177,52 @@ async def list_planned_steps(
     return PlannedStepListResponse(
         data=[PlannedStepOut.model_validate(event_service.planned_step_out(row)) for row in rows]
     )
+
+
+@router.patch("/{event_id}/plan/steps", response_model=PlannedStepListResponse)
+async def replace_plan_steps(
+    event_id: str,
+    body: PlanStepsUpdateIn,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> PlannedStepListResponse:
+    event, member = await _get_event_for_account(session, event_id=event_id, account=account)
+    if member.role not in WRITER_ROLES:
+        raise Forbidden()
+    rows = await event_service.replace_plan_steps(session, event=event, codes=body.codes)
+    return PlannedStepListResponse(
+        data=[PlannedStepOut.model_validate(event_service.planned_step_out(row)) for row in rows]
+    )
+
+
+@router.post("/{event_id}/start", response_model=Envelope[EventStatusOut])
+async def start_event(
+    event_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[EventStatusOut]:
+    event, member = await _get_event_for_account(session, event_id=event_id, account=account)
+    if member.role not in WRITER_ROLES:
+        raise Forbidden()
+    updated = await event_service.change_event_status(
+        session, event=event, to=EventStatus.ON_GOING
+    )
+    return Envelope(data=EventStatusOut(id=updated.id, status=updated.status))
+
+
+@router.post("/{event_id}/complete", response_model=Envelope[EventStatusOut])
+async def complete_event(
+    event_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[EventStatusOut]:
+    event, member = await _get_event_for_account(session, event_id=event_id, account=account)
+    if member.role not in WRITER_ROLES:
+        raise Forbidden()
+    updated = await event_service.change_event_status(
+        session, event=event, to=EventStatus.COMPLETE
+    )
+    return Envelope(data=EventStatusOut(id=updated.id, status=updated.status))
 
 
 @router.post("/{event_id}/plan/generate", response_model=Envelope[PlanViewOut])

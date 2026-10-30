@@ -10,12 +10,19 @@ from collections.abc import Sequence
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.enums import ActionStatus, ActionType, EventStatus, StepCode, StepState
-from app.core.exceptions import NotEditable
+from app.ai.planning_catalog import (
+    PLANNING_PHASE_ORDER,
+    PLANNING_STEP_ACTIONS,
+    PLANNING_STEP_ACTORS,
+    PLANNING_STEP_NAMES,
+    PLANNING_STEP_PHASES,
+)
+from app.core.exceptions import EventStateConflict, NotEditable, ValidationFailed
 from app.models.clubs import Member
 from app.models.events import Action, Event, Step
 from app.services import event_rules
@@ -368,3 +375,104 @@ async def update_action(
     await session.commit()
     await session.refresh(action)
     return action
+
+
+async def replace_plan_steps(
+    session: AsyncSession, *, event: Event, codes: list[StepCode]
+) -> list[Step]:
+    """계획의 단계 구성을 보낸 목록으로 맞춘다 (#213 3단계).
+
+    남은 단계는 행을 그대로 둔다 — id가 바뀌면 이미 고쳐 둔 일정과 Action이
+    같이 날아간다. 빠진 단계만 지우고, 새로 들어온 단계만 카탈로그에서 만든다.
+
+    묶음은 카탈로그가 정하므로 보낸 순서를 그대로 쓰지 않고 묶음 순서로 한 번
+    정렬한다. 사전 준비 단계가 마무리 뒤로 가는 구성을 막기 위해서다.
+    """
+    if event.status != EventStatus.PLANNING:
+        raise EventStateConflict("계획 중인 행사만 단계 구성을 바꿀 수 있습니다.")
+    if not codes:
+        raise ValidationFailed({"codes": "단계를 하나 이상 남겨 주세요."})
+    if len(set(codes)) != len(codes):
+        raise ValidationFailed({"codes": "같은 단계를 두 번 넣을 수 없습니다."})
+
+    existing = {
+        step.code: step
+        for step in await session.scalars(select(Step).where(Step.event_id == event.id))
+    }
+    for code, step in existing.items():
+        if code not in codes:
+            await session.execute(delete(Action).where(Action.step_id == step.id))
+            await session.delete(step)
+    await session.flush()
+
+    phase_rank = {phase: rank for rank, phase in enumerate(PLANNING_PHASE_ORDER)}
+    ordered = sorted(codes, key=lambda code: phase_rank[PLANNING_STEP_PHASES[code]])
+
+    for order, code in enumerate(ordered, start=1):
+        step = existing.get(code)
+        if step is None:
+            step = Step(
+                event_id=event.id,
+                step_order=order,
+                phase=PLANNING_STEP_PHASES[code],
+                code=code,
+                name=PLANNING_STEP_NAMES[code],
+                actor=PLANNING_STEP_ACTORS[code],
+            )
+            session.add(step)
+            await session.flush()
+            # 다시 넣은 단계도 계획이 만들어 주던 것과 같은 Action을 갖는다.
+            for action_type in PLANNING_STEP_ACTIONS.get(code, ()):
+                irreversible, approve_needed = event_rules.action_defaults(action_type)
+                session.add(
+                    Action(
+                        event_id=event.id,
+                        step_id=step.id,
+                        type=action_type,
+                        title=PLANNING_STEP_NAMES[code],
+                        irreversible=irreversible,
+                        approve_needed=approve_needed,
+                        status=ActionStatus.PENDING,
+                    )
+                )
+        else:
+            step.step_order = order
+    await session.commit()
+
+    return list(
+        await session.scalars(
+            select(Step)
+            .where(Step.event_id == event.id)
+            .options(selectinload(Step.actions))
+            .order_by(Step.step_order)
+        )
+    )
+
+
+async def change_event_status(
+    session: AsyncSession, *, event: Event, to: EventStatus
+) -> Event:
+    """행사 상태를 옮긴다 (#213 3단계).
+
+    계획 → 진행 중 → 완료 한 방향뿐이다. 되돌리기와 취소는 환불·정산 정리가
+    얽혀 있어 따로 다룬다(#73).
+    """
+    allowed = {
+        EventStatus.ON_GOING: EventStatus.PLANNING,
+        EventStatus.COMPLETE: EventStatus.ON_GOING,
+    }
+    if event.status != allowed[to]:
+        raise EventStateConflict(
+            "계획 중인 행사만 시작할 수 있습니다."
+            if to == EventStatus.ON_GOING
+            else "진행 중인 행사만 완료할 수 있습니다."
+        )
+    if to == EventStatus.ON_GOING:
+        has_step = await session.scalar(
+            select(Step.id).where(Step.event_id == event.id).limit(1)
+        )
+        if has_step is None:
+            raise EventStateConflict("단계가 하나도 없는 행사는 시작할 수 없습니다.")
+    event.status = to
+    await session.commit()
+    return event

@@ -941,6 +941,41 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** Replace Plan Steps */
+        patch: operations["replace_plan_steps_api_v1_events__event_id__plan_steps_patch"];
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Event */
+        post: operations["start_event_api_v1_events__event_id__start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Event */
+        post: operations["complete_event_api_v1_events__event_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -1766,6 +1801,12 @@ export interface components {
             /** Meta */
             meta?: null;
         };
+        /** Envelope[EventStatusOut] */
+        Envelope_EventStatusOut_: {
+            data: components["schemas"]["EventStatusOut"];
+            /** Meta */
+            meta?: null;
+        };
         /** Envelope[ExpenseOut] */
         Envelope_ExpenseOut_: {
             data: components["schemas"]["ExpenseOut"];
@@ -2026,6 +2067,12 @@ export interface components {
          * @enum {string}
          */
         EventStatus: "PLANNING" | "ON_GOING" | "COMPLETE" | "CANCELLING" | "CANCELLED";
+        /** EventStatusOut */
+        EventStatusOut: {
+            /** Id */
+            id: string;
+            status: components["schemas"]["EventStatus"];
+        };
         /**
          * EventType
          * @enum {string}
@@ -2458,6 +2505,17 @@ export interface components {
             /** Baserevision */
             baseRevision: number;
             generationReadiness?: components["schemas"]["GenerationReadinessOut"] | null;
+        };
+        /**
+         * PlanStepsUpdateIn
+         * @description 단계 구성 저장 (#213 3단계).
+         *
+         *     배열 순서가 곧 묶음 안의 순서다. 일정은 PATCH /steps/{id}가 맡으므로
+         *     여기서는 받지 않는다 — 한 번에 두 가지를 바꾸면 무엇이 실패했는지 흐려진다.
+         */
+        PlanStepsUpdateIn: {
+            /** Codes */
+            codes: components["schemas"]["StepCode"][];
         };
         /** PlanSummaryOut */
         PlanSummaryOut: {
@@ -5434,6 +5492,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlannedStepListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_plan_steps_api_v1_events__event_id__plan_steps_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanStepsUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlannedStepListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_event_api_v1_events__event_id__start_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EventStatusOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_event_api_v1_events__event_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EventStatusOut_"];
                 };
             };
             /** @description Validation Error */
