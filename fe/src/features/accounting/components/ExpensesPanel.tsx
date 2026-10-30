@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { EXPENSE_PAGE_SIZE } from '@/features/accounting/api'
+import { ExpenseForm } from '@/features/accounting/components/ExpenseForm'
 import { useExpenses } from '@/features/accounting/hooks'
 import type { Expense } from '@/features/accounting/types'
 import { ApiError } from '@/shared/api/types'
@@ -30,6 +31,7 @@ export function ExpensesPanel({ clubId }: { clubId: string }) {
 
 function ClubExpensesPanel({ clubId }: { clubId: string }) {
   const [page, setPage] = useState(1)
+  const [adding, setAdding] = useState(false)
   const expenses = useExpenses(clubId, page)
   const rows = expenses.data?.data
   const totalCount = expenses.data?.meta?.totalCount ?? rows?.length ?? 0
@@ -42,15 +44,31 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
           <h2 className="text-h2 text-ink">지출 내역</h2>
           {expenses.data && <Chip size="sm">{totalCount}건</Chip>}
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={expenses.isFetching}
-          onClick={() => void expenses.refetch()}
-        >
-          {expenses.isFetching ? '불러오는 중…' : '새로고침'}
-        </Button>
+        <div className="flex gap-[8px]">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={expenses.isFetching}
+            onClick={() => void expenses.refetch()}
+          >
+            {expenses.isFetching ? '불러오는 중…' : '새로고침'}
+          </Button>
+          <Button size="sm" aria-expanded={adding} onClick={() => setAdding((open) => !open)}>
+            지출 등록
+          </Button>
+        </div>
       </div>
+
+      {adding && (
+        <ExpenseForm
+          clubId={clubId}
+          onDone={() => {
+            setAdding(false)
+            // 새 지출은 첫 페이지에 들어간다. 뒤쪽을 보고 있었다면 거기로 데려간다.
+            setPage(1)
+          }}
+        />
+      )}
 
       {expenses.isPending && (
         <p role="status" className="border-t border-line px-[22px] py-[30px] text-[13px] text-mute">
