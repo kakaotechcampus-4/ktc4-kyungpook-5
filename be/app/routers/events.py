@@ -254,6 +254,7 @@ async def generate_plan(
         use_current_conditions=body.use_current_conditions,
         idempotency_key=idempotency_key,
         replace_edited_plan=body.replace_edited_plan,
+        edited_plan_at=body.edited_plan_at,
     )
     return Envelope(data=PlanViewOut.model_validate(view))
 
