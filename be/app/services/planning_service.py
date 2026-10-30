@@ -269,6 +269,7 @@ async def _save_turn(
     result: "ai.PlanningPublicResult",
     new_base_revision: int,
     user_message_text: str | None,
+    replace_edited_plan: bool = False,
 ) -> None:
     conditions = result.view.draft.conditions
     event.title = conditions.title or event.title
@@ -314,7 +315,7 @@ async def _save_turn(
 
     generation_result = result.view.generation_result
     if generation_result is not None and generation_result.status == "generated":
-        if await _has_manual_plan_edits(session, event):
+        if not replace_edited_plan and await _has_manual_plan_edits(session, event):
             raise PlanningStateConflict()
         await _materialize_preview(session, event, generation_result.preview)
 
@@ -428,7 +429,8 @@ async def _prepare(
 
 
 async def _finish(
-    prepared: _PreparedTurn, result: "ai.PlanningPublicResult", *, user_message_text: str | None
+    prepared: _PreparedTurn, result: "ai.PlanningPublicResult", *, user_message_text: str | None,
+    replace_edited_plan: bool = False,
 ) -> dict:
     sessionmaker = get_sessionmaker()
     async with sessionmaker() as session:
@@ -460,6 +462,7 @@ async def _finish(
         await _save_turn(
             session, event=event, conversation=conversation, result=result,
             new_base_revision=new_base_revision, user_message_text=user_message_text,
+            replace_edited_plan=replace_edited_plan,
         )
         out = _view_out(result, base_revision=new_base_revision)
         await session.commit()
@@ -514,6 +517,7 @@ async def generate(
     base_revision: int,
     use_current_conditions: bool,
     idempotency_key: str | None,
+    replace_edited_plan: bool = False,
 ) -> dict:
     sessionmaker = get_sessionmaker()
     endpoint = "POST /events/{event_id}/plan/generate"
@@ -540,7 +544,8 @@ async def generate(
             result = await ai.generate_planning_preview(prepared.request)
         except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
             raise _translate_ai_error(error) from error
-        return await _finish(prepared, result, user_message_text=None)
+        return await _finish(prepared, result, user_message_text=None,
+                             replace_edited_plan=replace_edited_plan)
 
     return await _run_once(idem, work)
 

@@ -253,6 +253,7 @@ async def generate_plan(
         base_revision=body.base_revision,
         use_current_conditions=body.use_current_conditions,
         idempotency_key=idempotency_key,
+        replace_edited_plan=body.replace_edited_plan,
     )
     return Envelope(data=PlanViewOut.model_validate(view))
 
