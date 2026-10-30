@@ -374,6 +374,7 @@ class PlannedStepListResponse(CamelModel):
 class PlanGenerateIn(CamelModel):
     base_revision: int = Field(ge=0)
     use_current_conditions: bool = False
+    replace_edited_plan: bool = False
 
 
 class ConditionMetaOut(CamelModel):
