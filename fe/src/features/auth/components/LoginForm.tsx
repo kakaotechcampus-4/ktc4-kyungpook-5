@@ -62,6 +62,12 @@ export function LoginForm() {
                 초대 코드로 참여
               </Button>
             </Link>
+            <Link
+              to="/dashboard"
+              className="text-center text-[12px] font-bold text-blue-700 underline"
+            >
+              동아리 없이 먼저 둘러보기
+            </Link>
           </div>
         )}
         {meQuery.error && <ErrorBanner title={authErrorMessage(meQuery.error)} />}
