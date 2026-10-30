@@ -7,6 +7,8 @@ import MeetingsPage from '@/pages/MeetingsPage'
 import LoginPage from '@/pages/LoginPage'
 import KakaoCallbackPage from '@/pages/KakaoCallbackPage'
 import SignupPage from '@/pages/SignupPage'
+import ClubCreatePage from '@/pages/ClubCreatePage'
+import ClubJoinPage from '@/pages/ClubJoinPage'
 import MainPage from '@/pages/MainPage'
 import MainEntryPage from '@/pages/MainEntryPage'
 import OnboardingPage from '@/pages/OnboardingPage'
@@ -25,6 +27,8 @@ export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/auth/kakao/callback', element: <KakaoCallbackPage /> },
   { path: '/signup', element: <SignupPage /> },
+  { path: '/clubs/new', element: <ClubCreatePage /> },
+  { path: '/clubs/join', element: <ClubJoinPage /> },
   {
     element: <AppLayout />,
     children: [

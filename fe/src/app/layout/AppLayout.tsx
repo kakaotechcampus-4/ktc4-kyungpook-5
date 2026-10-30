@@ -8,6 +8,9 @@ import { Modal } from '@/shared/ui/Modal'
 import { Tori } from '@/shared/ui/Tori'
 import { PrimaryNavigation, WorkspaceNavigation } from './AppNavigation'
 
+// select의 특별 항목. 소속 id와 겹치지 않는 값이면 된다.
+const NEW_CLUB = '__new_club__'
+
 export function AppLayout() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -122,6 +125,11 @@ export function AppLayout() {
                   aria-label="선택 소속"
                   value={clubId ?? ''}
                   onChange={(event) => {
+                    // 소속이 없거나 하나 더 만들려는 경우의 유일한 출구다.
+                    if (event.target.value === NEW_CLUB) {
+                      navigate('/clubs/new')
+                      return
+                    }
                     selectClub(event.target.value)
                     navigate(
                       pathname === '/records' || pathname === '/accounting'
@@ -139,6 +147,7 @@ export function AppLayout() {
                       {club.name}
                     </option>
                   ))}
+                  <option value={NEW_CLUB}>+ 새 동아리 만들기</option>
                 </select>
               </label>
               <Link

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AuthShell, ErrorBanner, Field } from '@/features/auth/components/AuthShell'
+import { AuthShell, ErrorBanner, Field } from '@/shared/ui/AuthShell'
 import { useSignup } from '@/features/auth/hooks'
 import { ApiError } from '@/shared/api/types'
 import { Button } from '@/shared/ui/Button'
@@ -11,6 +11,7 @@ export default function SignupPage() {
   const signup = useSignup()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [created, setCreated] = useState(false)
@@ -22,10 +23,15 @@ export default function SignupPage() {
       setError('이메일과 이름, 8자 이상의 비밀번호를 확인해 주세요.')
       return
     }
+    if (password !== passwordConfirm) {
+      setError('비밀번호가 서로 달라요. 다시 확인해 주세요.')
+      return
+    }
     setError('')
     try {
       await signup.mutateAsync({ email: email.trim(), password, name: name.trim() })
       setPassword('')
+      setPasswordConfirm('')
       setCreated(true)
     } catch (cause) {
       setError(
@@ -79,6 +85,14 @@ export default function SignupPage() {
                 autoComplete="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+              />
+            </Field>
+            <Field label="비밀번호 확인" required>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                value={passwordConfirm}
+                onChange={(event) => setPasswordConfirm(event.target.value)}
               />
             </Field>
             <Field label="이름" required>

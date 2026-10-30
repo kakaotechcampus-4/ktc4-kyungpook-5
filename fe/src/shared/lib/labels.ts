@@ -16,6 +16,15 @@ export const STEP_ACTOR_LABEL: Record<string, string> = {
   MANUAL: '직접 수행',
 }
 
+// 동아리 분야. 생성 화면의 선택 버튼과 목록 표시에 함께 쓴다.
+export const CLUB_CATEGORY_LABEL: Record<string, string> = {
+  ACADEMIC: '학술',
+  SPORTS: '운동',
+  VOLUNTEER: '봉사',
+  HOBBY: '취미',
+  ETC: '기타',
+}
+
 export const MEMBER_ROLE_LABEL: Record<string, string> = {
   OWNER: '회장',
   MANAGER: '임원',

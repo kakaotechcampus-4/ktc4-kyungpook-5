@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
+import { STEP_CATALOGUE } from './catalogue'
+import type { LocalSchedule } from './localPlan'
 import type { ChatMessage, PlanFacts } from './types'
 import { FIRST_MESSAGE } from './mock'
 import { ApiError } from '@/shared/api/types'
@@ -164,4 +166,79 @@ export function usePlanningChat(
     }
   }
   return { messages, facts, busy, error, send, generate, snapshot, view: currentView, revision }
+}
+
+// --- 단계 수정 · 행사 시작 (#213 으로 서버 경로가 생기기 전까지 로컬) ----------
+
+// 서버 단계 응답에는 StepCode 가 없고 이름만 온다. 카탈로그와 이름이
+// 13개 모두 같아서 지금은 이름으로 되찾는다. 서버가 code 를 내려주면 지운다.
+export function codesFromSteps(steps: S['PlannedStepOut'][]): string[] {
+  return steps
+    .map((step) => STEP_CATALOGUE.find((item) => item.name === step.name)?.code)
+    .filter((code): code is string => code !== undefined)
+}
+
+export function usePlanSteps(eventId: string | null) {
+  return useQuery({
+    queryKey: ['planning', 'steps', eventId],
+    queryFn: () => planningApi.steps(eventId!),
+    enabled: !!eventId,
+    retry: false,
+  })
+}
+
+export function useSavePlanSteps(eventId: string | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { codes: string[]; schedule: Record<string, LocalSchedule> }) =>
+      planningApi.saveSteps(eventId!, input.codes, input.schedule),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
+  })
+}
+
+export function useStartEvent(eventId: string | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => planningApi.start(eventId!),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
+  })
+}
+
+// 저장한 단계 구성을 서버 응답 위에 덮어 보여준다. 뺀 단계는 빼고, 순서도 저장한
+// 대로 다시 세운다. 서버 경로가 생기면 서버 응답 자체가 이미 그 모양이라 사라진다.
+export function applyLocalCodes(
+  steps: S['PlannedStepOut'][],
+  codes: string[] | null,
+  schedule: Record<string, LocalSchedule> = {},
+): S['PlannedStepOut'][] {
+  const byCode = new Map(
+    steps.map((step) => [STEP_CATALOGUE.find((item) => item.name === step.name)?.code, step]),
+  )
+  const ordered = codes
+    ? codes
+        .map((code) => byCode.get(code))
+        .filter((step): step is S['PlannedStepOut'] => step !== undefined)
+    : steps
+  return ordered.map((step, index) => {
+    const code = STEP_CATALOGUE.find((item) => item.name === step.name)?.code
+    const saved = code ? schedule[code] : undefined
+    return {
+      ...step,
+      stepOrder: codes ? index + 1 : step.stepOrder,
+      startsAt: saved ? saved.startsAt : step.startsAt,
+      deadline: saved ? saved.deadline : step.deadline,
+    }
+  })
+}
+
+// 서버가 만든 일정을 StepCode 기준으로 모은다. 수정 화면의 출발점이 된다.
+export function scheduleFromSteps(
+  steps: S['PlannedStepOut'][],
+): Record<string, LocalSchedule> {
+  const result: Record<string, LocalSchedule> = {}
+  for (const step of steps) {
+    const code = STEP_CATALOGUE.find((item) => item.name === step.name)?.code
+    if (code) result[code] = { startsAt: step.startsAt, deadline: step.deadline }
+  }
+  return result
 }
