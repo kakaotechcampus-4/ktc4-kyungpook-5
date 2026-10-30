@@ -30,12 +30,10 @@ export interface PlanFact {
 
 export type PlanFacts = Partial<Record<PlanFactKey, PlanFact>>
 
-// 생성 가능 여부를 막는 사유(generation_readiness.reasons). 서버가 정한다.
-export type GenerationBlockReason = 'event_type_missing' | 'condition_change_pending'
-
 export interface GenerationReadiness {
   canGenerate: boolean
-  reasons: GenerationBlockReason[]
+  // 생성을 막는 사유(generation_readiness.reasons). 서버가 정하고, 모르는 사유도 올 수 있다.
+  reasons: string[]
 }
 
 // ── 2단계(흐름 만들기) ──
