@@ -152,6 +152,38 @@ class PlanningStateConflict(ApiError):
         super().__init__("저장된 계획 상태와 맞지 않습니다. 다시 조회한 뒤 시도해 주세요.")
 
 
+
+class EventNotPlanning(ApiError):
+    """계획 대화·생성은 PLANNING 행사에서만 한다 (FE 명세 v1). 확정 뒤 다시 생성하면
+    운영 중 처리한 승인·완료 기록이 지워진다."""
+
+    status_code = 409
+    code = "EVENT_NOT_PLANNING"
+
+    def __init__(self) -> None:
+        super().__init__("계획 중인 행사에서만 할 수 있습니다.")
+
+
+class EventNotOnGoing(ApiError):
+    """승인·거절·실행 완료·단계 완료는 계획을 확정한 뒤(운영 중)에만 한다 (#177)."""
+
+    status_code = 409
+    code = "EVENT_NOT_ON_GOING"
+
+    def __init__(self) -> None:
+        super().__init__("운영 중인 행사에서만 처리할 수 있습니다. 계획을 먼저 확정해 주세요.")
+
+
+class PlanIncomplete(ApiError):
+    """확정에 필요한 값이 빠졌을 때 (FE 명세 v1 :confirm)."""
+
+    status_code = 409
+    code = "PLAN_INCOMPLETE"
+
+    def __init__(self, fields: dict[str, str]) -> None:
+        super().__init__("계획 확정에 필요한 값이 없습니다.", fields=fields)
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
