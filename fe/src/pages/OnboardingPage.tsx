@@ -5,7 +5,7 @@ import { OnboardingExperience } from '@/features/onboarding/OnboardingExperience
 import { MockAccess } from '@/features/onboarding/MockAccess'
 
 export default function OnboardingPage() {
-  const onboarding = useOnboarding()
+  const onboarding = useOnboarding({ fresh: true })
   const { view = '' } = useParams<{ view: string }>()
   const { state } = onboarding
   if (view === 'login') return <MockAccess onboarding={onboarding} />
