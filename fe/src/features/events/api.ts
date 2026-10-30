@@ -9,11 +9,14 @@ import type {
   EventSummary,
 } from '@/features/events/types'
 
-export function getEvents(status?: EventStatus) {
-  return apiGet<EventSummary[]>(`/events${status ? `?status=${status}` : ''}`)
+// ponytail: 첫 페이지 100건만 받는다. 한 동아리 행사가 100건을 넘으면 페이지 넘김을 붙인다.
+export function getEvents(clubId: string, status?: EventStatus) {
+  const query = new URLSearchParams({ clubId, size: '100' })
+  if (status) query.set('status', status)
+  return apiGet<EventSummary[]>(`/events?${query}`)
 }
 
-// BE에 아직 없다(명세에만 있음)
+// BE에는 있다. useEventDetail에는 아직 붙이지 않았다.
 export function getEventDetail(eventId: string) {
   return apiGet<EventDetail>(`/events/${eventId}`)
 }

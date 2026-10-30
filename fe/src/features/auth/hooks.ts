@@ -88,8 +88,11 @@ export function authErrorMessage(error: unknown): string {
   return '서버에 연결하지 못했어요. API 주소와 서버 실행 상태를 확인해 주세요.'
 }
 
+// 로그인·소속 선택을 마치면 가는 첫 화면. 상단 탭의 「메인」과 같다.
+export const HOME = '/dashboard'
+
 function safeDestination(next: string | null): string {
-  if (!next) return '/meetings'
+  if (!next) return HOME
   try {
     const url = new URL(next, window.location.origin)
     if (
@@ -97,11 +100,11 @@ function safeDestination(next: string | null): string {
       url.pathname === '/login' ||
       url.pathname === '/signup'
     ) {
-      return '/meetings'
+      return HOME
     }
     return `${url.pathname}${url.search}${url.hash}`
   } catch {
-    return '/meetings'
+    return HOME
   }
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useMe, useLogout } from '@/features/auth/hooks'
+import { HOME, useMe, useLogout } from '@/features/auth/hooks'
 import { useAuthStore } from '@/shared/auth/store'
 import { Avatar } from '@/shared/ui/Avatar'
 import { Button } from '@/shared/ui/Button'
@@ -132,9 +132,7 @@ export function AppLayout() {
                     }
                     selectClub(event.target.value)
                     navigate(
-                      pathname === '/records' || pathname === '/accounting'
-                        ? pathname
-                        : '/meetings',
+                      pathname === '/records' || pathname === '/accounting' ? pathname : HOME,
                     )
                   }}
                   className="max-w-[130px] truncate rounded-lg border border-line bg-card py-2 pl-2 pr-1 text-ink2 sm:max-w-[180px]"

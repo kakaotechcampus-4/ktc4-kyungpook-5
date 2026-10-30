@@ -72,7 +72,8 @@ interface MembersTabProps {
   requests: JoinRequest[]
   // 명단 전체 수. 목록에는 앞 몇 명만 보인다.
   total: number
-  onAddClick: () => void
+  // 없으면 추가 경로가 없다는 뜻이라 버튼을 막는다.
+  onAddClick?: () => void
   onResolveRequest: (id: string) => void
 }
 
@@ -120,7 +121,9 @@ export function MembersTab({
               <h2 className="text-h2 text-ink">동아리원</h2>
               <Chip tone="approved">{total}명</Chip>
             </span>
-            <Button onClick={onAddClick}>+ 직접 추가</Button>
+            <Button onClick={onAddClick} disabled={!onAddClick}>
+              {onAddClick ? '+ 직접 추가' : '직접 추가 (준비 중)'}
+            </Button>
           </div>
           <p className="text-[12px] leading-[18px] text-mute">
             회장과 임원만 계정으로 서비스를 이용해요. 일반 동아리원은 계정 없이 내부 명단으로

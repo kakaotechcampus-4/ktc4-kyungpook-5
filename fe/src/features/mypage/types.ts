@@ -8,7 +8,8 @@ export interface Profile {
 
 export interface ClubInfo {
   name: string
-  memberCount: number
+  // 명단을 아직 받지 못했으면(불러오는 중·실패) null. 0명과 구분한다.
+  memberCount: number | null
   myRole: string
   joinedAt: string
 }
