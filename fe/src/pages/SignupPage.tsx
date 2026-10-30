@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AuthShell, ErrorBanner, Field } from '@/features/auth/components/AuthShell'
+import { AuthShell, ErrorBanner, Field } from '@/shared/ui/AuthShell'
 import { useSignup } from '@/features/auth/hooks'
 import { ApiError } from '@/shared/api/types'
 import { Button } from '@/shared/ui/Button'

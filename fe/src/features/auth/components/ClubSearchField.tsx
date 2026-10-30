@@ -1,6 +1,6 @@
 // ③ 동아리 찾기. 검색 → 결과 카드 고르기 → 내 역할. 참여 모드에서만 보인다.
 // 못 찾았을 때 막다른 길이 되지 않게 「동아리 새로 만들기」를 함께 둔다.
-import { Field } from '@/features/auth/components/AuthShell'
+import { Field } from '@/shared/ui/AuthShell'
 import type { ClubSearchResult } from '@/features/auth/types'
 import { EXECUTIVE_ROLES } from '@/features/auth/types'
 import { cn } from '@/shared/lib/cn'

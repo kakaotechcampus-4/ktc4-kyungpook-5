@@ -8,7 +8,7 @@ import {
   useLogout,
   useMe,
 } from '@/features/auth/hooks'
-import { ErrorBanner } from '@/features/auth/components/AuthShell'
+import { ErrorBanner } from '@/shared/ui/AuthShell'
 import { useAuthStore } from '@/shared/auth/store'
 import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
 import { Button } from '@/shared/ui/Button'
@@ -49,9 +49,19 @@ export function LoginForm() {
             ))}
           </div>
         ) : (
-          <div className="rounded-[11px] bg-bg p-[15px] text-[13px] leading-relaxed text-ink2">
-            이용할 수 있는 소속이 없어요. 회장에게 회장·임원 계정 초대를 요청하고 소속 등록 후 다시
-            확인해 주세요.
+          <div className="flex flex-col gap-[11px]">
+            <div className="rounded-[11px] bg-bg p-[15px] text-[13px] leading-relaxed text-ink2">
+              이용할 수 있는 소속이 없어요. 동아리를 직접 만들거나, 회장·임원이 보낸 초대 코드로
+              참여할 수 있어요.
+            </div>
+            <Link to="/clubs/new">
+              <Button className="w-full">동아리 만들기</Button>
+            </Link>
+            <Link to="/clubs/join">
+              <Button variant="secondary" className="w-full">
+                초대 코드로 참여
+              </Button>
+            </Link>
           </div>
         )}
         {meQuery.error && <ErrorBanner title={authErrorMessage(meQuery.error)} />}

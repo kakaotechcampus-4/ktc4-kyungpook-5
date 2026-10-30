@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { AuthShell } from '@/features/auth/components/AuthShell'
+import { AuthShell } from '@/shared/ui/AuthShell'
 import { LoginForm } from '@/features/auth/components/LoginForm'
 import { Tori } from '@/shared/ui/Tori'
 
