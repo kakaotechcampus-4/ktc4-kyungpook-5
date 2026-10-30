@@ -20,10 +20,12 @@ export const EMPTY_CLUB: ClubInfo = {
   name: '동아리 이름',
   memberCount: 1,
   myRole: '회장',
-  joinedAt: '오늘',
+  // 서버가 가입일을 주지 않는다(/me 소속에 없음). 비우면 화면에서 칸을 뺀다.
+  joinedAt: '',
 }
 
-// TODO(연동): GET /clubs/{clubId}/members · GET /clubs/{clubId}/join-requests
+// ?demo 예시. 실제 명단은 hooks.ts의 useMembers가 서버에서 받는다.
+// TODO(연동): GET /clubs/{clubId}/join-requests
 export const DEMO_MEMBERS: Member[] = [
   {
     id: 'mem_01',

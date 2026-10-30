@@ -48,7 +48,7 @@ function LinkRow({
 function Facts({ items }: { items: Array<[string, string]> }) {
   return (
     <div className="flex flex-wrap gap-x-[36px] gap-y-[12px]">
-      {items.map(([label, value]) => (
+      {items.filter(([, value]) => value).map(([label, value]) => (
         <span key={label} className="flex flex-col gap-[4px]">
           <span className="text-[10.5px] font-medium text-mute">{label}</span>
           <span className="text-[13.5px] font-bold text-ink">{value}</span>
@@ -103,7 +103,7 @@ export function MyInfoTab({ profile, club, linkedAccounts, onLogout }: MyInfoTab
           <Facts
             items={[
               ['이름', club.name],
-              ['명단 인원', `${club.memberCount}명`],
+              ['명단 인원', club.memberCount === null ? '' : `${club.memberCount}명`],
               ['내 권한', club.myRole],
               ['가입일', club.joinedAt],
             ]}

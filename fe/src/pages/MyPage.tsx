@@ -15,8 +15,11 @@ import {
   DEMO_RECORDS,
   EMPTY_CLUB,
 } from '@/features/mypage/mock'
+import { useMembers } from '@/features/mypage/hooks'
 import type { JoinRequest, Member } from '@/features/mypage/types'
 import { cn } from '@/shared/lib/cn'
+import { ErrorBanner } from '@/shared/ui/AuthShell'
+import { Button } from '@/shared/ui/Button'
 import { useAuthStore } from '@/shared/auth/store'
 import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
 
@@ -32,11 +35,13 @@ export default function MyPage() {
 
   const navigate = useNavigate()
   const logout = useLogout()
-  // TODO(연동): GET /clubs/{clubId}/members. 추가·허가도 지금은 화면에서만 바뀐다.
-  const [members, setMembers] = useState<Member[]>(demo ? DEMO_MEMBERS : [])
+  // 명단은 서버에서 받는다. 추가·참여 요청은 서버 경로가 없어 ?demo에서만 화면으로 보여준다.
+  const membersQuery = useMembers(demo)
+  const [demoMembers, setDemoMembers] = useState<Member[]>(DEMO_MEMBERS)
+  const members = demo ? demoMembers : (membersQuery.data ?? [])
   const [requests, setRequests] = useState<JoinRequest[]>(demo ? DEMO_JOIN_REQUESTS : [])
 
-  // 선택한 서비스 역할은 공유 세션을 사용한다. 동아리 상세/명단 API는 아직 미연결이다.
+  // 선택한 서비스 역할은 공유 세션을 사용한다. 동아리 상세 API는 아직 없어 이름만 /me 소속에서 가져온다.
   const profile = demo
     ? DEMO_PROFILE
     : {
@@ -49,6 +54,7 @@ export default function MyPage() {
     : {
         ...EMPTY_CLUB,
         name: me?.clubs.find((item) => item.id === clubId)?.name ?? EMPTY_CLUB.name,
+        memberCount: membersQuery.data?.length ?? null,
         myRole: profile.role,
       }
 
@@ -91,15 +97,27 @@ export default function MyPage() {
         />
       )}
 
-      {tab === '동아리원' && (
-        <MembersTab
-          members={members}
-          requests={requests}
-          total={demo ? DEMO_MEMBER_TOTAL : members.length}
-          onAddClick={() => setAddOpen(true)}
-          onResolveRequest={(id) => setRequests((list) => list.filter((r) => r.id !== id))}
-        />
-      )}
+      {/* 받기 전이나 실패를 빈 명단으로 그리면 「아직 없어요」처럼 보여 오류인지 알 수 없다 */}
+      {tab === '동아리원' &&
+        (!demo && membersQuery.isError ? (
+          <ErrorBanner
+            title="동아리원 명단을 불러오지 못했어요."
+            hint="잠시 뒤 다시 시도해 주세요."
+            action={
+              <Button size="sm" variant="secondary" onClick={() => void membersQuery.refetch()}>
+                다시 시도
+              </Button>
+            }
+          />
+        ) : !demo && membersQuery.isPending ? null : (
+          <MembersTab
+            members={members}
+            requests={requests}
+            total={demo ? DEMO_MEMBER_TOTAL : members.length}
+            onAddClick={demo ? () => setAddOpen(true) : undefined}
+            onResolveRequest={(id) => setRequests((list) => list.filter((r) => r.id !== id))}
+          />
+        ))}
 
       {tab === '동아리 자료' && <RecordsTab records={demo ? DEMO_RECORDS : []} />}
 
@@ -107,7 +125,7 @@ export default function MyPage() {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onAdd={(member) =>
-          setMembers((list) => [
+          setDemoMembers((list) => [
             ...list,
             { ...member, id: `mem_${list.length + 1}`, account: 'NONE' },
           ])
