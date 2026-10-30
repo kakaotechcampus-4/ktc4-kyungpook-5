@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.db import session as db_session
-from app.core.exceptions import ValidationFailed
+from app.core.exceptions import InvitationAlreadyHandled, ValidationFailed
 from app.models.auth import Account
 from app.services import club_service
 
@@ -232,7 +232,7 @@ async def test_초대_동시_수락은_한_번만_성공한다(client: TestClien
             return await club_service.accept_invitation(session, token=invite["token"], account=account)
     results = await asyncio.gather(*(accept(email) for email in accounts), return_exceptions=True)
     assert sum(not isinstance(result, Exception) for result in results) == 1
-    assert sum(isinstance(result, ValidationFailed) for result in results) == 1
+    assert sum(isinstance(result, InvitationAlreadyHandled) for result in results) == 1
 
 
 async def test_권한_없는_멤버는_초대를_못_만든다(client: TestClient, app_db: None) -> None:
