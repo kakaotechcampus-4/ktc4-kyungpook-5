@@ -93,9 +93,9 @@ export function StepBoard({ included, schedule, onReorder, onRemove }: StepBoard
                       type="button"
                       aria-label={`${step.name} 빼기`}
                       onClick={() => onRemove(step.code)}
-                      className="shrink-0 text-[13px] text-mute hover:text-ink2"
+                      className="shrink-0 rounded-[7px] border border-line px-[8px] py-[6px] text-[12px] font-bold text-ink2 hover:bg-bg"
                     >
-                      ⋯
+                      빼기
                     </button>
                   </div>
                 ))
