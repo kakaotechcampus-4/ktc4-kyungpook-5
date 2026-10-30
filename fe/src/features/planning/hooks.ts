@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
 import { STEP_CATALOGUE } from './catalogue'
+import type { LocalSchedule } from './localPlan'
 import type { ChatMessage, PlanFacts } from './types'
 import { FIRST_MESSAGE } from './mock'
 import { ApiError } from '@/shared/api/types'
@@ -189,7 +190,8 @@ export function usePlanSteps(eventId: string | null) {
 export function useSavePlanSteps(eventId: string | null) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (codes: string[]) => planningApi.saveSteps(eventId!, codes),
+    mutationFn: (input: { codes: string[]; schedule: Record<string, LocalSchedule> }) =>
+      planningApi.saveSteps(eventId!, input.codes, input.schedule),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
   })
 }
@@ -207,13 +209,36 @@ export function useStartEvent(eventId: string | null) {
 export function applyLocalCodes(
   steps: S['PlannedStepOut'][],
   codes: string[] | null,
+  schedule: Record<string, LocalSchedule> = {},
 ): S['PlannedStepOut'][] {
-  if (!codes) return steps
   const byCode = new Map(
     steps.map((step) => [STEP_CATALOGUE.find((item) => item.name === step.name)?.code, step]),
   )
-  return codes
-    .map((code) => byCode.get(code))
-    .filter((step): step is S['PlannedStepOut'] => step !== undefined)
-    .map((step, index) => ({ ...step, stepOrder: index + 1 }))
+  const ordered = codes
+    ? codes
+        .map((code) => byCode.get(code))
+        .filter((step): step is S['PlannedStepOut'] => step !== undefined)
+    : steps
+  return ordered.map((step, index) => {
+    const code = STEP_CATALOGUE.find((item) => item.name === step.name)?.code
+    const saved = code ? schedule[code] : undefined
+    return {
+      ...step,
+      stepOrder: codes ? index + 1 : step.stepOrder,
+      startsAt: saved ? saved.startsAt : step.startsAt,
+      deadline: saved ? saved.deadline : step.deadline,
+    }
+  })
+}
+
+// 서버가 만든 일정을 StepCode 기준으로 모은다. 수정 화면의 출발점이 된다.
+export function scheduleFromSteps(
+  steps: S['PlannedStepOut'][],
+): Record<string, LocalSchedule> {
+  const result: Record<string, LocalSchedule> = {}
+  for (const step of steps) {
+    const code = STEP_CATALOGUE.find((item) => item.name === step.name)?.code
+    if (code) result[code] = { startsAt: step.startsAt, deadline: step.deadline }
+  }
+  return result
 }

@@ -4,7 +4,13 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { planningApi } from '@/features/planning/api'
 import { DEMO_INCLUDED, STEP_CATALOGUE } from '@/features/planning/catalogue'
-import { codesFromSteps, usePlanSteps, useSavePlanSteps } from '@/features/planning/hooks'
+import {
+  codesFromSteps,
+  scheduleFromSteps,
+  usePlanSteps,
+  useSavePlanSteps,
+} from '@/features/planning/hooks'
+import type { LocalSchedule } from '@/features/planning/localPlan'
 import { ExcludedSteps } from '@/features/planning/components/ExcludedSteps'
 import { StepBoard } from '@/features/planning/components/StepBoard'
 import type { StepPhase } from '@/features/planning/types'
@@ -23,10 +29,20 @@ export default function PlanStepsPage() {
 
   // 포함한 단계의 코드. 배열 순서가 곧 묶음 안의 순서다.
   const [codes, setCodes] = useState<string[] | null>(demo ? Object.keys(DEMO_INCLUDED) : null)
+  const [dates, setDates] = useState<Record<string, LocalSchedule> | null>(null)
+  const saved = eventId ? planningApi.local(eventId) : null
   const resolved =
     codes ??
-    (eventId ? planningApi.local(eventId).codes : null) ??
+    saved?.codes ??
     (serverSteps.data ? codesFromSteps(serverSteps.data) : null)
+  // 일정은 저장한 값이 먼저, 없으면 서버가 만든 값을 밑바탕으로 쓴다.
+  const resolvedDates =
+    dates ??
+    (saved && Object.keys(saved.schedule).length > 0
+      ? saved.schedule
+      : serverSteps.data
+        ? scheduleFromSteps(serverSteps.data)
+        : {})
 
   const current = resolved ?? []
   const included = current
@@ -65,7 +81,9 @@ export default function PlanStepsPage() {
             disabled={current.length === 0 || save.isPending}
             onClick={() => {
               if (!eventId) return navigate(-1)
-              void save.mutateAsync(current).then(() => navigate(-1))
+              void save
+                .mutateAsync({ codes: current, schedule: resolvedDates })
+                .then(() => navigate(-1))
             }}
           >
             {save.isPending ? '저장하는 중…' : '저장'}
@@ -93,6 +111,16 @@ export default function PlanStepsPage() {
         <StepBoard
           included={included}
           schedule={DEMO_INCLUDED}
+          dates={demo ? undefined : resolvedDates}
+          onDatesChange={
+            demo
+              ? undefined
+              : (code, startsAt, deadline) =>
+                  setDates((previous) => ({
+                    ...(previous ?? resolvedDates),
+                    [code]: { startsAt, deadline },
+                  }))
+          }
           onReorder={reorder}
           onRemove={(code) => setCodes((list) => (list ?? current).filter((c) => c !== code))}
         />

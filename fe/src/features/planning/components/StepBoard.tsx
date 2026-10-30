@@ -15,9 +15,30 @@ interface StepBoardProps {
   schedule: Record<string, string>
   onReorder: (phase: StepPhase, from: number, to: number) => void
   onRemove: (code: string) => void
+  // 일정을 직접 고칠 수 있을 때만 준다. 없으면 schedule 문구를 읽기 전용으로 보인다.
+  dates?: Record<string, { startsAt: string | null; deadline: string | null }>
+  onDatesChange?: (code: string, startsAt: string | null, deadline: string | null) => void
 }
 
-export function StepBoard({ included, schedule, onReorder, onRemove }: StepBoardProps) {
+// <input type="date">는 yyyy-MM-dd만 받는다. 서버 값은 시각까지 있는 ISO 문자열이라
+// 앞 10자만 떼어 보여주고, 돌려줄 때는 그날 0시(한국)를 붙여 같은 모양으로 맞춘다.
+// 그래야 서버가 일정을 받기 시작해도 화면 쪽을 손대지 않아도 된다.
+function toDateInput(iso: string | null): string {
+  return iso ? iso.slice(0, 10) : ''
+}
+
+function fromDateInput(value: string): string | null {
+  return value ? `${value}T00:00:00+09:00` : null
+}
+
+export function StepBoard({
+  included,
+  schedule,
+  onReorder,
+  onRemove,
+  dates,
+  onDatesChange,
+}: StepBoardProps) {
   // 끌고 있는 카드. 묶음이 다르면 받지 않는다.
   const [dragging, setDragging] = useState<{ phase: StepPhase; index: number }>()
 
@@ -88,7 +109,39 @@ export function StepBoard({ included, schedule, onReorder, onRemove }: StepBoard
                         {step.actor} · {step.actions}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[12px] text-ink2">{schedule[step.code]}</span>
+                    {onDatesChange ? (
+                      <span className="flex shrink-0 items-center gap-[5px] text-[11px] text-ink2">
+                        <input
+                          type="date"
+                          aria-label={`${step.name} 시작일`}
+                          value={toDateInput(dates?.[step.code]?.startsAt ?? null)}
+                          onChange={(e) =>
+                            onDatesChange(
+                              step.code,
+                              fromDateInput(e.target.value),
+                              dates?.[step.code]?.deadline ?? null,
+                            )
+                          }
+                          className="rounded-[7px] border border-line px-[6px] py-[5px]"
+                        />
+                        <span aria-hidden>–</span>
+                        <input
+                          type="date"
+                          aria-label={`${step.name} 마감일`}
+                          value={toDateInput(dates?.[step.code]?.deadline ?? null)}
+                          onChange={(e) =>
+                            onDatesChange(
+                              step.code,
+                              dates?.[step.code]?.startsAt ?? null,
+                              fromDateInput(e.target.value),
+                            )
+                          }
+                          className="rounded-[7px] border border-line px-[6px] py-[5px]"
+                        />
+                      </span>
+                    ) : (
+                      <span className="shrink-0 text-[12px] text-ink2">{schedule[step.code]}</span>
+                    )}
                     <button
                       type="button"
                       aria-label={`${step.name} 빼기`}

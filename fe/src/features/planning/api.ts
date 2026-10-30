@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from '@/shared/api/client'
-import { loadLocalPlan, saveLocalPlan } from '@/features/planning/localPlan'
+import { loadLocalPlan, saveLocalPlan, type LocalSchedule } from '@/features/planning/localPlan'
 import type { components } from '@/shared/api/schema'
 
 type S = components['schemas']
@@ -19,10 +19,11 @@ export const planningApi = {
   // --- 아래 둘은 서버 경로가 아직 없다(#213) ----------------------------------
   // 화면 흐름을 먼저 잇기 위해 이 브라우저에만 적어둔다. 엔드포인트가 생기면
   // 본문만 apiPost 한 줄로 바꾸면 되고, 부르는 쪽은 손대지 않아도 된다.
-  //   saveSteps → PATCH /events/{eventId}/plan/steps
+  //   saveSteps → PATCH /events/{eventId}/plan/steps      (구성)
+  //               PATCH /events/{eventId}/plan/steps/{id}  (일정, #106)
   //   start     → POST  /events/{eventId}/start
-  saveSteps: (eventId: string, codes: string[]) =>
-    Promise.resolve(saveLocalPlan(eventId, { codes })),
+  saveSteps: (eventId: string, codes: string[], schedule: Record<string, LocalSchedule>) =>
+    Promise.resolve(saveLocalPlan(eventId, { codes, schedule })),
   start: (eventId: string) => Promise.resolve(saveLocalPlan(eventId, { started: true })),
   local: (eventId: string) => loadLocalPlan(eventId),
 }

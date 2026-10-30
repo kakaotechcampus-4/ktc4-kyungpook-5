@@ -5,13 +5,34 @@
 
 const KEY = 'unyounghae_local_plan_v1'
 
+// 단계 하나의 일정. 서버 PlannedStepOut 과 같은 이름을 쓴다.
+export interface LocalSchedule {
+  startsAt: string | null
+  deadline: string | null
+}
+
 export interface LocalPlan {
   // 포함한 단계 코드. 배열 순서가 곧 묶음 안의 순서다. null이면 아직 손대지 않았다는 뜻.
   codes: string[] | null
+  // StepCode → 일정. 손댄 단계만 들어간다.
+  schedule: Record<string, LocalSchedule>
   started: boolean
 }
 
-const EMPTY: LocalPlan = { codes: null, started: false }
+const EMPTY: LocalPlan = { codes: null, schedule: {}, started: false }
+
+function normalizeSchedule(value: unknown): Record<string, LocalSchedule> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return {}
+  const result: Record<string, LocalSchedule> = {}
+  for (const [code, raw] of Object.entries(value as Record<string, unknown>)) {
+    const item = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+    result[code] = {
+      startsAt: typeof item.startsAt === 'string' ? item.startsAt : null,
+      deadline: typeof item.deadline === 'string' ? item.deadline : null,
+    }
+  }
+  return result
+}
 
 function readAll(): Record<string, LocalPlan> {
   try {
@@ -38,6 +59,7 @@ export function loadLocalPlan(eventId: string): LocalPlan {
   if (!saved) return EMPTY
   return {
     codes: Array.isArray(saved.codes) ? saved.codes.filter((c) => typeof c === 'string') : null,
+    schedule: normalizeSchedule(saved.schedule),
     started: saved.started === true,
   }
 }
