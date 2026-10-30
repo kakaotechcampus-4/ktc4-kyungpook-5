@@ -251,7 +251,7 @@ async def _manual_plan_edit_time(session: AsyncSession, event: Event) -> datetim
     덮지 않고, 사용자가 먼저 기존 편집을 확인하도록 한다.
     """
     if event.saved_at is None:
-        return False
+        return None
     step_latest = await session.scalar(
         select(func.max(Step.modified_at)).where(Step.event_id == event.id)
     )
