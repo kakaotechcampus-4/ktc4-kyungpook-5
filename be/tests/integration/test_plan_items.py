@@ -4,16 +4,19 @@ FE 세부 수정 모달이 의존하는 것 — 어떤 밭을 그릴지 정하�
 editable, 보낸 키만 덮는 부분 수정, 금액의 Event 파생 — 을 실제 DB로 확인한다.
 """
 
+import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.core.enums import ActionStatus, ActionType, EventStatus, MemberRole, StepCode
 from app.db import session as db_session
-from app.models.events import Event
+from app.models.events import Action, Event
+from app.services import event_service
 from tests.integration.event_seed import (
     add_action,
     add_event,
@@ -342,3 +345,39 @@ async def test_본_뒤에_바뀐_행동은_덮어쓰지_않는다(client: TestCl
     )
     assert stale.status_code == 409
     assert stale.json()["error"]["code"] == "VERSION_CONFLICT"
+
+
+async def test_실제_PostgreSQL_동시_Action_수정은_하나만_성공한다(client: TestClient, app_db: None) -> None:
+    """두 세션이 같은 version을 읽어도 row lock 뒤 하나는 충돌해야 한다."""
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id)
+    step_id = await add_step(event_id, 1)
+    action_id = await add_action(event_id, step_id=step_id)
+    factory = db_session.get_sessionmaker()
+    first, second = factory(), factory()
+    try:
+        locked = await first.scalar(
+            select(Action).where(Action.id == action_id)
+            .options(selectinload(Action.step)).with_for_update()
+        )
+        assert locked is not None
+        waiting = asyncio.create_task(second.scalar(
+            select(Action).where(Action.id == action_id)
+            .options(selectinload(Action.step)).with_for_update()
+        ))
+        await asyncio.sleep(0.05)
+        await event_service.update_action(
+            first, action=locked, values={'title': '첫 수정'},
+            payload_values=None, expected_version=1,
+        )
+        stale = await waiting
+        assert stale is not None
+        with pytest.raises(Exception) as error:
+            await event_service.update_action(
+                second, action=stale, values={'title': '두 번째 수정'},
+                payload_values=None, expected_version=1,
+            )
+        assert error.value.__class__.__name__ == 'VersionConflict'
+    finally:
+        await first.close()
+        await second.close()
