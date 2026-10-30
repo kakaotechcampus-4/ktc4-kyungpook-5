@@ -80,18 +80,19 @@ export function MyInfoTab({ profile, club, linkedAccounts, onLogout }: MyInfoTab
   ]
 
   return (
-    <div className="flex items-start gap-[20px]">
+    <div className="flex flex-col items-stretch gap-[20px] lg:flex-row lg:items-start">
       <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-        <Card className="flex items-center gap-[16px] px-[26px] py-[22px]">
+        {/* 좁은 화면에서는 버튼이 아래 줄로 내려간다(basis로 글자 칸 최소 폭을 잡는다) */}
+        <Card className="flex flex-wrap items-center gap-[16px] px-[26px] py-[22px]">
           <Avatar name={profile.name} size={46} />
-          <div className="flex min-w-0 flex-1 flex-col gap-[4px]">
+          <div className="flex min-w-0 flex-1 basis-[180px] flex-col gap-[4px]">
             <div className="flex items-center gap-[8px]">
-              <span className="text-h2 text-ink">{profile.name}</span>
+              <span className="break-all text-h2 text-ink">{profile.name}</span>
               <Chip tone="approved" size="sm">
                 {profile.role}
               </Chip>
             </div>
-            <span className="text-[11.5px] text-mute">{profile.email}</span>
+            <span className="break-all text-[11.5px] text-mute">{profile.email}</span>
           </div>
           <Button variant="secondary" disabled>
             프로필 수정 (준비 중)
@@ -128,7 +129,7 @@ export function MyInfoTab({ profile, club, linkedAccounts, onLogout }: MyInfoTab
         </Card>
       </div>
 
-      <div className="flex w-[300px] shrink-0 flex-col gap-[16px]">
+      <div className="flex w-full shrink-0 flex-col gap-[16px] lg:w-[300px]">
         <Card className="flex flex-col gap-[16px] px-[22px] pt-[20px] pb-[22px]">
           <div className="flex flex-col gap-[4px]">
             <h2 className="text-h2 text-ink">알림</h2>
