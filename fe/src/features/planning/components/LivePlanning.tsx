@@ -1,12 +1,20 @@
 import { useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import { usePlanningChat, usePlanningDrafts, useStartEvent } from '@/features/planning/hooks'
+import {
+  applyLocalCodes,
+  usePlanningChat,
+  usePlanningDrafts,
+  useStartEvent,
+} from '@/features/planning/hooks'
 import { planningApi } from '@/features/planning/api'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
+import type { components } from '@/shared/api/schema'
 import { useAuthStore } from '@/shared/auth/store'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
+
+type S = components['schemas']
 
 const REASONS: Record<string, string> = {
   event_type_missing: '행사 종류를 알려 주세요.',
@@ -112,7 +120,9 @@ function Conversation({
       </Card>
     )
   const screen = live.snapshot.data?.screen
-  const steps = live.snapshot.data?.steps ?? []
+  // 단계 수정 화면에서 저장한 구성이 있으면 그걸 반영해 보여준다(#213 전까지 로컬).
+  const localCodes = eventId ? planningApi.local(eventId).codes : null
+  const steps = applyLocalCodes(live.snapshot.data?.steps ?? [], localCodes)
   const lookup = live.view?.recordLookup
   const readiness = live.view?.generationReadiness ?? screen?.generationReadiness ?? null
   const lastMessage = live.snapshot.data?.messages.at(-1)
@@ -175,12 +185,7 @@ function Conversation({
             >
               {live.busy ? '처리 중…' : '현재 조건으로 초안 생성'}
             </Button>
-            {screen && (
-              <p className="text-mute">
-                전체 {screen.summary.totalSteps}단계 · AI {screen.summary.aiSteps} · 승인 필요{' '}
-                {screen.summary.approvalSteps} · 직접 수행 {screen.summary.manualSteps}
-              </p>
-            )}
+            {screen && <StepSummaryLine summary={screen.summary} steps={steps} edited={!!localCodes} />}
             {screen?.warnings.map((warning, index) => (
               <p key={index} className="text-mute">
                 {warning}
@@ -255,5 +260,32 @@ function PlanHandoff({ eventId, hasSteps }: { eventId: string | null; hasSteps: 
         단계 수정과 시작은 아직 이 브라우저에만 기록됩니다. 서버에는 반영되지 않아요(#213).
       </p>
     </div>
+  )
+}
+
+// 단계를 빼고 나면 서버가 보낸 개수와 화면에 보이는 목록이 어긋난다.
+// 저장한 구성이 있을 때만 보이는 목록에서 다시 센다(#213 전까지 로컬).
+function StepSummaryLine({
+  summary,
+  steps,
+  edited,
+}: {
+  summary: S['PlanSummaryOut']
+  steps: S['PlannedStepOut'][]
+  edited: boolean
+}) {
+  const counted = edited
+    ? {
+        totalSteps: steps.length,
+        aiSteps: steps.filter((step) => step.actor === 'AI').length,
+        approvalSteps: steps.filter((step) => step.actor === 'APPROVAL_REQUIRED').length,
+        manualSteps: steps.filter((step) => step.actor === 'MANUAL').length,
+      }
+    : summary
+  return (
+    <p className="text-mute">
+      전체 {counted.totalSteps}단계 · AI {counted.aiSteps} · 승인 필요 {counted.approvalSteps} ·
+      직접 수행 {counted.manualSteps}
+    </p>
   )
 }

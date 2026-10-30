@@ -201,3 +201,19 @@ export function useStartEvent(eventId: string | null) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
   })
 }
+
+// 저장한 단계 구성을 서버 응답 위에 덮어 보여준다. 뺀 단계는 빼고, 순서도 저장한
+// 대로 다시 세운다. 서버 경로가 생기면 서버 응답 자체가 이미 그 모양이라 사라진다.
+export function applyLocalCodes(
+  steps: S['PlannedStepOut'][],
+  codes: string[] | null,
+): S['PlannedStepOut'][] {
+  if (!codes) return steps
+  const byCode = new Map(
+    steps.map((step) => [STEP_CATALOGUE.find((item) => item.name === step.name)?.code, step]),
+  )
+  return codes
+    .map((code) => byCode.get(code))
+    .filter((step): step is S['PlannedStepOut'] => step !== undefined)
+    .map((step, index) => ({ ...step, stepOrder: index + 1 }))
+}
