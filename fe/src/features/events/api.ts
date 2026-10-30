@@ -1,5 +1,5 @@
 // 행사 서버 호출. 화면은 이 파일을 직접 쓰지 않고 hooks.ts를 거친다.
-import { apiGet, apiGetPage } from '@/shared/api/client'
+import { apiGet, apiGetPage, apiPost } from '@/shared/api/client'
 import type {
   ActionPage,
   EventAction,
@@ -52,4 +52,11 @@ export async function getEventActionPage(eventId: string, query: string): Promis
     `/events/${encodeURIComponent(eventId)}/actions?${query}`,
   )
   return { items: res.data, totalCount: res.meta?.totalCount ?? res.data.length }
+}
+
+// 완료는 서버가 상태와 권한을 판단한다.
+export function completeEvent(eventId: string) {
+  return apiPost<{ id: string; status: EventStatus }>(
+    `/events/${encodeURIComponent(eventId)}/complete`,
+  )
 }

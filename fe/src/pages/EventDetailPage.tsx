@@ -11,6 +11,7 @@ import { ReviewModal } from '@/features/events/components/ReviewModal'
 import { StepModal } from '@/features/events/components/StepModal'
 import {
   useConfirmations,
+  useCompleteEvent,
   useDemo,
   useEventDetail,
   useEventSteps,
@@ -21,6 +22,7 @@ import type { EventAction, EventStep } from '@/features/events/types'
 import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { Modal } from '@/shared/ui/Modal'
 import { ServerErrorScreen } from '@/shared/ui/StateScreen'
 
 export default function EventDetailPage() {
@@ -31,6 +33,9 @@ export default function EventDetailPage() {
   const toList = `/events${search}`
 
   const demo = useDemo()
+  const completeEvent = useCompleteEvent(eventId)
+  const [completeOpen, setCompleteOpen] = useState(false)
+  const [completeError, setCompleteError] = useState('')
   const detailQuery = useEventDetail(eventId)
   const event = detailQuery.data
   // 행사가 없으면(초기 화면) 나머지는 부르지 않는다
@@ -146,9 +151,59 @@ export default function EventDetailPage() {
         <>
           {!demo && (
             <p className="rounded-[10px] bg-bg px-[16px] py-[12px] text-[13px] text-ink2">
-              행사 조회를 연결했습니다. 승인·완료·취소 처리는 준비 중입니다.
+              행사 조회를 연결했습니다. 개별 작업의 승인·완료와 행사 취소는 준비 중입니다.
             </p>
           )}
+          {completeError && (
+            <p role="alert" className="text-failed">
+              {completeError}
+            </p>
+          )}
+          {!demo && event.status === 'ON_GOING' && (
+            <div>
+              <Button
+                variant="secondary"
+                disabled={completeEvent.isPending}
+                onClick={() => setCompleteOpen(true)}
+              >
+                행사 완료
+              </Button>
+            </div>
+          )}
+          <Modal
+            open={completeOpen}
+            onClose={() => setCompleteOpen(false)}
+            title="행사를 완료할까요?"
+            footer={
+              <>
+                <Button variant="secondary" onClick={() => setCompleteOpen(false)}>
+                  취소
+                </Button>
+                <Button
+                  disabled={completeEvent.isPending}
+                  onClick={() => {
+                    setCompleteOpen(false)
+                    setCompleteError('')
+                    void completeEvent
+                      .mutateAsync()
+                      .catch(() =>
+                        setCompleteError(
+                          '완료 결과를 확인하지 못했어요. 행사 상태를 다시 확인해 주세요.',
+                        ),
+                      )
+                  }}
+                >
+                  행사 완료
+                </Button>
+              </>
+            }
+          >
+            <p>
+              행사를 완료 상태로 변경합니다. 아직 완료되지 않은 단계가{' '}
+              {steps.filter((step) => step.state !== 'DONE').length}개 있어요. 남은 작업을 확인해
+              주세요.
+            </p>
+          </Modal>
           <EventHeaderCard
             readOnly={!demo}
             event={event}

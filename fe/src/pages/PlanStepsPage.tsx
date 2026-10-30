@@ -9,6 +9,7 @@ import { StepBoard } from '@/features/planning/components/StepBoard'
 import { StepDetailModal } from '@/features/planning/components/StepDetailModal'
 import type { StepPhase } from '@/features/planning/types'
 import { Button } from '@/shared/ui/Button'
+import { Modal } from '@/shared/ui/Modal'
 
 export default function PlanStepsPage() {
   const navigate = useNavigate()
@@ -23,6 +24,8 @@ export default function PlanStepsPage() {
 
   // 포함한 단계의 코드. 배열 순서가 곧 묶음 안의 순서다.
   const [codes, setCodes] = useState<string[] | null>(demo ? Object.keys(DEMO_INCLUDED) : null)
+  const [saveError, setSaveError] = useState('')
+  const [confirmRemoval, setConfirmRemoval] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
   const resolved = codes ?? (serverSteps.data ? codesFromSteps(serverSteps.data) : null)
   // 일정은 서버가 들고 있다. 화면에는 StepCode 로 찾아 쓴다.
@@ -37,6 +40,17 @@ export default function PlanStepsPage() {
   )
 
   const current = resolved ?? []
+  const removedSteps = (serverSteps.data ?? []).filter((step) => !current.includes(step.code))
+  const saveSteps = () => {
+    if (!eventId) return
+    setSaveError('')
+    void save
+      .mutateAsync(current)
+      .then(() => navigate(-1))
+      .catch(() =>
+        setSaveError('저장 결과를 확인하지 못했어요. 다시 불러와 단계 구성을 확인해 주세요.'),
+      )
+  }
   const included = current
     .map((code) => STEP_CATALOGUE.find((s) => s.code === code))
     .filter((s) => s !== undefined)
@@ -61,9 +75,7 @@ export default function PlanStepsPage() {
       <header className="flex items-start justify-between gap-[16px]">
         <div className="flex flex-col gap-[4px]">
           <h1 className="text-h1">단계 수정</h1>
-          <p className="text-mute">
-            13개 중 {current.length}개 포함 · 계획 중에만 바꿀 수 있어요
-          </p>
+          <p className="text-mute">13개 중 {current.length}개 포함 · 계획 중에만 바꿀 수 있어요</p>
         </div>
         <div className="flex gap-[9px]">
           <Button variant="secondary" onClick={() => navigate(-1)}>
@@ -72,8 +84,8 @@ export default function PlanStepsPage() {
           <Button
             disabled={current.length === 0 || save.isPending}
             onClick={() => {
-              if (!eventId) return navigate(-1)
-              void save.mutateAsync(current).then(() => navigate(-1))
+              if (removedSteps.length) setConfirmRemoval(true)
+              else saveSteps()
             }}
           >
             {save.isPending ? '저장하는 중…' : '저장'}
@@ -81,6 +93,19 @@ export default function PlanStepsPage() {
         </div>
       </header>
 
+      {saveError && (
+        <p role="alert" className="text-failed">
+          {saveError}
+        </p>
+      )}
+      {!demo && eventId && serverSteps.isError && (
+        <p role="alert" className="text-failed">
+          단계를 불러오지 못했어요.{' '}
+          <button className="underline" onClick={() => void serverSteps.refetch()}>
+            다시 시도
+          </button>
+        </p>
+      )}
       {!demo && eventId && serverSteps.isPending && (
         <p role="status" className="text-mute">
           만들어진 단계를 불러오고 있어요.
@@ -91,21 +116,56 @@ export default function PlanStepsPage() {
           어떤 행사의 단계인지 알 수 없어요. 계획 화면에서 다시 들어와 주세요.
         </p>
       )}
-      <div className="flex items-start gap-[20px]">
-        <StepBoard
-          included={included}
-          schedule={DEMO_INCLUDED}
-          dates={demo ? undefined : dates}
-          onEditDetail={demo ? undefined : setEditing}
-          onReorder={reorder}
-          onRemove={(code) => setCodes((list) => (list ?? current).filter((c) => c !== code))}
-        />
-        <ExcludedSteps
-          excluded={excluded}
-          onInclude={(code) => setCodes((list) => [...(list ?? current), code])}
-        />
-      </div>
+      {(demo || !!serverSteps.data) && (
+        <div className="flex items-start gap-[20px]">
+          <StepBoard
+            included={included}
+            schedule={DEMO_INCLUDED}
+            dates={demo ? undefined : dates}
+            onEditDetail={demo ? undefined : setEditing}
+            onReorder={reorder}
+            onRemove={(code) => setCodes((list) => (list ?? current).filter((c) => c !== code))}
+          />
+          <ExcludedSteps
+            excluded={excluded}
+            onInclude={(code) => setCodes((list) => [...(list ?? current), code])}
+          />
+        </div>
+      )}
 
+      <Modal
+        open={confirmRemoval}
+        onClose={() => setConfirmRemoval(false)}
+        title="단계를 삭제할까요?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmRemoval(false)}>
+              취소
+            </Button>
+            <Button
+              disabled={save.isPending}
+              onClick={() => {
+                setConfirmRemoval(false)
+                saveSteps()
+              }}
+            >
+              삭제하고 저장
+            </Button>
+          </>
+        }
+      >
+        <p>
+          아래 단계의 일정과 연결된 작업도 삭제됩니다. 다시 추가해도 기존 수정 내용은 복구되지
+          않아요.
+        </p>
+        <ul>
+          {removedSteps.map((step) => (
+            <li key={step.id}>
+              {step.name} · 작업 {step.actions.length}개
+            </li>
+          ))}
+        </ul>
+      </Modal>
       <StepDetailModal
         step={editing ? (byCode.get(editing) ?? null) : null}
         onClose={() => setEditing(null)}

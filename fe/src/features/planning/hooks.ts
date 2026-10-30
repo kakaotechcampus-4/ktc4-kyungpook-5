@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
+import { buildActionUpdate } from './actionUpdate'
 import type { ChatMessage, PlanFacts } from './types'
 import { FIRST_MESSAGE } from './mock'
 import { ApiError } from '@/shared/api/types'
@@ -156,8 +157,13 @@ export function usePlanningChat(
       await refresh()
       if (result.generationResult?.status !== 'generated')
         setError(result.reply || '계획을 생성하지 못했어요. 조건을 확인해 주세요.')
-    } catch {
-      setError('계획 생성 결과를 확인하지 못했어요. 다시 불러와 저장 상태를 확인해 주세요.')
+    } catch (cause) {
+      setError(
+        cause instanceof ApiError &&
+          (cause.code === 'EVENT_STATE_CONFLICT' || cause.code === 'PLANNING_STATE_CONFLICT')
+          ? '직접 수정한 계획이 있어 다시 생성할 수 없어요. 변경 내용을 확인해 주세요.'
+          : '계획 생성 결과를 확인하지 못했어요. 다시 불러와 저장 상태를 확인해 주세요.',
+      )
     } finally {
       locked.current = false
       setBusy(false)
@@ -224,23 +230,11 @@ export function useSaveStepDetail() {
       }
       for (const action of step.actions) {
         const next = draft.actions[action.id]
-        if (!next) continue
-        const changed =
-          next.title !== action.title ||
-          next.amount !== action.amount ||
-          JSON.stringify(next.payload) !== JSON.stringify(action.payload)
-        if (changed) {
-          await planningApi.updateAction(action.id, {
-            // 조회에서 받은 version을 그대로 돌려보낸다. 그사이 내용이 바뀌었으면
-            // 서버가 409로 거절하고 다시 불러오게 한다.
-            expectedVersion: action.version,
-            title: next.title,
-            amount: next.amount,
-            payload: next.payload,
-          })
-        }
+        if (!next || !action.editable) continue
+        const body = buildActionUpdate(action, next)
+        if (body) await planningApi.updateAction(action.id, body)
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
   })
 }

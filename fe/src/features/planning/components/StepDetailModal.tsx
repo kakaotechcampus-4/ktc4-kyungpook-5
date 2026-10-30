@@ -23,16 +23,25 @@ function saveErrorMessage(cause: unknown): string {
   if (cause instanceof ApiError) {
     // 내가 보고 있는 동안 다른 사람이 고쳤다. 덮어쓰지 않고 다시 불러오게 한다.
     if (cause.code === 'VERSION_CONFLICT')
-      return '내용이 그사이 바뀌었어요. 창을 닫고 다시 열어 주세요.'
-    if (cause.code === 'NOT_EDITABLE') return '이미 끝난 내용이라 고칠 수 없어요.'
-    return cause.message || '저장하지 못했어요.'
+      return '다른 변경이 있어요. 일부 항목은 저장됐을 수 있으니 창을 닫고 다시 불러와 확인해 주세요.'
+    if (cause.code === 'NOT_EDITABLE')
+      return '이미 끝난 내용은 고칠 수 없어요. 다른 항목은 저장됐을 수 있으니 다시 불러와 확인해 주세요.'
+    return '일부 항목이 저장됐을 수 있어요. 창을 닫고 다시 불러와 확인해 주세요.'
   }
-  return '저장하지 못했어요. 연결 상태를 확인해 주세요.'
+  return '일부 항목이 저장됐을 수 있어요. 창을 닫고 다시 불러와 확인해 주세요.'
 }
 
 // <input type="date">는 yyyy-MM-dd만 받는다. 돌려줄 때는 그날 0시(한국)를 붙여
 // 서버가 주는 ISO 와 같은 모양으로 맞춘다.
-const toDateInput = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : '')
+const toDateInput = (iso: string | null | undefined) =>
+  iso
+    ? new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date(iso))
+    : ''
 const fromDateInput = (value: string) => (value ? `${value}T00:00:00+09:00` : null)
 
 interface Draft {
@@ -281,7 +290,8 @@ function PayloadField({
     )
   }
 
-  const key = spec.key as 'channel' | 'audience' | 'sendTiming' | 'vendor' | 'cancelTerms' | 'account'
+  const key = spec.key as
+    'channel' | 'audience' | 'sendTiming' | 'vendor' | 'cancelTerms' | 'account'
   return (
     <Field label={spec.label} hint={spec.hint}>
       <Input

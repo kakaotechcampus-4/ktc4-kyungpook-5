@@ -6,6 +6,7 @@ import { PlanFacts } from '@/features/planning/components/PlanFacts'
 import { useAuthStore } from '@/shared/auth/store'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
+import { Modal } from '@/shared/ui/Modal'
 
 const REASONS: Record<string, string> = {
   event_type_missing: '행사 종류를 알려 주세요.',
@@ -95,6 +96,7 @@ function Conversation({
 }) {
   const live = usePlanningChat(clubId, eventId, userId, onCreated)
   const [showFailure, setShowFailure] = useState(Boolean(failedText))
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false)
   if (eventId && live.snapshot.isLoading)
     return (
       <Card className="p-5" role="status">
@@ -170,7 +172,7 @@ function Conversation({
             </p>
             <Button
               disabled={!eventId || live.busy || !readiness?.canGenerate}
-              onClick={() => void live.generate()}
+              onClick={() => (steps.length ? setConfirmRegenerate(true) : void live.generate())}
             >
               {live.busy ? '처리 중…' : '현재 조건으로 초안 생성'}
             </Button>
@@ -216,6 +218,32 @@ function Conversation({
           />
         </div>
       </div>
+      <Modal
+        open={confirmRegenerate}
+        onClose={() => setConfirmRegenerate(false)}
+        title="초안을 다시 생성할까요?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmRegenerate(false)}>
+              취소
+            </Button>
+            <Button
+              disabled={live.busy}
+              onClick={() => {
+                setConfirmRegenerate(false)
+                void live.generate()
+              }}
+            >
+              확인하고 다시 생성
+            </Button>
+          </>
+        }
+      >
+        <p>
+          기존 단계와 작업 및 직접 수정한 내용이 새 초안으로 바뀔 수 있어요. 계속하기 전에 내용을
+          확인해 주세요.
+        </p>
+      </Modal>
     </>
   )
 }
@@ -224,6 +252,7 @@ function Conversation({
 function PlanHandoff({ eventId, hasSteps }: { eventId: string | null; hasSteps: boolean }) {
   const start = useStartEvent(eventId)
   const [error, setError] = useState('')
+  const [confirmStart, setConfirmStart] = useState(false)
   if (!eventId || !hasSteps) return null
   // 시작하면 이 행사는 더 이상 계획 초안이 아니라 「계획 이어보기」 목록에서도 빠진다.
   const started = start.isSuccess
@@ -246,17 +275,39 @@ function PlanHandoff({ eventId, hasSteps }: { eventId: string | null; hasSteps: 
           <Link to={`/planning/steps?eventId=${encodeURIComponent(eventId)}`}>
             <Button variant="secondary">단계 수정</Button>
           </Link>
-          <Button
-            disabled={start.isPending}
-            onClick={() => {
-              setError('')
-              void start.mutateAsync().catch(() => setError('행사를 시작하지 못했어요.'))
-            }}
-          >
+          <Button disabled={start.isPending} onClick={() => setConfirmStart(true)}>
             {start.isPending ? '처리 중…' : '행사 시작'}
           </Button>
         </div>
       )}
+      <Modal
+        open={confirmStart}
+        onClose={() => setConfirmStart(false)}
+        title="행사를 시작할까요?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmStart(false)}>
+              취소
+            </Button>
+            <Button
+              disabled={start.isPending}
+              onClick={() => {
+                setConfirmStart(false)
+                setError('')
+                void start
+                  .mutateAsync()
+                  .catch(() =>
+                    setError('시작 결과를 확인하지 못했어요. 행사 목록에서 상태를 확인해 주세요.'),
+                  )
+              }}
+            >
+              행사 시작
+            </Button>
+          </>
+        }
+      >
+        <p>계획을 확인한 뒤 진행 중 행사로 전환합니다.</p>
+      </Modal>
     </div>
   )
 }
