@@ -42,6 +42,8 @@ class InvitationCreateIn(CamelModel):
 
 class InvitationCreateOut(CamelModel):
     id: str
+    token: str
+    expires_at: UtcDateTime
 
 
 class InvitationAcceptIn(CamelModel):

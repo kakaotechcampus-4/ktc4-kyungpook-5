@@ -88,8 +88,9 @@ async def create_invitation(
     )
     session.add(invitation)
     await session.commit()
-    # 더미 발송: 실제 메일 대신 콘솔에 남긴다 (이유는 auth_service.signup 참고).
-    print(f"[더미 초대 메일 발송] {email}에게 토큰: {token}", flush=True)
+    # 원문은 DB에 저장하지 않고 생성 응답에서 한 번만 보여 준다.
+    # 실제 메일 발송은 지원하지 않으므로 콘솔에는 비밀 토큰을 남기지 않는다.
+    invitation._one_time_token = token  # type: ignore[attr-defined]
     return invitation
 
 

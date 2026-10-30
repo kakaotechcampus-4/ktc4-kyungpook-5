@@ -103,7 +103,11 @@ async def create_invitation(
         role=body.role,
         invited_by=inviter,
     )
-    return Envelope(data=InvitationCreateOut(id=invitation.id))
+    return Envelope(data=InvitationCreateOut(
+        id=invitation.id,
+        token=getattr(invitation, "_one_time_token"),
+        expires_at=invitation.expires_at,
+    ))
 
 
 @router.post("/invitations/accept", response_model=Envelope[InvitationAcceptOut])

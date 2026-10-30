@@ -169,7 +169,7 @@ async def test_logout_후_refresh는_401(client: TestClient, app_db: None) -> No
 
 
 async def test_초대_수락하면_해당_역할로_가입된다(
-    client: TestClient, app_db: None, capsys: pytest.CaptureFixture[str]
+    client: TestClient, app_db: None
 ) -> None:
     owner_email = _unique_email("inv-owner")
     _signup(client, owner_email)
@@ -189,9 +189,8 @@ async def test_초대_수락하면_해당_역할로_가입된다(
     )
     assert invite_res.status_code == 201, invite_res.text
 
-    # 더미 발송은 print()로만 나간다 — capsys로 콘솔 출력에서 토큰을 꺼낸다.
-    printed = capsys.readouterr().out
-    invite_token = printed.strip().rsplit(": ", 1)[-1]
+    invite_token = invite_res.json()["data"]["token"]
+    assert invite_res.json()["data"]["expiresAt"]
 
     _signup(client, manager_email, name="매니저")
     manager_token, _ = _login(client, manager_email)
