@@ -282,11 +282,11 @@ async def test_재생성은_사용자가_편집한_계획을_조용히_덮지_�
         action.title = "사용자 수정"
         await session.commit()
     from app.models.events import Event
-    from app.services.planning_service import _has_manual_plan_edits
+    from app.services.planning_service import _manual_plan_edit_time
     async with db_session.get_sessionmaker()() as session:
         event = await session.get(Event, event_id)
         assert event is not None
-        assert await _has_manual_plan_edits(session, event)
+        assert await _manual_plan_edit_time(session, event) is not None
 
 
 async def test_다른_동아리_사람은_행사_계획에_접근할_수_없다(
