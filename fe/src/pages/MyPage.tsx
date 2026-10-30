@@ -1,6 +1,7 @@
 // S2 마이 페이지. 내 정보 · 동아리원 · 동아리 자료 세 탭을 한 화면에서 바꿔 본다.
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLogout } from '@/features/auth/hooks'
 import { AddMemberModal } from '@/features/mypage/components/AddMemberModal'
 import { MembersTab } from '@/features/mypage/components/MembersTab'
 import { MyInfoTab } from '@/features/mypage/components/MyInfoTab'
@@ -29,6 +30,8 @@ export default function MyPage() {
   const [tab, setTab] = useState<Tab>('내 정보')
   const [addOpen, setAddOpen] = useState(false)
 
+  const navigate = useNavigate()
+  const logout = useLogout()
   // TODO(연동): GET /clubs/{clubId}/members. 추가·허가도 지금은 화면에서만 바뀐다.
   const [members, setMembers] = useState<Member[]>(demo ? DEMO_MEMBERS : [])
   const [requests, setRequests] = useState<JoinRequest[]>(demo ? DEMO_JOIN_REQUESTS : [])
@@ -80,6 +83,11 @@ export default function MyPage() {
           profile={profile}
           club={club}
           linkedAccounts={demo ? 'Google · 카카오' : undefined}
+          onLogout={() => {
+            // 두 번 눌러도 요청은 한 번만 보낸다
+            if (logout.isPending) return
+            logout.mutate(undefined, { onSettled: () => navigate('/login') })
+          }}
         />
       )}
 
