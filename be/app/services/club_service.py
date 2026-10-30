@@ -53,6 +53,17 @@ async def create_club(
     return club, owner
 
 
+async def update_club(session: AsyncSession, *, club_id: str, changes: dict) -> Club:
+    """보낸 필드(changes)만 바꾼다. 대표 권한 확인은 라우터가 먼저 끝낸다 (#213)."""
+    if "name" in changes and changes["name"] is None:
+        raise ValidationFailed({"name": "동아리 이름을 입력해 주세요."})
+    club = await session.get(Club, club_id)
+    for key, value in changes.items():
+        setattr(club, key, value)
+    await session.commit()
+    return club
+
+
 async def list_my_clubs(session: AsyncSession, account: Account) -> list[Member]:
     """회장·임원으로 이용할 수 있는 소속만 돌려준다. 일반 명단은 노출하지 않는다."""
     rows = await session.scalars(

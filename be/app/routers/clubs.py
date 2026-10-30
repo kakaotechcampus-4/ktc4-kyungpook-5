@@ -13,6 +13,7 @@ from app.schemas.clubs import (
     ClubOut,
     ClubSearchListResponse,
     ClubSearchOut,
+    ClubUpdateIn,
     InvitationAcceptIn,
     InvitationAcceptOut,
     InvitationCreateIn,
@@ -83,6 +84,20 @@ async def create_club(
             description=club.description,
         )
     )
+
+
+@router.patch("/clubs/{club_id}", response_model=Envelope[ClubOut])
+async def update_club(
+    club_id: str,
+    body: ClubUpdateIn,
+    # 이름·분야는 동아리를 대표하는 정보라 대표만 바꾼다.
+    _owner: Member = Depends(require_club_role(MemberRole.OWNER)),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[ClubOut]:
+    club = await club_service.update_club(
+        session, club_id=club_id, changes=body.model_dump(exclude_unset=True)
+    )
+    return Envelope(data=ClubOut.model_validate(club))
 
 
 @router.post(

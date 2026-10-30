@@ -1,4 +1,4 @@
-"""한 번 넣으면 고칠 수 없던 지출·자료의 수정·삭제 API 테스트 (#213 4단계)."""
+"""한 번 넣으면 고칠 수 없던 지출·자료·동아리의 수정·삭제 API 테스트 (#213 4단계)."""
 
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
@@ -306,3 +306,50 @@ async def test_색인_중에_자료가_지워지면_청크를_다시_만들지_�
         assert await session.get(Record, record_id) is None
         chunks = await session.scalars(select(RecordChunk).where(RecordChunk.record_id == record_id))
         assert list(chunks) == []
+
+
+# --- 동아리 ----------------------------------------------------------------
+
+
+async def test_대표는_동아리_정보를_고칠_수_있다(client: TestClient, app_db: None) -> None:
+    headers, club_id = owner_with_club(client, "club-edit")
+    client.patch(f"/api/v1/clubs/{club_id}", headers=headers, json={"description": "소개"})
+
+    res = client.patch(
+        f"/api/v1/clubs/{club_id}",
+        headers=headers,
+        json={"name": "  새 이름  ", "category": "SPORTS", "description": None},
+    )
+
+    assert res.status_code == 200, res.text
+    assert res.json()["data"] == {
+        "id": club_id, "name": "새 이름", "category": "SPORTS", "description": None,
+    }
+    me = client.get("/api/v1/me", headers=headers).json()["data"]
+    assert {"id": club_id, "name": "새 이름", "role": "OWNER"} in me["clubs"]
+
+
+@pytest.mark.parametrize("name", [None, "   ", "가" * 101])
+async def test_동아리_이름은_비우거나_너무_길게_할_수_없다(
+    client: TestClient, app_db: None, name: str | None
+) -> None:
+    headers, club_id = owner_with_club(client, "club-name")
+
+    res = client.patch(f"/api/v1/clubs/{club_id}", headers=headers, json={"name": name})
+
+    assert res.status_code == 422
+    assert res.json()["error"]["code"] == "VALIDATION_FAILED"
+
+
+async def test_운영진과_다른_동아리_대표는_동아리_정보를_고칠_수_없다(
+    client: TestClient, app_db: None
+) -> None:
+    _headers, club_id = owner_with_club(client, "club-role")
+    manager = await member_of(client, club_id, MemberRole.MANAGER, "club-manager")
+    other_owner, _other_club_id = owner_with_club(client, "club-outsider")
+
+    by_manager = client.patch(f"/api/v1/clubs/{club_id}", headers=manager, json={"name": "바꿈"})
+    by_outsider = client.patch(f"/api/v1/clubs/{club_id}", headers=other_owner, json={"name": "바꿈"})
+
+    assert by_manager.status_code == 403
+    assert by_outsider.status_code == 403
