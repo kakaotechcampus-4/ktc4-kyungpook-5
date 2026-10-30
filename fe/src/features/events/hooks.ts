@@ -1,8 +1,9 @@
 // 행사 서버 상태 훅. 화면은 반드시 이 훅을 거쳐 서버 데이터에 접근한다.
-// 지금은 서버 연동 전이라 주소에 ?demo가 있으면 시연용 예시(mock.ts)를, 없으면 빈 값을 준다.
+// 주소에 ?demo가 있으면 시연용 예시(mock.ts)를 준다. 목록만 서버에 붙였고, 나머지는 아직 빈 값을 준다.
 // TODO(연동): 각 queryFn을 주석에 적힌 eventsApi 호출로 바꾼다. 화면은 고치지 않아도 된다.
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
+import { getEvents } from '@/features/events/api'
 import {
   DEMO_ACTIONS,
   DEMO_CONFIRMATIONS,
@@ -20,18 +21,22 @@ import type {
   EventStep,
   EventSummary,
 } from '@/features/events/types'
+import { useAuthStore } from '@/shared/auth/store'
 
 export function useDemo() {
   return useSearchParams()[0].has('demo')
 }
 
-// TODO(연동): eventsApi.getEvents(status)
+// 소속 없이 둘러보는 중이면 부를 동아리가 없어 빈 목록을 준다.
 export function useEvents(status?: EventStatus) {
   const demo = useDemo()
+  const clubId = useAuthStore((state) => state.clubId)
   return useQuery({
-    queryKey: ['events', status, demo],
-    queryFn: async (): Promise<EventSummary[]> =>
-      demo ? DEMO_EVENTS.filter((e) => !status || e.status === status) : [],
+    queryKey: ['events', 'list', clubId, status, demo],
+    queryFn: async (): Promise<EventSummary[]> => {
+      if (demo) return DEMO_EVENTS.filter((e) => !status || e.status === status)
+      return clubId ? getEvents(clubId, status) : []
+    },
   })
 }
 
