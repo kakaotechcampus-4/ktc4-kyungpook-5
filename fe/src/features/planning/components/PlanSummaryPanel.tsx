@@ -9,19 +9,34 @@ interface PlanSummaryPanelProps {
   summary: PlanSummary
   // 일정이 비었거나 단계가 겹칠 때만 온다.
   warning?: PlanWarning
+  // 시작 요청을 보내는 동안 버튼을 잠근다.
+  starting?: boolean
+  // 이미 시작한 행사. 같은 요청을 또 보내지 않게 잠근다.
+  started?: boolean
   onFixSteps: () => void
   onStart: () => void
 }
 
+// 팀이 셀 방법을 정하지 않은 줄. 숫자를 지어내지 않고 자리만 둔다.
+const UNDECIDED = '—'
+
 // "1회 · 1인 45,000원". 수금 단계가 없으면 「없음」이고, 0원이면 「무료」다.
 function collectionText(collection: PlanSummary['collection']): string {
+  if (collection === undefined) return UNDECIDED
   if (!collection) return '없음'
   const fee =
     collection.feePerPerson === 0 ? '무료' : `1인 ${formatCurrency(collection.feePerPerson)}`
   return `${collection.times}회 · ${fee}`
 }
 
-export function PlanSummaryPanel({ summary, warning, onFixSteps, onStart }: PlanSummaryPanelProps) {
+export function PlanSummaryPanel({
+  summary,
+  warning,
+  starting = false,
+  started = false,
+  onFixSteps,
+  onStart,
+}: PlanSummaryPanelProps) {
   // 승인 필요만 파랗게 둔다. 운영진이 직접 손대야 하는 횟수라 제일 먼저 보여야 한다.
   const rows: Array<[string, string, boolean?]> = [
     ['전체 단계', `${summary.totalSteps}개`],
@@ -29,13 +44,25 @@ export function PlanSummaryPanel({ summary, warning, onFixSteps, onStart }: Plan
     ['승인 필요', `${summary.approvalSteps}곳`, true],
     ['직접 수행', `${summary.manualSteps}개`],
     ['수금', collectionText(summary.collection)],
-    ['공지', summary.noticeCount > 0 ? `${summary.noticeCount}회` : '없음'],
+    [
+      '공지',
+      summary.noticeCount === undefined
+        ? UNDECIDED
+        : summary.noticeCount > 0
+          ? `${summary.noticeCount}회`
+          : '없음',
+    ],
     // 준비 기간이다. 행사 당일과 다르다.
-    ['준비 기간', formatPlanPeriod(summary.periodStart, summary.periodEnd)],
+    [
+      '준비 기간',
+      summary.periodStart === undefined
+        ? UNDECIDED
+        : formatPlanPeriod(summary.periodStart, summary.periodEnd ?? null),
+    ],
   ]
 
   return (
-    <div className="flex w-[300px] shrink-0 flex-col gap-[16px]">
+    <div className="flex w-full shrink-0 flex-col gap-[16px] lg:w-[300px]">
       <Card className="flex flex-col gap-[14px] px-[22px] pt-[20px] pb-[22px]">
         <h2 className="text-h2 text-ink">이 계획 요약</h2>
         {rows.map(([label, value, highlight]) => (
@@ -64,8 +91,12 @@ export function PlanSummaryPanel({ summary, warning, onFixSteps, onStart }: Plan
       )}
 
       <Card className="flex flex-col gap-[12px] px-[22px] pt-[20px] pb-[22px]">
-        <Button size="lg" className="w-full" onClick={onStart}>
-          이 계획으로 행사 시작하기
+        <Button size="lg" className="w-full" disabled={starting || started} onClick={onStart}>
+          {started
+            ? '이미 시작한 행사예요'
+            : starting
+              ? '시작하는 중…'
+              : '이 계획으로 행사 시작하기'}
         </Button>
         <p className="text-[11px] leading-[16px] text-mute">
           시작하면 행사 목록에 올라가고, 1번 단계부터 토리가 진행합니다. 계획은 진행 중에도 고칠 수

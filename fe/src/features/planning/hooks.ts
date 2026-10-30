@@ -1,10 +1,13 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
-import type { ChatMessage, PlanFacts } from './types'
+import { STEP_CATALOGUE } from './catalogue'
+import type { ChatMessage, PlanFacts, PlanStep, StepActor } from './types'
 import { FIRST_MESSAGE } from './mock'
 import { ApiError } from '@/shared/api/types'
 import type { components } from '@/shared/api/schema'
+import { formatCurrency, formatDateRange, formatMonthDay } from '@/shared/lib/format'
+import { ACTION_TYPE_LABEL, STEP_ACTOR_LABEL } from '@/shared/lib/labels'
 
 type S = components['schemas']
 type Draft = S['PlanDraftOut']
@@ -143,7 +146,8 @@ export function usePlanningChat(
     }
   }
   const generate = async () => {
-    if (!selectedId || !snapshot.data || locked.current) return
+    // 만들어졌으면 true. 화면이 이걸 보고 2단계로 넘어간다.
+    if (!selectedId || !snapshot.data || locked.current) return false
     locked.current = true
     setBusy(true)
     setError('')
@@ -154,10 +158,12 @@ export function usePlanningChat(
       })
       setView(result)
       await refresh()
-      if (result.generationResult?.status !== 'generated')
-        setError(result.reply || '계획을 생성하지 못했어요. 조건을 확인해 주세요.')
+      const generated = result.generationResult?.status === 'generated'
+      if (!generated) setError(result.reply || '계획을 생성하지 못했어요. 조건을 확인해 주세요.')
+      return generated
     } catch {
       setError('계획 생성 결과를 확인하지 못했어요. 다시 불러와 저장 상태를 확인해 주세요.')
+      return false
     } finally {
       locked.current = false
       setBusy(false)
@@ -166,10 +172,42 @@ export function usePlanningChat(
   return { messages, facts, busy, error, send, generate, snapshot, view: currentView, revision }
 }
 
-// --- 단계 수정 · 행사 시작 (#213 으로 서버 경로가 생기기 전까지 로컬) ----------
+// --- 단계 수정 · 행사 시작 (#213) ----------
 
 export function codesFromSteps(steps: S['PlannedStepOut'][]): string[] {
   return steps.map((step) => step.code)
+}
+
+// 서버 단계 → P2 흐름 한 줄(StepFlow). 문구는 labels.ts의 표로 바꾼다.
+// ponytail: 묶음(phase)이 PlannedStepOut에 없어 FE 카탈로그에서 찾는다. BE가 phase를 주면 그걸 쓴다.
+export function toPlanSteps(steps: S['PlannedStepOut'][]): PlanStep[] {
+  return steps.map((step) => {
+    const at = step.deadline ?? step.startsAt
+    const types = [...new Set(step.actions.map((a) => ACTION_TYPE_LABEL[a.type] ?? a.type))]
+    return {
+      id: step.id,
+      // 모르는 코드는 마지막 묶음에 둔다. 묶음에서 빠지면 화면에서 단계가 조용히 사라진다.
+      phase: STEP_CATALOGUE.find((c) => c.code === step.code)?.phase ?? '행사 진행 · 마무리',
+      name: step.name,
+      actor: (STEP_ACTOR_LABEL[step.actor] ?? '직접 수행') as StepActor,
+      actionLabel: types.join(' · ') || undefined,
+      date: at ? formatMonthDay(at) : '미정',
+      desc: step.actions.find((a) => a.subtitle)?.subtitle ?? '',
+      editable: step.editable,
+    }
+  })
+}
+
+// P2 머리 한 줄 "2026 봄 MT · 32명 · 예산 2,000,000원 · 3/21 – 3/22". 정하지 않은 건 뺀다.
+export function planMetaLine(conditions: S['PlanConditionsOut']): string {
+  return [
+    conditions.title,
+    conditions.headcount != null && `${conditions.headcount}명`,
+    conditions.budgetTotal != null && `예산 ${formatCurrency(conditions.budgetTotal)}`,
+    conditions.startDate && formatDateRange(conditions.startDate, conditions.endDate),
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 export function usePlanSteps(eventId: string | null) {

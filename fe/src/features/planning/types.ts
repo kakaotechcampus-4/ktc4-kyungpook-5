@@ -52,7 +52,10 @@ export interface PlanStep {
   // 이 단계에 붙는 Action 유형(공지 · 수금 등). 없으면 비운다.
   actionLabel?: string
   date: string
+  // 비어 있으면 그리지 않는다.
   desc: string
+  // 끝난 단계는 false. 「수정」 대신 「보기」로 열고 모달이 입력을 잠근다.
+  editable?: boolean
 }
 
 // 오른쪽 요약. 일곱 줄로 고정이라 계획이 바뀌어도 자리가 흔들리지 않는다.
@@ -63,14 +66,15 @@ export interface PlanSummary {
   aiSteps: number
   approvalSteps: number
   manualSteps: number
+  // 아래 셋은 무엇으로 셀지 팀이 아직 정하지 않았다(서버도 주지 않는다). undefined면 「—」로 둔다.
   // 수금 Action의 횟수와 1인당 금액. 수금 단계가 없으면 null.
   // 모두 같은 금액을 낸다는 전제다 — 감면·면제·차등은 이 한 줄로 표현되지 않는다(#177).
-  collection: { times: number; feePerPerson: number } | null
+  collection?: { times: number; feePerPerson: number } | null
   // 공지 Action의 횟수. 개별 연락은 세지 않는다.
-  noticeCount: number
+  noticeCount?: number
   // 준비 기간(첫 단계 시작일 → 마지막 단계 마감일). 행사 당일 기간이 아니다(#177).
-  periodStart: string | null
-  periodEnd: string | null
+  periodStart?: string | null
+  periodEnd?: string | null
 }
 
 // 시작하기 전에 짚어줄 것. 일정이 비었거나 단계가 겹칠 때만 생긴다.
