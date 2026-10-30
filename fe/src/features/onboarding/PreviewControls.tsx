@@ -27,6 +27,13 @@ export function PreviewControls({ onboarding }: { onboarding: ReturnType<typeof 
         >
           온보딩 초기화
         </Button>
+        <Button
+          size="sm"
+          title="체험을 끝내고 실제 로그인 화면으로 나갑니다"
+          onClick={() => navigate('/login')}
+        >
+          체험 끝내기
+        </Button>
       </div>
     </div>
   )
