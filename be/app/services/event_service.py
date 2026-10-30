@@ -7,7 +7,7 @@
 
 from collections import defaultdict
 from collections.abc import Sequence
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, func, select
@@ -351,12 +351,18 @@ async def update_step(
     fields는 요청에 실제로 실려 온 키다. None을 "비우기"로 받아야 해서
     값만 보고는 생략과 구분할 수 없다.
     """
+    event = await session.scalar(select(Event).where(Event.id == step.event_id).with_for_update())
+    locked = await session.scalar(select(Step).where(Step.id == step.id).with_for_update())
+    if event is None or locked is None:
+        raise StepNotFound()
+    step = locked
     if not event_rules.is_step_editable(step.completed_at):
         raise NotEditable()
     if "starts_at" in fields:
         step.starts_at = starts_at
     if "deadline" in fields:
         step.deadline = deadline
+    event.modified_at = datetime.now(UTC)
     await session.commit()
     await session.refresh(step, ["actions"])
     return step
@@ -378,6 +384,14 @@ async def update_action(
     금액을 고치면 행사 쪽 파생값을 다시 맞춘다(#106 ②). 참가비 수금과 지출
     정산만 Event로 올라가고, 예약 계약금·환급액은 그 Action 안에서만 쓴다.
     """
+    event = await session.scalar(select(Event).where(Event.id == action.event_id).with_for_update())
+    locked = await session.scalar(
+        select(Action).where(Action.id == action.id)
+        .options(selectinload(Action.step)).with_for_update()
+    )
+    if event is None or locked is None:
+        raise ActionNotFound()
+    action = locked
     if not event_rules.is_editable(action.status):
         raise NotEditable()
     # 본 뒤에 내용이 바뀌었으면 덮어쓰지 않고 다시 불러오게 한다(#41과 같은 규칙).
@@ -394,6 +408,7 @@ async def update_action(
                 event.fee_per_person = action.amount
             elif action.step.code == StepCode.SETTLE_EXPENSES:
                 event.budget_total = action.amount
+    event.modified_at = datetime.now(UTC)
     action.version += 1
     # 승인된 내용을 고쳤으면 다시 승인을 받는다 (event_rules.is_editable 주석).
     if action.status == ActionStatus.APPROVED:
@@ -465,6 +480,7 @@ async def replace_plan_steps(
                 )
         else:
             step.step_order = order
+    event.modified_at = datetime.now(UTC)
     await session.commit()
 
     return list(

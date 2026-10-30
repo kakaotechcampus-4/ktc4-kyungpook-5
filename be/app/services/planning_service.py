@@ -258,7 +258,7 @@ async def _manual_plan_edit_time(session: AsyncSession, event: Event) -> datetim
     action_latest = await session.scalar(
         select(func.max(Action.modified_at)).where(Action.event_id == event.id)
     )
-    latest = max((value for value in (step_latest, action_latest) if value is not None), default=None)
+    latest = max((value for value in (event.modified_at, step_latest, action_latest) if value is not None), default=None)
     return latest if latest is not None and latest > event.saved_at else None
 
 
