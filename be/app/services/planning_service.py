@@ -243,6 +243,24 @@ async def _materialize_preview(
     event.saved_at = datetime.now(UTC)
 
 
+async def _has_manual_plan_edits(session: AsyncSession, event: Event) -> bool:
+    """재생성 직전 사용자가 고친 단계/행동이 있는지 확인한다.
+
+    saved_at은 마지막 AI 계획 반영 시각이다. 이후의 수정은 재생성으로 조용히
+    덮지 않고, 사용자가 먼저 기존 편집을 확인하도록 한다.
+    """
+    if event.saved_at is None:
+        return False
+    step_latest = await session.scalar(
+        select(func.max(Step.modified_at)).where(Step.event_id == event.id)
+    )
+    action_latest = await session.scalar(
+        select(func.max(Action.modified_at)).where(Action.event_id == event.id)
+    )
+    latest = max((value for value in (step_latest, action_latest) if value is not None), default=None)
+    return latest is not None and latest > event.saved_at
+
+
 async def _save_turn(
     session: AsyncSession,
     *,
@@ -296,6 +314,8 @@ async def _save_turn(
 
     generation_result = result.view.generation_result
     if generation_result is not None and generation_result.status == "generated":
+        if await _has_manual_plan_edits(session, event):
+            raise PlanningStateConflict()
         await _materialize_preview(session, event, generation_result.preview)
 
 
