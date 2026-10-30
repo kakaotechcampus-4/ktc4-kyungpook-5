@@ -6,7 +6,7 @@
 독립 후보 추출 계약과 실제 공급자 설정이 없으면 해당 기능의 실패를 명시합니다.
 실행·API·상태·검증 범위는 [회의 베타 연결](docs/meeting-beta.md)과 [WS 계약](docs/meeting-audio.md)을 보세요.
 기존 test-support/HTTP STT·Discord 처리의 개발 fixture와 OCR 더미는 실연동이 아닙니다.
-행사(`/events`) 조회와 P1·P2 계획 API도 실제 DB로 동작합니다 (#41, #187). 행사 쓰기(승인·거절·단계 완료·수정)는 아직 없습니다.
+행사(`/events`) 조회·계획 확정·행동 처리와 P1·P2 계획 API도 실제 DB로 동작합니다 (#41, #187). 단계 수정·재배열은 아직 없습니다.
 모델 확정 내역과 그 근거는 [BE 스키마 검토안](../docs/week6/be/운영해_BE_스키마_검토안.md)에 있습니다.
 
 서비스 사용자는 동아리 **회장·대표(`OWNER`)와 임원(`MANAGER`)**입니다.
@@ -350,3 +350,35 @@ curl -H "$H" "localhost:8000/api/v1/events/<eventId>/actions?type=CONFIRMATION"
 - `editable`: `PENDING`·`APPROVED`일 때 `true` (#106 — 승인된 내용을 고치면 다시 `PENDING`).
 - 확인 요청의 `options` / `allowManual`은 `actions.payload`(JSONB)에서 펼친다. `type=CONFIRMATION`인 건에만 값이 있다.
 - `payment`·`budget`은 항상 `null`이다 (accounting 기준 재정의 예정, FE 연동 기준서 §5.1). `amount`는 계획 생성이 채우지 않아 지금은 비어 있다.
+
+## 계획 확정·행동 처리·단계 완료 API (#41)
+
+행사 상태에 따라 받는 요청이 나뉜다(#177 — 승인·실행 기록·단계 완료는 운영 시작 후의 일).
+
+| 행사 상태 | 받는 요청 | 그 외 요청 |
+| --- | --- | --- |
+| `PLANNING` | 계획 대화·생성, `POST /api/v1/events/{eventId}:confirm` | 처리 API는 409 `EVENT_NOT_ON_GOING` |
+| `ON_GOING` | 아래 처리 API | 계획 대화·생성·확정은 409 `EVENT_NOT_PLANNING` |
+
+`:confirm`은 `PLANNING` → `ON_GOING`이며, 시작일이나 단계가 없으면 409 `PLAN_INCOMPLETE`(`fields`에 빠진 항목)다.
+생성은 수십 초 걸려 그사이 확정될 수 있으므로, 생성 결과를 저장할 때도 `PLANNING`인지 다시 확인해 처리 기록을 덮어쓰지 않는다.
+
+처리 API 요청·응답은 FE 명세 v1 §3을 따르고, 처리 요청에는 조회 응답의 `version`을 `expectedVersion`으로 보낸다
+(`task-suggestions`와 같은 낙관적 잠금). 응답은 조회와 같은 `ActionOut`이다.
+
+| 엔드포인트 | 하는 일 | 요청 |
+| --- | --- | --- |
+| `POST /api/v1/actions/{actionId}/approve` | `PENDING` → `APPROVED` | `{expectedVersion}` |
+| `POST /api/v1/actions/{actionId}/deny` | `PENDING` → `DENIED`, 사유 저장 | `{expectedVersion, reason?}` (500자) |
+| `POST /api/v1/actions/{actionId}/resolve` | 확인 요청 `PENDING` → `DONE`, 고른 답 저장 | `{expectedVersion, choice, manualValue?}` (`choice`는 선택지 key 또는 `MANUAL`) |
+| `POST /api/v1/actions/{actionId}/done` | 운영진이 실행을 마쳤다는 기록. `APPROVED`(승인이 필요 없으면 `PENDING`) → `DONE` | `{expectedVersion}` |
+| `POST /api/v1/steps/{stepId}/complete` | 단계를 직접 완료. 미처리 행동이 남아 있어도 된다 | 없음 |
+
+- 이미 처리된 행동은 409 `ALREADY_RESOLVED`, 아직 대기 중인데 본 뒤에 내용이 바뀌었으면 409 `VERSION_CONFLICT`.
+  둘 다 목록을 다시 불러오면 된다. 행을 잠그고 확인하므로 두 운영진이 동시에 눌러도 한 명만 처리된다.
+- 확인 요청은 `/resolve`로만, 나머지는 `/approve`·`/deny`·`/done`으로만 처리한다(반대는 422).
+  승인이 필요 없는 행동은 `/approve` 대상이 아니다(422).
+- 조회의 `canApprove`는 위 조건(대표·운영진, `PENDING`, 운영 중, 확인 요청이거나 승인이 필요한 행동)과 같다.
+- 단계의 행동이 모두 `DONE`이 되면 그 단계의 `completedAt`을 자동으로 채운다(`completedBy`는 null).
+  `/steps/{id}/complete`는 행동이 없는 수동 단계나 실패한 행동을 오프라인으로 처리한 단계용이며,
+  이미 완료된 단계는 409 `STEP_ALREADY_COMPLETED`다.
