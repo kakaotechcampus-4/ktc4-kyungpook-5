@@ -55,7 +55,7 @@ export function usePlanningChat(
   const [view, setView] = useState<S['PlanViewOut'] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [requiresReplacement, setRequiresReplacement] = useState(false)
+  const [editedPlanAt, setEditedPlanAt] = useState<string | null>(null)
   const locked = useRef(false)
   const snapshot = useQuery({
     queryKey: ['planning', 'snapshot', userId, clubId, selectedId],
@@ -144,17 +144,18 @@ export function usePlanningChat(
       if (eventId && !selectedId) onCreated(eventId, succeeded ? undefined : text)
     }
   }
-  const generate = async (replaceEditedPlan = false) => {
+  const generate = async (confirmedEditedAt: string | null = null) => {
     if (!selectedId || !snapshot.data || locked.current) return
     locked.current = true
     setBusy(true)
     setError('')
-    setRequiresReplacement(false)
+    setEditedPlanAt(null)
     try {
       const result = await planningApi.generate(selectedId, {
         baseRevision: revision,
         useCurrentConditions: false,
-        replaceEditedPlan,
+        replaceEditedPlan: confirmedEditedAt !== null,
+        editedPlanAt: confirmedEditedAt,
       })
       setView(result)
       await refresh()
@@ -163,13 +164,13 @@ export function usePlanningChat(
     } catch (cause) {
       if (
         cause instanceof ApiError &&
-        cause.code === 'PLANNING_STATE_CONFLICT' &&
-        !replaceEditedPlan
+        cause.code === 'PLAN_EDITED_CONFLICT' &&
+        !!cause.fields?.editedAt
       ) {
         const latest = await snapshot.refetch()
         if (latest.isError)
           setError('계획 상태가 변경됐지만 최신 내용을 불러오지 못했어요. 다시 확인해 주세요.')
-        else setRequiresReplacement(true)
+        else setEditedPlanAt(cause.fields!.editedAt)
       } else {
         setError('계획 생성 결과를 확인하지 못했어요. 다시 불러와 저장 상태를 확인해 주세요.')
       }
@@ -188,8 +189,8 @@ export function usePlanningChat(
     snapshot,
     view: currentView,
     revision,
-    requiresReplacement,
-    dismissReplacement: () => setRequiresReplacement(false),
+    editedPlanAt,
+    dismissReplacement: () => setEditedPlanAt(null),
   }
 }
 

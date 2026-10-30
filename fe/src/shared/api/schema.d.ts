@@ -2644,6 +2644,8 @@ export interface components {
              * @default false
              */
             replaceEditedPlan: boolean;
+            /** Editedplanat */
+            editedPlanAt?: string | null;
         };
         /** PlanMessageListResponse */
         PlanMessageListResponse: {

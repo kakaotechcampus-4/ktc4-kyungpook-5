@@ -52,14 +52,18 @@ test('replacement permission is carried only in the explicit generation request'
     baseRevision: 2,
     useCurrentConditions: false,
     replaceEditedPlan: false,
+    editedPlanAt: null,
   })
   await api.generate('event', {
     baseRevision: 2,
     useCurrentConditions: false,
     replaceEditedPlan: true,
+    editedPlanAt: '2026-10-31T12:00:00.123456Z',
   })
   assert.equal(calls[0].path, '/events/event/plan/generate')
   assert.equal(calls[0].body.replaceEditedPlan, false)
   assert.equal(calls[1].body.replaceEditedPlan, true)
   assert.equal(calls[1].body.useCurrentConditions, false)
+  assert.equal(calls[0].body.editedPlanAt, null)
+  assert.equal(calls[1].body.editedPlanAt, '2026-10-31T12:00:00.123456Z')
 })
