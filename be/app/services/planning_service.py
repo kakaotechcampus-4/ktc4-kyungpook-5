@@ -26,6 +26,7 @@ from app.core.exceptions import (
     EventNotFound,
     EventNotPlanning,
     PlanningStateConflict,
+    PlanEditedConflict,
     VersionConflict,
 )
 from app.core.enums import ActionStatus, EventStatus, MessageRole, StepActor
@@ -243,6 +244,24 @@ async def _materialize_preview(
     event.saved_at = datetime.now(UTC)
 
 
+async def _manual_plan_edit_time(session: AsyncSession, event: Event) -> datetime | None:
+    """재생성 직전 사용자가 고친 단계/행동이 있는지 확인한다.
+
+    saved_at은 마지막 AI 계획 반영 시각이다. 이후의 수정은 재생성으로 조용히
+    덮지 않고, 사용자가 먼저 기존 편집을 확인하도록 한다.
+    """
+    if event.saved_at is None:
+        return None
+    step_latest = await session.scalar(
+        select(func.max(Step.modified_at)).where(Step.event_id == event.id)
+    )
+    action_latest = await session.scalar(
+        select(func.max(Action.modified_at)).where(Action.event_id == event.id)
+    )
+    latest = max((value for value in (event.modified_at, step_latest, action_latest) if value is not None), default=None)
+    return latest if latest is not None and latest > event.saved_at else None
+
+
 async def _save_turn(
     session: AsyncSession,
     *,
@@ -251,6 +270,8 @@ async def _save_turn(
     result: "ai.PlanningPublicResult",
     new_base_revision: int,
     user_message_text: str | None,
+    replace_edited_plan: bool = False,
+    edited_plan_at: datetime | None = None,
 ) -> None:
     conditions = result.view.draft.conditions
     event.title = conditions.title or event.title
@@ -296,6 +317,11 @@ async def _save_turn(
 
     generation_result = result.view.generation_result
     if generation_result is not None and generation_result.status == "generated":
+        edited_at = await _manual_plan_edit_time(session, event)
+        if edited_at is not None and (
+            not replace_edited_plan or edited_plan_at is None or edited_plan_at != edited_at
+        ):
+            raise PlanEditedConflict(edited_at.isoformat())
         await _materialize_preview(session, event, generation_result.preview)
 
 
@@ -408,7 +434,9 @@ async def _prepare(
 
 
 async def _finish(
-    prepared: _PreparedTurn, result: "ai.PlanningPublicResult", *, user_message_text: str | None
+    prepared: _PreparedTurn, result: "ai.PlanningPublicResult", *, user_message_text: str | None,
+    replace_edited_plan: bool = False,
+    edited_plan_at: datetime | None = None,
 ) -> dict:
     sessionmaker = get_sessionmaker()
     async with sessionmaker() as session:
@@ -440,6 +468,8 @@ async def _finish(
         await _save_turn(
             session, event=event, conversation=conversation, result=result,
             new_base_revision=new_base_revision, user_message_text=user_message_text,
+            replace_edited_plan=replace_edited_plan,
+            edited_plan_at=edited_plan_at,
         )
         out = _view_out(result, base_revision=new_base_revision)
         await session.commit()
@@ -494,11 +524,15 @@ async def generate(
     base_revision: int,
     use_current_conditions: bool,
     idempotency_key: str | None,
+    replace_edited_plan: bool = False,
+    edited_plan_at: datetime | None = None,
 ) -> dict:
     sessionmaker = get_sessionmaker()
     endpoint = "POST /events/{event_id}/plan/generate"
     request_body = json.dumps(
-        {"baseRevision": base_revision, "useCurrentConditions": use_current_conditions},
+        {"baseRevision": base_revision, "useCurrentConditions": use_current_conditions,
+         "replaceEditedPlan": replace_edited_plan,
+         "editedPlanAt": edited_plan_at.isoformat() if edited_plan_at else None},
         sort_keys=True,
     ).encode()
 
@@ -520,7 +554,9 @@ async def generate(
             result = await ai.generate_planning_preview(prepared.request)
         except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
             raise _translate_ai_error(error) from error
-        return await _finish(prepared, result, user_message_text=None)
+        return await _finish(prepared, result, user_message_text=None,
+                             replace_edited_plan=replace_edited_plan,
+                             edited_plan_at=edited_plan_at)
 
     return await _run_once(idem, work)
 

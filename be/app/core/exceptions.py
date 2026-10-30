@@ -195,6 +195,16 @@ class PlanningStateConflict(ApiError):
         super().__init__("저장된 계획 상태와 맞지 않습니다. 다시 조회한 뒤 시도해 주세요.")
 
 
+class PlanEditedConflict(ApiError):
+    status_code = 409
+    code = "PLAN_EDITED_CONFLICT"
+
+    def __init__(self, edited_at: str | None = None) -> None:
+        super().__init__("사용자가 수정한 계획이 있어 먼저 확인해 주세요.", fields=(
+            {"editedAt": edited_at} if edited_at is not None else None
+        ))
+
+
 
 class EventNotPlanning(ApiError):
     """계획 대화·생성은 PLANNING 행사에서만 한다 (FE 명세 v1). 확정 뒤 다시 생성하면
