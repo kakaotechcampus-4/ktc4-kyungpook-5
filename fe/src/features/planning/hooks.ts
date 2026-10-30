@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
+import { STEP_CATALOGUE } from './catalogue'
 import type { ChatMessage, PlanFacts } from './types'
 import { FIRST_MESSAGE } from './mock'
 import { ApiError } from '@/shared/api/types'
@@ -164,4 +165,39 @@ export function usePlanningChat(
     }
   }
   return { messages, facts, busy, error, send, generate, snapshot, view: currentView, revision }
+}
+
+// --- 단계 수정 · 행사 시작 (#213 으로 서버 경로가 생기기 전까지 로컬) ----------
+
+// 서버 단계 응답에는 StepCode 가 없고 이름만 온다. 카탈로그와 이름이
+// 13개 모두 같아서 지금은 이름으로 되찾는다. 서버가 code 를 내려주면 지운다.
+export function codesFromSteps(steps: S['PlannedStepOut'][]): string[] {
+  return steps
+    .map((step) => STEP_CATALOGUE.find((item) => item.name === step.name)?.code)
+    .filter((code): code is string => code !== undefined)
+}
+
+export function usePlanSteps(eventId: string | null) {
+  return useQuery({
+    queryKey: ['planning', 'steps', eventId],
+    queryFn: () => planningApi.steps(eventId!),
+    enabled: !!eventId,
+    retry: false,
+  })
+}
+
+export function useSavePlanSteps(eventId: string | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (codes: string[]) => planningApi.saveSteps(eventId!, codes),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
+  })
+}
+
+export function useStartEvent(eventId: string | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => planningApi.start(eventId!),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
+  })
 }

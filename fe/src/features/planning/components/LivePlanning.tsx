@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
-import { usePlanningChat, usePlanningDrafts } from '@/features/planning/hooks'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { usePlanningChat, usePlanningDrafts, useStartEvent } from '@/features/planning/hooks'
+import { planningApi } from '@/features/planning/api'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
 import { useAuthStore } from '@/shared/auth/store'
@@ -206,7 +207,7 @@ function Conversation({
             ) : (
               <p className="text-mute">아직 생성된 단계가 없어요.</p>
             )}
-            <p className="text-mute">단계 수정과 행사 시작은 준비 중입니다.</p>
+            <PlanHandoff eventId={eventId} hasSteps={steps.length > 0} />
           </Card>
           <PlanFacts
             facts={live.facts}
@@ -217,5 +218,42 @@ function Conversation({
         </div>
       </div>
     </>
+  )
+}
+
+// 단계 수정 화면으로 보내고, 행사를 시작으로 표시한다.
+// 둘 다 서버 경로가 없어 이 브라우저에만 남는다(#213). 그래서 그렇다고 적어 둔다.
+function PlanHandoff({ eventId, hasSteps }: { eventId: string | null; hasSteps: boolean }) {
+  const start = useStartEvent(eventId)
+  const [started, setStarted] = useState(() =>
+    eventId ? planningApi.local(eventId).started : false,
+  )
+  if (!eventId || !hasSteps) return null
+  return (
+    <div className="space-y-3 border-t border-line pt-4">
+      {started ? (
+        <p role="status" className="font-bold text-ink">
+          시작한 행사로 표시했어요.{' '}
+          <Link to="/events" className="text-blue-700 underline">
+            행사 목록에서 보기
+          </Link>
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <Link to={`/planning/steps?eventId=${encodeURIComponent(eventId)}`}>
+            <Button variant="secondary">단계 수정</Button>
+          </Link>
+          <Button
+            disabled={start.isPending}
+            onClick={() => void start.mutateAsync().then(() => setStarted(true))}
+          >
+            {start.isPending ? '처리 중…' : '행사 시작'}
+          </Button>
+        </div>
+      )}
+      <p className="text-mute">
+        단계 수정과 시작은 아직 이 브라우저에만 기록됩니다. 서버에는 반영되지 않아요(#213).
+      </p>
+    </div>
   )
 }

@@ -116,14 +116,14 @@ export const PHASE_HINT: Record<StepPhase, string> = {
 
 // 완성 예시에 쓰는 포함 단계와 일정. 빼둔 셋은 사전 수요 조사·참가비 환급·피드백 기록이다.
 export const DEMO_INCLUDED: Record<string, string> = {
-  ASSIGN_STAFF: '3/2 – 3/3',
-  SCOUT_VENUE: '3/3 – 3/6',
+  ASSIGN_ROLES: '3/2 – 3/3',
+  RESEARCH_VENUE: '3/3 – 3/6',
   RECRUIT_NOTICE: '3/10 – 3/12',
   CHECK_RESPONSES: '3/12 – 3/13',
-  CONFIRM_HEADCOUNT: '3/13',
+  CONFIRM_DETAILS: '3/13',
   BOOK_VENUE: '3/13 – 3/14',
   COLLECT_FEES: '3/14 – 3/18',
-  PRE_NOTICE: '3/19',
+  PRE_EVENT_NOTICE: '3/19',
   EVENT_DAY: '3/21 – 3/22',
   SETTLE_EXPENSES: '3/23',
 }
