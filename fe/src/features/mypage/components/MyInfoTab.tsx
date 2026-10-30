@@ -48,12 +48,14 @@ function LinkRow({
 function Facts({ items }: { items: Array<[string, string]> }) {
   return (
     <div className="flex flex-wrap gap-x-[36px] gap-y-[12px]">
-      {items.filter(([, value]) => value).map(([label, value]) => (
-        <span key={label} className="flex flex-col gap-[4px]">
-          <span className="text-[10.5px] font-medium text-mute">{label}</span>
-          <span className="text-[13.5px] font-bold text-ink">{value}</span>
-        </span>
-      ))}
+      {items
+        .filter(([, value]) => value)
+        .map(([label, value]) => (
+          <span key={label} className="flex flex-col gap-[4px]">
+            <span className="text-[10.5px] font-medium text-mute">{label}</span>
+            <span className="text-[13.5px] font-bold text-ink">{value}</span>
+          </span>
+        ))}
     </div>
   )
 }
@@ -134,7 +136,9 @@ export function MyInfoTab({ profile, club, linkedAccounts, onLogout }: MyInfoTab
           <div className="flex flex-col gap-[4px]">
             <h2 className="text-h2 text-ink">알림</h2>
             {/* TODO(연동): PATCH /me/notifications 가 생기면 이 안내를 지운다 */}
-            <p className="text-[10.5px] text-mute">저장은 준비 중이라 새로고침하면 처음으로 돌아가요.</p>
+            <p className="text-[10.5px] text-mute">
+              저장은 준비 중이라 새로고침하면 처음으로 돌아가요.
+            </p>
           </div>
           {toggles.map(([key, label, desc]) => (
             <div key={key} className="flex items-center justify-between gap-[12px]">
