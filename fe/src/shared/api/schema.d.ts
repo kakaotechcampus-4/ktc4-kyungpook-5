@@ -2639,6 +2639,11 @@ export interface components {
              * @default false
              */
             useCurrentConditions: boolean;
+            /**
+             * Replaceeditedplan
+             * @default false
+             */
+            replaceEditedPlan: boolean;
         };
         /** PlanMessageListResponse */
         PlanMessageListResponse: {

@@ -55,6 +55,7 @@ export function usePlanningChat(
   const [view, setView] = useState<S['PlanViewOut'] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [requiresReplacement, setRequiresReplacement] = useState(false)
   const locked = useRef(false)
   const snapshot = useQuery({
     queryKey: ['planning', 'snapshot', userId, clubId, selectedId],
@@ -143,33 +144,53 @@ export function usePlanningChat(
       if (eventId && !selectedId) onCreated(eventId, succeeded ? undefined : text)
     }
   }
-  const generate = async () => {
+  const generate = async (replaceEditedPlan = false) => {
     if (!selectedId || !snapshot.data || locked.current) return
     locked.current = true
     setBusy(true)
     setError('')
+    setRequiresReplacement(false)
     try {
       const result = await planningApi.generate(selectedId, {
         baseRevision: revision,
         useCurrentConditions: false,
+        replaceEditedPlan,
       })
       setView(result)
       await refresh()
       if (result.generationResult?.status !== 'generated')
         setError(result.reply || '계획을 생성하지 못했어요. 조건을 확인해 주세요.')
     } catch (cause) {
-      setError(
+      if (
         cause instanceof ApiError &&
-          (cause.code === 'EVENT_STATE_CONFLICT' || cause.code === 'PLANNING_STATE_CONFLICT')
-          ? '직접 수정한 계획이 있어 다시 생성할 수 없어요. 변경 내용을 확인해 주세요.'
-          : '계획 생성 결과를 확인하지 못했어요. 다시 불러와 저장 상태를 확인해 주세요.',
-      )
+        cause.code === 'PLANNING_STATE_CONFLICT' &&
+        !replaceEditedPlan
+      ) {
+        const latest = await snapshot.refetch()
+        if (latest.isError)
+          setError('계획 상태가 변경됐지만 최신 내용을 불러오지 못했어요. 다시 확인해 주세요.')
+        else setRequiresReplacement(true)
+      } else {
+        setError('계획 생성 결과를 확인하지 못했어요. 다시 불러와 저장 상태를 확인해 주세요.')
+      }
     } finally {
       locked.current = false
       setBusy(false)
     }
   }
-  return { messages, facts, busy, error, send, generate, snapshot, view: currentView, revision }
+  return {
+    messages,
+    facts,
+    busy,
+    error,
+    send,
+    generate,
+    snapshot,
+    view: currentView,
+    revision,
+    requiresReplacement,
+    dismissReplacement: () => setRequiresReplacement(false),
+  }
 }
 
 // --- 단계 수정 · 행사 시작 (#213 으로 서버 경로가 생기기 전까지 로컬) ----------

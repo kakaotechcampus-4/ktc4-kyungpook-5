@@ -219,6 +219,27 @@ function Conversation({
         </div>
       </div>
       <Modal
+        open={live.requiresReplacement}
+        onClose={live.dismissReplacement}
+        title="수정한 계획을 교체할까요?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={live.dismissReplacement}>
+              취소
+            </Button>
+            <Button disabled={live.busy} onClick={() => void live.generate(true)}>
+              수정 내용 덮고 다시 생성
+            </Button>
+          </>
+        }
+      >
+        <p>
+          서버가 계획 상태 충돌을 반환했어요. 직접 수정한 단계나 작업이 있으면 다시 생성할 때
+          사라집니다. 위의 최신 계획을 확인한 뒤 교체에 동의할 때만 계속해 주세요. 다른 상태
+          충돌이라면 다시 거절될 수 있어요.
+        </p>
+      </Modal>
+      <Modal
         open={confirmRegenerate}
         onClose={() => setConfirmRegenerate(false)}
         title="초안을 다시 생성할까요?"
