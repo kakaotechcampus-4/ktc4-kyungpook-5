@@ -13,6 +13,7 @@ import {
 import type { LocalSchedule } from '@/features/planning/localPlan'
 import { ExcludedSteps } from '@/features/planning/components/ExcludedSteps'
 import { StepBoard } from '@/features/planning/components/StepBoard'
+import { StepDetailModal } from '@/features/planning/components/StepDetailModal'
 import type { StepPhase } from '@/features/planning/types'
 import { Button } from '@/shared/ui/Button'
 
@@ -30,6 +31,7 @@ export default function PlanStepsPage() {
   // 포함한 단계의 코드. 배열 순서가 곧 묶음 안의 순서다.
   const [codes, setCodes] = useState<string[] | null>(demo ? Object.keys(DEMO_INCLUDED) : null)
   const [dates, setDates] = useState<Record<string, LocalSchedule> | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
   const saved = eventId ? planningApi.local(eventId) : null
   const resolved =
     codes ??
@@ -112,15 +114,7 @@ export default function PlanStepsPage() {
           included={included}
           schedule={DEMO_INCLUDED}
           dates={demo ? undefined : resolvedDates}
-          onDatesChange={
-            demo
-              ? undefined
-              : (code, startsAt, deadline) =>
-                  setDates((previous) => ({
-                    ...(previous ?? resolvedDates),
-                    [code]: { startsAt, deadline },
-                  }))
-          }
+          onEditDetail={demo ? undefined : setEditing}
           onReorder={reorder}
           onRemove={(code) => setCodes((list) => (list ?? current).filter((c) => c !== code))}
         />
@@ -129,6 +123,18 @@ export default function PlanStepsPage() {
           onInclude={(code) => setCodes((list) => [...(list ?? current), code])}
         />
       </div>
+
+      <StepDetailModal
+        step={editing ? (STEP_CATALOGUE.find((item) => item.code === editing) ?? null) : null}
+        value={
+          (editing ? resolvedDates[editing] : undefined) ?? { startsAt: null, deadline: null }
+        }
+        onClose={() => setEditing(null)}
+        onSave={(next) => {
+          setDates((previous) => ({ ...(previous ?? resolvedDates), [editing!]: next }))
+          setEditing(null)
+        }}
+      />
     </div>
   )
 }

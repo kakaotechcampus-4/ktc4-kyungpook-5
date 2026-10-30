@@ -5,16 +5,28 @@
 
 const KEY = 'unyounghae_local_plan_v1'
 
-// 단계 하나의 일정. 서버 PlannedStepOut 과 같은 이름을 쓴다.
+// 단계 하나의 세부 사항(#106 의 세부 수정 모달이 다루는 값).
+// 일정은 Step, 나머지는 그 단계의 Action 에 해당한다. 이름은 서버 계약을 따른다.
 export interface LocalSchedule {
   startsAt: string | null
   deadline: string | null
+  title?: string
+  dueDate?: string | null
+  amount?: number | null
+  channel?: string
+  audience?: string
+  sendTiming?: string
+  vendor?: string
+  cancelTerms?: string
+  account?: string
+  receiptRequired?: boolean
+  approvalMode?: 'BATCH' | 'EACH'
 }
 
 export interface LocalPlan {
   // 포함한 단계 코드. 배열 순서가 곧 묶음 안의 순서다. null이면 아직 손대지 않았다는 뜻.
   codes: string[] | null
-  // StepCode → 일정. 손댄 단계만 들어간다.
+  // StepCode → 세부 사항. 손댄 단계만 들어간다.
   schedule: Record<string, LocalSchedule>
   started: boolean
 }
@@ -26,7 +38,9 @@ function normalizeSchedule(value: unknown): Record<string, LocalSchedule> {
   const result: Record<string, LocalSchedule> = {}
   for (const [code, raw] of Object.entries(value as Record<string, unknown>)) {
     const item = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+    // 일정 둘만 모양을 보장하고, 나머지 밭은 저장된 값을 그대로 돌려준다.
     result[code] = {
+      ...(item as Omit<LocalSchedule, 'startsAt' | 'deadline'>),
       startsAt: typeof item.startsAt === 'string' ? item.startsAt : null,
       deadline: typeof item.deadline === 'string' ? item.deadline : null,
     }
