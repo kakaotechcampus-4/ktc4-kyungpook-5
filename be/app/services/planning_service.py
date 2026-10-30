@@ -10,7 +10,7 @@ PROCESSING 기록, (2) 세션 없이 app.ai 호출, (3) 새 짧은 세션으로 
 """
 
 import json
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError as PydanticValidationError
@@ -149,7 +149,20 @@ def _view_out(result: "ai.PlanningPublicResult", *, base_revision: int) -> dict:
             "reasons": list(view.generation_readiness.reasons),
         },
         "generation_result": generation_result,
+        "history_usage": _history_usage_out(view.history_usage),
         "base_revision": base_revision,
+    }
+
+
+def _history_usage_out(usage: "ai.PlanningHistoryUsage | None") -> dict | None:
+    """대화 이력이 한도(60개)에 가까워졌는지 (#194). Tool 메시지까지 센 값이라 남은
+    사용자 대화 횟수로 바꿔 보여주지 않는다."""
+    if usage is None:
+        return None
+    return {
+        "message_count": usage.message_count,
+        "max_messages": usage.max_messages,
+        "near_limit": usage.near_limit,
     }
 
 
@@ -218,7 +231,8 @@ async def _materialize_preview(
 
     event.plan_warnings = [{"message": w} for w in preview.warnings]
     event.plan_excluded_steps = [
-        {"code": excl.code.value, "reason": excl.reason}
+        # name은 AI가 카탈로그에서 붙인 고정 이름이다(#198). FE가 코드를 다시 매핑하지 않는다.
+        {"code": excl.code.value, "name": excl.name, "reason": excl.reason}
         for excl in preview.excluded_steps
     ]
     event.saved_at = datetime.now(UTC)
@@ -308,6 +322,29 @@ async def _save_idempotency_response(record_id: str, *, status_code: int, body: 
             await session.commit()
 
 
+async def _release_idempotency(record_id: str) -> None:
+    sessionmaker = get_sessionmaker()
+    async with sessionmaker() as session:
+        await idempotency.release(session, record_id)
+        await session.commit()
+
+
+async def _run_once(idem: idempotency.IdempotencyResult | None, work) -> dict:
+    """멱등키가 있으면 처리 결과를 저장하고, 실패하면 키를 풀어 같은 키로 다시
+    시도할 수 있게 한다. 풀지 않으면 재시도가 처리 중(409)으로 막힌다."""
+    if idem is not None and idem.is_replay:
+        return idem.record.response_body
+    try:
+        out = await work()
+    except Exception:
+        if idem is not None:
+            await _release_idempotency(idem.record.id)
+        raise
+    if idem is not None:
+        await _save_idempotency_response(idem.record.id, status_code=200, body=out)
+    return out
+
+
 class _PreparedTurn:
     __slots__ = ("request", "club_id", "event_id", "member_id", "base_revision")
 
@@ -350,7 +387,8 @@ async def _prepare(
             "base_revision": base_revision,
             "draft": draft,
             "resume_state": resume_state,
-            "reference_date": date.today(),
+            # 서버 시간대는 UTC라 date.today()는 KST 0~9시에 하루 전이 된다.
+            "reference_date": datetime.now(_KST).date(),
             "timezone": "Asia/Seoul",
         }
         request = build_request(context)
@@ -372,10 +410,16 @@ async def _finish(
         event = await get_event(
             session, club_id=prepared.club_id, event_id=prepared.event_id
         )
-        conversation = await _get_or_create_conversation(
-            session, event_id=event.id, member_id=prepared.member_id
+        # _prepare()가 만들어 둔 대화를 잠그고 읽는다. 잠그지 않으면 거의 동시에 끝난
+        # 두 요청이 둘 다 옛 revision을 보고 저장해 한쪽 상태를 덮어쓴다.
+        conversation = await session.scalar(
+            select(Conversation)
+            .where(Conversation.event_id == event.id)
+            .order_by(Conversation.created_at.desc())
+            .limit(1)
+            .with_for_update()
         )
-        if conversation.base_revision != prepared.base_revision:
+        if conversation is None or conversation.base_revision != prepared.base_revision:
             # AI를 기다리는 동안 다른 요청이 먼저 저장했다. 이번 결과는 버린다.
             raise VersionConflict()
 
@@ -411,26 +455,22 @@ async def chat(
             session, key=idempotency_key, club_id=club_id, member_id=member_id,
             endpoint=endpoint, request_body=request_body,
         )
-    if idem is not None and idem.is_replay:
-        return idem.record.response_body
 
-    prepared, _event = await _prepare(
-        club_id=club_id, event_id=event_id, member_id=member_id,
-        base_revision=base_revision,
-        build_request=lambda ctx: ai.PlanningChatRequest(
-            **ctx, message=ai.PlanningUserMessage(id=message_id, content=message_content)
-        ),
-    )
+    async def work() -> dict:
+        prepared, _event = await _prepare(
+            club_id=club_id, event_id=event_id, member_id=member_id,
+            base_revision=base_revision,
+            build_request=lambda ctx: ai.PlanningChatRequest(
+                **ctx, message=ai.PlanningUserMessage(id=message_id, content=message_content)
+            ),
+        )
+        try:
+            result = await ai.chat_planning(prepared.request)
+        except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
+            raise _translate_ai_error(error) from error
+        return await _finish(prepared, result, user_message_text=message_content)
 
-    try:
-        result = await ai.chat_planning(prepared.request)
-    except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
-        raise _translate_ai_error(error) from error
-
-    out = await _finish(prepared, result, user_message_text=message_content)
-    if idem is not None:
-        await _save_idempotency_response(idem.record.id, status_code=200, body=out)
-    return out
+    return await _run_once(idem, work)
 
 
 async def generate(
@@ -454,26 +494,22 @@ async def generate(
             session, key=idempotency_key, club_id=club_id, member_id=member_id,
             endpoint=endpoint, request_body=request_body,
         )
-    if idem is not None and idem.is_replay:
-        return idem.record.response_body
 
-    prepared, _event = await _prepare(
-        club_id=club_id, event_id=event_id, member_id=member_id,
-        base_revision=base_revision,
-        build_request=lambda ctx: ai.PlanningPreviewRequest(
-            **ctx, use_current_conditions=use_current_conditions
-        ),
-    )
+    async def work() -> dict:
+        prepared, _event = await _prepare(
+            club_id=club_id, event_id=event_id, member_id=member_id,
+            base_revision=base_revision,
+            build_request=lambda ctx: ai.PlanningPreviewRequest(
+                **ctx, use_current_conditions=use_current_conditions
+            ),
+        )
+        try:
+            result = await ai.generate_planning_preview(prepared.request)
+        except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
+            raise _translate_ai_error(error) from error
+        return await _finish(prepared, result, user_message_text=None)
 
-    try:
-        result = await ai.generate_planning_preview(prepared.request)
-    except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
-        raise _translate_ai_error(error) from error
-
-    out = await _finish(prepared, result, user_message_text=None)
-    if idem is not None:
-        await _save_idempotency_response(idem.record.id, status_code=200, body=out)
-    return out
+    return await _run_once(idem, work)
 
 
 async def get_plan_screen(
@@ -506,6 +542,7 @@ async def get_plan_screen(
     return {
         "draft": _draft_out(draft),
         "warnings": [w.get("message", "") for w in (event.plan_warnings or [])],
+        # #198 이전에 저장한 행에는 name이 없다 — 스키마가 null로 받는다.
         "excluded_steps": event.plan_excluded_steps or [],
         "summary": {
             "total_steps": total or 0,
@@ -513,6 +550,12 @@ async def get_plan_screen(
             "approval_steps": actor_counts.get(StepActor.APPROVAL_REQUIRED, 0),
             "manual_steps": actor_counts.get(StepActor.MANUAL, 0),
         },
+        # 재접속해도 한도 임박 안내를 다시 띄울 수 있게 보관한 이력으로 센다(#194).
+        "history_usage": _history_usage_out(
+            ai.PlanningHistoryUsage.from_count(len(resume_state.payload.history))
+            if resume_state is not None
+            else None
+        ),
         "base_revision": conversation.base_revision if conversation is not None else 0,
         "generation_readiness": (
             ai.planning_generation_readiness(draft, resume_state=resume_state).model_dump(mode="json")

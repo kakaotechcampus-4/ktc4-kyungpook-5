@@ -74,6 +74,20 @@ class IdempotencyConflict(ApiError):
         super().__init__("같은 Idempotency-Key로 다른 요청이 이미 처리되었습니다.")
 
 
+class IdempotencyInProgress(ApiError):
+    """같은 Idempotency-Key의 첫 요청이 아직 처리 중일 때.
+
+    다시 실행하면 AI를 두 번 부르므로 막는다(#203 멘토 리뷰). 클라이언트는 잠시 뒤
+    같은 키로 다시 보내면 완료된 응답을 그대로 받는다.
+    """
+
+    status_code = 409
+    code = "IDEMPOTENCY_IN_PROGRESS"
+
+    def __init__(self) -> None:
+        super().__init__("같은 요청을 처리하고 있어요. 잠시 뒤 다시 시도해 주세요.")
+
+
 class ExpenseNotFound(ApiError):
     status_code = 404
     code = "EXPENSE_NOT_FOUND"

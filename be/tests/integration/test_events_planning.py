@@ -5,14 +5,20 @@ app.ai.chat_planning()/generate_planning_preview()는 실제 모델 호출이라
 검증한다. 실제 모델과의 연동 자체는 app/ai/tests에서 따로 확인한다.
 """
 
+import hashlib
+import json
+import threading
 import uuid
 from collections.abc import AsyncIterator
+from datetime import UTC, date, datetime, timedelta
 
+import anyio
 import pytest
 from fastapi.testclient import TestClient
 
 import app.ai as ai
 from app.db import session as db_session
+from app.models.common import IdempotencyKey
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
 
@@ -69,6 +75,8 @@ def _fake_chat_result(
         ),
         generation_result=generation_result,
         preview_is_current=False,
+        # 실제 공개 함수는 매번 채운다(public_workflow.py). 보관 이력 수와 같아야 한다.
+        history_usage=ai.PlanningHistoryUsage.from_count(0),
     )
     next_state = ai.PlanningResumeState(
         club_id="club-x", event_id="event-x", conversation_id="conv-x",
@@ -85,6 +93,7 @@ def _fake_generation_result() -> ai.PlanningPublicResult:
     from app.ai.contracts import (
         ButtonGenerationTrigger,
         EventPlanPreview,
+        ExcludedPreviewStep,
         PlanAction,
         PlanGenerationResult,
         PreviewStep,
@@ -119,7 +128,13 @@ def _fake_generation_result() -> ai.PlanningPublicResult:
                 ),
             ),
         ),
-        excluded_steps=(),
+        excluded_steps=(
+            ExcludedPreviewStep(
+                code=StepCode.DEMAND_SURVEY,
+                name="사전 수요 조사",
+                reason="이미 참여 의사를 확인했어요.",
+            ),
+        ),
         warnings=("일정이 비어 있습니다",),
     )
     generation_result = PlanGenerationResult(status="generated", preview=preview)
@@ -297,3 +312,218 @@ async def test_계획_복원에_현재_정책으로_준비상태를_계산한다
         'canGenerate': False,
         'reasons': ['dates_unanswered', 'location_unanswered'],
     }
+
+
+# --- #187 후속: 멱등키 동시 요청·입력 검증·기준일·새 응답 필드 ----------------
+
+CHAT_BODY = {"messageId": "msg-1", "message": "MT 가자", "baseRevision": 0}
+
+
+def _chat(client: TestClient, headers: dict, event_id: str, key: str | None = None):
+    extra = {"Idempotency-Key": key} if key else {}
+    return client.post(
+        f"/api/v1/events/{event_id}/plan/chat", headers={**headers, **extra}, json=CHAT_BODY
+    )
+
+
+async def test_같은_키의_첫_요청이_처리_중이면_AI를_다시_부르지_않고_409(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#203 멘토 리뷰: 첫 요청이 AI를 기다리는 동안 같은 키로 다시 보내면 두 번 호출됐다."""
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+    started, release = threading.Event(), threading.Event()
+    call_count = 0
+
+    async def slow_chat_planning(request, *, records=None):
+        nonlocal call_count
+        call_count += 1
+        started.set()
+        await anyio.to_thread.run_sync(release.wait)
+        return _fake_chat_result(event_type="MT")
+
+    monkeypatch.setattr("app.ai.chat_planning", slow_chat_planning)
+
+    first: list = []
+    worker = threading.Thread(
+        target=lambda: first.append(_chat(client, headers, event_id, "idem-slow"))
+    )
+    worker.start()
+    assert started.wait(10)
+
+    second = _chat(client, headers, event_id, "idem-slow")
+    release.set()
+    worker.join(10)
+
+    assert second.status_code == 409, second.text
+    assert second.json()["error"]["code"] == "IDEMPOTENCY_IN_PROGRESS"
+    assert first[0].status_code == 200, first[0].text
+    assert call_count == 1
+    # 처리가 끝난 뒤 같은 키로 다시 보내면 저장된 응답을 그대로 받는다.
+    replay = _chat(client, headers, event_id, "idem-slow")
+    assert replay.json() == first[0].json()
+    assert call_count == 1
+
+
+async def _leftover_processing_key(
+    client: TestClient, headers: dict, club_id: str, key: str, *, age: timedelta
+) -> None:
+    """처리하던 서버가 사라져 PROCESSING으로 남은 키를 흉내 낸다."""
+    members = client.get(f"/api/v1/clubs/{club_id}/members", headers=headers).json()
+    body_hash = hashlib.sha256(json.dumps(CHAT_BODY, sort_keys=True).encode()).hexdigest()
+    async with db_session.get_sessionmaker()() as session:
+        session.add(
+            IdempotencyKey(
+                club_id=club_id,
+                member_id=members["data"][0]["id"],
+                endpoint="POST /events/{event_id}/plan/chat",
+                idempotency_key=key,
+                request_body_hash=body_hash,
+                status="PROCESSING",
+                modified_at=datetime.now(UTC) - age,
+            )
+        )
+        await session.commit()
+
+
+async def test_오래_남은_처리_중_키는_새_요청이_이어받는다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    async def fake_chat_planning(request, *, records=None):
+        return _fake_chat_result(event_type="MT")
+
+    monkeypatch.setattr("app.ai.chat_planning", fake_chat_planning)
+    await _leftover_processing_key(
+        client, headers, club_id, "idem-fresh", age=timedelta(seconds=10)
+    )
+    await _leftover_processing_key(
+        client, headers, club_id, "idem-stale", age=timedelta(minutes=10)
+    )
+
+    assert _chat(client, headers, event_id, "idem-fresh").status_code == 409
+    assert _chat(client, headers, event_id, "idem-stale").status_code == 200
+
+
+async def test_AI가_실패하면_같은_키로_다시_시도할_수_있다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+    call_count = 0
+
+    async def flaky_chat_planning(request, *, records=None):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise ai.AIRetryableError("일시 오류")
+        return _fake_chat_result(event_type="MT")
+
+    monkeypatch.setattr("app.ai.chat_planning", flaky_chat_planning)
+
+    failed = _chat(client, headers, event_id, "idem-retry")
+    retried = _chat(client, headers, event_id, "idem-retry")
+
+    assert failed.status_code == 503
+    assert failed.json()["error"]["code"] == "AI_UNAVAILABLE"
+    assert retried.status_code == 200, retried.text
+    assert call_count == 2
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"messageId": "msg-1", "message": "   ", "baseRevision": 0},
+        {"messageId": "msg-1", "message": "가" * 4001, "baseRevision": 0},
+        {"messageId": " ", "message": "MT 가자", "baseRevision": 0},
+        {"messageId": "msg-1", "message": "MT 가자", "baseRevision": -1},
+    ],
+)
+async def test_잘못된_대화_입력은_422(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch, body: dict
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    async def must_not_call(request, *, records=None):
+        raise AssertionError("검증에서 막혀야 한다")
+
+    monkeypatch.setattr("app.ai.chat_planning", must_not_call)
+
+    res = client.post(
+        f"/api/v1/events/{event_id}/plan/chat", headers=headers, json=body
+    )
+
+    assert res.status_code == 422, res.text
+    assert res.json()["error"]["code"] == "VALIDATION_FAILED"
+
+
+async def test_기준일은_KST_날짜로_넘긴다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+    seen: list[date] = []
+
+    class KstEarlyMorning(datetime):
+        """UTC 10/29 15:30 = KST 10/30 00:30. UTC 기준이면 하루 전이 된다."""
+
+        @classmethod
+        def now(cls, tz=None):
+            moment = datetime(2026, 10, 29, 15, 30, tzinfo=UTC)
+            return moment.astimezone(tz) if tz else moment
+
+    async def fake_chat_planning(request, *, records=None):
+        seen.append(request.reference_date)
+        return _fake_chat_result(event_type="MT")
+
+    monkeypatch.setattr("app.services.planning_service.datetime", KstEarlyMorning)
+    monkeypatch.setattr("app.ai.chat_planning", fake_chat_planning)
+
+    assert _chat(client, headers, event_id).status_code == 200
+    assert seen == [date(2026, 10, 30)]
+
+
+async def test_대화_한도_사용량과_제외_단계_이름이_응답과_재접속_화면에_있다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    async def fake_generate(request):
+        return _fake_generation_result()
+
+    monkeypatch.setattr("app.ai.generate_planning_preview", fake_generate)
+
+    res = client.post(
+        f"/api/v1/events/{event_id}/plan/generate", headers=headers, json={"baseRevision": 0}
+    )
+    plan = client.get(f"/api/v1/events/{event_id}/plan", headers=headers).json()["data"]
+
+    usage = {"messageCount": 0, "maxMessages": 60, "nearLimit": False}
+    assert res.json()["data"]["historyUsage"] == usage
+    assert plan["historyUsage"] == usage
+    assert plan["excludedSteps"] == [
+        {"code": "DEMAND_SURVEY", "name": "사전 수요 조사", "reason": "이미 참여 의사를 확인했어요."}
+    ]
+
+
+async def test_이름_없이_저장된_예전_제외_단계도_읽을_수_있다(
+    client: TestClient, app_db: None
+) -> None:
+    from app.models.events import Event
+
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+    async with db_session.get_sessionmaker()() as session:
+        event = await session.get(Event, event_id)
+        event.plan_excluded_steps = [{"code": "DEMAND_SURVEY", "reason": "예전 계획"}]
+        await session.commit()
+
+    plan = client.get(f"/api/v1/events/{event_id}/plan", headers=headers)
+
+    assert plan.status_code == 200, plan.text
+    assert plan.json()["data"]["excludedSteps"][0]["name"] is None
+    assert plan.json()["data"]["historyUsage"] is None
