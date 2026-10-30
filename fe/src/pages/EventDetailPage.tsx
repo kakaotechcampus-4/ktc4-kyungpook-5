@@ -11,6 +11,7 @@ import { ReviewModal } from '@/features/events/components/ReviewModal'
 import { StepModal } from '@/features/events/components/StepModal'
 import {
   useConfirmations,
+  useDemo,
   useEventDetail,
   useEventSteps,
   useResolvedActions,
@@ -29,13 +30,16 @@ export default function EventDetailPage() {
   const navigate = useNavigate()
   const toList = `/events${search}`
 
+  const demo = useDemo()
   const detailQuery = useEventDetail(eventId)
   const event = detailQuery.data
   // 행사가 없으면(초기 화면) 나머지는 부르지 않는다
   const shownId = event ? eventId : undefined
-  const steps = useEventSteps(shownId).data ?? []
+  const stepsQuery = useEventSteps(shownId)
+  const steps = stepsQuery.data ?? []
   const currentIndex = steps.findIndex((s) => s.state === 'CURRENT')
-  const resolved = useResolvedActions(shownId).data
+  const resolvedQuery = useResolvedActions(shownId)
+  const resolved = resolvedQuery.data
 
   // 열린 Step 모달의 단계. 단계를 다시 불러오면 순서가 바뀔 수 있어 id로 기억한다. null이면 닫혀 있다.
   const [openStepId, setOpenStepId] = useState<string | null>(null)
@@ -48,9 +52,8 @@ export default function EventDetailPage() {
 
   // 처리한 확인 요청. 서버 연동 전이라 화면에서만 빼 둔다.
   const [answeredIds, setAnsweredIds] = useState<string[]>([])
-  const confirmations = (useConfirmations(shownId).data ?? []).filter(
-    (a) => !answeredIds.includes(a.id),
-  )
+  const confirmationsQuery = useConfirmations(shownId)
+  const confirmations = (confirmationsQuery.data ?? []).filter((a) => !answeredIds.includes(a.id))
 
   // TODO(연동): POST /actions/{id}/resolve 에 { choice } 로 보낸다
   const resolveConfirmation = (action: EventAction, choice: string) => {
@@ -105,6 +108,21 @@ export default function EventDetailPage() {
     return <ServerErrorScreen onRetry={() => detailQuery.refetch()} onHome={() => navigate('/')} />
   }
 
+  if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isPending))
+    return null
+  if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isError)) {
+    return (
+      <ServerErrorScreen
+        onRetry={() => {
+          stepsQuery.refetch()
+          resolvedQuery.refetch()
+          confirmationsQuery.refetch()
+        }}
+        onHome={() => navigate('/')}
+      />
+    )
+  }
+
   return (
     <div className="flex flex-col gap-[20px]">
       <nav aria-label="이동 경로" className="flex items-center gap-[8px] text-[12px]">
@@ -126,7 +144,13 @@ export default function EventDetailPage() {
 
       {event ? (
         <>
+          {!demo && (
+            <p className="rounded-[10px] bg-bg px-[16px] py-[12px] text-[13px] text-ink2">
+              행사 조회를 연결했습니다. 승인·완료·취소 처리는 준비 중입니다.
+            </p>
+          )}
           <EventHeaderCard
+            readOnly={!demo}
             event={event}
             steps={steps}
             onSelectStep={(step) => setOpenStepId(step.id)}
@@ -134,7 +158,11 @@ export default function EventDetailPage() {
           />
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-              <ConfirmationList actions={confirmations} onResolve={resolveConfirmation} />
+              <ConfirmationList
+                actions={confirmations}
+                onResolve={resolveConfirmation}
+                readOnly={!demo}
+              />
               <ResolvedActionList
                 actions={resolved?.items ?? []}
                 totalCount={resolved?.totalCount ?? 0}
@@ -161,6 +189,7 @@ export default function EventDetailPage() {
               onCompleteAction={finishAction}
               onReviewAction={setReviewing}
               onCompleteStep={completeStep}
+              readOnly={!demo}
             />
           )}
           <ReviewModal

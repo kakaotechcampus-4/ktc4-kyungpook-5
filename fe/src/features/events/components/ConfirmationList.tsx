@@ -10,10 +10,16 @@ interface ConfirmationListProps {
   actions: EventAction[]
   // choice는 options[].key, 직접 처리면 'MANUAL' (POST /actions/{id}/resolve 요청 값과 같다)
   onResolve: (action: EventAction, choice: string) => void
+  readOnly?: boolean
   className?: string
 }
 
-export function ConfirmationList({ actions, onResolve, className }: ConfirmationListProps) {
+export function ConfirmationList({
+  actions,
+  onResolve,
+  readOnly = false,
+  className,
+}: ConfirmationListProps) {
   const empty = actions.length === 0
   return (
     <Card className={cn('flex flex-col gap-[18px] px-[26px] pt-[24px] pb-[26px]', className)}>
@@ -47,13 +53,18 @@ export function ConfirmationList({ actions, onResolve, className }: Confirmation
                   <Button
                     key={option.key}
                     variant={i === 0 ? 'primary' : 'secondary'}
+                    disabled={readOnly}
                     onClick={() => onResolve(action, option.key)}
                   >
                     {option.label}
                   </Button>
                 ))}
                 {action.allowManual && (
-                  <Button variant="secondary" onClick={() => onResolve(action, 'MANUAL')}>
+                  <Button
+                    variant="secondary"
+                    disabled={readOnly}
+                    onClick={() => onResolve(action, 'MANUAL')}
+                  >
                     직접 처리
                   </Button>
                 )}
