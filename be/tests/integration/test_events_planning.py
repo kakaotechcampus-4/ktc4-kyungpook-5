@@ -337,6 +337,25 @@ async def test_재생성_편집충돌_확인시각과_추가편집을_HTTP로_�
     assert stale.json()["error"]["code"] == "PLAN_EDITED_CONFLICT"
 
 
+async def test_동일_Idempotency_Key에서_교체_flag가_다르면_충돌한다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, club_id = _owner_with_club(client)
+    event_id = _create_event(client, headers, club_id)
+
+    async def fake_generate(request):
+        return _fake_generation_result()
+
+    monkeypatch.setattr("app.ai.generate_planning_preview", fake_generate)
+    first = client.post(f"/api/v1/events/{event_id}/plan/generate", headers={**headers, "Idempotency-Key": "replace-key"},
+                        json={"baseRevision": 0, "replaceEditedPlan": False})
+    assert first.status_code == 200, first.text
+    conflict = client.post(f"/api/v1/events/{event_id}/plan/generate", headers={**headers, "Idempotency-Key": "replace-key"},
+                           json={"baseRevision": 0, "replaceEditedPlan": True})
+    assert conflict.status_code == 409
+    assert conflict.json()["error"]["code"] == "IDEMPOTENCY_CONFLICT"
+
+
 async def test_다른_동아리_사람은_행사_계획에_접근할_수_없다(
     client: TestClient, app_db: None
 ) -> None:
