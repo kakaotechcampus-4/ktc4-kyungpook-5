@@ -44,3 +44,22 @@ test('server conflict is surfaced to the caller', async () => {
   })
   await assert.rejects(api.updateAction('a', { expectedVersion: 1 }), /VERSION_CONFLICT/)
 })
+
+test('replacement permission is carried only in the explicit generation request', async () => {
+  const calls = []
+  const api = setup({ apiPost: async (path, body) => calls.push({ path, body }) })
+  await api.generate('event', {
+    baseRevision: 2,
+    useCurrentConditions: false,
+    replaceEditedPlan: false,
+  })
+  await api.generate('event', {
+    baseRevision: 2,
+    useCurrentConditions: false,
+    replaceEditedPlan: true,
+  })
+  assert.equal(calls[0].path, '/events/event/plan/generate')
+  assert.equal(calls[0].body.replaceEditedPlan, false)
+  assert.equal(calls[1].body.replaceEditedPlan, true)
+  assert.equal(calls[1].body.useCurrentConditions, false)
+})
