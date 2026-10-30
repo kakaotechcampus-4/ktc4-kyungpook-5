@@ -369,7 +369,7 @@ async def test_행동이_없는_수동_단계도_완료할_수_있다(client: Te
     assert missing.json()["error"]["code"] == "STEP_NOT_FOUND"
 
 
-# --- 운영 중에만 처리, 계획 확정 (#177, FE 명세 v1 :confirm) ------------------------
+# --- 운영 중에만 처리, 계획 확정 /start (#177, #213) ------------------------------
 
 
 async def test_계획_중인_행사는_처리를_받지_않고_canApprove도_false(
@@ -417,8 +417,8 @@ async def test_계획을_확정하면_운영이_시작되고_처리를_받는다
     step_id = await add_step(event_id, 10)
     action_id = await add_action(event_id, step_id=step_id)
 
-    res = _post(client, headers, f"/events/{event_id}:confirm")
-    again = _post(client, headers, f"/events/{event_id}:confirm")
+    res = _post(client, headers, f"/events/{event_id}/start")
+    again = _post(client, headers, f"/events/{event_id}/start")
     approve = _post(client, headers, f"/actions/{action_id}/approve", {"expectedVersion": 1})
 
     assert res.status_code == 200, res.text
@@ -436,12 +436,12 @@ async def test_시작일이나_단계가_없으면_확정할_수_없다(client: 
     event_id = await add_event(club_id, status=EventStatus.PLANNING)
     member_headers = await member_of(client, club_id, MemberRole.MEMBER, "member")
 
-    res = _post(client, headers, f"/events/{event_id}:confirm")
+    res = _post(client, headers, f"/events/{event_id}/start")
 
     assert res.status_code == 409
     assert res.json()["error"]["code"] == "PLAN_INCOMPLETE"
     assert set(res.json()["error"]["fields"]) == {"startDate", "steps"}
-    assert _post(client, member_headers, f"/events/{event_id}:confirm").status_code == 403
+    assert _post(client, member_headers, f"/events/{event_id}/start").status_code == 403
 
 
 async def test_확정된_행사는_계획_대화와_생성을_받지_않는다(

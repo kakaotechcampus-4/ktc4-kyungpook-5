@@ -175,7 +175,7 @@ class EventNotOnGoing(ApiError):
 
 
 class PlanIncomplete(ApiError):
-    """확정에 필요한 값이 빠졌을 때 (FE 명세 v1 :confirm)."""
+    """행사 시작(계획 확정)에 필요한 값이 빠졌을 때 (POST /events/{id}/start)."""
 
     status_code = 409
     code = "PLAN_INCOMPLETE"

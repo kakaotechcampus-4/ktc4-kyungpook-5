@@ -138,8 +138,8 @@ class EventListResponse(CamelModel):
     meta: PageMeta
 
 
-class EventConfirmOut(CamelModel):
-    """계획 확정 결과 (FE 명세 v1 :confirm)."""
+class EventStartOut(CamelModel):
+    """계획 확정(행사 시작) 결과. FE 명세 v1의 :confirm을 #213 요청대로 /start로 연다."""
 
     id: str
     status: EventStatus

@@ -93,8 +93,8 @@ def ensure_operating(event: Event) -> None:
         raise EventNotOnGoing()
 
 
-async def confirm_event(session: AsyncSession, *, event_id: str) -> Event:
-    """계획을 확정해 운영을 시작한다. 첫 단계부터 진행 상태가 계산된다(FE 명세 v1 :confirm)."""
+async def start_event(session: AsyncSession, *, event_id: str) -> Event:
+    """계획을 확정해 운영을 시작한다. 첫 단계부터 진행 상태가 계산된다(#213, FE 명세 v1 :confirm)."""
     event = await session.scalar(select(Event).where(Event.id == event_id).with_for_update())
     if event is None:
         raise EventNotFound()

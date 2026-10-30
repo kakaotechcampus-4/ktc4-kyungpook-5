@@ -357,10 +357,10 @@ curl -H "$H" "localhost:8000/api/v1/events/<eventId>/actions?type=CONFIRMATION"
 
 | 행사 상태 | 받는 요청 | 그 외 요청 |
 | --- | --- | --- |
-| `PLANNING` | 계획 대화·생성, `POST /api/v1/events/{eventId}:confirm` | 처리 API는 409 `EVENT_NOT_ON_GOING` |
+| `PLANNING` | 계획 대화·생성, `POST /api/v1/events/{eventId}/start` | 처리 API는 409 `EVENT_NOT_ON_GOING` |
 | `ON_GOING` | 아래 처리 API | 계획 대화·생성·확정은 409 `EVENT_NOT_PLANNING` |
 
-`:confirm`은 `PLANNING` → `ON_GOING`이며, 시작일이나 단계가 없으면 409 `PLAN_INCOMPLETE`(`fields`에 빠진 항목)다.
+`/start`(계획 확정·행사 시작, FE 명세 v1의 `:confirm`을 #213 요청대로 이 경로로 연다)는 `PLANNING` → `ON_GOING`이며, 시작일이나 단계가 없으면 409 `PLAN_INCOMPLETE`(`fields`에 빠진 항목)다.
 생성은 수십 초 걸려 그사이 확정될 수 있으므로, 생성 결과를 저장할 때도 `PLANNING`인지 다시 확인해 처리 기록을 덮어쓰지 않는다.
 
 처리 API 요청·응답은 FE 명세 v1 §3을 따르고, 처리 요청에는 조회 응답의 `version`을 `expectedVersion`으로 보낸다

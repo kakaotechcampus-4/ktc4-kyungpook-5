@@ -412,7 +412,7 @@ async def _finish(
 ) -> dict:
     sessionmaker = get_sessionmaker()
     async with sessionmaker() as session:
-        # 행사를 잠그고 읽는다. AI를 기다리는 수십 초 사이 계획이 확정(:confirm, 같은 행 잠금)
+        # 행사를 잠그고 읽는다. AI를 기다리는 수십 초 사이 계획이 확정(/start, 같은 행 잠금)
         # 됐을 수 있다. 확정된 행사에 대화·생성 결과를 저장하면 운영 중 조건이 바뀌고 처리
         # 기록이 지워진다(#41). 라우터의 상태 확인은 AI 호출 전에 빨리 거절하는 용도이고,
         # 최종 보증은 여기서 한다.

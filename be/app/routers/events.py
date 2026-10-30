@@ -23,7 +23,7 @@ from app.schemas.events import (
     DraftOut,
     EventCreateIn,
     EventCreateOut,
-    EventConfirmOut,
+    EventStartOut,
     EventDetailOut,
     EventListResponse,
     PlanChatIn,
@@ -122,16 +122,16 @@ def _ensure_planning(event: Event) -> None:
         raise EventNotPlanning()
 
 
-@router.post("/{event_id}:confirm", response_model=Envelope[EventConfirmOut])
-async def confirm_event(
+@router.post("/{event_id}/start", response_model=Envelope[EventStartOut])
+async def start_event(
     event_id: str,
     account: Account = Depends(get_current_account),
     session: AsyncSession = Depends(get_session),
-) -> Envelope[EventConfirmOut]:
+) -> Envelope[EventStartOut]:
     """계획을 확정해 운영을 시작한다(PLANNING → ON_GOING). 이후 승인·완료 처리를 받는다."""
     await _get_event_for_account(session, event_id=event_id, account=account)
-    event = await action_service.confirm_event(session, event_id=event_id)
-    return Envelope(data=EventConfirmOut.model_validate(event))
+    event = await action_service.start_event(session, event_id=event_id)
+    return Envelope(data=EventStartOut.model_validate(event))
 
 
 @router.post("/{event_id}/plan/chat", response_model=Envelope[PlanViewOut])
