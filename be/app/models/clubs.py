@@ -84,7 +84,7 @@ class Invitation(IdMixin, TimestampMixin, Base):
     club_id: Mapped[str] = mapped_column(
         String(ID_LENGTH), fk("clubs.id"), nullable=False
     )
-    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[MemberRole] = mapped_column(enum_column(MemberRole), nullable=False)
     # 원문을 저장하지 않는다. 메일로만 전달한다.
     token_hash: Mapped[str] = mapped_column(String(255), nullable=False)

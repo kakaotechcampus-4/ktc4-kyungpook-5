@@ -37,7 +37,6 @@ class MeOut(CamelModel):
 
 
 class InvitationCreateIn(CamelModel):
-    email: EmailStr
     role: ServiceMemberRole
 
 

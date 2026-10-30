@@ -71,7 +71,7 @@ async def create_invitation(
     session: AsyncSession,
     *,
     club_id: str,
-    email: str,
+    email: str | None = None,
     role: MemberRole,
     invited_by: Member,
 ) -> Invitation:
@@ -187,11 +187,11 @@ async def list_members(session: AsyncSession, *, club_id: str) -> list[dict]:
         rows.append(
             {
                 "id": invitation.id,
-                # 수락 전에는 이름을 모른다 — 이메일로 식별한다.
-                "name": invitation.email,
+                # 링크 초대는 수신자 이메일을 보관하지 않는다.
+                "name": "초대 링크 대기",
                 "group": group,
                 "subtitle": subtitle,
-                "contact": invitation.email,
+                "contact": None,
                 "account": "INVITED",
                 "account_at": invitation.created_at,
             }

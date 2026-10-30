@@ -185,7 +185,7 @@ async def test_초대_수락하면_해당_역할로_가입된다(
     invite_res = client.post(
         f"/api/v1/clubs/{club_id}/invitations",
         headers=owner_headers,
-        json={"email": manager_email, "role": "MANAGER"},
+        json={"role": "MANAGER"},
     )
     assert invite_res.status_code == 201, invite_res.text
 
