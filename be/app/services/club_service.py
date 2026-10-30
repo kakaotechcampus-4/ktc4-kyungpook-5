@@ -6,7 +6,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import ClubCategory, InvitationStatus, MemberRole, MemberStatus, SERVICE_ROLES
-from app.core.exceptions import ValidationFailed
+from app.core.exceptions import (InvitationAlreadyHandled, InvitationExpired,
+                                 InvitationInvalid, InvitationMembershipConflict,
+                                 ValidationFailed)
 from app.core.security import hash_token, new_token
 from app.models.auth import Account, Auth
 from app.models.clubs import Club, Invitation, Member
@@ -102,11 +104,11 @@ async def accept_invitation(
         select(Invitation).where(Invitation.token_hash == token_hash).with_for_update()
     )
     if invitation is None:
-        raise ValidationFailed({"token": "유효하지 않은 초대입니다."})
+        raise InvitationInvalid()
     if invitation.status != InvitationStatus.PENDING:
-        raise ValidationFailed({"token": "이미 처리된 초대입니다."})
+        raise InvitationAlreadyHandled()
     if invitation.expires_at < datetime.now(UTC):
-        raise ValidationFailed({"token": "초대가 만료되었습니다."})
+        raise InvitationExpired()
     if invitation.role not in SERVICE_ROLES:
         raise ValidationFailed({"role": "일반 동아리원 초대는 서비스에서 사용할 수 없습니다. 회장·임원 초대를 요청해 주세요."})
 
@@ -116,7 +118,7 @@ async def accept_invitation(
         )
     )
     if existing is not None:
-        raise ValidationFailed({"token": "이미 동아리에 속해 있습니다."})
+        raise InvitationMembershipConflict()
 
     member = Member(
         club_id=invitation.club_id,
