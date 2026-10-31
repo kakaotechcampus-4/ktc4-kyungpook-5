@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AnswerModal } from '@/features/events/components/AnswerModal'
 import { CancelConfirmModal } from '@/features/events/components/CancelConfirmModal'
 import { ConfirmationList } from '@/features/events/components/ConfirmationList'
+import { PendingApprovalList } from '@/features/events/components/PendingApprovalList'
 import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
@@ -14,6 +15,7 @@ import {
   useApproveAction,
   useCompleteStep,
   useConfirmations,
+  usePendingApprovals,
   useDenyAction,
   useEventDetail,
   useEventSteps,
@@ -53,6 +55,7 @@ export default function EventDetailPage() {
   const stepActions = stepActionsQuery.data?.filter((a) => !finishedIds.includes(a.id))
 
   // 처리한 확인 요청. 서버 연동 전이라 화면에서만 빼 둔다.
+  const pendingApprovals = usePendingApprovals(shownId).data ?? []
   const [answeredIds, setAnsweredIds] = useState<string[]>([])
   const confirmations = (useConfirmations(shownId).data ?? []).filter(
     (a) => !answeredIds.includes(a.id),
@@ -179,6 +182,10 @@ export default function EventDetailPage() {
           />
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
+              <PendingApprovalList
+                actions={pendingApprovals}
+                onReview={operating ? setReviewing : undefined}
+              />
               <ConfirmationList
                 actions={confirmations}
                 onResolve={operating ? resolveConfirmation : undefined}
