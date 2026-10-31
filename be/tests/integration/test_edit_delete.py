@@ -226,8 +226,13 @@ def _record(client: TestClient, headers: dict, club_id: str, file_name: str = "�
 
 
 async def test_자료를_지우면_청크와_원본이_사라지고_검색에서_빠진다(
-    client: TestClient, app_db: None, tmp_path
+    client: TestClient, app_db: None, tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    async def no_semantic(request, *, records):
+        return ()
+
+    # AI 키가 있으면 검색이 실제 임베딩을 부른다. 파일명 검색만으로 확인한다.
+    monkeypatch.setattr(ai, "search_related_records", no_semantic)
     headers, club_id = owner_with_club(client, "rec-delete")
     record = _record(client, headers, club_id, "삭제할회칙.csv")
     assert record["parseStatus"] == "INDEXED"
