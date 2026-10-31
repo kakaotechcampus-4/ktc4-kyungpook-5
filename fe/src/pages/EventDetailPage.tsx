@@ -10,9 +10,15 @@ import { ResolvedActionList } from '@/features/events/components/ResolvedActionL
 import { ReviewModal } from '@/features/events/components/ReviewModal'
 import { StepModal } from '@/features/events/components/StepModal'
 import {
+  actionErrorMessage,
+  useApproveAction,
+  useCompleteStep,
   useConfirmations,
+  useDenyAction,
   useEventDetail,
   useEventSteps,
+  useMarkActionDone,
+  useResolveAction,
   useResolvedActions,
   useStepActions,
 } from '@/features/events/hooks'
@@ -52,20 +58,34 @@ export default function EventDetailPage() {
     (a) => !answeredIds.includes(a.id),
   )
 
-  // TODO(연동): POST /actions/{id}/resolve 에 { choice } 로 보낸다
-  const resolveConfirmation = (action: EventAction, choice: string) => {
+  const resolve = useResolveAction(shownId)
+  const resolveConfirmation = (action: EventAction, choice: string, manualValue?: string) => {
     setAnsweredIds((ids) => [...ids, action.id])
-    toast.show({
-      kind: 'done',
-      title: choice === 'MANUAL' ? '직접 처리로 넘겼어요' : '처리했어요',
-      desc: action.title,
-    })
+    void resolve.mutateAsync({ action, choice, manualValue }).then(
+      () =>
+        toast.show({
+          kind: 'done',
+          title: choice === 'MANUAL' ? '직접 처리로 넘겼어요' : '처리했어요',
+          desc: action.title,
+        }),
+      (cause) => {
+        // 서버가 받지 않았으니 숨겼던 카드를 되돌린다.
+        setAnsweredIds((ids) => ids.filter((id) => id !== action.id))
+        toast.show({ kind: 'error', title: '처리하지 못했어요', desc: actionErrorMessage(cause) })
+      },
+    )
   }
 
-  // TODO(연동): 실행을 마쳤다는 기록 API가 명세에 없다
+  const markDone = useMarkActionDone(shownId)
   const finishAction = (action: EventAction) => {
     setFinishedIds((ids) => [...ids, action.id])
-    toast.show({ kind: 'done', title: '완료로 표시했어요', desc: action.title })
+    void markDone.mutateAsync(action).then(
+      () => toast.show({ kind: 'done', title: '완료로 표시했어요', desc: action.title }),
+      (cause) => {
+        setFinishedIds((ids) => ids.filter((id) => id !== action.id))
+        toast.show({ kind: 'error', title: '완료로 표시하지 못했어요', desc: actionErrorMessage(cause) })
+      },
+    )
   }
 
   // 행사 취소 확인 모달. 확인하면 취소 정리 화면으로 간다.
@@ -76,28 +96,49 @@ export default function EventDetailPage() {
   const answering = reviewing?.type === 'CONFIRMATION' ? reviewing : undefined
   const deciding = reviewing && reviewing.type !== 'CONFIRMATION' ? reviewing : undefined
 
-  // TODO(연동): POST /actions/{id}/approve
+  const approve = useApproveAction(shownId)
   const approveAction = (action: EventAction) => {
     setReviewing(undefined)
     setOpenStepId(null)
-    toast.show({ kind: 'done', title: '승인했어요', desc: action.title })
+    void approve.mutateAsync(action).then(
+      () => toast.show({ kind: 'done', title: '승인했어요', desc: action.title }),
+      (cause) =>
+        toast.show({ kind: 'error', title: '승인하지 못했어요', desc: actionErrorMessage(cause) }),
+    )
   }
 
-  // TODO(연동): POST /actions/{id}/deny 에 { reason } 으로 보낸다
+  const deny = useDenyAction(shownId)
   const denyAction = (action: EventAction, reason: string) => {
     setReviewing(undefined)
     setOpenStepId(null)
-    toast.show({
-      kind: 'done',
-      title: '진행하지 않기로 했어요',
-      desc: `${action.title} · ${reason}`,
-    })
+    void deny.mutateAsync({ action, reason }).then(
+      () =>
+        toast.show({
+          kind: 'done',
+          title: '진행하지 않기로 했어요',
+          desc: `${action.title} · ${reason}`,
+        }),
+      (cause) =>
+        toast.show({ kind: 'error', title: '거절하지 못했어요', desc: actionErrorMessage(cause) }),
+    )
   }
 
-  // TODO(연동): POST /steps/{stepId}/complete. 미처리 Action이 남아 있으면 먼저 확인을 받는다(명세).
+  const finishStep = useCompleteStep(shownId)
   const completeStep = (step: EventStep) => {
     setOpenStepId(null)
-    toast.show({ kind: 'done', title: '단계를 완료로 표시했어요', desc: step.name })
+    void finishStep.mutateAsync(step).then(
+      (result) =>
+        toast.show({
+          kind: 'done',
+          title: '단계를 완료로 표시했어요',
+          // 남은 행동이 있어도 완료는 된다. 그냥 넘기면 뭘 안 했는지 모른 채 지나간다.
+          desc: result.pendingActionCount
+            ? `${step.name} · 아직 처리하지 않은 일 ${result.pendingActionCount}건이 있어요`
+            : step.name,
+        }),
+      (cause) =>
+        toast.show({ kind: 'error', title: '완료로 표시하지 못했어요', desc: actionErrorMessage(cause) }),
+    )
   }
 
   if (detailQuery.isPending) return null
@@ -179,10 +220,9 @@ export default function EventDetailPage() {
           <AnswerModal
             action={answering}
             onClose={() => setReviewing(undefined)}
-            // TODO(연동): 직접 처리면 manualValue도 함께 보낸다. 명세는 객체({ memberId })라 글로 받는 지금 화면과 맞춰야 한다.
-            onAnswer={(action, choice) => {
+            onAnswer={(action, choice, manualValue) => {
               setReviewing(undefined)
-              resolveConfirmation(action, choice)
+              resolveConfirmation(action, choice, manualValue)
             }}
           />
         </>

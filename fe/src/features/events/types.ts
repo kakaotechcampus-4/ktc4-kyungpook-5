@@ -66,6 +66,9 @@ export type MemberRole = 'OWNER' | 'MANAGER' | 'MEMBER'
 // 선택(?) 필드는 응답에는 늘 오지만, 예시 데이터는 그 화면에서 쓰는 것만 채운다.
 export interface EventAction {
   id: string
+  // 승인·거절·확인 응답·완료 요청에 그대로 돌려보낸다. 본 적 없는 내용을
+  // 처리하지 않기 위해서다. 그사이 바뀌었으면 서버가 409로 거절한다.
+  version: number
   type: ActionType
   title: string
   subtitle: string | null
@@ -108,4 +111,13 @@ export interface CancelTask {
   // 진행 중인 일의 남은 할 일. 토리가 짚어준다.
   todos?: string[]
   note?: string
+}
+
+// POST /steps/{id}/complete 결과. 행동이 모두 끝나 자동 완료된 단계는 completedBy가 null이다.
+export interface StepComplete {
+  id: string
+  completedAt: string
+  completedBy: { id: string; name: string; role: MemberRole } | null
+  // 끝나지 않은 행동 수. 남아 있어도 완료는 되고, 화면이 그 사실을 알린다.
+  pendingActionCount: number
 }

@@ -36,24 +36,28 @@ const QUESTION = {
 const ACTION_SAMPLES: EventAction[] = [
   {
     id: 'a1',
+    version: 1,
     ...NOTICE,
     status: 'PENDING',
     content: '안녕하세요. 봄 MT 참가 신청이 3월 12일에 마감됩니다.',
   },
   {
     id: 'a2',
+    version: 1,
     ...QUESTION,
     status: 'PENDING',
     content: '올해 숙소 계약 조건에 최소 인원이 있나요?',
   },
   {
     id: 'a3',
+    version: 1,
     ...NOTICE,
     status: 'APPROVED',
     content: '안녕하세요. 봄 MT 참가 신청이 3월 12일에 마감됩니다.',
   },
   {
     id: 'a4',
+    version: 1,
     type: 'EXTERNAL_SEND',
     title: '미납자 4명에게 2차 납부 안내 문자 보내기',
     subtitle: '대상 4명 · 비용 0원 · 마감 D-2',
@@ -63,6 +67,7 @@ const ACTION_SAMPLES: EventAction[] = [
   },
   {
     id: 'a5',
+    version: 1,
     type: 'CONTRACT',
     title: '가평 ○○펜션과 숙소 계약 확정',
     subtitle: '32명 기준 · 계약금 100,000원',
@@ -72,6 +77,7 @@ const ACTION_SAMPLES: EventAction[] = [
   },
   {
     id: 'a6',
+    version: 1,
     type: 'TRANSFER',
     title: '펜션 계약금 100,000원 이체하고 예약 확정',
     subtitle: '받는 곳 ○○펜션 · 잔고 2,412,000원',
@@ -81,6 +87,7 @@ const ACTION_SAMPLES: EventAction[] = [
   },
   {
     id: 'a7',
+    version: 1,
     type: 'EXPENSE',
     title: '장보기·버스 잔금 등 지출 4건 묶음 승인',
     subtitle: '합계 182,000원 · 영수증 4건 확인됨',
@@ -90,6 +97,7 @@ const ACTION_SAMPLES: EventAction[] = [
   },
   {
     id: 'a8',
+    version: 1,
     ...NOTICE,
     status: 'DONE',
     resolvedAt: '2026-03-09T06:30:00Z',
@@ -97,6 +105,7 @@ const ACTION_SAMPLES: EventAction[] = [
   },
   {
     id: 'a9',
+    version: 1,
     ...QUESTION,
     status: 'DONE',
     resolvedAt: '2026-03-08T08:02:00Z',
@@ -105,12 +114,14 @@ const ACTION_SAMPLES: EventAction[] = [
   },
   {
     id: 'a10',
+    version: 1,
     ...NOTICE,
     status: 'DENIED',
     denyReason: '견적이 작년보다 40% 높아 다른 업체를 더 받아보기로 했어요.',
   },
   {
     id: 'a11',
+    version: 1,
     ...NOTICE,
     status: 'FAILED',
     failReason: '입금자명이 명단과 달라 대조하지 못했어요.',
