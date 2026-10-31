@@ -28,7 +28,12 @@ export default function EventListPage() {
 
   const countOf = (value: Filter) =>
     value === 'ALL' ? events.length : events.filter((e) => e.status === value).length
-  const shown = filter === 'ALL' ? events : events.filter((e) => e.status === filter)
+  // 끝난 행사는 뒤로 민다. 지금 챙길 행사가 위에 와야 한다.
+  // 전체 목록에서만 섞이므로 한 상태만 보는 필터에서는 순서가 그대로다.
+  const ENDED: Filter[] = ['COMPLETE', 'CANCELLED']
+  const shown = (filter === 'ALL' ? events : events.filter((e) => e.status === filter))
+    .slice()
+    .sort((a, b) => Number(ENDED.includes(a.status)) - Number(ENDED.includes(b.status)))
 
   // 목록을 받기 전에 빈 상태를 그리면 "아직 만든 행사가 없어요"가 잠깐 깜빡인다
   if (eventsQuery.isPending) return null
