@@ -1,5 +1,6 @@
 // S2 · 내 정보 탭. 왼쪽에 프로필·동아리·계정, 오른쪽에 알림.
 import { useState } from 'react'
+import { ClubEditForm } from '@/features/mypage/components/ClubEditForm'
 import type { ClubInfo, NotificationSettings, Profile } from '@/features/mypage/types'
 import { Avatar } from '@/shared/ui/Avatar'
 import { Button } from '@/shared/ui/Button'
@@ -63,13 +64,16 @@ function Facts({ items }: { items: Array<[string, string]> }) {
 interface MyInfoTabProps {
   profile: Profile
   club: ClubInfo
+  // 소속을 고르지 않았거나 시연 중이면 없다 — 그때는 수정 버튼을 막는다.
+  clubId?: string
   // 연결된 계정. 아직 없으면 비워 둔다.
   linkedAccounts?: string
   onLogout: () => void
 }
 
-// 프로필·동아리 수정, 나가기, 비밀번호, 탈퇴는 서버 경로가 없어 막아 둔다(#213).
-export function MyInfoTab({ profile, club, linkedAccounts, onLogout }: MyInfoTabProps) {
+// 프로필 수정, 나가기, 비밀번호, 탈퇴는 아직 서버 경로가 없어 막아 둔다(#213).
+export function MyInfoTab({ profile, club, clubId, linkedAccounts, onLogout }: MyInfoTabProps) {
+  const [editingClub, setEditingClub] = useState(false)
   // TODO(연동): PATCH /me/notifications. 지금은 화면에서만 바뀐다.
   const [notifications, setNotifications] = useState<NotificationSettings>({
     pendingApproval: true,
@@ -111,15 +115,24 @@ export function MyInfoTab({ profile, club, linkedAccounts, onLogout }: MyInfoTab
               ['가입일', club.joinedAt],
             ]}
           />
-          <div className="flex items-center gap-[9px] border-t border-line pt-[18px]">
-            <Button variant="soft" disabled>
-              동아리 정보 수정
-            </Button>
-            <Button variant="secondary" disabled>
-              동아리 나가기
-            </Button>
-            <span className="text-[11.5px] text-mute">준비 중이에요</span>
-          </div>
+          {editingClub && clubId ? (
+            <ClubEditForm
+              clubId={clubId}
+              currentName={club.name}
+              onDone={() => setEditingClub(false)}
+            />
+          ) : (
+            <div className="flex items-center gap-[9px] border-t border-line pt-[18px]">
+              <Button variant="soft" disabled={!clubId} onClick={() => setEditingClub(true)}>
+                동아리 정보 수정
+              </Button>
+              <Button variant="secondary" disabled>
+                동아리 나가기
+              </Button>
+              {/* 나가기는 서버 경로가 없다. 마지막 회장을 어떻게 할지도 정해지지 않았다(#213) */}
+              <span className="text-[11.5px] text-mute">나가기는 준비 중이에요</span>
+            </div>
+          )}
         </Card>
 
         <Card className="flex flex-col pt-[4px]">

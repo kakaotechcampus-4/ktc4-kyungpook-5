@@ -1,4 +1,4 @@
-"""소속 권한을 검증한 자료 업로드·목록·조회·색인 재시도."""
+"""소속 권한을 검증한 자료 업로드·목록·조회·색인 재시도·삭제."""
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
@@ -112,3 +112,15 @@ async def download_record_file(
     return Response(content, media_type="application/octet-stream", headers={
         "Content-Disposition": f"attachment; filename*=UTF-8''{quote(record.file_name, safe='')}"
     })
+
+
+@router.delete("/{record_id}", status_code=204)
+async def delete_record(
+    record_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    record = await record_service.get_record(session, record_id=record_id)
+    await ensure_member(session, club_id=record.club_id, account=account)
+    await record_service.delete_record(session, record_id=record_id)
+    return Response(status_code=204)

@@ -1,6 +1,12 @@
 // 지출 직접 입력. CSV·영수증 가져오기와 달리 한 건씩 손으로 적는 경로다.
+// 등록과 수정이 같은 밭을 쓰므로 한 폼으로 둔다 — expense 를 주면 수정이다.
 import { useState } from 'react'
-import { expenseFormErrorMessage, useCreateExpense } from '@/features/accounting/hooks'
+import {
+  expenseFormErrorMessage,
+  useCreateExpense,
+  useUpdateExpense,
+} from '@/features/accounting/hooks'
+import type { Expense } from '@/features/accounting/types'
 import { Field } from '@/shared/ui/AuthShell'
 import { Button } from '@/shared/ui/Button'
 import { Input, Textarea } from '@/shared/ui/Input'
@@ -15,41 +21,60 @@ function today(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date())
 }
 
+// 저장된 시각(UTC)을 한국 날짜로 되돌린다. 넣을 때와 같은 기준이라야 날짜가 안 밀린다.
+function toDateInput(iso: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(iso))
+}
+
 interface ExpenseFormProps {
   clubId: string
+  // 주면 그 지출을 고치고, 없으면 새로 만든다.
+  expense?: Expense
   onDone: () => void
 }
 
-export function ExpenseForm({ clubId, onDone }: ExpenseFormProps) {
+export function ExpenseForm({ clubId, expense, onDone }: ExpenseFormProps) {
   const create = useCreateExpense(clubId)
-  const [spentAt, setSpentAt] = useState(today)
-  const [amount, setAmount] = useState('')
-  const [merchant, setMerchant] = useState('')
-  const [category, setCategory] = useState('')
-  const [description, setDescription] = useState('')
+  const update = useUpdateExpense(clubId)
+  const [spentAt, setSpentAt] = useState(() =>
+    expense ? toDateInput(expense.spentAt) : today(),
+  )
+  const [amount, setAmount] = useState(expense ? String(expense.amount) : '')
+  const [merchant, setMerchant] = useState(expense?.merchant ?? '')
+  const [category, setCategory] = useState(expense?.category ?? '')
+  const [description, setDescription] = useState(expense?.description ?? '')
   const [error, setError] = useState('')
 
+  const pending = create.isPending || update.isPending
   const won = Number(amount)
   const amountValid = Number.isInteger(won) && won > 0
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (create.isPending) return
+    if (pending) return
     if (!spentAt || !amountValid) {
       setError('지출일과 1원 이상의 금액을 확인해 주세요.')
       return
     }
     setError('')
+    const values = {
+      spentAt: toSpentAt(spentAt),
+      amount: won,
+      merchant: merchant.trim() || null,
+      category: category.trim() || null,
+      description: description.trim() || null,
+    }
     try {
-      await create.mutateAsync({
-        spentAt: toSpentAt(spentAt),
-        amount: won,
+      if (expense) {
+        // 본 뒤에 바뀌었으면 서버가 거절한다. 전부 다시 보내도 덮어쓰기는 막힌다.
+        await update.mutateAsync({
+          expense,
+          body: { ...values, expectedVersion: expense.version },
+        })
+      } else {
         // 서버 기본값과 같지만 생성 스키마가 필수로 둔다. 통화 선택은 아직 없다.
-        currency: 'KRW',
-        merchant: merchant.trim() || null,
-        category: category.trim() || null,
-        description: description.trim() || null,
-      })
+        await create.mutateAsync({ ...values, currency: 'KRW' })
+      }
       onDone()
     } catch (cause) {
       setError(expenseFormErrorMessage(cause))
@@ -118,10 +143,10 @@ export function ExpenseForm({ clubId, onDone }: ExpenseFormProps) {
         />
       </Field>
       <div className="flex gap-[8px]">
-        <Button type="submit" disabled={create.isPending || !amountValid}>
-          {create.isPending ? '등록하는 중…' : '등록'}
+        <Button type="submit" disabled={pending || !amountValid}>
+          {pending ? '저장하는 중…' : expense ? '저장' : '등록'}
         </Button>
-        <Button type="button" variant="ghost" disabled={create.isPending} onClick={onDone}>
+        <Button type="button" variant="ghost" disabled={pending} onClick={onDone}>
           취소
         </Button>
       </div>

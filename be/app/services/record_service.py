@@ -4,6 +4,7 @@
 파싱 성공(COMPLETED), 검색 준비 성공(INDEXED), 색인 실패(index_error)를 구분한다.
 """
 
+import logging
 import math
 from pathlib import Path
 
@@ -15,11 +16,13 @@ from app import ai
 
 from app.core.enums import RecordCategory, RecordFileType, RecordParseStatus
 from app.core.exceptions import ApiError, ValidationFailed
-from app.infra.storage import save_file
+from app.infra.storage import delete_file, save_file
 from app.models.records import Record
 from app.models.record_chunks import RecordChunk
 from app.models.events import Event
 from app.services.record_parser import RecordParseError, parse_record
+
+logger = logging.getLogger(__name__)
 
 _FILE_TYPES = {
     ".csv": RecordFileType.CSV,
@@ -102,12 +105,19 @@ async def index_record(session: AsyncSession, *, record_id: str) -> Record:
         if any(not all(math.isfinite(value) for value in chunk.embedding) or not any(chunk.embedding) for chunk in result.chunks):
             raise ai.AIInvalidResponseError("임베딩은 유한한 비영 벡터여야 합니다")
     except ai.AIError as error:
-        record = await session.get(Record, record_id, populate_existing=True)
+        # 삭제와 엇갈리지 않게 성공 경로와 같이 행을 잠그고 읽는다.
+        record = await session.scalar(select(Record).where(Record.id == record_id).with_for_update().execution_options(populate_existing=True))
+        if record is None:
+            # 모델을 기다리는 사이 자료가 삭제됐다 (#213).
+            raise RecordNotFound()
         if record.parse_status != RecordParseStatus.INDEXED:
             record.index_error = {"code": type(error).__name__, "message": "검색 준비에 실패했습니다. 설정을 확인하거나 다시 시도해 주세요."}
             await session.commit()
         return record
     record = await session.scalar(select(Record).where(Record.id == record_id).with_for_update().execution_options(populate_existing=True))
+    if record is None:
+        # 모델을 기다리는 사이 자료가 삭제됐다. 지워진 자료의 청크를 다시 만들지 않는다 (#213).
+        raise RecordNotFound()
     if record.parse_status != RecordParseStatus.INDEXED:
         await session.execute(delete(RecordChunk).where(RecordChunk.record_id == record_id))
         session.add_all([
@@ -121,6 +131,29 @@ async def index_record(session: AsyncSession, *, record_id: str) -> Record:
     await session.commit()
     await session.refresh(record)
     return record
+
+
+async def delete_record(session: AsyncSession, *, record_id: str) -> None:
+    """자료를 지운다. 지운 순간부터 AI 검색에도 잡히지 않는다 (#213).
+
+    검색 청크는 FK(CASCADE)로, 지출·영수증 가져오기의 원본 연결은 FK(SET NULL)로 DB가
+    함께 정리한다. 색인과 같은 행을 잠가, 색인이 끝나며 청크를 다시 넣는 것과 엇갈리지
+    않게 한다. 원본 파일은 커밋 뒤에 지운다 — 파일을 먼저 지웠는데 커밋이 실패하면 남은
+    자료가 원본을 잃는다.
+    """
+    record = await session.scalar(
+        select(Record).where(Record.id == record_id).with_for_update()
+    )
+    if record is None:
+        raise RecordNotFound()
+    storage_key = record.storage_key
+    await session.delete(record)
+    await session.commit()
+    try:
+        await run_in_threadpool(delete_file, storage_key)
+    except Exception as error:
+        # 자료는 이미 지워졌다. 남은 파일은 화면·검색에 나오지 않으므로 실패를 응답에 싣지 않는다.
+        logger.warning("Record file delete failed (%s)", type(error).__name__)
 
 
 async def get_record(session: AsyncSession, *, record_id: str) -> Record:

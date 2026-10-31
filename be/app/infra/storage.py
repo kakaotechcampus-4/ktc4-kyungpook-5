@@ -28,6 +28,14 @@ def save_file(club_id: str, file_name: str, content: bytes) -> str:
     return relative
 
 
+def _local_path(storage_key: str) -> Path:
+    root = Path(get_settings().storage_dir).resolve()
+    target = (root / storage_key).resolve()
+    if not target.is_relative_to(root):
+        raise ValueError("Invalid storage key")
+    return target
+
+
 def read_file(storage_key: str) -> bytes:
     """키에 기록된 저장소에서 원본을 읽는다. 오류는 호출자에게 전파한다."""
     settings = get_settings()
@@ -40,8 +48,19 @@ def read_file(storage_key: str) -> bytes:
             Bucket=settings.s3_bucket, Key=storage_key[3:]
         )
         return result["Body"].read()
-    root = Path(settings.storage_dir).resolve()
-    target = (root / storage_key).resolve()
-    if not target.is_relative_to(root):
-        raise ValueError("Invalid storage key")
-    return target.read_bytes()
+    return _local_path(storage_key).read_bytes()
+
+
+def delete_file(storage_key: str) -> None:
+    """키에 기록된 저장소에서 원본을 지운다. 이미 없으면 그대로 둔다."""
+    settings = get_settings()
+    if storage_key.startswith("s3:"):
+        if not settings.s3_bucket.strip():
+            raise RuntimeError("S3_BUCKET is required to delete S3 files")
+        import boto3
+
+        boto3.client("s3", region_name=settings.s3_region).delete_object(
+            Bucket=settings.s3_bucket, Key=storage_key[3:]
+        )
+        return
+    _local_path(storage_key).unlink(missing_ok=True)

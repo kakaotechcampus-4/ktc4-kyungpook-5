@@ -8,11 +8,6 @@ export type Club = Schemas['ClubOut']
 export type CreateClubInput = Schemas['ClubCreateIn']
 export type JoinResult = Schemas['InvitationAcceptOut']
 
-// 선택 버튼을 그릴 순서. 서버 enum을 그대로 쓰고 문구만 labels에서 가져온다.
-export const CLUB_CATEGORIES: ClubCategory[] = [
-  'ACADEMIC',
-  'SPORTS',
-  'VOLUNTEER',
-  'HOBBY',
-  'ETC',
-]
+// 선택 버튼 차례와 문구는 shared/lib/labels.ts 가 들고 있다 — 생성과 수정이
+// 서로 다른 feature라 둘 다 볼 수 있는 자리에 둔다.
+export { CLUB_CATEGORIES } from '@/shared/lib/labels'
