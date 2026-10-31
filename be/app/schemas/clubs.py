@@ -1,13 +1,28 @@
 """동아리·멤버십 도메인 요청·응답 스키마."""
 
-from pydantic import EmailStr
+from typing import Annotated, Literal
 
-from app.core.enums import ClubCategory, MemberRole
-from app.schemas.common import CamelModel
+from pydantic import EmailStr, StringConstraints
+
+from app.core.enums import ClubCategory
+from app.schemas.common import CamelModel, ServiceMemberRole, UtcDateTime
 
 
 class ClubCreateIn(CamelModel):
     name: str
+    category: ClubCategory | None = None
+    description: str | None = None
+
+
+class ClubUpdateIn(CamelModel):
+    """동아리 정보 수정 (#213). 보낸 필드만 바꾸고, null을 보내면 그 값을 비운다.
+
+    이름은 비울 수 없다. 길이 제한은 clubs.name 컬럼(100자)과 같다.
+    """
+
+    name: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+    ] = None
     category: ClubCategory | None = None
     description: str | None = None
 
@@ -24,7 +39,7 @@ class MyClubOut(CamelModel):
 
     id: str
     name: str
-    role: MemberRole
+    role: ServiceMemberRole
 
 
 class MeOut(CamelModel):
@@ -36,7 +51,7 @@ class MeOut(CamelModel):
 
 class InvitationCreateIn(CamelModel):
     email: EmailStr
-    role: MemberRole
+    role: ServiceMemberRole
 
 
 class InvitationCreateOut(CamelModel):
@@ -49,4 +64,40 @@ class InvitationAcceptIn(CamelModel):
 
 class InvitationAcceptOut(CamelModel):
     club_id: str
-    role: MemberRole
+    role: ServiceMemberRole
+
+
+# --- 동아리원 목록 (#188) --------------------------------------------------
+
+
+class MemberOut(CamelModel):
+    id: str
+    name: str
+    # 임원 직책(회장·홍보부장 등)은 ERD에서 축소하기로 해 role 2단계만 쓴다.
+    group: Literal["임원", "동아리원"]
+    subtitle: str
+    contact: str | None
+    account: Literal["JOINED", "INVITED", "NONE"]
+    # 계정 있음이면 최근 로그인 시각, 초대함이면 초대 보낸 시각. 문구는 FE가 꾸민다.
+    account_at: UtcDateTime | None
+
+
+class MemberListResponse(CamelModel):
+    data: list[MemberOut]
+    meta: None = None
+
+
+# --- 동아리 검색 (#189) -----------------------------------------------------
+
+
+class ClubSearchOut(CamelModel):
+    id: str
+    name: str
+    field: str
+    owner_name: str
+    executive_count: int
+
+
+class ClubSearchListResponse(CamelModel):
+    data: list[ClubSearchOut]
+    meta: None = None

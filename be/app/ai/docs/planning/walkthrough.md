@@ -74,7 +74,7 @@ tentative
 | `PlanningDraft(...)` | 인원·참가비의 tentative 근거와 dates 보류를 함께 묶음 |
 | `ConditionUpdateResult(...)` | 실제 새 초안을 반환. 입력 before는 여전히 32명 |
 
-이후 agent Node는 이 결과를 보고 “날짜는 나중에 정하고, 약 50명·25,000원을 기준으로 생각해둘게요”처럼 답할 수 있다. 이 답변 생성은 아직 구현하지 않았다. 처리기가 자연어 응답이나 다음 질문을 만들어 붙이지 않는다.
+이후 agent Node는 이 결과를 보고 “날짜는 나중에 정하고, 약 50명·25,000원을 기준으로 생각해둘게요”처럼 답할 수 있다. 이 답변 생성은 아래 2단계의 agent Node가 담당한다. 처리기가 자연어 응답이나 다음 질문을 만들어 붙이지 않는다.
 
 같은 함수에 종료일보다 늦은 시작일을 요청하면 `rejected`와 날짜 설명, 원래 초안을 반환한다. 잘못된 요청을 자동 수정하지 않으므로 다음 단계 LLM이 실제 결과를 보고 설명할 수 있다. 같은 요청을 새 초안에 다시 적용하면 `unchanged`이고, 같은 50명이라도 tentative에서 specified로 바꾸면 `applied`다.
 
@@ -260,7 +260,7 @@ agent: search_past_events(query="2025 봄 MT 참가비") 선택
 
 왜 권유 상태를 하나 더 둘까? '응'이 수락한 대상과 그때의 조건을 알기 위해서다. 50명일 때 권했다가 지금 40명으로 바뀌었으면, 옛 제안을 그대로 실행하지 않는다. 반면 '40명으로 바꾸고 바로 만들어줘'라면 조건 변경 성공 후 최신 40명으로 만들 수 있다.
 
-'아직 만들지 말자'에는 보류를 기록하고 같은 조건으로 반복 권하지 않는다. 생성 권유는 빈칸 개수로 강제하지 않으며, 유형만 정해졌더라도 사용자가 기본 준비 순서를 직접 요청하면 일반 초안을 만들 수 있다. 유형도 없으면 어떤 행사인지 먼저 확인한다.
+'아직 만들지 말자'에는 보류를 기록하고 같은 조건으로 반복 권하지 않는다. 유형과 일정·인원·장소의 답변 여부를 공통 readiness에서 확인한다. 각 주제는 실제 값 또는 명시 보류로 답할 수 있고, 모두 확인된 후 사용자가 생성 요청을 할 수 있다.
 
 예정된 두 데이터의 차이도 기억하면 좋다. **`PlanningDraft`는 MT·50명 같은 행사 조건**, **`EventPlanPreview`는 장소 알아보기·모집 공지 같은 준비 단계**다. 생성하면서 조건을 임의로 채우지 않고, 단계에 필요한 미정 항목을 따로 알려준다. 생성 실패 시 기존 조건과 이전 성공 초안은 유지한다.
 
@@ -268,7 +268,7 @@ agent: search_past_events(query="2025 봄 MT 참가비") 선택
 
 ## 5-2①: 채팅과 버튼은 다른 요청, 생성에는 같은 입력
 
-현재 [generation/schemas.py](../../features/planning/generation/schemas.py)에 생성 입력·결과와 권유 상태를 구현했다. 아직 화면 버튼에 연결한 코드는 아니다.
+현재 [generation/schemas.py](../../features/planning/generation/schemas.py)에 생성 입력·결과와 권유 상태를 구현했다. 버튼 연결은 아래 5-3 절, 공개 호출은 문서 앞부분의 P1 계약을 따른다.
 
 ```python
 # 버튼: 클릭 ID만 필요. 가짜 사용자 메시지를 만들지 않는다.
@@ -303,6 +303,40 @@ ButtonPlanGenerationRequest(request_id="click-1", draft=MT·50명·날짜 미정
 입력의 행사 날짜가 null인데 출력에 날짜가 있으면 `failed`다. null을 유지하면 생성 성공이며 `open_questions`에 행사 날짜가 남는다. 이 목록은 지금 모두 답하라는 채팅 질문이 아니다. `basis_draft`는 입력과 같고 인원 잠정 여부도 유지한다.
 
 `generate_with_context()`는 성공한 preview만 상태에 채택한다. 같은 클릭 ID·같은 기준으로 성공 요청을 다시 보내면 모델 호출 없이 같은 preview를 반환한다. 같은 ID에 다른 조건을 넣으면 재확인을 요구한다. 아직 마지막 성공 한 건만 보관하므로 임의의 오래된 요청 전체를 중복 제거하는 서버 저장소는 아니다. 별도 버튼 HTTP/FE 연결은 아래 5-3 절을 따른다.
+
+### 제외한 단계의 이름은 누가 붙이나? (#198)
+
+예를 들어 생성 모델이 사전 수요 조사를 제외했다고 하자. 이 선택이 적절한지와 별개로, 화면에서 `DEMAND_SURVEY`라는 코드만 보여 주면 운영진이 이해하기 어렵다. 모델이 고정 이름을 다시 작성할 필요도 없다.
+
+```text
+① LLM의 구조화 출력: PlanComposition.excluded_steps
+   {"code": "DEMAND_SURVEY", "reason": "이미 참여 의사를 확인한 행사여서 제외했어요."}
+
+② validate_plan(): 포함/제외 목록과 기존 계획 규칙 검사
+   → BY_CODE[item.code].name 조회
+   → ExcludedPreviewStep(code=..., name="사전 수요 조사", reason=...)
+
+③ 최종 EventPlanPreview.excluded_steps
+   {"code": "DEMAND_SURVEY", "name": "사전 수요 조사", "reason": "이미 참여 의사를 확인한 행사여서 제외했어요."}
+
+④ BE가 제품 응답에 매핑 → FE가 name과 reason을 표시
+   사전 수요 조사
+   이미 참여 의사를 확인한 행사여서 제외했어요.
+```
+
+핵심 코드는 [validate_plan()](../../features/planning/generation/graph.py)의 아래 부분이다. LLM이 고른 코드와 이유를 그대로 두고 이름만 붙인다. 채팅 생성과 버튼 생성 모두 같은 Node를 지나므로 결과 형식도 같다. 생성 모델 호출은 기존 1회다.
+
+```python
+excluded_steps = tuple(ExcludedPreviewStep(
+    code=item.code, name=BY_CODE[item.code].name, reason=item.reason,
+) for item in composition.excluded_steps)
+```
+
+이름의 원본은 공통 [planning_catalog.py](../../planning_catalog.py)의 `PLANNING_STEP_NAMES`다. 포함 단계와 제외 단계 모두 이 목록을 읽는다. 공개 [contracts.py](../../contracts.py)는 내부 Graph에 의존하지 않고 같은 이름 목록을 사용한다. 모델용 `ExcludedPlanStep(code, reason)`과 최종 화면용 `ExcludedPreviewStep(code, name, reason)`을 나눠, LLM 출력 스키마와 프롬프트는 유지했다.
+
+**예전에 저장한 JSON에는 name이 없는데 괜찮을까?** 공개 타입의 `restore_missing_name()`이 누락된 이름만 고정 목록으로 보완한다. `parse_resume_state()`로 복원하거나 공개 요청의 `resume_state`에 dict를 넣는 두 방식 모두 적용된다. 버전 1을 유지하며 기존 초안 ID, 조건, 제외 이유와 대화 이력을 보존한다. 이름이 명시돼 있는데 틀렸거나 코드가 유효하지 않으면 오류를 반환한다. 모델을 다시 부르거나 상태를 초기화하지 않는다.
+
+이 기능은 최초 생성 결과를 읽기 쉽게 만드는 보완이다. P1에 단계 편집 Tool을 추가한 것이 아니며, P2의 사용자 삭제/복원과 AI 영향 검토는 별도 범위다. 테스트 UI의 표시와 사진은 [검증 기록](evaluation.md#제외-단계-이름과-저장-호환-198-2026-10-28)에 있다. 실제 제품 BE/FE 연결은 #187에서 확인한다.
 
 ### 생성 호출이 긴 JSON을 끝까지 받는 방법 (#176)
 
@@ -382,7 +416,7 @@ model_calls = 대화 Agent 호출 수 / generation_model_calls = 생성 내부 �
 
 - 채팅: `run_planning_agent_turn(request, generate=run_plan_generation)`. 생성 기능을 주입하지 않으면 새 두 Tool은 모델에 공개하지 않는다.
 - 버튼: `run_button_plan_generation(ButtonPlanGenerationRequest(...))`. 대화 Agent의 의도 해석과 가짜 HumanMessage를 거치지 않는다.
-- 둘 다 내부 함수다. 5-3 로컬 HTTP·테스트 FE 버튼은 아래처럼 연결했고, `app.ai` 공개 facade·실서비스 API는 미연결이다. 요청 상태를 서비스에서 저장·검증하는 책임은 BE와 합의해야 한다.
+- 위 두 함수는 내부 진입점이다. 현재 공개 facade는 `chat_planning`과 `generate_planning_preview`로 이 경로를 연결한다. 아래 테스트 API와 제품 HTTP는 별개이며, 제품의 저장과 권한, HTTP/FE 연결은 #187에서 진행한다.
 
 `be/`에서 API 없이 확인할 수 있다.
 
@@ -414,9 +448,9 @@ generate() — '다음: 흐름 만들기' 클릭
 
 이 경로에서 버튼 요청은 current_message가 없다. 로컬 API는 `validate_planning_history()`로 채팅과 같은 이력 검사를 하고, `plan_messages()`와 `latest_reference_facts()`로 실제 문맥·최근 근거만 준비한다. 클릭을 사용자 말풍선으로 만들지 않는다.
 
-[AgentPlanPreview.tsx](../../tests/ui/planning/src/features/planning/components/AgentPlanPreview.tsx)가 검증된 preview를 테스트 앱 안의 StepFlow에 전달한다. [generation-playground.ts](../../tests/ui/planning/src/features/planning/generation-playground.ts)의 `toPreviewSteps()`는 서버 이름·묶음·담당·목적·예정 행동을 표시 타입으로 바꾼다. 미정 날짜는 '미정'이다. 수정 콜백을 전달하지 않아 수정 버튼도 보이지 않는다. 제외 단계의 FE/BE 코드 차이는 명시적인 변환표로 이름을 찾는다.
+[AgentPlanPreview.tsx](../../tests/ui/planning/src/features/planning/components/AgentPlanPreview.tsx)가 검증된 preview를 테스트 앱 안의 StepFlow에 전달한다. [generation-playground.ts](../../tests/ui/planning/src/features/planning/generation-playground.ts)의 `toPreviewSteps()`는 서버 이름·묶음·담당·목적·예정 행동을 표시 타입으로 바꾼다. 미정 날짜는 '미정'이다. 수정 콜백을 전달하지 않아 수정 버튼도 보이지 않는다. 제외 단계도 서버 응답의 name과 reason을 그대로 표시한다. 이름 조회를 위한 FE/BE 코드 변환표는 제거했다(#198).
 
-버튼 활성화는 행사 유형이 있고 미해결 변경이 없는지 확인한다. 권유 상태가 deferred여도 사용자가 직접 누르면 요청할 수 있다. 전송 중에는 입력·초기화·다음 버튼을 잠그고, 버튼 요청에는 별도 생성 중 화면을 표시한다. 단계별 진행률을 알 수 없는 상태에서 가짜 퍼센트는 표시하지 않는다.
+버튼 활성화는 행사 유형과 일정·인원·장소의 답변 여부 및 미해결 변경을 확인한다. 권유 상태가 deferred여도 사용자가 직접 누르면 요청할 수 있다. 전송 중에는 입력·초기화·다음 버튼을 잠그고, 버튼 요청에는 별도 생성 중 화면을 표시한다. 단계별 진행률을 알 수 없는 상태에서 가짜 퍼센트는 표시하지 않는다.
 
 네트워크 실패는 이전 세션·preview를 유지하고 요청 전체의 스냅샷을 보관한다. '같은 요청 재시도'는 같은 ID·조건·이력을 보내고, 재시도 중 다른 요청은 잠근다. 정상 응답 안의 생성 실패는 채팅의 유효한 조건 변경을 유지한 채 설명하며 새 요청으로 다시 생성할 수 있다. 대화로 돌아가 조건을 바꾸면 `previewIsCurrent()`가 이전 초안의 기준 차이를 표시한다.
 
@@ -453,3 +487,319 @@ AI 테스트 앱: be/app/ai/tests/ui/planning/ (포트 5174)
 ```
 
 화면·타입·스타일·package/lockfile은 모두 AI 테스트 폴더에 있다. 초기 FE 화면 조각을 참고한 복사본을 보관하지만 제품 `fe/`를 import하거나 빌드에 사용하지 않는다. 제품 FE의 라우트·공용 컴포넌트·타입·프록시에 추가했던 테스트 변경은 제거했다. 실제 UI 구현은 FE팀의 역할이며 이 테스트 앱을 제품 코드로 자동 반영하지 않는다. [독립 실행 안내](../../tests/ui/planning/README.md)를 따른다.
+
+## 생성 보류가 날짜 질문 보류로 번지지 않게 하기 (#205)
+
+사용자가 “예상 참가 인원을 60명으로 바꿔줘. 계획 초안은 만들지 마.”라고 말하면 현재 지침은 다음 두 행동을 구분한다.
+
+```text
+agent: 현재 상태와 이번 발화 해석
+  → update_event_conditions(changes=[인원 60명], defer_topics=[], resume_topics=[])
+  → update_generation_offer(action=defer, 근거="계획 초안은 만들지 마.")
+  → 인원 변경과 생성 보류 설명
+결과: 인원만 60명, 날짜 질문 보류는 추가하지 않음
+```
+
+날짜가 미정이라는 사실은 날짜 질문을 보류하라는 사용자 의사와 다르다. “날짜와 장소는 나중에 정할게. 초안도 만들지 마.”라면 주제 보류와 생성 권유 보류를 각각 처리한다. 지침 버전은 planning-agent-v6다. `prompts/chat.md`의 구분을 명시했으며 Tool 스키마, 조건 변경 처리기와 Node 연결은 바꾸지 않았다. 원문 존재 검사가 의미 연결까지 보장하지 않는 기존 한계도 유지한다.
+
+검증 도구 [check_planning_deferrals.py](../../scripts/check_planning_deferrals.py)는 같은 공개 함수와 상태에서 기존/수정 시스템 지침만 교체해 한 요청씩 번갈아 실행한다. 인원, 나머지 조건, 보류 목록과 생성 보류를 확인하고 tentative/specified 차이는 점수 대신 진단으로 남긴다. 날짜 보류와 재개를 실제로 요청한 사례도 함께 검사해 모든 주제 변경을 막는 방식이 통과하지 못하도록 했다. 기존 #196 점수는 별도로 유지한다. 실제 모델의 개선 여부는 [평가 기록](evaluation.md)에 확인한 결과만 남긴다.
+
+실제 비교에서 핵심 입력의 불필요한 날짜 보류는 기존 지침 17/30건, 수정 지침 0/30건이었다. 날짜를 직접 보류하거나 “그건 나중에”로 날짜 질문을 가리킨 사례도 각각 3/3건 처리했다. 다만 “날짜는 다시 얘기하자”를 나중에 논의하자는 뜻으로 해석한 실패 1건을 남겼고, 이후 명확한 재개 표현은 별도 3/3건 통과했다. [102요청 원본과 해석](evaluation-results/planning-deferrals-2026-10-29/README.md)을 함께 본다.
+
+이번 수정은 요청 해석 지침의 경계를 보완한 것이다. Tool의 원문 존재 검사만으로 모든 의미 오류를 막는다고 설명하지 않는다. 이미 저장된 dates 보류를 사용자 의사 확인 없이 삭제하지도 않는다. 실제 날짜 보류였을 수 있으므로 보류 재개 요청과 구분해야 한다.
+
+## 응답 시간은 어떻게 비교할까? (#196)
+
+같은 MT 조건에서 사용자가 “응, 만들어줘.”라고 답하는 경우와 버튼을 누르는 경우를 생각해 보자.
+
+```text
+같은 JSON 상태를 매번 새로 복원
+  채팅 → chat_planning()
+           → Agent의 해석 → 생성 Tool → 생성 Graph → Agent의 설명 → 반환
+  버튼 → generate_planning_preview()
+           → 생성 Graph → 반환
+
+각 공개 함수의 호출 직전부터 반환/예외 직후까지 측정
+  → 사례별 결과와 실패를 기록
+  → 성공률과 성공 요청의 p50/p95 확인
+```
+
+채팅 전체가 더 오래 걸려도 생성 모델 자체가 느려졌다는 뜻은 아니다. 내부 `compose_plan()`과 `validate_plan()` 시간, 대화 모델 호출을 따로 봐야 이유를 알 수 있다. 생성 Graph는 전체 시간 안에 포함되므로 두 시간을 다시 더하지 않는다.
+
+일반 상담과 인원 변경도 별도 사례로 둔다. 한 번 잰 숫자 대신 같은 입력으로 반복하고, 실패를 빼고 성공률을 계산하지 않는다. 상세 사례, 반복 횟수와 통계 규칙은 [응답 시간 기준 측정](latency-baseline.md)에 있다. 고정 입력, 반복 실행기, 전체/세부 구간 관측과 기록의 p50/p95 집계를 구현하고 실제 모델 3세션의 본측정 120건을 수집했다. 아래의 고정 시계 설명과 끝부분의 실제 요청 예시를 구분한다.
+
+### 예시: 인원을 60명으로 바꾸는 요청을 반복한다
+
+```text
+고정 planning_latency.json
+  조건: MT / 50명 / 25,000원 / 날짜 미정
+  이력: 권유 Tool 호출과 결과, 마지막 “초안을 만들까요?” 답변
+  상태: pending offer 있음, 생성한 초안 없음
+
+① make_request(C2): 같은 JSON을 새로 복원
+   이번 발화: “예상 참가 인원을 60명으로 바꿔줘. 계획 초안은 만들지 마.”
+② run_session(): started 이벤트 기록
+③ measure_attempt(): 시계 시작 → chat_planning() 호출 → 반환 즉시 시계 종료
+④ inspect_result(): headcount가 60인지, 나머지 조건은 유지됐는지 검사
+⑤ finished 이벤트: 시간 + 검사 결과 + 실제 반환 결과 기록
+
+다음 C2 반복 → ①의 50명부터 다시 시작
+60명으로 바뀐 next_state를 다음 반복에 전달하지 않는다.
+```
+
+[planning_latency_inputs.py](../../scripts/planning_latency_inputs.py)의 `make_request()`는 매번 고정 JSON에서 state를 복원한다. request_id와 이번 message_id만 고유하게 만들고 날짜·장소 명시 보류, 조건, 이력과 권유는 유지한다. 과거 실측과 입력이 달라 직접 비교하지 않는다. G2라면 message가 없는 `PlanningPreviewRequest`를 만든다. 기존 성공 초안을 재사용하지 않으므로 같은 생성 경로를 다시 실행할 수 있다.
+
+```python
+state = parse_resume_state(fixture.resume_state.model_dump_json())
+# C1/C2/G1: 이 state로 PlanningChatRequest를 만든다.
+# G2: 같은 state로 PlanningPreviewRequest를 만든다.
+```
+
+[measure_planning_latency.py](../../scripts/measure_planning_latency.py)의 `measure_attempt()`는 다음 경계를 지킨다. `await call(request)`에서 실제 공개 함수와 기존 Graph가 실행된다. 타이머가 멈춘 다음 결과를 직렬화하고 검사하므로 파일 저장과 검사 시간은 요청 시간에 섞이지 않는다.
+
+```python
+started = clock()
+result = await call(request)
+elapsed = (clock() - started) / 1_000_000
+# 여기부터 결과 계약 검사 → inspect_result() → 파일 기록
+```
+
+실제 코드는 예외와 취소에서도 시간을 남긴다. [planning_latency_checks.py](../../scripts/planning_latency_checks.py)의 `inspect_result()`는 답변 문구가 아닌 조건과 상태를 검사한다. “60명으로 반영했어요.”라고 답했지만 headcount가 50이면 실패다. 초안 생성을 요청했는데 정상 답변만 하고 생성하지 않은 경우도 실패다. 실패한 요청을 성공할 때까지 다시 실행하지 않고 다음 사례로 진행한다.
+
+실행 결과는 새 폴더의 `fixture.json`, `session.json`, `attempts.jsonl`이다. JSONL에는 같은 attempt_id의 started/finished가 각각 한 줄씩 생긴다. 앞 기록만 남았다면 중간에 끝난 요청이므로 완료로 간주하지 않는다. 모델 없는 입력 확인 명령과 실제 모델을 사용하는 명령은 [실행 방법](latency-baseline.md#모델-없이-입력과-순서-확인)을 구분해 참고한다.
+
+### 예시: 기록한 숫자가 올바른 요약으로 나오는지 확인한다
+
+아래는 계산 검증용 숫자다. 실제 모델의 응답 시간이 아니다.
+
+```text
+한 사례의 본 측정 6회
+  성공: 2초, 3초, 4초, 5초, 6초
+  실패: 90초 뒤 timeout
+준비 실행 1회: 별도 보관
+
+load_session(): 시작과 종료 연결, 해시와 순서 확인
+  → 본 측정과 준비 실행 분리
+  → 성공 5개와 실패 1개 분리
+  → summarize_group()
+      성공률 = 5 / 6
+      성공 p50 = 4초, p95 = 5.8초
+      실패 시간 = 90초
+```
+
+[summarize_planning_latency.py](../../scripts/summarize_planning_latency.py)의 `load_session()`은 고정 입력과 실제 요청이 같은지, 시작/종료가 짝을 이루는지 확인한다. 중복 기록이 있으면 같은 요청을 두 번 세게 되므로 계산하지 않고 거절한다. 시작만 남았다면 pending으로 보관하고 부분 요약을 만든다. API 설정과 모델은 사용하지 않는다.
+
+[planning_latency_summary.py](../../scripts/planning_latency_summary.py)의 핵심은 시간 표본과 성공률의 분모를 구분하는 것이다.
+
+```python
+successful = [item for item in finished if item['outcome'] == 'success']
+success_rate = len(successful) / len(started) if started else None
+success_ms = distribution(item['ai_request_ms'] for item in successful)
+```
+
+실패는 성공 시간의 분위수에 섞지 않지만 성공률의 분모에는 남는다. 종료가 없는 요청도 시작 수에는 포함하고, 지연 표본에는 0ms를 넣지 않는다. 시작 자체가 없으면 성공률은 null이다.
+
+`distribution()`은 정렬한 성공 표본의 95% 위치를 구하고 양옆 값을 선형 보간한다. 위 예시에서는 5초와 6초 사이를 계산해 5.8초가 나온다. NumPy의 기본 linear/R7과 같은 계산이며 새로운 의존성은 추가하지 않았다. 표본이 하나라면 그 한 값, 없으면 null로 표시하며 작은 표본을 서비스 보장으로 해석하지 않는다.
+
+`aggregate_sessions()`는 같은 입력, 모델 설정과 코드인 세션만 합친다. 각 세션의 p95를 평균 내지 않고 원본 성공 시간을 한곳에 모아 `distribution()`을 다시 호출한다. 세션별 요약도 따로 남긴다.
+
+결과는 별도 JSON과 콘솔 표다. `groups.measurement.C1.success_ms.p95_ms`처럼 본 측정의 사례와 지표를 찾아볼 수 있고, 준비 실행은 `groups.warmup`에서 확인한다. 기록이 완전해도 실패 요청은 있을 수 있으므로 complete와 성공률을 따로 본다. [집계 명령과 필드 안내](latency-baseline.md#모델-없이-저장-결과-집계), [고정 데이터 검증 결과](evaluation.md#고정-응답으로-기록과-집계-검증-2026-10-28)를 참고한다.
+
+### 세부 구간은 어느 함수의 앞뒤에서 재는가
+
+사용자가 생성 권유에 “응, 만들어줘.”라고 답한 요청을 보자. 아래 시간은 흐름을 검증하기 위해 가상 시계에 직접 넣은 값이다. 실제 모델 속도가 아니다.
+
+```text
+PlanningChatRequest(같은 MT 조건과 pending offer, message="응, 만들어줘.")
+  → measure_attempt(): 요청 시계 시작
+    → chat_planning()
+      → call_agent_model(): 생성 Tool 선택 응답                    0~10ms
+      → generate_event_plan Tool
+        → run_plan_generation(): 생성 Graph 전체                10~42ms
+          → compose_plan(): 입력 구성과 초안 작성               10~40ms
+            → invoke(..., PlanComposition): 생성 모델 호출       10~40ms
+          → validate_plan(): 코드로 계획 검증                   40~42ms
+      → call_agent_model(): 결과 설명 응답                       42~47ms
+    ← 공개 결과와 next_state 반환
+  → 요청 시계 종료: 47ms
+  → 결과 검사와 파일 저장: 시간 집계에서 제외
+```
+
+첫 모델 응답은 생성 Tool을 고르고, 그 Tool이 초안 생성 Graph를 실행한다. 모델이 구조화 초안 `PlanComposition`을 쓰면 코드가 카탈로그/날짜/행동/근거를 검사해 `EventPlanPreview`로 바꾼다. 마지막 대화 모델은 이 결과를 읽어 사용자에게 설명한다. 관측기는 이 기능들을 호출하는 순서를 바꾸지 않는다.
+
+측정 도구 안의 [install_observers()](../../scripts/planning_latency_observation.py)는 기존 함수에 잠시 래퍼를 붙인다. `public_workflow.run_plan_generation`, `agent.graph.call_agent_model`, `generation.graph.compose_plan/validate_plan`을 감싼다. 실행이 끝나면 `ExitStack`이 원래 함수로 복원한다. 함수 정의 때 이미 기본 인자로 묶인 생성 모델도 놓치지 않도록, compose에 실제 전달된 invoke를 다시 감싼다.
+
+```python
+# wrap_async(): 기존 함수를 실제로 호출하는 앞뒤가 하나의 구간이다.
+with trace.span(stage, **details) as item:
+    result = await function(*args, **kwargs)
+```
+
+`RequestTrace.span()`은 진입 때 `perf_counter_ns()`를 읽고, 반환/예외/취소 모두 finally에서 종료 시계를 읽는다. 모델의 성공 응답을 받은 뒤가 아니라 진입 기록을 만들 때 논리 호출 시도가 생긴다. 따라서 첫 대화 모델이 timeout으로 끝나도 시도는 1회다. SDK 안에서 HTTP를 여러 번 재시도했는지는 별도로 관측하지 않으므로 추정하지 않는다.
+
+각 요청은 `capture_request()`의 ContextVar를 가진다. 위 요청의 기록은 다음과 같이 묶인다.
+
+| ID | 구간 | 부모 ID | 관측 시간 |
+| --- | --- | --- | --- |
+| 1 | agent_model | 없음 | 10ms |
+| 2 | generation | 없음 | 32ms |
+| 3 | compose_plan | 2 | 30ms |
+| 4 | generation_model | 3 | 30ms |
+| 5 | validate_plan | 2 | 2ms |
+| 6 | agent_model | 없음 | 5ms |
+
+**generation 32ms 안에 compose 30ms와 validate 2ms가 들어 있다. compose 30ms 안에는 generation_model 30ms가 포함된다.** 그러므로 전체를 `10 + 32 + 30 + 30 + 2 + 5`로 더하면 안 된다. 이 가상 시계에서는 기타 작업 시간을 0으로 두어 전체가 `10 + 32 + 5 = 47ms`다. 실제로는 상태 변환, 프롬프트 준비, Graph 스케줄링과 관측 오버헤드가 있어 전체 시간이 더 클 수 있다. 남는 시간을 순수 모델 시간이라고 부르지 않는다.
+
+동일 조건에서 버튼으로 요청하면 대화 Agent를 거치지 않는다. `generate_planning_preview()` → 공통 생성 Graph만 실행하므로 위 시계에서는 32ms이며 논리 모델 시도는 대화 0회, 생성 1회다. 채팅은 대화 2회, 생성 1회다.
+
+### 저장된 구간과 집계는 어떻게 읽는가
+
+요청이 끝나면 `measure_attempt()`가 시계를 멈추고 observation 스냅샷을 만든다. 다음은 위 생성 모델 구간의 일부다.
+
+```json
+{
+  "id": 4,
+  "parent_id": 3,
+  "stage": "generation_model",
+  "start_ms": 10,
+  "end_ms": 40,
+  "duration_ms": 30,
+  "outcome": "ok"
+}
+```
+
+새 `report_version=2`의 finished 이벤트에는 `observation.spans`와 `model_call_attempts`가 들어간다. 메시지 본문이나 공급자 예외 원문은 구간에 복사하지 않는다. 모델 메시지 text 길이와 개수는 숫자로 남기지만 Tool 스키마를 포함한 전체 입력 토큰 수는 아니다.
+
+집계기는 시간이 부모/요청 범위 안에 있는지, 자식과 부모의 유형이 맞는지, 호출 수가 실제 구간 수와 일치하는지 확인한다. 그런 뒤 `groups.measurement.G1.observation`에 구간별 요약을 붙인다.
+
+- `model_call_attempts`: 위 요청에서는 agent_model=2, generation_model=1이다.
+- `by_stage.agent_model.per_call_ms`: 호출 시간 10ms와 5ms, 표본 2개다.
+- `by_stage.agent_model.per_completed_request_total_ms`: 한 요청의 대화 모델 합계 15ms, 표본 1개다.
+- `by_stage.generation.per_call_ms`: 전체 생성 함수의 32ms다. 자식 시간을 다시 합하지 않는다.
+
+버튼의 대화 모델은 calls=0이다. 단일 호출 표본이 없으므로 per_call_ms의 p95는 null이고, 그 요청의 대화 모델 총합은 0ms다. 반면 옛 version=1은 관측 자체가 없으므로 observation이 null이다. 서로 다른 형식은 합쳐 측정한 것처럼 집계하지 않는다.
+
+### 실패하거나 다시 시도하면 어떻게 남는가
+
+생성 모델이 timeout을 내면 그 구간의 오류 타입과 timeout 분류를 먼저 남긴다. 생성 Graph가 이를 안전한 `PlanGenerationResult(status="failed")`로 바꿔 정상 반환해도, 기록기는 이미 관측한 원인을 연결해 `failure.stage=generation_model`로 기록한다. 계획 코드 검증이 실패했다면 stage=validate_plan, category=invalid_plan이다. 공개 실패 문구를 분석해 추측하지 않는다.
+
+Agent가 그 실패 뒤 생성 Tool을 다시 선택해 성공하면 최종 요청은 성공일 수 있다. 그래도 첫 실패 구간과 두 번째 성공 구간 모두 남는다. 검증 사례에서는 생성 함수 30ms 실패와 32ms 성공을 보존해 요청당 생성 합계 62ms, 생성 모델 논리 시도 2회를 확인했다. 이는 원래 Agent의 선택을 관측한 것으로 새 재시도 정책을 넣은 것이 아니다.
+
+취소한 모델 호출은 관측한 대기를 interrupted_wait_ms로 남기고 완료 시간과 분리한다. 동기 검증 함수가 스레드에서 계속 실행 중이라면 end_ms와 duration_ms는 null, outcome은 running으로 남긴다. 뒤늦게 끝나도 이미 종료한 요청의 스냅샷에 시간을 섞지 않는다. 구간 집계는 pending_calls로 표시하고 해당 시간을 분위수에서 제외한다. [측정 범위와 형식 안내](latency-baseline.md#세부-구간-관측의-구현-범위), [검증 결과](evaluation.md#세부-구간과-논리-모델-호출-관측-검증-2026-10-28)를 함께 참고한다.
+
+### 실제 모델에서는 어떤 시간이 기록됐는가
+
+2026-10-28에 `be76b60`의 기존 모델/프롬프트/재시도 설정으로 준비 실행 12건과 본측정 120건을 실행했다. 앞부분의 47ms 예시는 검산용 가상 시간이고, 여기부터는 `gpt-5.6-luna` 실제 응답 시간이다. [모든 결과와 재집계 방법](evaluation-results/planning-latency-real-2026-10-28/README.md)을 보존했다.
+
+먼저 사용자 입장에서 다음 입력을 보자.
+
+```text
+현재 상태: MT, 50명, 참가비 25,000원, 날짜와 장소 미정
+직전 Agent: 이 조건으로 준비 순서 초안을 만들까요?
+사용자: “응, 만들어줘.”
+```
+
+성공 요청의 p50에 가까운 실제 요청 `real-20261028-01-measurement-0004-G1`을 따라가면 다음과 같다. 한 요청의 실제 값이며 전체 요청의 평균은 아니다.
+
+```text
+make_request(G1)
+  → 같은 fixture 복원, 이번 message와 고유 request_id 준비 (측정 전)
+measure_attempt()
+  → 타이머 시작
+    → chat_planning(request)
+      → call_agent_model()                       1.929초
+        “응”을 pending offer 수락으로 해석, generate_event_plan 선택
+      → generate_event_plan Tool
+        → run_plan_generation()                 12.078초
+          → compose_plan()                      12.075초
+            → 생성 모델, PlanComposition 반환   12.074초
+          → validate_plan()                      0.239ms
+            카탈로그/날짜/행동/근거 검사 → EventPlanPreview
+      → call_agent_model()                       2.973초
+        검증된 초안을 보고 설명 답변 작성
+    ← PlanningPublicResult(view, next_state)
+  → 타이머 종료: 전체 16.988초
+  → inspect_result() → JSONL finished 기록 (측정 후)
+```
+
+여기서 생성 12.078초 안에 작성/생성 모델/검증 시간이 들어 있다. 전체는 대략 `대화 1.929 + 생성 12.078 + 대화 2.973 + 기타 처리`다. 검증 0.239ms는 초 단위가 아니다. 부모와 자식을 모두 합하거나 모델 시간을 공급자 순수 추론 시간으로 읽지 않는다.
+
+코드가 반환한 핵심 결과는 다음과 같다.
+
+```text
+view.generation_result.status = generated
+view.generation_result.preview.steps = 13개
+next_state.payload.generation.preview = 같은 검증된 preview
+view.draft.conditions.headcount = 50 (입력 조건 유지)
+단계 날짜와 행동 기한 = null (행사 날짜 미정 유지)
+```
+
+답변은 “현재 조건으로 MT 준비 순서 초안을 만들었어요”로 시작하고 날짜/장소 미정을 설명했다. UI의 단계 데이터는 답변 문자열을 파싱하지 않고 구조화 preview를 사용한다. 이 답변은 정산과 환급을 한 항목으로 요약해 12개 항목으로 표현했지만 실제 구조화 단계는 13개였다. 자동 통과를 모든 설명 문구에 대한 품질 보장으로 읽으면 안 된다.
+
+버튼은 같은 생성 Graph로 바로 진입한다. 실제 요청 `real-20261028-02-measurement-0002-G2`에서는 다음과 같이 기록됐다.
+
+```text
+generate_planning_preview(request)
+  → run_plan_generation() 11.827초
+    → 생성 모델 11.822초, validate_plan 0.249ms (부모 시간에 포함)
+  ← 전체 11.828초, 12단계 preview, reply=None
+대화 모델 0회, 생성 모델 1회, 대화 이력 유지
+```
+
+두 요청 모두 공통 생성 Graph를 사용하지만 같은 결과를 재사용한 것은 아니다. 실제 생성 결과도 13단계와 12단계로 달랐다. 두 사례의 성공 p50은 각각 17.066초와 11.828초였다. 생성 입력과 출력도 다르므로 그 차이를 전부 대화 모델 비용이라고 단정하지 않는다.
+
+### 응답이 왔다는 것과 원하는 결과가 나왔다는 것
+
+검사 코드는 [inspect_result()](../../scripts/planning_latency_checks.py)다. 모델을 추가로 호출하지 않고 반환된 조건과 상태를 비교한다.
+
+```python
+# C2: 입력 조건 사전을 복사한 뒤 headcount만 60으로 기대한다.
+expected = request.draft.conditions.model_dump()
+expected['headcount'] = 60
+conditions_match = view.draft.conditions.model_dump() == expected
+# 실제 검사는 지정 상태(specified), 다른 metadata와 deferred_topics 유지도 따로 확인한다.
+```
+
+C2는 30건 모두 headcount를 60으로 바꿨다. 그런데 19건에서 사용자가 요청하지 않은 `deferred_topics=[dates]`가 생겼고, 4건에서 인원을 지정값 대신 잠정값(tentative)으로 적었다. 1건이 중복돼 엄격한 검사를 모두 통과한 요청은 8건이었다. “예상 참가 인원”이라는 표현에 잠정 해석 여지가 있으므로 먼저 기대 상태를 확인한다. 이 불일치를 “인원 값을 못 바꿨다”라고 요약하면 실제 문제가 가려진다.
+
+G1/G2의 최종 실패 5건은 모델 응답은 왔지만 `validate_plan()`이 거절한 경우다. 현재 공개 실패 결과는 실패 사유를 묶어 반환하고 관측기도 `invalid_plan`까지만 기록한다. 어떤 세부 규칙이었는지는 이 원본만으로 확정할 수 없다.
+
+실제 G1 요청 `real-20261028-02-measurement-0003-G1`은 다음 경로였다.
+
+```text
+Agent → 생성(12.080초) → 코드 검증 실패
+      → Agent → 생성 재시도(12.175초) → 코드 검증 다시 실패
+      → Agent 설명 → generation_result.status=failed
+전체 31.244초, 대화 모델 3회, 생성 모델 2회
+```
+
+따라서 관측기를 통해 “시간은 생성 모델 대기에 주로 쓰였고, 거절된 초안을 다시 생성해 더 기다린 요청이 있다”까지 확인했다. 코드 검증 실행은 생성 시도 61회의 평균 약 0.216ms여서 그 연산 자체를 먼저 최적화할 근거는 없다. 다음은 C2 기대 상태와 부가 변경 확인, 계획 검증의 안전한 세부 원인 관측이다. 그 뒤 같은 프로필로 변경 전후를 비교한다. 실제 제품 HTTP/DB/FE 대기 시간과 SDK 내부 HTTP/토큰은 이번 측정 범위 밖이다.
+
+## 대화가 길어졌을 때 안내하는 흐름 (#194)
+
+예를 들어 저장 이력 44개에서 “인원은 50명으로 잡자”를 처리한다고 하자.
+
+```text
+44개 + 사용자 발화 1개
+     + AI의 조건 Tool 요청 1개
+     + Tool 결과 1개
+     + AI 최종 답변 1개
+  → capture_turn_state(): 48개 이력을 JSON 상태로 구성
+  → build_result(): 저장할 이력 수를 계산
+  → view.history_usage = {message_count: 48, max_messages: 60, near_limit: true}
+  → BE 저장/전달 → FE 안내 표시 [제품 연결 필요]
+```
+
+핵심은 LLM이 사용량을 추측하지 않는 것이다.
+
+```python
+# public_workflow.build_result() 안에서 두 요청 경로가 같은 기준을 사용한다.
+history_usage = PlanningHistoryUsage.from_count(len(state.payload.history))
+# 반환할 view에 붙이고, next_state 자체는 그대로 보존한다.
+```
+
+`PlanningHistoryUsage`는 루트 `contracts.py`에 있다. `from_count()`가 사용량과 한도 임박을 계산하고 계약 검증이 범위와 일관성을 확인한다. 안내는 48개부터이며 다음 대화를 몇 번 할 수 있다는 뜻은 아니다. 61개 이상이면 기존 상태 캡처가 오류를 내므로 중간값을 정상 결과로 반환하지 않는다.
+
+이후 버튼으로 생성해도 새 채팅 이력이 없으므로 48개를 유지한다. JSON 저장 후 복원한 상태를 다시 사용해도 같은 개수다. 과거 화면 응답에 필드가 없으면 null이며 0개로 꾸미지 않는다. Agent 상태 형식 버전은 바꾸지 않는다.
+
+독립 UI의 테스트 API도 같은 `from_count()`를 사용하고 화면은 `near_limit`만 읽어 안내를 표시한다. 프롬프트와 Tool은 바꾸지 않는다. 제품 HTTP 매핑은 [공개 계약 14절](p1-public-contract.md#14-대화-이력-안내-194)의 AI 구현안이며 BE/FE 합의와 실제 연결은 남아 있다.

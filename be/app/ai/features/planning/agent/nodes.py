@@ -18,7 +18,7 @@ from ..generation.schemas import PlanGenerationResult, PlanGenerator, PlanningGe
 from .generation_tools import GenerateEventPlanInput, condition_generation_state, generate_event_plan
 
 
-PROMPT_VERSION = "planning-agent-v5"
+PROMPT_VERSION = "planning-agent-v6"
 MAX_TOOL_CALLS = 3
 PROMPT = (Path(__file__).parent / "prompts/chat.md").read_text()
 TOOL_NAME = "update_event_conditions"

@@ -3,7 +3,8 @@
 // DB 컬럼이 아니라 서버가 계산해 내려준다.
 export type StepState = 'DONE' | 'CURRENT' | 'TODO'
 
-export type EventStatus = 'PLANNING' | 'ON_GOING' | 'COMPLETE'
+// 취소 두 값은 취소 정리(L2-d)를 거치는 동안과 끝난 뒤를 나눈다.
+export type EventStatus = 'PLANNING' | 'ON_GOING' | 'COMPLETE' | 'CANCELLING' | 'CANCELLED'
 
 // GET /events 목록 한 줄
 export interface EventSummary {
@@ -16,7 +17,6 @@ export interface EventSummary {
   currentStepName: string | null
   stepProgress: Array<{ stepOrder: number; state: StepState }>
   pendingApprovalCount: number
-  // TODO: 아래 둘은 GET /events 응답에 아직 없다(DB에는 있음). BE에 요청하거나 카드에서 뺀다.
   location: string | null
   headcount: number | null
 }
@@ -32,8 +32,6 @@ export interface EventDetail {
   location: string | null
   headcount: number | null
   currentStep: { id: string; stepOrder: number; name: string } | null
-  // TODO: 명세에 없다. BE에 요청하거나 뺀다.
-  manager: string | null
 }
 
 export type StepActor = 'AI' | 'APPROVAL_REQUIRED' | 'MANUAL'

@@ -1,4 +1,4 @@
-"""할 일 후보 엔드포인트. 실행(execute/send/transfer) 경로는 두지 않는다."""
+"""할 일 후보 조회·수락과 명시적 사용자 확인 후 저장·예약."""
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,8 @@ from app.schemas.tasks import (
     TaskSuggestionOut,
     TaskSuggestionPatchIn,
 )
-from app.services import task_service
+from app.schemas.reminders import ConfirmedTaskOut, TaskSuggestionConfirmIn
+from app.services import reminder_service, task_service
 
 router = APIRouter(prefix="/api/v1/clubs/{club_id}/task-suggestions", tags=["tasks"])
 
@@ -23,11 +24,12 @@ async def list_task_suggestions(
     club_id: str,
     source_type: ContextSourceType | None = Query(None, alias="sourceType"),
     status: TaskSuggestionStatus | None = Query(None),
+    meeting_id: str | None = Query(None, alias="meetingId"),
     _member: Member = Depends(require_member),
     session: AsyncSession = Depends(get_session),
 ) -> Envelope[list[TaskSuggestionOut]]:
     suggestions = await task_service.list_suggestions(
-        session, club_id=club_id, source_type=source_type, status=status
+        session, club_id=club_id, source_type=source_type, status=status, meeting_id=meeting_id
     )
     return Envelope(data=[TaskSuggestionOut.model_validate(item) for item in suggestions])
 
@@ -75,3 +77,18 @@ async def accept_task_suggestion(
         accepted_by=member.id,
     )
     return Envelope(data=TaskSuggestionOut.model_validate(suggestion))
+
+
+@router.post("/{suggestion_id}/confirm", response_model=Envelope[ConfirmedTaskOut])
+async def confirm_task_suggestion(
+    club_id: str,
+    suggestion_id: str,
+    body: TaskSuggestionConfirmIn,
+    member: Member = Depends(require_club_role(*WRITER_ROLES)),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[ConfirmedTaskOut]:
+    item = await reminder_service.confirm_suggestion(
+        session, club_id=club_id, suggestion_id=suggestion_id,
+        confirmed_by=member.id, body=body,
+    )
+    return Envelope(data=ConfirmedTaskOut.model_validate(item))

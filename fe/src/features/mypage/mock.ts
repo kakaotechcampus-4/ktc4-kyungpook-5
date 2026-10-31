@@ -4,14 +4,14 @@ import type { ClubInfo, ClubRecord, JoinRequest, Member, Profile } from '@/featu
 
 export const DEMO_PROFILE: Profile = {
   name: '박수겸',
-  role: '총무',
+  role: '임원',
   email: 'sgpark@university.ac.kr',
 }
 
 export const DEMO_CLUB: ClubInfo = {
   name: '큰나무 동아리',
   memberCount: 32,
-  myRole: '총무',
+  myRole: '임원',
   joinedAt: '2026. 3. 2.',
 }
 
@@ -19,7 +19,7 @@ export const DEMO_CLUB: ClubInfo = {
 export const EMPTY_CLUB: ClubInfo = {
   name: '동아리 이름',
   memberCount: 1,
-  myRole: '대표',
+  myRole: '회장',
   joinedAt: '오늘',
 }
 
@@ -29,7 +29,7 @@ export const DEMO_MEMBERS: Member[] = [
     id: 'mem_01',
     name: '박수겸',
     group: '임원',
-    subtitle: '대표 · 나',
+    subtitle: '총무 · 나',
     contact: 'sgpark@university.ac.kr',
     account: 'JOINED',
     accountNote: '오늘 09:12',
@@ -75,13 +75,12 @@ export const DEMO_MEMBERS: Member[] = [
     group: '동아리원',
     subtitle: '22학번',
     contact: 'seoa@university.ac.kr',
-    account: 'JOINED',
-    accountNote: '3월 5일',
+    account: 'NONE',
   },
 ]
 
 export const DEMO_JOIN_REQUESTS: JoinRequest[] = [
-  { id: 'req_01', name: '한도윤', role: '부회장', requestedAt: '3/11 09:12' },
+  { id: 'req_01', name: '한도윤', role: '임원', requestedAt: '3/11 09:12' },
 ]
 
 // 명단 전체 수. 목록은 앞 몇 명만 보여주고 나머지는 「더 보기」로 둔다.
@@ -93,7 +92,7 @@ export const DEMO_RECORDS: ClubRecord[] = [
     id: 'rec_01',
     fileName: '동아리 회칙 (2024 개정).pdf',
     fileType: 'PDF',
-    category: 'PLAN',
+    category: 'RULES',
     size: '180KB',
     uploadedAt: '3월 1일 올림',
     parseStatus: 'INDEXED',
@@ -102,7 +101,7 @@ export const DEMO_RECORDS: ClubRecord[] = [
     id: 'rec_02',
     fileName: '회비 및 환불 규정.pdf',
     fileType: 'PDF',
-    category: 'PLAN',
+    category: 'RULES',
     size: '96KB',
     uploadedAt: '3월 1일 올림',
     parseStatus: 'INDEXED',
@@ -111,7 +110,7 @@ export const DEMO_RECORDS: ClubRecord[] = [
     id: 'rec_03',
     fileName: '임원 선출 규정.pdf',
     fileType: 'PDF',
-    category: 'PLAN',
+    category: 'RULES',
     size: '74KB',
     uploadedAt: '2월 28일 올림',
     parseStatus: 'INDEXED',
@@ -120,7 +119,7 @@ export const DEMO_RECORDS: ClubRecord[] = [
     id: 'rec_04',
     fileName: '2025 봄 MT 결과보고.pdf',
     fileType: 'PDF',
-    category: 'NOTICE',
+    category: 'EVENT_HISTORY',
     size: '412KB',
     uploadedAt: '2월 28일 올림',
     parseStatus: 'INDEXED',
@@ -129,7 +128,7 @@ export const DEMO_RECORDS: ClubRecord[] = [
     id: 'rec_05',
     fileName: '2025 신환회 정리.pdf',
     fileType: 'PDF',
-    category: 'NOTICE',
+    category: 'EVENT_HISTORY',
     size: '268KB',
     uploadedAt: '2월 28일 올림',
     parseStatus: 'INDEXED',
@@ -138,7 +137,7 @@ export const DEMO_RECORDS: ClubRecord[] = [
     id: 'rec_06',
     fileName: '2025 여름 해커톤 회고.pdf',
     fileType: 'PDF',
-    category: 'NOTICE',
+    category: 'EVENT_HISTORY',
     size: '310KB',
     uploadedAt: '2월 28일 올림',
     parseStatus: 'PARSING',

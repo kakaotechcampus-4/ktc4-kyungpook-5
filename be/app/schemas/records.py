@@ -1,9 +1,9 @@
 """동아리 기록 요청·응답 스키마 (FE API 명세 v1 §4)."""
 
-from typing import Any
+from typing import Any, Literal
 
 from app.core.enums import RecordCategory, RecordFileType, RecordParseStatus
-from app.schemas.common import CamelModel, UtcDateTime
+from app.schemas.common import CamelModel, PageMeta, UtcDateTime
 
 
 class RecordOut(CamelModel):
@@ -13,6 +13,7 @@ class RecordOut(CamelModel):
     category: RecordCategory
     size: int
     parse_status: RecordParseStatus
+    index_error: dict[str, Any] | None = None
     created_at: UtcDateTime
 
 
@@ -20,3 +21,35 @@ class RecordDetailOut(RecordOut):
     parse_result: dict[str, Any] | None
     # {reason, params, debugMessage}. 화면 문구는 FE가 reason으로 고른다.
     parse_error: dict[str, Any] | None
+
+
+class RecordListResponse(CamelModel):
+    data: list[RecordOut]
+    meta: PageMeta
+
+class RecordSearchLocation(CamelModel):
+    label: str
+
+
+class RecordSearchExcerpt(CamelModel):
+    text: str
+    location: RecordSearchLocation | None = None
+
+
+class RecordSearchItem(RecordOut):
+    match_types: list[Literal['FILENAME', 'CONTENT', 'SEMANTIC']]
+    excerpts: list[RecordSearchExcerpt]
+    semantic_score: float | None = None
+
+
+class RecordSearchData(CamelModel):
+    items: list[RecordSearchItem]
+    semantic_status: Literal['AVAILABLE', 'UNAVAILABLE', 'NO_INDEXED_RECORDS']
+    indexed_count: int
+    unindexed_count: int
+    semantic_candidate_limit: int
+
+
+class RecordSearchResponse(CamelModel):
+    data: RecordSearchData
+    meta: PageMeta

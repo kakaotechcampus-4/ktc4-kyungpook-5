@@ -34,10 +34,15 @@ export function ReviewModal({ action, onClose, onApprove, onDeny }: ReviewModalP
   const [denying, setDenying] = useState(false)
   const [reason, setReason] = useState('')
 
-  const close = () => {
+  // 승인·거절·닫기 어느 쪽으로 끝나든 비운다. 모달은 화면에 남아 있어 다음 Action으로 넘어가기 때문이다.
+  const reset = () => {
     setEditing(false)
     setDenying(false)
     setReason('')
+  }
+
+  const close = () => {
+    reset()
     onClose()
   }
 
@@ -63,7 +68,10 @@ export function ReviewModal({ action, onClose, onApprove, onDeny }: ReviewModalP
             <Button
               variant="danger"
               disabled={!reason.trim()}
-              onClick={() => onDeny(action, reason.trim())}
+              onClick={() => {
+                reset()
+                onDeny(action, reason.trim())
+              }}
             >
               진행하지 않기
             </Button>
@@ -76,7 +84,12 @@ export function ReviewModal({ action, onClose, onApprove, onDeny }: ReviewModalP
             <Button variant="secondary" onClick={close}>
               나중에 결정
             </Button>
-            <Button onClick={() => onApprove(action, action.content ? content : null)}>
+            <Button
+              onClick={() => {
+                reset()
+                onApprove(action, action.content ? content : null)
+              }}
+            >
               이 내용 승인하기
             </Button>
           </>

@@ -26,9 +26,14 @@ class InvitationStatus(CodeEnum):
 
 
 class MemberRole(CodeEnum):
+    """서비스는 회장·대표와 임원만 사용한다. MEMBER는 기존 명단 호환용이다."""
+
     OWNER = "OWNER"
     MANAGER = "MANAGER"
     MEMBER = "MEMBER"
+
+
+SERVICE_ROLES = (MemberRole.OWNER, MemberRole.MANAGER)
 
 
 class MemberStatus(CodeEnum):
@@ -220,12 +225,14 @@ class JudgeRoute(CodeEnum):
     RAG = "RAG"
     LLM = "LLM"
     NONE = "NONE"
+    ERROR = "ERROR"
 
 
 class JudgeKind(CodeEnum):
     NO_LOOKUP = "NO_LOOKUP"
     ANSWER = "ANSWER"
     NOT_FOUND = "NOT_FOUND"
+    FAILED = "FAILED"
 
 
 # --- discord ------------------------------------------------------------
@@ -263,6 +270,8 @@ class ContextDecisionStatus(CodeEnum):
 
     SUCCEEDED = "SUCCEEDED"
     STALE = "STALE"
+    PARTIAL = "PARTIAL"
+    FAILED = "FAILED"
 
 
 class TaskSuggestionStatus(CodeEnum):

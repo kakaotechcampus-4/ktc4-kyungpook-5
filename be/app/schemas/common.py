@@ -5,10 +5,15 @@
 """
 
 from datetime import UTC, datetime
-from typing import Annotated, Generic, TypeVar
+from typing import Annotated, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, PlainSerializer
 from pydantic.alias_generators import to_camel
+from app.core.enums import MemberRole
+
+
+# 일반 동아리원은 서비스 사용자가 아니다. 공개 응답·입력에는 두 역할만 쓴다.
+ServiceMemberRole = Literal[MemberRole.OWNER, MemberRole.MANAGER]
 
 
 def _iso_utc(value: datetime) -> str:

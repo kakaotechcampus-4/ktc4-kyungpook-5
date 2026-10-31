@@ -82,7 +82,7 @@ export function MyInfoTab({ profile, club, linkedAccounts }: MyInfoTabProps) {
           <Facts
             items={[
               ['이름', club.name],
-              ['회원', `${club.memberCount}명`],
+              ['명단 인원', `${club.memberCount}명`],
               ['내 권한', club.myRole],
               ['가입일', club.joinedAt],
             ]}

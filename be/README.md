@@ -1,9 +1,17 @@
 # 운영해 · BE
 
-인증·동아리·영수 내역·회의·기록 업로드·Discord·할 일 후보·mini 활동 API는 실제 DB로 동작합니다
-(#131, #133, #135, 팀장 요청 curl 흐름). OCR·STT·Jev 판단·기록 검색·Discord 수집은 **결정론적 더미**이고
-실제 AI·외부 연동은 후속 이슈입니다. 행사(`/events`) API는 아직 DB 없이 고정 응답만 내리는 mock입니다 (이슈 #30).
+인증·동아리·영수 내역·회의·기록·할 일 후보·확정 항목·예약·Push 구독은 실제 DB로 동작합니다.
+자료는 실제 `index_record`와 pgvector 저장소, 음성은 WS PCM→BE VAD→Whisper 어댑터로 연결합니다.
+회의 판단은 최신 AI의 `judge_utterance(request, records=...)`와 결합해야 합니다.
+독립 후보 추출 계약과 실제 공급자 설정이 없으면 해당 기능의 실패를 명시합니다.
+실행·API·상태·검증 범위는 [회의 베타 연결](docs/meeting-beta.md)과 [WS 계약](docs/meeting-audio.md)을 보세요.
+기존 test-support/HTTP STT·Discord 처리의 개발 fixture와 OCR 더미는 실연동이 아닙니다.
+행사(`/events`) 조회·계획 확정·행동 처리와 P1·P2 계획 API도 실제 DB로 동작합니다 (#41, #187). 단계 수정·재배열은 아직 없습니다.
 모델 확정 내역과 그 근거는 [BE 스키마 검토안](../docs/week6/be/운영해_BE_스키마_검토안.md)에 있습니다.
+
+서비스 사용자는 동아리 **회장·대표(`OWNER`)와 임원(`MANAGER`)**입니다.
+별도 `ADMIN` 역할은 없으며, 일반 동아리원은 서비스 이용 대상이 아닙니다.
+기존 `MEMBER` 명단 행은 보존하지만 소속 API·WS 접근/초대/알림 대상에서 제외합니다.
 
 ## 기술 스택
 
@@ -17,7 +25,7 @@
 | 파일 저장 | AWS S3 (`infra/s3.py`) | 영수증·기록 원본 업로드 |
 | 기록 파일 파싱 | pypdf · openpyxl | PDF·XLSX를 `parse_result`로 변환 (`services/record_parser.py`). CSV는 표준 `csv` |
 | 패키지 관리 | uv | AI와 동일하게 `pyproject.toml` 기반 |
-| 인증 | 미정 | JWT vs 세션 등 방식 확정 전, `core/security.py`에서 구현 |
+| 인증 | DB 세션·opaque Bearer | 기존 로그인/소속/역할 검증 유지 |
 | 배포 환경 | AWS EC2 + Docker Compose | RDS 병행 여부 미정 |
 | 테스트 | pytest | `tests/unit`은 `event_rules.py` 순수 함수, `tests/integration`은 라우터 엔드투엔드 |
 | 린트 · 포맷 | 미정 | 첫 구현에서 도구와 실행 명령 결정 |
@@ -27,7 +35,7 @@
 - FE 명세 반영이 필요한 5건 — [검토안 §4](../docs/week6/be/운영해_BE_스키마_검토안.md)
 - 회의·확인이 필요한 항목 — [검토안 §5](../docs/week6/be/운영해_BE_스키마_검토안.md)
 - `transactions`(개별 입금 내역) 테이블 — 금액 안건 확정 후 추가. `participants`(행사별 참가 신청)는 #107로 추가됨
-- `app.ai`의 `facade.py`/`ports.py` 함수명과 입출력 필드 — BE↔AI는 HTTP가 아니라 함수 호출이라 "엔드포인트"는 아니지만 계약 자체는 아직 미확정
+- `app.ai`의 독립 후보 추출 계약과 실제 공급자 설정 — 회의 판단은 공개 `judge_utterance(request, records=...)`를 사용하며 BE↔AI는 HTTP가 아닌 함수 호출
 - S3 버킷 구조와 접근 권한 — 영수증 등 민감 파일이 포함되어 NF6(민감정보 최소 수집)과 연결됨
 
 RAG 임베딩 저장 위치는 PostgreSQL pgvector(`vector(1536)`)로 확정
@@ -35,7 +43,7 @@ RAG 임베딩 저장 위치는 PostgreSQL pgvector(`vector(1536)`)로 확정
 ## 반드시 지켜야 할 규칙
 
 1. 금액·정원·매칭·환불 판정 같은 결정론적 계산은 `services/event_rules.py`의 순수 함수로 구현한다. 라우터와 AI 서비스는 이 결과를 그대로 받아 쓸 뿐, 계산을 직접 하거나 보정하지 않는다 (NF1).
-2. 공지·예약·송금·환불 등 외부에 영향을 주는 액션은 `Approval` 레코드가 승인 상태로 존재할 때만 실행한다. 승인 레코드 없이 실행되는 코드 경로를 두지 않는다 (NF3).
+2. 외부에 영향을 주는 실행은 사용자 확인을 거친다 (NF3). 회의 예약 알림은 OWNER/MANAGER의 명시적 confirm으로 확정 항목/담당/수신자/시각을 저장한 뒤 실행한다. 기존 행사 공지·송금·환불의 승인 계약을 이 확인으로 대체하지 않는다.
 3. Agent 호출 이력과 승인 이력은 빠짐없이 기록하고 수정·삭제하지 않는다. 상태가 바뀌면 새 레코드를 추가해 이전 상태를 덮어쓰지 않는다 (NF4).
 4. 라우터는 `services/`를 거쳐서만 모델과 계산을 조합한다. 다른 도메인의 `event_rules.py`나 `models/`를 직접 끌어와 우회하지 않는다.
 
@@ -87,7 +95,7 @@ be/
 │   │   ├── s3.py
 │   │   └── storage.py         # 업로드 파일 저장 (S3 연동 전까지 로컬 디스크 STORAGE_DIR)
 │   └── ai/                    # AI 모듈. 별도 서버 아님 — BE 프로세스 내부
-│       ├── __init__.py        # BE가 쓰는 단일 공개 진입점 (현재 공개 함수 없음)
+│       ├── __init__.py        # BE가 쓰는 단일 공개 진입점 (회의 판단은 최신 AI 필요)
 │       ├── facade.py          # BE → AI: 공개 기능 구현 위치
 │       ├── ports.py           # AI → BE: BE가 주입하는 조회·계산 인터페이스
 │       ├── contracts.py       # BE↔AI 공개 요청·응답 데이터 계약
@@ -150,7 +158,7 @@ AI는 BE의 모델·DB·서비스를 직접 import하지 않습니다.
 BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE 하나뿐이고, BE ↔ AI는 같은 프로세스 안의 함수 호출입니다.
 
 - **FE → BE (HTTP)**: 행사 생성, 질문·답변, 대안 비교, 승인, 수납 대조, 취소·환불, 정산 조회 등 서비스의 주 REST API(`routers/clubs.py`, `routers/events.py`, `routers/records.py`).
-- **BE → AI (함수 호출)**: BE가 `app/ai/facade.py`의 공개 함수를 호출합니다. 별도 서버·엔드포인트가 없습니다.
+- **BE → AI (함수 호출)**: BE는 `app.ai`에 재공개된 함수·DTO·port만 사용합니다. 별도 AI 서버·내부 HTTP 엔드포인트가 없습니다.
 - **AI → BE (함수 호출)**: AI의 `tools/`가 계산·조회가 필요할 때 `app/ai/ports.py`에 정의된 인터페이스를 호출합니다. BE가 구현체를 주입하며 AI는 BE의 라우터·서비스·모델을 직접 import하지 않습니다.
 
 함수명·입출력 필드 계약은 아직 미확정입니다. 공통 요청·응답 형식은 `app/schemas/`에서 라우터별로 관리하고, 에러 응답 형식(예: `MINIMUM_HEADCOUNT_VIOLATED`, `APPROVAL_REQUIRED`)은 `core/exceptions.py`를 통해 전 엔드포인트에서 동일한 구조를 씁니다.
@@ -222,8 +230,6 @@ PostgreSQL만 따로 띄우려면 `docker compose up -d db`를 실행합니다. 
 - 호스트에 PostgreSQL이 이미 5432 포트를 쓰고 있으면 포트가 겹칩니다.
 - `alembic` 의존성이 추가됐으므로 기존 api 이미지는 `docker compose up --build`로 다시 빌드합니다.
 
-아래 mock API는 DB에 접속하지 않으므로 DB 없이도 실행됩니다.
-
 ## 마이그레이션
 
 ```bash
@@ -265,7 +271,7 @@ uv run pytest
 ```bash
 TEST_DATABASE_URL=... TEST_MODE=true uv run pytest
 ```
-`tests/integration/`은 mock API의 응답 계약(`{data, meta}` 봉투, camelCase 키, enum 문자열,
+`tests/integration/`은 API의 응답 계약(`{data, meta}` 봉투, camelCase 키, enum 문자열,
 에러 봉투)을 고정합니다. 공통 코드(`schemas`의 `CamelModel`, `core/exceptions.py`)를 바꿀 때
 이 테스트가 먼저 깨지도록 두는 것이 목적입니다 (이슈 #33).
 
@@ -303,38 +309,76 @@ TEST_MODE=true uv run python scripts/run_dev.py   # macOS/Linux는 TEST_MODE=tru
 
 curl 주석과 다르게 동작하는 부분입니다.
 
-- `service-flow` 08 `POST /events`는 없습니다. 행사 API는 아직 mock이라 회의·지출의 `eventId`는 비워 둡니다.
-- `meeting` M01 기록 업로드는 파싱까지만 해 `parseStatus=COMPLETED`입니다. AI 색인(청크 저장)이 없어 `INDEXED`가 되지 않으며, 더미 검색은 `COMPLETED` 기록도 찾습니다.
-- `meeting` M09 `finish`는 밀린 처리가 없어 FINALIZING을 거치지 않고 바로 `COMPLETED`입니다.
+- `service-flow` 08 `POST /events`는 P1 행사 생성(#187)으로 생겼지만 curl 흐름에는 아직 반영하지 않아, 회의·지출의 `eventId`는 비워 둡니다.
+- `meeting` M01 기록 업로드는 파싱 뒤 실제 색인을 시도합니다. 성공하면 `INDEXED`, 설정/모델 오류면 `COMPLETED`와 `indexError`를 반환합니다. 새 영구 검색은 `INDEXED`만 조회합니다. 기존 개발용 판단 fixture의 단순 검색은 실서비스 검색과 별개입니다.
+- `meeting` M09 HTTP `finish`는 활성 WS가 없을 때 바로 종료합니다. 활성 WS에서는 409로 안내하므로 WS `end`→`audio.end_ack`(FINALIZING)→`audio.completed`를 기다립니다.
 - `discord` D01 실제 연결은 `status=DISCONNECTED`입니다(curl 주석은 CONNECTED). 실제 bot 수집기가 없어 D02 `sync` 작업은 `FAILED`(`DISCORD_COLLECTOR_UNAVAILABLE`)로 남습니다. D03부터의 FIXTURE 연결은 `MONITORING`입니다.
 - Discord 이벤트 주입은 `MESSAGE_CREATE`만 받습니다(수정·삭제는 오류 테스트 범위).
 - `Idempotency-Key` 헤더는 받기만 하고 아직 적용하지 않습니다(`core/idempotency.py`는 #131에서 만들어 둠).
 - mini `characterState`: 대기·처리 중 작업이 있으면 `WORKING`, 검토 안 한 할 일 후보가 있으면 `ATTENTION`, 아니면 `IDLE`. 실패 작업은 `jobs[]`에만 표시합니다.
 
-## mock API
+## 행사 조회 API (#41)
 
-| 엔드포인트 | 상태 |
-| --- | --- |
-| `GET /api/v1/events/{eventId}/actions` | 구현 완료 |
-| `GET /api/v1/events` | 구현 완료 |
-| `GET /api/v1/events/{eventId}/steps` | 구현 완료 |
+모두 로그인이 필요하고, 그 행사가 속한 동아리의 대표·운영진만 볼 수 있습니다(일반 동아리원·다른 동아리는 403).
+행사 데이터는 P1·P2 계획 생성(`POST /events/{id}/plan/generate`)으로 만들어집니다.
 
-**유효한 `eventId`는 `evt_9f2c8a` 하나뿐입니다.** 다른 값은 404 `EVENT_NOT_FOUND`를 반환합니다.
+| 엔드포인트 | 화면 | 비고 |
+| --- | --- | --- |
+| `GET /api/v1/events?clubId=&status=&page=&size=` | M1·L1 카드 | `clubId` 필수. 시작일이 가까운 순, 날짜 없는 행사는 뒤 |
+| `GET /api/v1/events/{eventId}` | L2 헤더 | `currentStep`을 id까지 내려 Step 모달을 바로 연다 |
+| `GET /api/v1/events/{eventId}/steps` | L2 진행 상황·P2 묶음 | `phase`·`code` 포함. 거절·실패한 행동은 한 일·남은 일 어디에도 없음 |
+| `GET /api/v1/events/{eventId}/actions` | M1 승인 대기·L2 | 아래 쿼리. 처리 안 된 것은 마감 임박 순, 처리된 것은 최근 처리 순 |
 
 ```bash
-# M1 승인 대기 (확인 요청 제외)
-curl "localhost:8000/api/v1/events/evt_9f2c8a/actions?status=PENDING&excludeType=CONFIRMATION"
+H="Authorization: Bearer <accessToken>"
 
-# L2 처리된 승인
-curl "localhost:8000/api/v1/events/evt_9f2c8a/actions?status=APPROVED,DONE,DENIED"
+# M1 승인 대기 (확인 요청 제외)
+curl -H "$H" "localhost:8000/api/v1/events/<eventId>/actions?status=PENDING&excludeType=CONFIRMATION"
+
+# L2 처리된 승인 최근 3건
+curl -H "$H" "localhost:8000/api/v1/events/<eventId>/actions?status=APPROVED,DONE,DENIED&size=3"
 
 # L2 확인 요청
-curl "localhost:8000/api/v1/events/evt_9f2c8a/actions?type=CONFIRMATION"
+curl -H "$H" "localhost:8000/api/v1/events/<eventId>/actions?type=CONFIRMATION"
 ```
 
-mock 단계의 한계입니다.
+계산 규칙은 `services/event_rules.py`에 있습니다.
 
-- 인증이 없어 `canApprove`는 항상 `true`입니다.
-- `amount`는 컬럼이 있는데도 전건 `null`입니다. 이슈 #30의 합의를 따른 것이며, FE가 금액 표시를 검증해야 하면 채웁니다.
-- 확인 요청의 `options` / `allowManual`은 `actions.payload`(JSONB)에 담아 응답에서 펼칩니다. `type=CONFIRMATION`인 건에만 값이 있고 나머지는 `null`입니다.
-- fixture는 `app/services/event_service.py`에 있습니다. DB 연결 시 `list_actions()` 본문만 쿼리로 교체하면 라우터·스키마는 그대로 씁니다.
+- 단계 상태: 처음으로 `completed_at`이 비어 있는 단계가 `CURRENT`, 그 앞은 `DONE`, 뒤는 `TODO`.
+- `dday`: KST 오늘 기준 시작일까지 남은 날 수. `pendingApprovalCount`는 `PENDING`이면서 확인 요청이 아닌 행동 수.
+- `canApprove`: 요청자가 대표·운영진이고 행동이 `PENDING`일 때만 `true`. 승인 API도 같은 함수(`can_resolve`)로 검사한다.
+- `editable`: `PENDING`·`APPROVED`일 때 `true` (#106 — 승인된 내용을 고치면 다시 `PENDING`).
+- 확인 요청의 `options` / `allowManual`은 `actions.payload`(JSONB)에서 펼친다. `type=CONFIRMATION`인 건에만 값이 있다.
+- `payment`·`budget`은 항상 `null`이다 (accounting 기준 재정의 예정, FE 연동 기준서 §5.1). `amount`는 계획 생성이 채우지 않아 지금은 비어 있다.
+
+## 계획 확정·행동 처리·단계 완료 API (#41)
+
+행사 상태에 따라 받는 요청이 나뉜다(#177 — 승인·실행 기록·단계 완료는 운영 시작 후의 일).
+
+| 행사 상태 | 받는 요청 | 그 외 요청 |
+| --- | --- | --- |
+| `PLANNING` | 계획 대화·생성, `POST /api/v1/events/{eventId}/start` | 처리 API는 409 `EVENT_NOT_ON_GOING` |
+| `ON_GOING` | 아래 처리 API | 계획 대화·생성·확정은 409 `EVENT_NOT_PLANNING` |
+
+`/start`(계획 확정·행사 시작, FE 명세 v1의 `:confirm`을 #213 요청대로 이 경로로 연다)는 `PLANNING` → `ON_GOING`이며, 시작일이나 단계가 없으면 409 `PLAN_INCOMPLETE`(`fields`에 빠진 항목)다.
+생성은 수십 초 걸려 그사이 확정될 수 있으므로, 생성 결과를 저장할 때도 `PLANNING`인지 다시 확인해 처리 기록을 덮어쓰지 않는다.
+
+처리 API 요청·응답은 FE 명세 v1 §3을 따르고, 처리 요청에는 조회 응답의 `version`을 `expectedVersion`으로 보낸다
+(`task-suggestions`와 같은 낙관적 잠금). 응답은 조회와 같은 `ActionOut`이다.
+
+| 엔드포인트 | 하는 일 | 요청 |
+| --- | --- | --- |
+| `POST /api/v1/actions/{actionId}/approve` | `PENDING` → `APPROVED` | `{expectedVersion}` |
+| `POST /api/v1/actions/{actionId}/deny` | `PENDING` → `DENIED`, 사유 저장 | `{expectedVersion, reason?}` (500자) |
+| `POST /api/v1/actions/{actionId}/resolve` | 확인 요청 `PENDING` → `DONE`, 고른 답 저장 | `{expectedVersion, choice, manualValue?}` (`choice`는 선택지 key 또는 `MANUAL`) |
+| `POST /api/v1/actions/{actionId}/done` | 운영진이 실행을 마쳤다는 기록. `APPROVED`(승인이 필요 없으면 `PENDING`) → `DONE` | `{expectedVersion}` |
+| `POST /api/v1/steps/{stepId}/complete` | 단계를 직접 완료. 미처리 행동이 남아 있어도 된다 | 없음 |
+
+- 이미 처리된 행동은 409 `ALREADY_RESOLVED`, 아직 대기 중인데 본 뒤에 내용이 바뀌었으면 409 `VERSION_CONFLICT`.
+  둘 다 목록을 다시 불러오면 된다. 행을 잠그고 확인하므로 두 운영진이 동시에 눌러도 한 명만 처리된다.
+- 확인 요청은 `/resolve`로만, 나머지는 `/approve`·`/deny`·`/done`으로만 처리한다(반대는 422).
+  승인이 필요 없는 행동은 `/approve` 대상이 아니다(422).
+- 조회의 `canApprove`는 위 조건(대표·운영진, `PENDING`, 운영 중, 확인 요청이거나 승인이 필요한 행동)과 같다.
+- 단계의 행동이 모두 `DONE`이 되면 그 단계의 `completedAt`을 자동으로 채운다(`completedBy`는 null).
+  `/steps/{id}/complete`는 행동이 없는 수동 단계나 실패한 행동을 오프라인으로 처리한 단계용이며,
+  이미 완료된 단계는 409 `STEP_ALREADY_COMPLETED`다.

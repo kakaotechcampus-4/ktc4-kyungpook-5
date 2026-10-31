@@ -4,13 +4,13 @@
 그쪽 호출 이력은 AgentLog(feature=RETRIEVAL)에만 남는다.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import MessageRole
-from app.db.base import Base, ID_LENGTH, IdMixin, TimestampMixin, enum_column, fk
+from app.db.base import Base, ID_LENGTH, IdMixin, JsonB, TimestampMixin, enum_column, fk
 
 if TYPE_CHECKING:
     from app.models.clubs import Member
@@ -34,6 +34,13 @@ class Conversation(IdMixin, TimestampMixin, Base):
         String(ID_LENGTH), fk("events.id"), nullable=False, index=True
     )
     title: Mapped[str | None] = mapped_column(String(100))
+    # 낙관적 잠금. P1 대화/생성 저장이 성공할 때마다 +1 (#187).
+    base_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # app.ai.PlanningResumeState 전체(JSON). AI가 다음 턴을 이어가는 데 쓰는
+    # 내부 상태라 BE 모델로 분해하지 않고 그대로 보관한다.
+    resume_state: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
+    # 마지막 턴의 생성 가능 여부. 재접속 시 AI를 다시 부르지 않고 그대로 돌려준다.
+    generation_readiness: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
 
     member: Mapped["Member"] = relationship()
     event: Mapped["Event"] = relationship(back_populates="conversations")

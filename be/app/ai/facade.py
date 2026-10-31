@@ -5,7 +5,7 @@
 내부 HTTP 라우터를 만들지 않으며 기능 연결은 workflow에 위임한다.
 """
 
-from .contracts import IndexRecordRequest, IndexRecordResult
+from .contracts import IndexRecordRequest, IndexRecordResult, RecordDiscoveryRequest
 from .features.meeting.lookup import RecordsLookup
 from .features.meeting.nodes import judge_utterance as judge_meeting_utterance
 from .features.meeting.schemas import (
@@ -14,7 +14,7 @@ from .features.meeting.schemas import (
     MeetingProgressPort,
 )
 from .features.retrieval.indexing import index_record_chunks
-from .ports import RecordSearchPort
+from .ports import RecordSearchPort, RetrievedChunk
 from .contracts import PlanningChatRequest, PlanningPreviewRequest, PlanningPublicResult
 
 
@@ -25,6 +25,20 @@ async def index_record(request: IndexRecordRequest) -> IndexRecordResult:
     읽을 블록이 없으면 AIEmptyRecordError, 임베딩 호출이 실패하면 AI 오류 타입을 올린다.
     """
     return await index_record_chunks(request)
+
+
+async def search_related_records(
+    request: RecordDiscoveryRequest, *, records: RecordSearchPort,
+) -> tuple[RetrievedChunk, ...]:
+    """색인된 관련 청크와 실제 출처를 찾는다. 권한과 문서 병합은 BE 책임이다."""
+    from datetime import date
+    from .features.retrieval.nodes import find_chunks
+    from .features.retrieval.schemas import RecordSearchRequest
+
+    # 이 경로는 검색어를 재작성하지 않으므로 날짜는 검색에 쓰이지 않는다.
+    search = RecordSearchRequest(club_id=request.club_id, query=request.query,
+                                 today=date.today(), limit=request.limit)
+    return await find_chunks(search, port=records)
 
 
 async def judge_utterance(
@@ -58,3 +72,9 @@ async def generate_planning_preview(request: "PlanningPreviewRequest") -> "Plann
     """P1 버튼 생성. 메시지를 추가하지 않고 기존 검색 근거와 조건으로 초안을 만든다."""
     from .features.planning.public_workflow import generate_preview
     return await generate_preview(request)
+
+
+async def extract_task_suggestions(request: "TaskExtractionRequest") -> "TaskExtractionResult":
+    """회의 발화에서 확인할 후보를 제안한다. 저장과 예약은 BE가 맡는다."""
+    from .features.meeting.task_extraction import extract_task_suggestions as extract
+    return await extract(request)

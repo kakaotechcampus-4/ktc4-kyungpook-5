@@ -1,0 +1,80 @@
+{
+  "status": "completed",
+  "sessions": [
+    {
+      "session_id": "real-20261028-01",
+      "status": "completed",
+      "started_at": "2026-10-28T14:57:51.053656+09:00",
+      "pid": 97828,
+      "returncode": 1,
+      "finished_at": "2026-10-28T15:05:35.478817+09:00",
+      "counts": {
+        "warmup": {
+          "started": 4,
+          "finished": 4,
+          "success": 4,
+          "failed": 0,
+          "interrupted": 0
+        },
+        "measurement": {
+          "started": 40,
+          "finished": 40,
+          "success": 29,
+          "failed": 11,
+          "interrupted": 0
+        }
+      }
+    },
+    {
+      "session_id": "real-20261028-02",
+      "status": "completed",
+      "started_at": "2026-10-28T15:05:35.479411+09:00",
+      "pid": 7238,
+      "returncode": 1,
+      "finished_at": "2026-10-28T15:13:42.411781+09:00",
+      "counts": {
+        "warmup": {
+          "started": 4,
+          "finished": 4,
+          "success": 3,
+          "failed": 1,
+          "interrupted": 0
+        },
+        "measurement": {
+          "started": 40,
+          "finished": 40,
+          "success": 31,
+          "failed": 9,
+          "interrupted": 0
+        }
+      }
+    },
+    {
+      "session_id": "real-20261028-03",
+      "status": "completed",
+      "started_at": "2026-10-28T15:13:42.412220+09:00",
+      "pid": 14613,
+      "returncode": 1,
+      "finished_at": "2026-10-28T15:21:33.353385+09:00",
+      "counts": {
+        "warmup": {
+          "started": 4,
+          "finished": 4,
+          "success": 3,
+          "failed": 1,
+          "interrupted": 0
+        },
+        "measurement": {
+          "started": 40,
+          "finished": 40,
+          "success": 33,
+          "failed": 7,
+          "interrupted": 0
+        }
+      }
+    }
+  ],
+  "started_at": "2026-10-28T14:57:51.053454+09:00",
+  "protocol": "three fresh subprocesses, sequential, defaults, no evaluator retries",
+  "finished_at": "2026-10-28T15:21:33.353746+09:00"
+}

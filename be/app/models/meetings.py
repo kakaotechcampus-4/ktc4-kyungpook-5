@@ -1,8 +1,7 @@
 """회의 세션, 음성 청크, 전사 (#135).
 
-실제 VAD·Whisper·judge_utterance 연동은 아직 없다. 음성 청크는 저장만 하고
-전사는 더미 STT(services/meeting_stt_stub.py)나 test-support 주입으로 만든다.
-판단 결과는 context_decisions에 따로 남긴다.
+WS는 실제 STT 어댑터와 연결하며 전사/음성 구간 메타데이터를 저장한다.
+판단 결과는 context_decisions, 후보 확인 결과는 confirmed_tasks에 따로 남긴다.
 """
 
 from datetime import datetime
@@ -50,9 +49,9 @@ class Meeting(IdMixin, TimestampMixin, Base):
 
 
 class MeetingAudioChunk(IdMixin, TimestampMixin, Base):
-    """업로드한 음성 청크. 파일 바이트는 DB가 아니라 저장소에 둔다.
+    """음성 구간 메타데이터. WS 원본은 메모리만 사용하고 파일을 보관하지 않는다.
 
-    같은 seq로 같은 파일이 다시 오면 기존 청크를 돌려주고, 다른 파일이면 409다.
+    기존 HTTP 개발 fixture는 파일 저장소와 seq 중복 검사를 유지한다.
     """
 
     __tablename__ = "meeting_audio_chunks"
@@ -68,7 +67,9 @@ class MeetingAudioChunk(IdMixin, TimestampMixin, Base):
     seq: Mapped[int] = mapped_column(Integer, nullable=False)
     start_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     end_ms: Mapped[int] = mapped_column(Integer, nullable=False)
-    storage_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    # 새 WS는 음성을 STT 요청 중 메모리에만 두고 메타데이터/전사만 보존한다.
+    # 기존 HTTP 개발 fixture의 저장 파일에는 값이 있다.
+    storage_key: Mapped[str | None] = mapped_column(String(512))
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     mime_type: Mapped[str | None] = mapped_column(String(100))
     size: Mapped[int] = mapped_column(BigInteger, nullable=False)

@@ -11,9 +11,12 @@ const EXECUTIVE_TITLES = ['회장', '부회장', '총무', '홍보부장', '기�
 
 type Method = '직접 입력' | '파일로 올리기'
 
+// 임원이면 직책(기본 총무), 동아리원이면 학번이라 빈칸에서 시작한다.
+const defaultSubtitle = (group: MemberGroup) => (group === '임원' ? EXECUTIVE_TITLES[2] : '')
+
 const GROUPS: Array<{ value: MemberGroup; desc: string }> = [
   { value: '임원', desc: '직책이 있는 운영진이에요' },
-  { value: '동아리원', desc: '일반 회원이에요' },
+  { value: '동아리원', desc: '서비스 계정 없이 명단에만 등록돼요' },
 ]
 
 interface AddMemberModalProps {
@@ -30,9 +33,10 @@ export function AddMemberModal({ open, onClose, onAdd }: AddMemberModalProps) {
   const [subtitle, setSubtitle] = useState(EXECUTIVE_TITLES[2])
   const [contact, setContact] = useState('')
 
+  // 구분은 그대로 둔다. 같은 구분으로 여러 명을 이어서 넣는 경우가 많다.
   const reset = () => {
     setName('')
-    setSubtitle(EXECUTIVE_TITLES[2])
+    setSubtitle(defaultSubtitle(group))
     setContact('')
   }
 
@@ -97,8 +101,7 @@ export function AddMemberModal({ open, onClose, onAdd }: AddMemberModalProps) {
                     aria-pressed={selected}
                     onClick={() => {
                       setGroup(item.value)
-                      // 임원은 직책, 동아리원은 학번이라 자리가 달라 비운다.
-                      setSubtitle(item.value === '임원' ? EXECUTIVE_TITLES[2] : '')
+                      setSubtitle(defaultSubtitle(item.value))
                     }}
                     className={cn(
                       'flex flex-1 items-start gap-[9px] rounded-[12px] border px-[14px] py-[13px] text-left',

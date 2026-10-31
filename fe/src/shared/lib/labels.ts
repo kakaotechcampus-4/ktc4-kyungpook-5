@@ -16,26 +16,41 @@ export const STEP_ACTOR_LABEL: Record<string, string> = {
   MANUAL: '직접 수행',
 }
 
+// 동아리 분야. 생성 화면의 선택 버튼과 목록 표시에 함께 쓴다.
+export const CLUB_CATEGORY_LABEL: Record<string, string> = {
+  ACADEMIC: '학술',
+  SPORTS: '운동',
+  VOLUNTEER: '봉사',
+  HOBBY: '취미',
+  ETC: '기타',
+}
+
 export const MEMBER_ROLE_LABEL: Record<string, string> = {
   OWNER: '회장',
-  MANAGER: '총무',
-  MEMBER: '회원',
+  MANAGER: '임원',
+  MEMBER: '명단 구성원',
 }
 
 // 처리한 사람 "김지훈 · 회장". 기록이 비어 있으면 숨기지 않고 알 수 없음으로 드러낸다.
 export function formatResolver(by: { name: string; role: string } | null | undefined): string {
-  return by ? `${by.name} · ${MEMBER_ROLE_LABEL[by.role]}` : '처리한 사람 알 수 없음'
+  return by
+    ? `${by.name} · ${MEMBER_ROLE_LABEL[by.role] ?? '역할 확인 필요'}`
+    : '처리한 사람 알 수 없음'
 }
 
 export const EVENT_STATUS_LABEL: Record<string, string> = {
   PLANNING: '계획 중',
   ON_GOING: '진행 중',
   COMPLETE: '완료',
+  CANCELLING: '취소 정리 중',
+  CANCELLED: '취소됨',
 }
 
 // 행사 상태 칩 색. L1 행사 카드와 M1 요약 카드가 같이 쓴다.
-export const EVENT_STATUS_TONE = {
+export const EVENT_STATUS_TONE: Record<string, 'neutral' | 'done' | 'approved' | 'failed'> = {
   ON_GOING: 'done',
   PLANNING: 'approved',
   COMPLETE: 'neutral',
-} as const
+  CANCELLING: 'failed',
+  CANCELLED: 'neutral',
+}

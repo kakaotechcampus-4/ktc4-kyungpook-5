@@ -345,3 +345,19 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 - 제한 시간 값. 회의 설정(근거 판단 추론 끔)의 기록 검색은 p50 2.52초, p95 3.78초였다([측정 기록](meeting-evaluation.md)). 판단부터 답까지 한 번에 잰 뒤 정한다.
 - 답 카드의 길이. 사실이 여러 개면 한 줄씩 늘어나 4줄 이상인 답이 약 39개 중 7~9개였다. 화면에서 접어 보여줄지(FE)와 함께 정한다.
 - 카드에 근거 원문 조각을 보여줄지(FE·PM). 보여준다면 결과의 출처에 청크 원문을 더한다.
+
+## 회의 일정·할 일 후보 추출 초안
+
+BE는 기존 회의 payload에 IANA `timezone`과 offset이 있는 `occurred_at`을 더해 `TaskExtractionRequest`를 만들고 `await app.ai.extract_task_suggestions(request)`를 호출한다. 최근 문맥은 지시 대상 해석에만 사용하며 현재 발화에서 새로 명시된 항목을 추출한다. 검색 판단과 독립 호출하므로 NONE이나 조회 실패에도 추출할 수 있다.
+
+결과 `suggestions`는 `TaskSuggestion` 모델 목록이다. 각 모델은 `kind`(TASK/SCHEDULE), `title`, `description`, `suggested_assignee`, `due_date`, `due_at`, `scheduled_at`, `unresolved_fields`만 갖는다. 시각은 offset을 포함하고 불명확한 값은 null과 확인 필드로 남긴다. 모델이 빠뜨려도 TASK의 `due_at`, SCHEDULE의 `scheduled_at`, 미정 `suggested_assignee`는 확인 필드에 추가한다. 담당 이름은 계정이나 알림 수신자가 아니다. 빈 목록은 추출할 항목이 없다는 성공이고 모델 실패는 AI 오류로 전달한다. 후보를 확인·저장·예약하는 것은 BE와 운영진의 책임이다.
+
+
+## 자료함의 관련 자료 검색
+
+BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(club_id=..., query=..., limit=...), records=port)`를 호출한다. 기존 임베딩과 청크 검색을 사용해 `RetrievedChunk` 목록을 반환하며 각 청크에는 원문 텍스트, 문서 ID·이름·위치, 분류, 유사도가 있다. 유사도는 추천 순위이지 정답 확률이나 적합성 보장이 아니다. 검색 결과가 없으면 빈 튜플, 임베딩 실패는 AI 오류가 전파된다. 검색 port의 DB 오류도 숨기지 않는다. 색인 중/실패 등 상태, 권한, 파일명·본문 검색과 문서별 병합은 BE가 담당한다.
+
+
+## 메인 토리 대화 의도
+
+`classify_tori_intent(ToriIntentRequest(message, reference_date, timezone))`는 `record_search`, `task_list`, `event_planning`, `meeting`, `clarify`, `unsupported` 중 하나와 선택 필드를 반환한다. 검색어는 발화에 근거하며, 일정·할 일은 범위(self/all), 유형(task/schedule/all), 명시적으로 해석 가능한 날짜 범위만 반환한다. 현재 계약에는 회의·행사 식별이나 특정인 지정이 없으므로 해당 대상을 한정한 일정·할 일 요청은 일반 조회로 바꾸지 않고 unsupported 또는 clarify로 분류한다. 날짜만 정한 조회는 계속 허용한다. 이 결과는 추정 분류이지 권한·실행 지시가 아니다. BE는 인증된 소속과 계정으로 실제 조회하고 변경·예약을 실행하지 않는다. 모델 오류는 AI 오류로 전파하며 실제 근거 없이 답을 만들지 않는다.

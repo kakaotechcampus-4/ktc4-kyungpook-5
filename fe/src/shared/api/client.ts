@@ -2,7 +2,11 @@
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios'
 import { ApiError, type ApiErrorBody, type ApiMeta, type ApiSuccess } from '@/shared/api/types'
 
-const BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1`
+export function getApiBaseUrl(): string {
+  return (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+}
+
+const BASE_URL = `${getApiBaseUrl()}/api/v1`
 const TOKEN_KEY = 'unyounghae_access_token'
 
 export function getAccessToken(): string | null {
@@ -42,6 +46,10 @@ async function request<T, M = ApiMeta>(
 
 export function apiGet<T>(path: string): Promise<T> {
   return request<T>(path).then((body) => body.data)
+}
+
+export function apiGetEnvelope<T, M = ApiMeta>(path: string): Promise<ApiSuccess<T, M>> {
+  return request<T, M>(path)
 }
 
 // 목록 조회는 meta.totalCount("12건 중 5건 표시")까지 필요해서 봉투째 돌려준다.

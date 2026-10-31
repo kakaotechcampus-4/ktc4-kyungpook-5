@@ -22,7 +22,7 @@ def test_agent_api_forwards_draft_and_history_without_legacy_call(monkeypatch):
         assert search.keywords["club_id"]=="clb_keunnamu"
         assert search.keywords["port"] is playground.memory
         assert generate is playground.run_plan_generation
-        return SimpleNamespace(model_dump=lambda **_: {"reply":"3만 원을 기준으로 잡아둘게요.",
+        return SimpleNamespace(history=(), model_dump=lambda **_: {"reply":"3만 원을 기준으로 잡아둘게요.",
             "draft":{"conditions":{"fee_per_person":30000}},"history":[]})
     async def legacy(*args, **kwargs):
         raise AssertionError("legacy was called")
@@ -92,3 +92,39 @@ def test_button_transport_error_does_not_expose_provider_details(monkeypatch):
     data=payload();data.pop("current_message");data["request_id"]="click-1"
     response=call("POST","/__planning-test/agent/generate",data)
     assert response.status_code==503 and "secret-provider" not in response.text
+
+
+# #194: 표시용 사용량은 서버 공통 계산을 따르고 실패 시 중간 이력을 채택하지 않는다.
+
+def test_test_api_reports_server_usage_for_chat_and_button(monkeypatch):
+    from langchain_core.messages import AIMessage
+    from functools import partial
+    from app.ai.features.planning.generation.graph import run_plan_generation
+    from app.ai.tests.test_plan_generation_graph import Model
+    from app.ai.tests.test_planning_public_workflow import request, scripted
+    scripted(monkeypatch,[AIMessage(content='조건은 유지할게요.')])
+    payload=dict(draft=request().draft.model_dump(mode='json'),
+        history=[dict(type='human' if i%2==0 else 'ai',id=f'prior-{i}',content='이전 상담') for i in range(46)],
+        current_message=dict(id='u1',role='user',text='그대로 두자'),reference_date='2026-10-28')
+    response=call('POST','/__planning-test/agent/turn',payload)
+    assert response.status_code==200
+    data=response.json()
+    assert data['history_usage']==dict(message_count=48,max_messages=60,near_limit=True)
+    monkeypatch.setattr(playground,'run_plan_generation',partial(run_plan_generation,invoke=Model()))
+    payload.pop('current_message')
+    payload.update(history=data['result']['history'],request_id='click-1')
+    generated=call('POST','/__planning-test/agent/generate',payload)
+    assert generated.status_code==200
+    assert generated.json()['history_usage']==data['history_usage']
+
+
+def test_test_api_refuses_to_publish_an_over_limit_chat(monkeypatch):
+    from langchain_core.messages import AIMessage
+    from app.ai.tests.test_planning_public_workflow import request, scripted
+    scripted(monkeypatch,[AIMessage(content='조건은 유지할게요.')])
+    payload=dict(draft=request().draft.model_dump(mode='json'),
+        history=[dict(type='human' if i%2==0 else 'ai',id=f'prior-{i}',content='이전 상담') for i in range(60)],
+        current_message=dict(id='u1',role='user',text='그대로 두자'),reference_date='2026-10-28')
+    response=call('POST','/__planning-test/agent/turn',payload)
+    assert response.status_code==500
+    assert 'history_usage' not in response.json()

@@ -15,9 +15,28 @@ interface StepBoardProps {
   schedule: Record<string, string>
   onReorder: (phase: StepPhase, from: number, to: number) => void
   onRemove: (code: string) => void
+  // 세부 수정을 열 수 있을 때만 준다. 없으면 schedule 문구를 읽기 전용으로 보인다.
+  dates?: Record<string, { startsAt: string | null; deadline: string | null }>
+  onEditDetail?: (code: string) => void
 }
 
-export function StepBoard({ included, schedule, onReorder, onRemove }: StepBoardProps) {
+// 일정 두 값을 "11/5 – 11/8" 한 줄로 줄인다. 한쪽만 있으면 그쪽만 보인다.
+function dateRange(range?: { startsAt: string | null; deadline: string | null }): string {
+  const day = (iso: string | null) => (iso ? iso.slice(5, 10).replace('-', '/') : '')
+  const from = day(range?.startsAt ?? null)
+  const to = day(range?.deadline ?? null)
+  if (from && to) return `${from} – ${to}`
+  return from || to || '일정 미정'
+}
+
+export function StepBoard({
+  included,
+  schedule,
+  onReorder,
+  onRemove,
+  dates,
+  onEditDetail,
+}: StepBoardProps) {
   // 끌고 있는 카드. 묶음이 다르면 받지 않는다.
   const [dragging, setDragging] = useState<{ phase: StepPhase; index: number }>()
 
@@ -88,14 +107,27 @@ export function StepBoard({ included, schedule, onReorder, onRemove }: StepBoard
                         {step.actor} · {step.actions}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[12px] text-ink2">{schedule[step.code]}</span>
+                    {onEditDetail ? (
+                      <span className="flex shrink-0 items-center gap-[8px]">
+                        <span className="text-[12px] text-ink2">{dateRange(dates?.[step.code])}</span>
+                        <button
+                          type="button"
+                          onClick={() => onEditDetail(step.code)}
+                          className="rounded-[7px] border border-line px-[8px] py-[6px] text-[11.5px] font-bold text-ink2 hover:bg-bg"
+                        >
+                          세부 수정
+                        </button>
+                      </span>
+                    ) : (
+                      <span className="shrink-0 text-[12px] text-ink2">{schedule[step.code]}</span>
+                    )}
                     <button
                       type="button"
                       aria-label={`${step.name} 빼기`}
                       onClick={() => onRemove(step.code)}
-                      className="shrink-0 text-[13px] text-mute hover:text-ink2"
+                      className="shrink-0 rounded-[7px] bg-failed-bg px-[8px] py-[7px] text-[12px] font-bold text-failed hover:brightness-95"
                     >
-                      ⋯
+                      −
                     </button>
                   </div>
                 ))

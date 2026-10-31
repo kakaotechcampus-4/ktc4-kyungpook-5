@@ -179,9 +179,10 @@ export default function EventDetailPage() {
           <AnswerModal
             action={answering}
             onClose={() => setReviewing(undefined)}
-            onAnswer={(action, answer) => {
+            // TODO(연동): 직접 처리면 manualValue도 함께 보낸다. 명세는 객체({ memberId })라 글로 받는 지금 화면과 맞춰야 한다.
+            onAnswer={(action, choice) => {
               setReviewing(undefined)
-              resolveConfirmation(action, answer)
+              resolveConfirmation(action, choice)
             }}
           />
         </>

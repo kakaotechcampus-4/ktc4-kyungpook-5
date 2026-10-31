@@ -1,7 +1,7 @@
 """회의 세션·음성 청크·전사 도메인 오케스트레이션 (#135).
 
 최종 전사가 생기면 자동으로 Jev 판단 작업을 만든다(services/context_service.py).
-음성 청크의 STT와 판단은 더미다. 실제 작업 큐가 없어 요청 안에서 바로 처리한다.
+WS PCM 음성은 실제 STT로 처리한다. HTTP 청크는 기존 개발용 더미 경로다.
 
 WebSocket 연결 레지스트리는 프로세스 메모리에만 있다 — 워커가 여러 개면 안 쓰인다.
 이번 범위는 단일 개발 서버 기준이라 괜찮다.
@@ -15,9 +15,12 @@ from fastapi import WebSocket
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import AgentJobKind, AgentJobStage, JudgeRoute, MeetingStatus
+from app.core.enums import (
+    AgentJobKind, AgentJobStage, AgentJobStatus, JudgeRoute, MeetingStatus,
+)
 from app.core.exceptions import ApiError, VersionConflict
 from app.infra.storage import save_file
+from starlette.concurrency import run_in_threadpool
 from app.models.agent import AgentJob, ContextDecision
 from app.models.meetings import Meeting, MeetingAudioChunk, TranscriptSegment
 from app.services import agent_job_service, context_service
@@ -116,8 +119,10 @@ async def finish_meeting(
     # 이미 끝난 회의를 다시 끝내면 ended_at이 덮어써지고 종료 알림이 중복된다.
     if meeting.status != MeetingStatus.RECORDING:
         raise MeetingNotRecording()
-    # 음성 청크는 받는 요청 안에서 전사·판단까지 끝나 밀린 처리가 없다 —
-    # FINALIZING을 거치지 않고 바로 COMPLETED로 끝난다.
+    from app.services.audio_stream_service import is_recording
+
+    if is_recording(meeting_id):
+        raise AudioStreamActive()
     meeting.status = MeetingStatus.COMPLETED
     meeting.ended_at = datetime.now(UTC)
     await session.commit()
@@ -137,6 +142,9 @@ def _judgment_message(
         "sourceVersion": segment.version,
         "jobId": job.id,
         "contextDecisionId": decision.id,
+        "status": decision.status.value,
+        "jobStatus": job.status.value,
+        "error": job.error,
         "route": decision.route.value,
         "kind": decision.kind.value,
         "question": decision.question,
@@ -162,12 +170,13 @@ async def _save_segment(
     start_ms: int | None,
     end_ms: int | None,
     audio_chunk_id: str | None = None,
+    run_decision: bool = True,
 ) -> tuple[TranscriptSegment, ContextDecision | None, list[dict]]:
     """전사를 저장하고 final이면 판단까지 한다. 커밋 뒤 WebSocket으로 보낼 메시지도 돌려준다."""
     existing = await session.scalar(
         select(TranscriptSegment).where(
             TranscriptSegment.meeting_id == meeting.id, TranscriptSegment.seq == seq
-        )
+        ).with_for_update()
     )
     meeting.transcript_cursor += 1
 
@@ -202,7 +211,7 @@ async def _save_segment(
         )
 
     await session.flush()
-    if not is_final:
+    if not is_final or not run_decision:
         return segment, None, []
 
     messages = [
@@ -292,7 +301,7 @@ async def add_audio_chunk(
         seq=seq,
         start_ms=start_ms,
         end_ms=end_ms,
-        storage_key=save_file(meeting.club_id, file_name, content),
+        storage_key=await run_in_threadpool(save_file, meeting.club_id, file_name, content),
         sha256=sha256,
         mime_type=mime_type,
         size=len(content),
@@ -349,3 +358,118 @@ async def list_transcripts(
             .order_by(TranscriptSegment.change_seq)
         )
     )
+
+
+class HttpAudioNotImplemented(ApiError):
+    status_code = 501
+    code = "HTTP_AUDIO_NOT_IMPLEMENTED"
+
+    def __init__(self) -> None:
+        super().__init__("실제 음성은 WS stream 경로를 사용해 주세요. HTTP 청크는 개발용 더미 경로입니다.")
+
+
+class AudioStreamActive(ApiError):
+    status_code = 409
+    code = "AUDIO_STREAM_ACTIVE"
+
+    def __init__(self) -> None:
+        super().__init__("음성 WS의 end와 audio.completed를 기다린 뒤 종료해 주세요.")
+
+
+async def begin_stream_utterance(
+    session: AsyncSession,
+    *,
+    meeting_id: str,
+    wav: bytes,
+    start_ms: int,
+    end_ms: int,
+) -> tuple[str, str]:
+    """Persist audio metadata + running STT job; the WAV stays in request memory."""
+    meeting = await session.scalar(select(Meeting).where(Meeting.id == meeting_id).with_for_update())
+    if meeting is None:
+        raise MeetingNotFound()
+    if meeting.status not in (MeetingStatus.RECORDING, MeetingStatus.FINALIZING):
+        raise MeetingNotRecording()
+    last_seq = await session.scalar(select(func.max(MeetingAudioChunk.seq)).where(MeetingAudioChunk.meeting_id == meeting_id))
+    job = await agent_job_service.create_job(session, club_id=meeting.club_id, kind=AgentJobKind.MEETING_STT)
+    agent_job_service.start(session, job, AgentJobStage.TRANSCRIBING)
+    chunk = MeetingAudioChunk(
+        meeting_id=meeting_id, seq=(last_seq or 0) + 1, start_ms=start_ms, end_ms=end_ms,
+        storage_key=None,
+        sha256=hashlib.sha256(wav).hexdigest(), mime_type="audio/wav", size=len(wav), job_id=job.id,
+    )
+    session.add(chunk)
+    await session.commit()
+    return chunk.id, job.id
+
+
+async def fail_stream_stt(session: AsyncSession, *, job_id: str, code: str, message: str) -> None:
+    job = await agent_job_service.get_job(session, job_id=job_id)
+    agent_job_service.fail(session, job, {"code": code, "message": message})
+    await session.commit()
+
+
+async def save_stream_transcript(
+    session: AsyncSession, *, meeting_id: str, chunk_id: str, job_id: str, text: str,
+    start_ms: int, end_ms: int,
+) -> str | None:
+    """Commit final STT independently of AI. Empty STT is recorded, never invented."""
+    from app.schemas.meetings import TranscriptSegmentOut
+
+    meeting = await session.scalar(select(Meeting).where(Meeting.id == meeting_id).with_for_update())
+    if meeting is None:
+        raise MeetingNotFound()
+    job = await agent_job_service.get_job(session, job_id=job_id)
+    empty_transcript = not text.strip()
+    last_seq = await session.scalar(select(func.max(TranscriptSegment.seq)).where(TranscriptSegment.meeting_id == meeting_id))
+    segment, _, _ = await _save_segment(
+        session, meeting, seq=(last_seq or 0) + 1, text=text.strip(), is_final=True,
+        expected_version=None, speaker_label=None, start_ms=start_ms, end_ms=end_ms,
+        audio_chunk_id=chunk_id, run_decision=False,
+    )
+    agent_job_service.succeed(session, job, {
+        "audioChunkId": chunk_id, "segmentIds": [segment.id],
+        "emptyTranscript": empty_transcript,
+    })
+    await session.commit()
+    await session.refresh(segment)
+    output = TranscriptSegmentOut(
+        id=segment.id, source_id=segment.id, source_version=segment.version, seq=segment.seq,
+        text=segment.text, final=True, version=segment.version, speaker_label=segment.speaker_label,
+        start_ms=segment.start_ms, end_ms=segment.end_ms, decision_job_id=None,
+        created_at=segment.created_at, modified_at=segment.modified_at,
+    )
+    await _broadcast(meeting_id, {"type": "transcript.final", "meetingId": meeting_id, "cursor": meeting.transcript_cursor, **output.model_dump(mode="json", by_alias=True)})
+    if empty_transcript:
+        await _broadcast(meeting_id, {
+            "type": "audio.no_transcript", "segmentId": segment.id,
+            "startMs": start_ms, "endMs": end_ms,
+        })
+        # An unrecognized voiced interval is evidence of a gap, not AI input.
+        return None
+    return segment.id
+
+
+async def process_saved_segment(session: AsyncSession, *, meeting_id: str, segment_id: str) -> None:
+    """Call the live public AI boundary after STT has committed."""
+    meeting = await session.get(Meeting, meeting_id)
+    segment = await session.get(TranscriptSegment, segment_id)
+    if meeting is None or segment is None:
+        raise MeetingNotFound()
+    await _broadcast(meeting_id, {"type": "stage", "segmentId": segment.id, "seq": segment.seq, "stage": "JUDGING"})
+    job, decision = await context_service.decide_live_meeting_segment(session, meeting=meeting, segment=segment)
+    await session.commit()
+    await _broadcast(meeting_id, _judgment_message(segment, job, decision))
+    if job.status == AgentJobStatus.FAILED:
+        raise RuntimeError("Live context processing failed; persisted job contains safe error details")
+
+
+async def set_stream_status(session: AsyncSession, *, meeting_id: str, status: MeetingStatus) -> None:
+    meeting = await session.get(Meeting, meeting_id)
+    if meeting is None:
+        raise MeetingNotFound()
+    meeting.status = status
+    if status in (MeetingStatus.COMPLETED, MeetingStatus.FAILED):
+        meeting.ended_at = datetime.now(UTC)
+    await session.commit()
+    await _broadcast(meeting_id, {"type": "meeting_status", "meetingId": meeting_id, "status": status.value})

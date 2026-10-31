@@ -41,24 +41,26 @@ export const DEMO_MESSAGES: ChatMessage[] = [
 ]
 
 export const DEMO_FACTS: PlanFacts = {
-  '행사 이름': { value: '2026 봄 MT', decided: true },
-  종류: { value: 'MT · 1박 2일', decided: true },
-  '예상 인원': { value: '32명', decided: true },
-  참가비: { value: '1인 45,000원', decided: true },
-  일정: { value: '아직 안 정했어요', decided: false },
-  장소: { value: '후보 2곳 (가평 ○○펜션 외)', decided: false },
+  '행사 이름': { status: '확정', value: '2026 봄 MT' },
+  종류: { status: '확정', value: 'MT · 1박 2일' },
+  '예상 인원': { status: '잠정', value: '32명', quote: '네, 32명 정도 예상해요' },
+  참가비: { status: '확정', value: '1인 45,000원' },
+  // 「나중에 정하자」고 한 주제(deferred_topics)와 아직 말이 안 나온 것(미정)은 다르다.
+  일정: { status: '나중에' },
+  장소: { status: '미정' },
 }
 
 // 과거 기록을 봤을 때만 보인다. 무엇을 보고 무엇을 알아냈는지 적는다.
 export const DEMO_REFERENCE =
   '2025 봄 MT 결과보고 · 28명 · 1인 45,000원 · 가평 ○○펜션. 예비비 130,000원을 잡았는데 172,000원을 썼어요.'
 
-// 계획을 만드는 동안 보이는 단계. 2단계로 넘어갈 때 쓴다.
-export const PLAN_STEPS = [
-  { label: '과거 기록 확인', desc: '올린 자료가 있으면 먼저 봅니다' },
-  { label: '단계 고르기' },
-  { label: '일정 계산' },
-  { label: '수금·공지 정리' },
+// 계획을 만드는 동안 보이는 조건. 무엇을 근거로 만드는 중인지만 보이고
+// 진행 단계는 보이지 않는다 — AI 호출이 한 번이라 중간을 알 수 없다(#179).
+export const DEMO_GENERATING_LINE = '2026 봄 MT · 1박 2일 · 1인 45,000원'
+export const DEMO_GENERATING_MARKS = [
+  { label: '32명 잠정', tentative: true },
+  { label: '일정 나중에' },
+  { label: '장소 미정' },
 ]
 
 // ── 2단계 ──
@@ -140,9 +142,11 @@ export const DEMO_SUMMARY: PlanSummary = {
   aiSteps: 3,
   approvalSteps: 3,
   manualSteps: 1,
-  collect: '1회 · 1인 45,000원',
-  notice: '2회',
-  period: '3/2 → 3/25',
+  collection: { times: 1, feePerPerson: 45000 },
+  noticeCount: 2,
+  // 준비 기간이다. 행사 당일은 3/21이고 마지막 단계(피드백 기록)가 3/25에 끝난다.
+  periodStart: '2026-03-02',
+  periodEnd: '2026-03-25',
 }
 
 export const DEMO_WARNING: PlanWarning = {
@@ -160,7 +164,8 @@ export const EMPTY_SUMMARY: PlanSummary = {
   aiSteps: 0,
   approvalSteps: 0,
   manualSteps: 0,
-  collect: '없음',
-  notice: '없음',
-  period: '미정',
+  collection: null,
+  noticeCount: 0,
+  periodStart: null,
+  periodEnd: null,
 }

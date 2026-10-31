@@ -2,6 +2,7 @@
 // 두 단계 사이에 계획을 만드는 화면이 끼어든다.
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { LivePlanning } from '@/features/planning/components/LivePlanning'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
 import { PlanStepper } from '@/features/planning/components/PlanStepper'
@@ -9,6 +10,8 @@ import { PlanSummaryPanel } from '@/features/planning/components/PlanSummaryPane
 import { StepFlow } from '@/features/planning/components/StepFlow'
 import {
   DEMO_FACTS,
+  DEMO_GENERATING_LINE,
+  DEMO_GENERATING_MARKS,
   DEMO_MESSAGES,
   DEMO_PLAN_META,
   DEMO_PLAN_STEPS,
@@ -17,7 +20,6 @@ import {
   DEMO_WARNING,
   EMPTY_SUMMARY,
   FIRST_MESSAGE,
-  PLAN_STEPS,
 } from '@/features/planning/mock'
 import type { ChatMessage } from '@/features/planning/types'
 import { Button } from '@/shared/ui/Button'
@@ -27,6 +29,11 @@ import { PlanGeneratingScreen } from '@/shared/ui/StateScreen'
 const GENERATING_MS = 1600
 
 export default function PlanningPage() {
+  const demo = useSearchParams()[0].has('demo')
+  return demo ? <DemoPlanningPage /> : <LivePlanning />
+}
+
+function DemoPlanningPage() {
   const navigate = useNavigate()
   // 다른 화면과 같은 방식. ?demo면 대화가 오간 뒤 상태를, 없으면 첫 질문만 보인다.
   const demo = useSearchParams()[0].has('demo')
@@ -45,13 +52,18 @@ export default function PlanningPage() {
     return () => clearTimeout(timer)
   }, [generating])
 
-  // TODO(연동): POST /plans/chat. 토리의 답과 「정한 것」 갱신은 서버가 준다.
-  const send = (text: string) =>
+  const send = async (text: string) => {
     setMessages((list) => [...list, { id: `msg_${list.length}`, from: '나', text }])
+    return true
+  }
 
   if (generating) {
     return (
-      <PlanGeneratingScreen steps={PLAN_STEPS} current={0} onCancel={() => setGenerating(false)} />
+      <PlanGeneratingScreen
+        conditionLine={demo ? DEMO_GENERATING_LINE : '아직 정한 조건이 없어요'}
+        marks={demo ? DEMO_GENERATING_MARKS : []}
+        onCancel={() => setGenerating(false)}
+      />
     )
   }
 
@@ -82,13 +94,19 @@ export default function PlanningPage() {
       <PlanStepper current={step} />
 
       {step === 1 ? (
-        <div className="flex items-start gap-[20px]">
-          <PlanChat messages={messages} onSend={send} />
-          <PlanFacts
-            facts={demo ? DEMO_FACTS : {}}
-            reference={demo ? DEMO_REFERENCE : undefined}
-            onNext={() => setGenerating(true)}
-          />
+        <div className="flex flex-col items-start gap-[20px] lg:flex-row">
+          <PlanChat messages={messages} onSend={send} demo={demo} busy={false} error="" />
+          <div className="w-full lg:w-[320px] lg:shrink-0">
+            <PlanFacts
+              facts={DEMO_FACTS}
+              readiness={demo ? undefined : { canGenerate: false, reasons: [] }}
+              reference={demo ? DEMO_REFERENCE : undefined}
+              unavailable={!demo}
+              onNext={() => {
+                if (demo) setGenerating(true)
+              }}
+            />
+          </div>
         </div>
       ) : (
         <div className="flex items-start gap-[20px]">

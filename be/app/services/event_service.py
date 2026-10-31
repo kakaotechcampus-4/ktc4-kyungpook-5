@@ -1,376 +1,292 @@
-"""행사 도메인 오케스트레이션.
+"""행사 조회 (#41).
 
-현재는 mock 단계다 (이슈 #30). DB가 없어 고정 fixture를 반환하며, 키는 실제
-컬럼명(snake_case)에 맞춰 두었다. DB 연결 후에는 조회 함수 본문만 쿼리로
-교체하면 라우터와 스키마는 그대로 쓴다.
+행사·단계·행동을 DB에서 읽어 L1·L2·M1·P2 화면이 쓰는 응답 모양(dict)으로 만든다.
+진행 상태·D-day·처리 권한 같은 판정은 event_rules의 순수 함수에 맡기고 여기서는
+조합만 한다. 권한 확인(동아리 소속)은 라우터가 먼저 끝낸 뒤 부른다.
 """
 
-from datetime import UTC, date, datetime
+from collections import defaultdict
+from collections.abc import Sequence
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
-from app.core.enums import (
-    ActionStatus,
-    ActionType,
-    EventStatus,
-    MemberRole,
-    StepActor,
-    StepState,
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.core.enums import ActionStatus, ActionType, EventStatus, StepState
+from app.models.clubs import Member
+from app.models.events import Action, Event, Step
+from app.services import event_rules
+
+_KST = ZoneInfo("Asia/Seoul")
+
+# M1 「승인 대기」와 같은 기준. 확인 요청은 L2에서 따로 보여서 세지 않는다.
+_PENDING_APPROVAL = (
+    Action.status == ActionStatus.PENDING,
+    Action.type != ActionType.CONFIRMATION,
 )
-from app.core.exceptions import EventNotFound
 
-# fixture가 응답하는 유일한 행사. 다른 id는 EVENT_NOT_FOUND다.
-MOCK_EVENT_ID = "evt_9f2c8a"
-
-# dday·상태 계산의 기준일. 실제 시계 대신 fixture 날짜들과 맞춘 고정값이다.
-_TODAY = date(2026, 3, 10)
-
-_MANAGER = {"id": "mbr_01", "name": "박수겸", "role": MemberRole.MANAGER}
-_OWNER = {"id": "mbr_02", "name": "정하늘", "role": MemberRole.OWNER}
-
-
-def _utc(*args: int) -> datetime:
-    return datetime(*args, tzinfo=UTC)
+# 처리 안 된 것(resolved_at 없음)을 먼저 마감 임박 순으로, 처리된 것은 최근 처리 순으로
+# 둔다. M1 승인 대기와 L2 「처리된 승인」 최근 3건이 같은 정렬 하나로 맞는다.
+_ACTION_ORDER = (
+    Action.resolved_at.desc().nulls_first(),
+    Action.due_date.asc().nulls_last(),
+    Action.created_at,
+    Action.id,
+)
 
 
-# amount는 이슈 #30에서 전건 null로 합의했다. 컬럼은 존재하므로 값을 채우는 건
-# FE가 금액 표시를 검증할 때 바꾸면 된다.
-_ACTIONS: list[dict] = [
-    {
-        "id": "act_21",
-        "type": ActionType.EXTERNAL_SEND,
-        "title": "미납자 4명에게 2차 납부 안내 문자 발송",
-        "subtitle": "대상 4명 · 비용 0원 · 마감 D-2",
-        "irreversible": True,
-        "approve_needed": True,
-        "status": ActionStatus.PENDING,
-        "amount": None,
-        "due_date": date(2026, 3, 12),
-        "payload": None,
-        "step_id": "stp_03",
-        "step_name": "입금 내역 확인",
-        "resolved_at": None,
-        "resolved_by": None,
-        "deny_reason": None,
-        "can_approve": True,
-    },
-    {
-        "id": "act_22",
-        "type": ActionType.TRANSFER,
-        "title": "버스 대절 업체 A에 잔금 송금",
-        "subtitle": "마감 D-1",
-        "irreversible": True,
-        "approve_needed": True,
-        "status": ActionStatus.PENDING,
-        "amount": None,
-        "due_date": date(2026, 3, 13),
-        "payload": None,
-        "step_id": "stp_03",
-        "step_name": "입금 내역 확인",
-        "resolved_at": None,
-        "resolved_by": None,
-        "deny_reason": None,
-        "can_approve": True,
-    },
-    {
-        "id": "act_23",
-        "type": ActionType.NOTICE,
-        "title": "참가자 38명에게 집합 장소 공지",
-        "subtitle": None,
-        "irreversible": False,
-        "approve_needed": True,
-        "status": ActionStatus.PENDING,
-        "amount": None,
-        "due_date": None,
-        "payload": None,
-        "step_id": "stp_04",
-        "step_name": "사전 안내",
-        "resolved_at": None,
-        "resolved_by": None,
-        "deny_reason": None,
-        "can_approve": True,
-    },
-    {
-        # 단계에 묶이지 않는 확인 요청. excludeType=CONFIRMATION이면 빠진다.
-        "id": "act_31",
-        "type": ActionType.CONFIRMATION,
-        "title": "숙소를 B펜션으로 변경할까요?",
-        "subtitle": "A펜션이 예약 마감되었습니다",
-        "irreversible": False,
-        "approve_needed": True,
-        "status": ActionStatus.PENDING,
-        "amount": None,
-        "due_date": None,
-        "payload": {
-            "options": [
-                {"key": "CHANGE_B", "label": "B펜션으로 변경"},
-                {"key": "KEEP_A", "label": "A펜션 유지"},
-            ],
-            "allow_manual": True,
-        },
-        "step_id": None,
-        "step_name": None,
-        "resolved_at": None,
-        "resolved_by": None,
-        "deny_reason": None,
-        "can_approve": True,
-    },
-    {
-        "id": "act_09",
-        "type": ActionType.CONTRACT,
-        "title": "버스 대절 업체 B와 계약",
-        "subtitle": None,
-        "irreversible": True,
-        "approve_needed": True,
-        "status": ActionStatus.DENIED,
-        "amount": None,
-        "due_date": None,
-        "payload": None,
-        "step_id": "stp_02",
-        "step_name": "세부사항 조정",
-        "resolved_at": _utc(2026, 3, 8, 8, 2),
-        "resolved_by": _MANAGER,
-        "deny_reason": "견적이 작년보다 40% 높아 다른 업체를 더 받아보기로 했습니다.",
-        "can_approve": True,
-    },
-    {
-        "id": "act_11",
-        "type": ActionType.EXTERNAL_SEND,
-        "title": "입금 12건을 참가자 명단과 대조했습니다",
-        "subtitle": None,
-        "irreversible": False,
-        "approve_needed": False,
-        "status": ActionStatus.DONE,
-        "amount": None,
-        "due_date": None,
-        "payload": None,
-        "step_id": "stp_03",
-        "step_name": "입금 내역 확인",
-        "resolved_at": _utc(2026, 3, 9, 1, 30),
-        "resolved_by": None,
-        "deny_reason": None,
-        "can_approve": True,
-    },
-    {
-        "id": "act_05",
-        "type": ActionType.EXPENSE,
-        "title": "펜션 예약금 지출 등록",
-        "subtitle": None,
-        "irreversible": True,
-        "approve_needed": True,
-        "status": ActionStatus.APPROVED,
-        "amount": None,
-        "due_date": None,
-        "payload": None,
-        "step_id": "stp_02",
-        "step_name": "세부사항 조정",
-        "resolved_at": _utc(2026, 3, 7, 23, 15),
-        "resolved_by": _OWNER,
-        "deny_reason": None,
-        "can_approve": True,
-    },
-]
-
-_EVENTS: list[dict] = [
-    {
-        "id": MOCK_EVENT_ID,
-        "club_id": "clb_3a71c0",
-        "title": "2026 봄 MT",
-        "status": EventStatus.ON_GOING,
-        "start_date": date(2026, 3, 21),
-        "end_date": date(2026, 3, 22),
-        "location": "가평 ○○펜션",
-        "expected_headcount": 32,
-    },
-]
-
-# step_id는 _ACTIONS의 step_id와 맞춘다. completed_at 유무로 state(DONE/CURRENT/TODO)를
-# 계산하므로(이슈 #17 판단 A), 여기 값만 바꾸면 진행 상황이 바뀐다.
-_STEPS: list[dict] = [
-    {
-        "id": "stp_01",
-        "step_order": 10,
-        "name": "사전 조사",
-        "actor": StepActor.AI,
-        "starts_at": _utc(2026, 3, 5, 0, 0),
-        "deadline": None,
-        "completed_at": _utc(2026, 3, 6, 10, 0),
-    },
-    {
-        "id": "stp_02",
-        "step_order": 20,
-        "name": "세부사항 조정",
-        "actor": StepActor.APPROVAL_REQUIRED,
-        "starts_at": _utc(2026, 3, 6, 10, 0),
-        "deadline": None,
-        "completed_at": _utc(2026, 3, 9, 9, 0),
-    },
-    {
-        "id": "stp_03",
-        "step_order": 30,
-        "name": "입금 내역 확인",
-        "actor": StepActor.AI,
-        "starts_at": _utc(2026, 3, 10, 0, 0),
-        "deadline": _utc(2026, 3, 12, 14, 59),
-        "completed_at": None,
-    },
-    {
-        "id": "stp_04",
-        "step_order": 40,
-        "name": "사전 안내",
-        "actor": StepActor.MANUAL,
-        "starts_at": None,
-        "deadline": None,
-        "completed_at": None,
-    },
-]
+def today_kst() -> date:
+    """D-day 기준일. 서버 시간대가 UTC라 date.today()는 KST 0~9시에 하루 전이 된다."""
+    return datetime.now(_KST).date()
 
 
-def _step_states(steps: list[dict]) -> dict[str, StepState]:
-    """이전 단계가 전부 completed_at 있으면 DONE, 처음 없는 곳이 CURRENT, 그 뒤는 TODO."""
-    states: dict[str, StepState] = {}
-    reached_current = False
-    for step in sorted(steps, key=lambda s: s["step_order"]):
-        if reached_current:
-            states[step["id"]] = StepState.TODO
-        elif step["completed_at"] is None:
-            states[step["id"]] = StepState.CURRENT
-            reached_current = True
-        else:
-            states[step["id"]] = StepState.DONE
-    return states
+def _current_step(
+    steps: Sequence[Step], states: dict[str, StepState]
+) -> Step | None:
+    return next((s for s in steps if states[s.id] == StepState.CURRENT), None)
 
 
-def _expand_payload(row: dict) -> dict:
-    """CONFIRMATION 선택지는 payload(JSONB)에 들어 있다. 응답 평탄화는 여기서만 한다."""
-    payload = row["payload"] or {}
+def _event_base(event: Event, today: date) -> dict:
     return {
-        **row,
-        "options": payload.get("options"),
-        "allow_manual": payload.get("allow_manual"),
+        "id": event.id,
+        "title": event.title,
+        "status": event.status,
+        "start_date": event.start_date,
+        "end_date": event.end_date,
+        "dday": event_rules.dday(event.start_date, today),
+        "location": event.location,
+        # FE 명세 v1이 인원 필드명을 headcount로 통일해 컬럼명과 다르다.
+        "headcount": event.expected_headcount,
+        # accounting 기준으로 재정의하기 전까지 비워 둔다 (FE 연동 기준서 §5.1).
+        "payment": None,
+        "budget": None,
     }
 
 
-def list_actions(
-    event_id: str,
+async def _pending_approval_counts(
+    session: AsyncSession, event_ids: list[str]
+) -> dict[str, int]:
+    if not event_ids:
+        return {}
+    rows = await session.execute(
+        select(Action.event_id, func.count())
+        .where(Action.event_id.in_(event_ids), *_PENDING_APPROVAL)
+        .group_by(Action.event_id)
+    )
+    return dict(rows.tuples().all())
+
+
+async def list_events(
+    session: AsyncSession,
     *,
-    statuses: list[ActionStatus] | None = None,
-    action_type: ActionType | None = None,
-    exclude_type: ActionType | None = None,
-    page: int = 1,
-    size: int = 20,
+    club_id: str,
+    status: EventStatus | None,
+    page: int,
+    size: int,
 ) -> tuple[list[dict], int]:
-    """행사의 Action 목록과 전체 건수를 돌려준다.
+    """동아리의 행사 목록과 전체 건수. 시작일이 가까운 순이고 날짜 없는 행사는 뒤로 간다."""
+    conditions = [Event.club_id == club_id]
+    if status is not None:
+        conditions.append(Event.status == status)
+
+    total = await session.scalar(
+        select(func.count()).select_from(Event).where(*conditions)
+    )
+    events = list(
+        await session.scalars(
+            select(Event)
+            .where(*conditions)
+            # 카드마다 단계를 따로 조회하지 않도록 한 번에 불러온다 (step_order 순).
+            .options(selectinload(Event.steps))
+            .order_by(
+                Event.start_date.asc().nulls_last(), Event.created_at.desc(), Event.id
+            )
+            .offset((page - 1) * size)
+            .limit(size)
+        )
+    )
+    pending_counts = await _pending_approval_counts(session, [e.id for e in events])
+
+    today = today_kst()
+    result = []
+    for event in events:
+        states = event_rules.step_states(event.steps)
+        current = _current_step(event.steps, states)
+        result.append(
+            {
+                **_event_base(event, today),
+                "current_step_name": current.name if current else None,
+                "step_progress": [
+                    {"step_order": s.step_order, "state": states[s.id]}
+                    for s in event.steps
+                ],
+                "pending_approval_count": pending_counts.get(event.id, 0),
+            }
+        )
+    return result, total or 0
+
+
+async def _ordered_steps(session: AsyncSession, event_id: str) -> list[Step]:
+    return list(
+        await session.scalars(
+            select(Step).where(Step.event_id == event_id).order_by(Step.step_order)
+        )
+    )
+
+
+async def get_event_detail(session: AsyncSession, *, event: Event) -> dict:
+    """L2 헤더. event는 라우터가 권한 확인하며 이미 읽어 둔 행이다."""
+    steps = await _ordered_steps(session, event.id)
+    current = _current_step(steps, event_rules.step_states(steps))
+    return {
+        **_event_base(event, today_kst()),
+        "current_step": (
+            {"id": current.id, "step_order": current.step_order, "name": current.name}
+            if current
+            else None
+        ),
+    }
+
+
+async def list_steps(session: AsyncSession, *, event_id: str) -> list[dict]:
+    """행사의 단계를 step_order 순으로, 단계마다 한 일·남은 일을 붙여 돌려준다."""
+    steps = await _ordered_steps(session, event_id)
+    actions = await session.scalars(
+        select(Action)
+        .where(Action.event_id == event_id, Action.step_id.is_not(None))
+        .order_by(*_ACTION_ORDER)
+    )
+    actions_by_step: dict[str, list[Action]] = defaultdict(list)
+    for action in actions:
+        actions_by_step[action.step_id].append(action)
+
+    states = event_rules.step_states(steps)
+    result = []
+    for step in steps:
+        step_actions = actions_by_step[step.id]
+        done = [a for a in step_actions if a.status == ActionStatus.DONE]
+        # 거절·실패는 한 일도 남은 일도 아니라 두 목록 어디에도 넣지 않는다.
+        remaining = [
+            a
+            for a in step_actions
+            if a.status in (ActionStatus.PENDING, ActionStatus.APPROVED)
+        ]
+        result.append(
+            {
+                "id": step.id,
+                "step_order": step.step_order,
+                "code": step.code,
+                "phase": step.phase,
+                "name": step.name,
+                "actor": step.actor,
+                "state": states[step.id],
+                "starts_at": step.starts_at,
+                "deadline": step.deadline,
+                "completed_at": step.completed_at,
+                "completed_count": len(done),
+                "total_action_count": len(step_actions),
+                "done_actions": [
+                    {"id": a.id, "title": a.title, "status": a.status} for a in done
+                ],
+                "remaining_actions": [
+                    {
+                        "id": a.id,
+                        "title": a.title,
+                        "status": a.status,
+                        "approve_needed": a.approve_needed,
+                    }
+                    for a in remaining
+                ],
+            }
+        )
+    return result
+
+
+def action_out(action: Action, *, member: Member, event_status: EventStatus) -> dict:
+    """ActionOut 한 건. step·resolver를 미리 불러온 Action이어야 한다.
+
+    member는 요청한 동아리원이다 — canApprove가 요청자 기준이라 필요하다. 처리는 운영 중
+    행사에서만 받으므로 행사 상태도 함께 본다.
+    승인·거절 API도 처리 결과를 이 함수로 내려 조회와 모양을 맞춘다.
+    """
+    payload = action.payload if action.type == ActionType.CONFIRMATION else None
+    payload = payload or {}
+    resolver = action.resolver
+    return {
+        "id": action.id,
+        "type": action.type,
+        "title": action.title,
+        "subtitle": action.subtitle,
+        "content": action.content,
+        "irreversible": action.irreversible,
+        "approve_needed": action.approve_needed,
+        "status": action.status,
+        "amount": action.amount,
+        "due_date": action.due_date,
+        "step_id": action.step_id,
+        "step_name": action.step.name if action.step else None,
+        "resolved_at": action.resolved_at,
+        "resolved_by": (
+            {"id": resolver.id, "name": resolver.name, "role": resolver.role}
+            if resolver
+            else None
+        ),
+        "deny_reason": action.deny_reason,
+        # CONFIRMATION 선택지는 payload(JSONB)에 들어 있다. 응답 평탄화는 여기서만 한다.
+        "options": payload.get("options"),
+        "allow_manual": payload.get("allow_manual"),
+        "can_approve": event_rules.can_approve(
+            member.role,
+            action.status,
+            action_type=action.type,
+            approve_needed=action.approve_needed,
+            event_status=event_status,
+        ),
+        "editable": event_rules.is_editable(action.status),
+        "resolved_choice": payload.get("resolved_choice"),
+        "manual_value": payload.get("manual_value"),
+        "version": action.version,
+    }
+
+
+async def list_actions(
+    session: AsyncSession,
+    *,
+    event_id: str,
+    member: Member,
+    event_status: EventStatus,
+    statuses: list[ActionStatus] | None,
+    action_type: ActionType | None,
+    exclude_type: ActionType | None,
+    page: int,
+    size: int,
+) -> tuple[list[dict], int]:
+    """행사의 Action 목록과 전체 건수.
 
     type과 exclude_type은 함께 쓰이지 않는다. 확인 요청만 보는 화면과 확인 요청만
     빼고 보는 화면이 둘 다 있어 파라미터가 두 개다.
     """
-    if event_id != MOCK_EVENT_ID:
-        raise EventNotFound
-
-    rows = _ACTIONS
+    conditions = [Action.event_id == event_id]
     if statuses:
-        rows = [row for row in rows if row["status"] in statuses]
+        conditions.append(Action.status.in_(statuses))
     if action_type is not None:
-        rows = [row for row in rows if row["type"] == action_type]
+        conditions.append(Action.type == action_type)
     if exclude_type is not None:
-        rows = [row for row in rows if row["type"] != exclude_type]
+        conditions.append(Action.type != exclude_type)
 
-    total_count = len(rows)
-    offset = (page - 1) * size
-    return [_expand_payload(row) for row in rows[offset : offset + size]], total_count
-
-
-def _pending_approval_count(event_id: str) -> int:
-    """M1 카드와 같은 기준(PENDING, CONFIRMATION 제외)으로 센다.
-
-    지금은 fixture 전체가 한 행사(evt_9f2c8a) 소속이라 event_id로 걸러도 결과는
-    같지만, DB 연결 후 쿼리로 바꿀 때 시그니처가 바뀌지 않도록 미리 받아둔다.
-    """
-    return len(
-        [
-            row
-            for row in _ACTIONS
-            if row["status"] == ActionStatus.PENDING
-            and row["type"] != ActionType.CONFIRMATION
-        ]
-        if event_id == MOCK_EVENT_ID
-        else []
+    total = await session.scalar(
+        select(func.count()).select_from(Action).where(*conditions)
     )
-
-
-def list_events(
-    *,
-    club_id: str | None = None,
-    status: EventStatus | None = None,
-    page: int = 1,
-    size: int = 20,
-) -> tuple[list[dict], int]:
-    """행사 목록과 전체 건수를 돌려준다."""
-    rows = _EVENTS
-    if club_id is not None:
-        rows = [row for row in rows if row["club_id"] == club_id]
-    if status is not None:
-        rows = [row for row in rows if row["status"] == status]
-
-    total_count = len(rows)
-    offset = (page - 1) * size
-    page_rows = rows[offset : offset + size]
-
-    states = _step_states(_STEPS)
-    ordered_steps = sorted(_STEPS, key=lambda s: s["step_order"])
-    current_step = next(
-        (s for s in ordered_steps if states[s["id"]] == StepState.CURRENT), None
+    actions = await session.scalars(
+        select(Action)
+        .where(*conditions)
+        .options(selectinload(Action.step), selectinload(Action.resolver))
+        .order_by(*_ACTION_ORDER)
+        .offset((page - 1) * size)
+        .limit(size)
     )
-    step_progress = [
-        {"step_order": s["step_order"], "state": states[s["id"]]} for s in ordered_steps
-    ]
-
-    result = [
-        {
-            "id": row["id"],
-            "title": row["title"],
-            "status": row["status"],
-            "start_date": row["start_date"],
-            "end_date": row["end_date"],
-            "dday": (row["start_date"] - _TODAY).days if row["start_date"] else None,
-            "location": row["location"],
-            # FE 명세 v1이 인원 필드명을 headcount로 통일해 컬럼명과 다르다.
-            "headcount": row["expected_headcount"],
-            "current_step_name": current_step["name"] if current_step else None,
-            "step_progress": step_progress,
-            "pending_approval_count": _pending_approval_count(row["id"]),
-            "payment": None,
-            "budget": None,
-        }
-        for row in page_rows
-    ]
-    return result, total_count
-
-
-def list_steps(event_id: str) -> list[dict]:
-    """행사의 Step 목록을 step_order 순으로 돌려준다."""
-    if event_id != MOCK_EVENT_ID:
-        raise EventNotFound
-
-    ordered_steps = sorted(_STEPS, key=lambda s: s["step_order"])
-    states = _step_states(ordered_steps)
-
-    result = []
-    for step in ordered_steps:
-        step_actions = [row for row in _ACTIONS if row["step_id"] == step["id"]]
-        done_actions = [row for row in step_actions if row["status"] == ActionStatus.DONE]
-        remaining_actions = [
-            row
-            for row in step_actions
-            if row["status"] in (ActionStatus.PENDING, ActionStatus.APPROVED)
-        ]
-        result.append(
-            {
-                **step,
-                "state": states[step["id"]],
-                "completed_count": len(done_actions),
-                "total_action_count": len(step_actions),
-                "done_actions": done_actions,
-                "remaining_actions": remaining_actions,
-            }
-        )
-    return result
+    return [
+        action_out(a, member=member, event_status=event_status) for a in actions
+    ], total or 0

@@ -1,0 +1,77 @@
+{
+  "kind": "synthetic_log_aggregation_validation",
+  "actual_provider_calls": 0,
+  "actual_service_latency_measured": false,
+  "input_description": "계산 정답을 지정한 합성 이벤트 기록 3세션. 서비스 성능 측정 아님.",
+  "recorded_requests": 132,
+  "measurement_requests": 120,
+  "warmup_requests": 12,
+  "expected_per_case": {
+    "started": 30,
+    "success": 28,
+    "failed": 2,
+    "success_rate": 0.9333333333333333,
+    "p50_ms": 14500,
+    "p95_ms": 26650
+  },
+  "observed_per_case": {
+    "C1": {
+      "started": 30,
+      "success": 28,
+      "failed": 2,
+      "success_rate": 0.9333333333333333,
+      "p50_ms": 14500.0,
+      "p95_ms": 26650.0
+    },
+    "C2": {
+      "started": 30,
+      "success": 28,
+      "failed": 2,
+      "success_rate": 0.9333333333333333,
+      "p50_ms": 14500.0,
+      "p95_ms": 26650.0
+    },
+    "G1": {
+      "started": 30,
+      "success": 28,
+      "failed": 2,
+      "success_rate": 0.9333333333333333,
+      "p50_ms": 14500.0,
+      "p95_ms": 26650.0
+    },
+    "G2": {
+      "started": 30,
+      "success": 28,
+      "failed": 2,
+      "success_rate": 0.9333333333333333,
+      "p50_ms": 14500.0,
+      "p95_ms": 26650.0
+    }
+  },
+  "all_checks_passed": true,
+  "percentile_method": "linear_R7",
+  "aggregation_source_sha256": {
+    "summarize_planning_latency.py": "7a5b0225a9745dcb87708efdebdeb524972fbe697cc7c121ad0b22d963200529",
+    "planning_latency_summary.py": "53ed65b2f6279b66812b4e503451fa47538b1152bc3db53db5f6568317a66e4b"
+  },
+  "input_file_sha256": [
+    {
+      "session_id": "known-1",
+      "session.json": "133c4e4604b9881ad8be7484c07508c8aa51738dbb830a19efe9a7889efb7f97",
+      "fixture.json": "13e868674c1cf5f20eef93b0c3c5a199a181caf1b5167178d467ba30869e391b",
+      "attempts.jsonl": "15043565d7baefb5f2658426f87f59e2467cbf454e7b3efc4a124f5a9337f219"
+    },
+    {
+      "session_id": "known-2",
+      "session.json": "cb77c038ebb2a445d5607192cde02607e666f744ba5575167aebb64bee1c6be9",
+      "fixture.json": "13e868674c1cf5f20eef93b0c3c5a199a181caf1b5167178d467ba30869e391b",
+      "attempts.jsonl": "25fb9d48853ab854b7f28bc92c5f53bdb5c3aa4e00da8279ea20316ad1dae0e1"
+    },
+    {
+      "session_id": "known-3",
+      "session.json": "b5973126d868ae98c280ab9aeee6b808f7aa1282b4dbfa7e618ce563c4449bc4",
+      "fixture.json": "13e868674c1cf5f20eef93b0c3c5a199a181caf1b5167178d467ba30869e391b",
+      "attempts.jsonl": "7a95e14960797c84e07a9d64d6f9bb375c403795903e93ee7b448d420f090734"
+    }
+  ]
+}

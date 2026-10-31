@@ -13,21 +13,21 @@ export interface CatalogueStep {
 
 export const STEP_CATALOGUE: CatalogueStep[] = [
   {
-    code: 'ASSIGN_STAFF',
+    code: 'ASSIGN_ROLES',
     phase: '사전 준비',
     name: '담당 인원 배치',
     actor: '직접 수행',
     actions: '확인 요청',
   },
   {
-    code: 'SCOUT_VENUE',
+    code: 'RESEARCH_VENUE',
     phase: '사전 준비',
     name: '장소·교통 알아보기',
     actor: '직접 수행',
     actions: '확인 요청',
   },
   {
-    code: 'SURVEY_DEMAND',
+    code: 'DEMAND_SURVEY',
     phase: '사전 준비',
     name: '사전 수요 조사',
     actor: '승인 필요',
@@ -48,7 +48,7 @@ export const STEP_CATALOGUE: CatalogueStep[] = [
     actions: '공지',
   },
   {
-    code: 'CONFIRM_HEADCOUNT',
+    code: 'CONFIRM_DETAILS',
     phase: '모집 · 확정',
     name: '인원·일정 확정',
     actor: 'AI 실행',
@@ -69,7 +69,7 @@ export const STEP_CATALOGUE: CatalogueStep[] = [
     actions: '공지 · 개별 연락',
   },
   {
-    code: 'PRE_NOTICE',
+    code: 'PRE_EVENT_NOTICE',
     phase: '행사 진행 · 마무리',
     name: '사전 안내',
     actor: '승인 필요',
@@ -116,14 +116,14 @@ export const PHASE_HINT: Record<StepPhase, string> = {
 
 // 완성 예시에 쓰는 포함 단계와 일정. 빼둔 셋은 사전 수요 조사·참가비 환급·피드백 기록이다.
 export const DEMO_INCLUDED: Record<string, string> = {
-  ASSIGN_STAFF: '3/2 – 3/3',
-  SCOUT_VENUE: '3/3 – 3/6',
+  ASSIGN_ROLES: '3/2 – 3/3',
+  RESEARCH_VENUE: '3/3 – 3/6',
   RECRUIT_NOTICE: '3/10 – 3/12',
   CHECK_RESPONSES: '3/12 – 3/13',
-  CONFIRM_HEADCOUNT: '3/13',
+  CONFIRM_DETAILS: '3/13',
   BOOK_VENUE: '3/13 – 3/14',
   COLLECT_FEES: '3/14 – 3/18',
-  PRE_NOTICE: '3/19',
+  PRE_EVENT_NOTICE: '3/19',
   EVENT_DAY: '3/21 – 3/22',
   SETTLE_EXPENSES: '3/23',
 }

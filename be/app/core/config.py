@@ -8,7 +8,7 @@ AI 설정(`AISettings`)은 여기서 새로 선언하지 않고 `app.ai.config`�
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.ai.config import AISettings
@@ -23,17 +23,36 @@ class Settings(BaseSettings):
     # 운영 배포가 DB 없이 동작해야 해서 기동 시점에 검사하지 않는다.
     database_url: str = ""
 
-    # 업로드 파일(영수증·CSV 등) 저장 경로. S3 연동 전까지 로컬 디스크를 쓴다.
-    # storage_key는 이 경로 기준 상대경로로 남겨 나중에 S3로 바꿔도 호출부가
-    # 바뀌지 않게 한다.
+    # 기존 로컬 키는 그대로 유지하고 새 업로드만 선택한 저장소에 기록한다.
     storage_dir: str = "./var/storage"
+    storage_backend: str = "local"
+    s3_bucket: str = ""
+    s3_region: str = "ap-northeast-2"
 
     # 카카오 로그인(OAuth). 비워두면 /auth/kakao/callback 호출 시 실패한다.
     kakao_rest_api_key: str = ""
     kakao_redirect_uri: str = ""
+    # 카카오 디벨로퍼스에서 REST API 키의 클라이언트 시크릿을 활성화했을 때만 채운다.
+    # 비활성화 상태면 비워둔다 — 토큰 교환 요청에 아예 안 실린다.
+    kakao_client_secret: SecretStr = SecretStr("")
 
     # TEST_MODE=true일 때만 /test-support/* 라우트를 등록한다. 운영 환경은 404.
     test_mode: bool = False
+    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+    stt_url: str = ""
+    stt_api_key: SecretStr = SecretStr("")
+    stt_model: str = "whisper-large-v3"
+    stt_timeout_seconds: float = Field(default=60, gt=0)
+    audio_vad_rms_threshold: float = Field(default=450, gt=0)
+
+    web_push_vapid_public_key: str = ""
+    web_push_vapid_private_key: SecretStr = SecretStr("")
+    web_push_vapid_subject: str = ""
+    web_push_timeout_seconds: float = Field(default=10, gt=0)
+    web_push_ttl_seconds: int = Field(default=3600, ge=0)
+    reminder_dispatcher_enabled: bool = False
+    reminder_poll_seconds: float = Field(default=5, gt=0)
 
     ai: AISettings = Field(default_factory=AISettings)
 

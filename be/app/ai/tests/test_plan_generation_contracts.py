@@ -15,7 +15,7 @@ from app.ai.features.planning.schemas import MessageEvidence, PlanningConditions
 
 
 def draft():
-    return PlanningDraft(conditions=PlanningConditions(event_type="MT", headcount=50, fee_per_person=25000))
+    return PlanningDraft(conditions=PlanningConditions(event_type="MT", headcount=50, fee_per_person=25000), deferred_topics=("dates", "location"))
 
 
 def message(text="날짜는 나중에", id="u1"):
@@ -56,7 +56,7 @@ def test_offer_snapshots_draft_and_defer_prevents_same_basis_reoffer():
     state=PlanningGenerationState(offer=deferred.offer)
     assert deferred.offer.status=="deferred"
     assert update_generation_offer(before,state,args,current_message=message()).status=="rejected"
-    changed=PlanningDraft(conditions=PlanningConditions(event_type="MT",headcount=40))
+    changed=PlanningDraft(conditions=PlanningConditions(event_type="MT",headcount=40), deferred_topics=("dates", "location"))
     assert update_generation_offer(changed,state,args,current_message=message()).status=="applied"
 
 

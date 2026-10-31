@@ -1,7 +1,75 @@
+# 운영해 Frontend
+
+React 19 · TypeScript · Vite 6 · Tailwind 4 · TanStack Query 5 · Zustand · axios 기반입니다.
+
+## 로컬 실행
+
+```sh
+cd fe
+npm ci
+cp .env.example .env
+npm run dev
+```
+
+`.env.example`의 `VITE_API_BASE_URL=http://localhost:8000`을 실제 BE 주소로 맞춥니다. 주소는 `/api/v1`을 제외한 origin이며 Vite 프록시는 없습니다. FE/BE를 별도 포트로 실행하면 BE CORS에서 FE origin을 허용해야 합니다. localhost·HTTPS에서 마이크와 Service Worker를 사용할 수 있습니다. 실제 `.env`는 Git 제외입니다.
+
+이번 로컬 병렬 검증은 기존 Docker5173/BE8000을 보존하고 FE5175→BE8001을 사용했습니다. 이 포트는 제품 고정값이 아닙니다.
+
+## 회의 베타
+
+`/login`에서 실제 로그인하고 `/me`가 반환한 소속을 선택합니다. `/meetings`에서 자료와 회의를 준비하고 `/meetings/:meetingId`에서 확정 전사·자료 답/출처·일정/할 일 후보를 확인합니다. 후보의 내용·담당자·정확한 시각·별도 수신 계정을 확인한 뒤 저장·예약합니다. 서버가 권한·조직·버전·예약을 판단합니다.
+
+- 자료의 `COMPLETED`는 파싱 완료, `INDEXED`만 검색 준비 완료입니다. 실제 실패를 fixture로 대체하지 않습니다.
+- 마이크는 WS 서버의 `audio.ready` 이후 켭니다. mono PCM16LE 16kHz 연속 음성을 전송하며 VAD·STT는 서버가 맡습니다. 마지막 음성 전송·`audio.end_ack`·`audio.completed`를 구분합니다.
+- PWA manifest·Service Worker가 있습니다. 사용자가 알림을 허용하고 본인 기기의 Push 구독을 등록합니다. 서버 Push 접수와 기기 시스템 알림 표시는 다릅니다. 알림을 누르면 소속을 확인하고 실제 확정 항목을 다시 조회합니다.
+- 개발 서버에서만 `/meetings?fixture=1`로 명시적 예시를 볼 수 있습니다. 실제 저장·음성·예약·알림은 생성하지 않습니다. 기존 다른 화면의 `?demo` 규칙과 별개입니다.
+- 회원가입·행사/계획/마이페이지 전체의 실연동 완료를 뜻하지 않습니다. 이번 범위는 기존 로그인과 회의 베타 연결입니다.
+
+서버에 실제 STT/AI 모델 설정이 필요합니다. 설정이 없거나 API가 실패하면 오류를 표시합니다. 자동 WS 재접속·모바일 백그라운드 녹음·전체 오프라인 캐시는 이번 범위가 아닙니다.
+
+## 개발 규칙
+
+`pages`는 조립, 통신은 `features`의 hook → api → `shared/api/client`를 사용합니다. features 간 import를 만들지 않습니다. 소속·세션은 기존 shared Zustand를 재사용하고 공통 UI는 `/dev/ui`에서 확인합니다.
+
+```sh
+npm run build
+npm run lint
+node --test tests/*.test.mjs
+node --experimental-transform-types --test src/features/meetings/audio/pcm.test.mjs
+```
+
+## API 타입
+
+생성 파일 `src/shared/api/schema.d.ts`는 손으로 수정하지 않습니다.
+
+```sh
+npm run gen:api-types
+npm run gen:api-types -- /path/to/openapi.json
+OPENAPI_SOURCE=http://127.0.0.1:8001/openapi.json npm run gen:api-types
+```
+
+기본 source는 `http://localhost:8000/openapi.json`입니다. API 응답은 `{data, meta}`, 인증은 opaque Bearer 세션입니다. 에러의 `code`로 화면 문구를 매핑합니다.
+
+자료 API·제약은 [자료 연결](docs/records-integration.md), Push payload와 상태는 [알림 연결](docs/meeting-push-contract.md), 오디오 순서와 마지막 프레임은 [음성 adapter](src/features/meetings/audio/README.md)를 참고합니다.
+
+## 기존 개발 기준 문서
+
 # 운영해 · Frontend
 
 동아리 행사 보조 에이전트 "운영해"의 프론트엔드입니다.
-아직 초기 세팅 단계이며, 실제 `npm create vite` 스캐폴딩 전에 폴더 구조와 컨벤션을 먼저 합의하기 위한 문서입니다.
+화면은 대부분 구현돼 있고 서버 연동이 남았습니다. 어느 화면이 어느 API에 붙는지는
+`docs/week10/fe/운영해_FE_연동_기준서.md`를 봅니다.
+
+```bash
+npm install
+npm run dev            # http://localhost:5173
+npm run build          # tsc -b && vite build
+npm run lint
+npm run gen:api-types  # BE가 localhost:8000에 떠 있어야 한다
+```
+
+서버 없이 화면만 보려면 주소에 `?demo`를 붙입니다(예: `/planning?demo`).
+붙이지 않으면 빈 상태 화면이 나옵니다.
 
 ## 기술 스택
 
@@ -12,7 +80,7 @@
 | 스타일 | **Tailwind** (확정) | — |
 | 언어 | TypeScript | — |
 | 라우팅 | React Router | — |
-| 서버 상태 관리 | ⚠️ **미정** (TanStack Query 유력) | 라이브러리는 아직 확정 안 됐지만, **"컴포넌트에서 fetch 직접 호출 금지, `features/*/hooks.ts`의 훅을 거친다"는 규칙만 먼저 고정**한다. 구조 영향이 커서 라이브러리보다 규칙을 먼저 못 박음 |
+| 서버 상태 관리 | **TanStack Query** (확정) | **"컴포넌트에서 fetch 직접 호출 금지, `features/*/hooks.ts`의 훅을 거친다"는 규칙**이 먼저이고 라이브러리는 그 뒤다 |
 | 클라이언트 상태 관리 | **Zustand** (확정) | 전역 상태(로그인 유저 정보 등)는 Zustand로 관리. 화면 로컬 상태는 여전히 `useState` 사용 |
 | HTTP 클라이언트 | axios | — |
 | 린트 · 포맷 | ESLint + Prettier | — |
@@ -34,70 +102,57 @@
 
 ```
 fe/
-├── public/                      정적 파일 (파비콘 등). 빌드 시 그대로 복사됨
+├── public/                      정적 파일. 빌드 시 그대로 복사됨
 ├── src/
-│   ├── main.tsx                 진입점. 딱 5줄
+│   ├── main.tsx                 진입점
 │   ├── app/
 │   │   ├── router.tsx           라우트 정의
-│   │   ├── providers.tsx        QueryClient, 인증 컨텍스트 등 전역 래퍼
-│   │   └── layout/
-│   │       ├── AppLayout.tsx    상단바 + 사이드바 + 본문 자리
-│   │       ├── Sidebar.tsx      메인/행사 계획/행사 목록/동아리 기록/마이 페이지
-│   │       └── TopBar.tsx       로고 + 우측 영역
+│   │   ├── providers.tsx        QueryClient 등 전역 래퍼
+│   │   └── layout/AppLayout.tsx 상단바 + 본문 자리
 │   ├── pages/                   화면 하나당 파일 하나. 조립만 한다
-│   │   ├── LoginPage.tsx
-│   │   ├── SignupPage.tsx
-│   │   ├── DashboardPage.tsx
-│   │   ├── PlanningPage.tsx
-│   │   ├── EventListPage.tsx
-│   │   ├── EventDetailPage.tsx
-│   │   ├── RecordsPage.tsx
-│   │   └── MyPage.tsx
+│   │   ├── LoginPage.tsx  SignupPage.tsx
+│   │   ├── MainPage.tsx                     M1 메인
+│   │   ├── PlanningPage.tsx  PlanStepsPage.tsx    P1 · P2
+│   │   ├── EventListPage.tsx  EventDetailPage.tsx  EventCancelPage.tsx
+│   │   ├── MyPage.tsx                       내 정보 · 동아리원 · 자료
+│   │   ├── DevUiPage.tsx                    /dev/ui — 공용 컴포넌트 모아보기
+│   │   └── NotFoundPage.tsx
 │   ├── features/                실제 코드가 사는 곳
-│   │   ├── auth/
-│   │   ├── dashboard/
-│   │   ├── planning/
-│   │   ├── events/
-│   │   ├── approvals/
-│   │   ├── ledger/
-│   │   └── records/
-│   │       ├── api.ts            서버 호출 함수 + 응답 타입
-│   │       ├── hooks.ts          useXxx 커스텀 훅
-│   │       ├── types.ts          도메인 타입
-│   │       └── components/       해당 feature 전용 컴포넌트
-│   ├── shared/                   여러 feature가 함께 쓰는 것
-│   │   ├── ui/                   Button, Card, Chip, StepBar, ProgressBar
+│   │   ├── auth/                components, mock, types
+│   │   ├── dashboard/           components, hooks, mock, types
+│   │   ├── events/              api, components, hooks, mock, types
+│   │   ├── mypage/              components, mock, types
+│   │   └── planning/            catalogue, components, mock, types
+│   ├── shared/                  여러 feature가 함께 쓰는 것
+│   │   ├── ui/                  Button, Card, Chip, Modal, Toast, Tori, StateScreen …
 │   │   ├── api/
-│   │   │   ├── client.ts         실제 fetch를 호출하는 유일한 곳
-│   │   │   └── types.ts          공통 응답·에러 타입
-│   │   └── lib/                  format.ts, cn.ts
-│   └── styles/
-│       └── index.css             디자인 토큰(@theme) + 전역 스타일
+│   │   │   ├── client.ts        axios를 쓰는 유일한 곳
+│   │   │   ├── models.ts        schema.d.ts의 긴 경로에 이름만 붙인 곳
+│   │   │   ├── schema.d.ts      BE openapi.json에서 생성. 손으로 고치지 않는다
+│   │   │   └── types.ts         공통 응답·에러 타입
+│   │   ├── auth/                로그인 사용자 전역 상태(zustand)
+│   │   └── lib/                 format, labels, cn, dialog, toast, clipboard
+│   └── styles/index.css         디자인 토큰(@theme) + 전역 스타일
 ├── .env.example
-├── .gitignore
-├── .prettierrc                  Prettier 서식 규칙
-├── .prettierignore
-├── eslint.config.js             ESLint 규칙
-├── index.html
-├── package.json
-├── tsconfig.json                아래 두 개를 참조만 함
-├── tsconfig.app.json            src/ 용. @/ 별칭도 여기
-├── tsconfig.node.json           설정 파일(vite.config.ts 등) 용
-└── vite.config.ts
+├── .prettierrc  .prettierignore  eslint.config.js
+├── index.html  package.json  vite.config.ts
+└── tsconfig.json  tsconfig.app.json  tsconfig.node.json
 ```
 
-> `src/` 아래 파일들은 아직 구조 확정을 위한 자리표시(placeholder)입니다.
-> 프로젝트 스캐폴딩은 완료되었고(#20), 내용은 각 기능 이슈에서 채워 넣습니다.
+> `features/`에 `api.ts`·`hooks.ts`가 다 있지는 않습니다. 아직 서버에 붙지 않은
+> feature는 `mock.ts`만 두고, 연동할 때 그 둘을 추가합니다.
 
 ## 데이터가 흐르는 경로 (예: 승인 버튼)
 
 ```
-ApprovalCard.tsx          버튼 클릭
-  → hooks.ts              useApprove() 호출
-  → api.ts                approveItem(id)
-  → shared/api/client.ts  apiPost('/approvals/1/approve')
+ActionCard.tsx                        버튼 클릭
+  → features/events/hooks.ts          useApproveAction() 호출
+  → features/events/api.ts            approveAction(actionId)
+  → shared/api/client.ts              apiPost('/actions/act_21/approve')
   → FastAPI
 ```
+
+> 승인·거절 경로는 아직 BE에 없습니다(#41). 위는 붙을 자리를 보이는 예시입니다.
 
 ## API 관련 (BE와 합의된 사항, FE 구현 시 참고)
 
@@ -106,10 +161,10 @@ ApprovalCard.tsx          버튼 클릭
 - 응답 포맷: **envelope 방식** (`{ "data": ..., "meta": ... }`) — raw로 안 감쌈
 - 인증: `Authorization: Bearer <token>` 헤더 (OAuth: Google·Kakao)
 - 개인정보 필드(연락처 등)는 서버에서 마스킹되어 내려옴
-- API 문서: FastAPI 자동 생성 Swagger, FE와의 스펙 공유는 노션 표
+- API 문서: FastAPI 자동 생성 Swagger(`http://localhost:8000/docs`)
 
-> 위 항목들도 원본 문서(5장) 상 세부 규칙(에러 포맷, 페이지네이션 파라미터명, 상태 코드별 처리 등)이
-> 아직 `___`로 비어 있는 부분이 많습니다. BE 쪽에서 5장이 마저 채워지면 이 문서에도 반영이 필요합니다.
+> 어느 화면이 어느 API에 붙고 무엇이 아직 없는지는 `docs/week10/fe/운영해_FE_연동_기준서.md`에 있습니다.
+> 행사 계획(P1·P2)의 계약은 `be/app/ai/contracts.py`가 기준입니다.
 
 ## API 응답 포맷
 
@@ -190,3 +245,12 @@ export const DEFAULT_ERROR_MESSAGE = "일시적인 오류가 발생했어요. �
 | `VITE_API_BASE_URL` | API 서버 주소 | 박수겸 |
 
 `.env.example`은 커밋하고, 실제 값이 든 `.env`는 커밋하지 않습니다.
+## 첫 운영진 목업 온보딩
+
+`/` → `/onboarding`에서 목업 로그인이 필요하면 `/onboarding/login`으로 이동합니다. **예시 계정으로 로그인 → 초대된 예시 팀 선택 → 자료 준비 → 회의 만들기·시작 → 자료 답의 출처 → 후보 확인·예시 저장 → 메인의 저장한 할 일** 순서로 체험합니다. 실제 클릭할 대상을 하이라이트하며 안내에 별도 다음 버튼을 두지 않습니다.
+
+안내 끄기/켜기는 진행을 보존하고, **온보딩 초기화**는 목업 로그인부터 다시 시작합니다. 브라우저의 `unyounghae_onboarding_preview_v2`만 사용하며 실제 인증 세션·v1 진행·다른 저장 키를 지우지 않습니다. 토큰이나 입력 비밀번호는 저장하지 않습니다. 예시 계정 정보는 실제 계정이 아닙니다.
+
+체험 메뉴는 `/onboarding/*` 안에서 이동하며 인증·자료·회의·예약 API나 마이크·Push 권한을 사용하지 않습니다. 실제 로그인(`/login`)과 기존 메인(`/dashboard`)·기타 실연동 경로는 보존됩니다. 예시 팀 초대는 이 체험의 시나리오이며 전체 가입 정책을 뜻하지 않습니다. 예시 저장은 실제 일정·예약·알림 발송이 아닙니다.
+
+관련 상태 검사는 `node --test tests/onboarding-state.test.mjs`로 실행합니다.
