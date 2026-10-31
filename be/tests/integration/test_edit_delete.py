@@ -353,3 +353,38 @@ async def test_운영진과_다른_동아리_대표는_동아리_정보를_고�
 
     assert by_manager.status_code == 403
     assert by_outsider.status_code == 403
+
+
+async def test_소속_운영진은_동아리_하나를_조회해_수정_폼을_채운다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client, "club-get")
+    client.patch(
+        f"/api/v1/clubs/{club_id}",
+        headers=headers,
+        json={"category": "HOBBY", "description": "보드게임 동아리"},
+    )
+    manager = await member_of(client, club_id, MemberRole.MANAGER, "club-get-manager")
+
+    res = client.get(f"/api/v1/clubs/{club_id}", headers=manager)
+
+    assert res.status_code == 200, res.text
+    assert res.json() == {
+        "data": {
+            "id": club_id, "name": "club-get 동아리", "category": "HOBBY",
+            "description": "보드게임 동아리",
+        },
+        "meta": None,
+    }
+
+
+async def test_다른_동아리와_일반_동아리원은_동아리를_조회할_수_없다(
+    client: TestClient, app_db: None
+) -> None:
+    _headers, club_id = owner_with_club(client, "club-get-role")
+    member = await member_of(client, club_id, MemberRole.MEMBER, "club-get-member")
+    outsider, _other_club_id = owner_with_club(client, "club-get-outsider")
+
+    assert client.get(f"/api/v1/clubs/{club_id}", headers=member).status_code == 403
+    assert client.get(f"/api/v1/clubs/{club_id}", headers=outsider).status_code == 403
+    assert client.get("/api/v1/clubs/clb_missing", headers=outsider).status_code == 403
