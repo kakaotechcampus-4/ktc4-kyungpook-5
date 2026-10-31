@@ -6,7 +6,6 @@ import type {
   PlanStep,
   PlanSummary,
   PlanWarning,
-  StepPhase,
 } from '@/features/planning/types'
 
 export const FIRST_MESSAGE: ChatMessage = {
@@ -130,12 +129,6 @@ export const DEMO_PLAN_STEPS: PlanStep[] = [
     desc: '이번 행사 기록을 다음 행사용 자료로 저장합니다.',
   },
 ]
-
-export const PHASE_DESC: Record<StepPhase, string> = {
-  '사전 준비': '인원과 예산의 윤곽을 잡습니다',
-  '모집 · 확정': '자리를 잡고 참가비를 걷습니다',
-  '행사 진행 · 마무리': '돈을 정산하고 기록을 남깁니다',
-}
 
 export const DEMO_SUMMARY: PlanSummary = {
   totalSteps: 7,

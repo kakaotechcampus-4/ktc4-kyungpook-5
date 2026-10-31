@@ -5,15 +5,25 @@ M1 승인 대기·L2 결정 검토 모달·확인 요청 카드·Step 모달이 
 """
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.core.deps import ensure_member, get_current_account
+from app.core.deps import WRITER_ROLES, ensure_member, get_current_account
+from app.core.exceptions import ActionNotFound, Forbidden
 from app.db.session import get_session
 from app.models.auth import Account
 from app.models.clubs import Member
-from app.models.events import Event
+from app.models.events import Action, Event, Step
 from app.schemas.common import Envelope
-from app.schemas.events import ActionDenyIn, ActionOut, ActionResolveIn, ActionVersionIn
+from app.schemas.events import (
+    ActionDenyIn,
+    ActionOut,
+    ActionResolveIn,
+    ActionUpdateIn,
+    ActionVersionIn,
+    PlannedStepOut,
+)
 from app.services import action_service, event_service
 
 router = APIRouter(prefix="/api/v1/actions", tags=["actions"])
@@ -96,3 +106,52 @@ async def mark_action_done(
         session, action_id=action_id, member=member, expected_version=body.expected_version
     )
     return _out(action, member=member, event=event)
+
+
+@router.patch("/{action_id}", response_model=Envelope[PlannedStepOut])
+async def update_action(
+    action_id: str,
+    body: ActionUpdateIn,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[PlannedStepOut]:
+    """행동 세부를 고친다 (#106 ④).
+
+    승인·처리(/approve 등)와 달리 계획 중에도 부른다. 그래서 운영 중을 요구하는
+    _operating_member를 쓰지 않고 소속·권한만 본다.
+    """
+    action = await session.scalar(
+        select(Action)
+        .where(Action.id == action_id)
+        .options(selectinload(Action.step).selectinload(Step.actions), selectinload(Action.event))
+    )
+    if action is None:
+        raise ActionNotFound()
+    member = await ensure_member(session, club_id=action.event.club_id, account=account)
+    if member.role not in WRITER_ROLES:
+        raise Forbidden()
+
+    sent = set(body.model_fields_set)
+    values = {
+        key: getattr(body, key)
+        for key in ("title", "subtitle", "amount", "due_date")
+        if key in sent
+    }
+    # 보낸 키만 덮는다. 모달이 그리지 않는 키를 지우지 않기 위해서다.
+    payload_values = (
+        body.payload.model_dump(exclude_unset=True) if body.payload is not None else None
+    )
+    updated = await event_service.update_action(
+        session,
+        action=action,
+        values=values,
+        payload_values=payload_values,
+        expected_version=body.expected_version,
+    )
+    # 고친 행동이 속한 단계를 통째로 돌려준다 — 화면이 그 단위로 다시 그린다.
+    if updated.step is None:
+        raise ActionNotFound()
+    await session.refresh(updated.step, ["actions"])
+    return Envelope(
+        data=PlannedStepOut.model_validate(event_service.planned_step_out(updated.step))
+    )

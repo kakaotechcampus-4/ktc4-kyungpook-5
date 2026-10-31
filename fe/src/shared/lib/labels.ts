@@ -16,7 +16,9 @@ export const STEP_ACTOR_LABEL: Record<string, string> = {
   MANUAL: '직접 수행',
 }
 
-// 동아리 분야. 생성 화면의 선택 버튼과 목록 표시에 함께 쓴다.
+// 동아리 분야. 생성·수정 화면의 선택 버튼 차례이기도 하다.
+export const CLUB_CATEGORIES = ['ACADEMIC', 'SPORTS', 'VOLUNTEER', 'HOBBY', 'ETC'] as const
+
 export const CLUB_CATEGORY_LABEL: Record<string, string> = {
   ACADEMIC: '학술',
   SPORTS: '운동',

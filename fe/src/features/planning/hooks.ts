@@ -2,11 +2,12 @@ import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
 import { STEP_CATALOGUE } from './catalogue'
-import type { LocalSchedule } from './localPlan'
-import type { ChatMessage, PlanFacts } from './types'
+import type { ChatMessage, PlanFacts, PlanStep, StepActor } from './types'
 import { FIRST_MESSAGE } from './mock'
 import { ApiError } from '@/shared/api/types'
 import type { components } from '@/shared/api/schema'
+import { formatCurrency, formatDateRange, formatMonthDay } from '@/shared/lib/format'
+import { ACTION_TYPE_LABEL, STEP_ACTOR_LABEL } from '@/shared/lib/labels'
 
 type S = components['schemas']
 type Draft = S['PlanDraftOut']
@@ -145,7 +146,8 @@ export function usePlanningChat(
     }
   }
   const generate = async () => {
-    if (!selectedId || !snapshot.data || locked.current) return
+    // 만들어졌으면 true. 화면이 이걸 보고 2단계로 넘어간다.
+    if (!selectedId || !snapshot.data || locked.current) return false
     locked.current = true
     setBusy(true)
     setError('')
@@ -156,10 +158,12 @@ export function usePlanningChat(
       })
       setView(result)
       await refresh()
-      if (result.generationResult?.status !== 'generated')
-        setError(result.reply || '계획을 생성하지 못했어요. 조건을 확인해 주세요.')
+      const generated = result.generationResult?.status === 'generated'
+      if (!generated) setError(result.reply || '계획을 생성하지 못했어요. 조건을 확인해 주세요.')
+      return generated
     } catch {
       setError('계획 생성 결과를 확인하지 못했어요. 다시 불러와 저장 상태를 확인해 주세요.')
+      return false
     } finally {
       locked.current = false
       setBusy(false)
@@ -168,14 +172,42 @@ export function usePlanningChat(
   return { messages, facts, busy, error, send, generate, snapshot, view: currentView, revision }
 }
 
-// --- 단계 수정 · 행사 시작 (#213 으로 서버 경로가 생기기 전까지 로컬) ----------
+// --- 단계 수정 · 행사 시작 (#213) ----------
 
-// 서버 단계 응답에는 StepCode 가 없고 이름만 온다. 카탈로그와 이름이
-// 13개 모두 같아서 지금은 이름으로 되찾는다. 서버가 code 를 내려주면 지운다.
 export function codesFromSteps(steps: S['PlannedStepOut'][]): string[] {
-  return steps
-    .map((step) => STEP_CATALOGUE.find((item) => item.name === step.name)?.code)
-    .filter((code): code is string => code !== undefined)
+  return steps.map((step) => step.code)
+}
+
+// 서버 단계 → P2 흐름 한 줄(StepFlow). 문구는 labels.ts의 표로 바꾼다.
+// ponytail: 묶음(phase)이 PlannedStepOut에 없어 FE 카탈로그에서 찾는다. BE가 phase를 주면 그걸 쓴다.
+export function toPlanSteps(steps: S['PlannedStepOut'][]): PlanStep[] {
+  return steps.map((step) => {
+    const at = step.deadline ?? step.startsAt
+    const types = [...new Set(step.actions.map((a) => ACTION_TYPE_LABEL[a.type] ?? a.type))]
+    return {
+      id: step.id,
+      // 모르는 코드는 마지막 묶음에 둔다. 묶음에서 빠지면 화면에서 단계가 조용히 사라진다.
+      phase: STEP_CATALOGUE.find((c) => c.code === step.code)?.phase ?? '행사 진행 · 마무리',
+      name: step.name,
+      actor: (STEP_ACTOR_LABEL[step.actor] ?? '직접 수행') as StepActor,
+      actionLabel: types.join(' · ') || undefined,
+      date: at ? formatMonthDay(at) : '미정',
+      desc: step.actions.find((a) => a.subtitle)?.subtitle ?? '',
+      editable: step.editable,
+    }
+  })
+}
+
+// P2 머리 한 줄 "2026 봄 MT · 32명 · 예산 2,000,000원 · 3/21 – 3/22". 정하지 않은 건 뺀다.
+export function planMetaLine(conditions: S['PlanConditionsOut']): string {
+  return [
+    conditions.title,
+    conditions.headcount != null && `${conditions.headcount}명`,
+    conditions.budgetTotal != null && `예산 ${formatCurrency(conditions.budgetTotal)}`,
+    conditions.startDate && formatDateRange(conditions.startDate, conditions.endDate),
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 export function usePlanSteps(eventId: string | null) {
@@ -190,8 +222,7 @@ export function usePlanSteps(eventId: string | null) {
 export function useSavePlanSteps(eventId: string | null) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: { codes: string[]; schedule: Record<string, LocalSchedule> }) =>
-      planningApi.saveSteps(eventId!, input.codes, input.schedule),
+    mutationFn: (codes: string[]) => planningApi.saveSteps(eventId!, codes),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
   })
 }
@@ -204,41 +235,50 @@ export function useStartEvent(eventId: string | null) {
   })
 }
 
-// 저장한 단계 구성을 서버 응답 위에 덮어 보여준다. 뺀 단계는 빼고, 순서도 저장한
-// 대로 다시 세운다. 서버 경로가 생기면 서버 응답 자체가 이미 그 모양이라 사라진다.
-export function applyLocalCodes(
-  steps: S['PlannedStepOut'][],
-  codes: string[] | null,
-  schedule: Record<string, LocalSchedule> = {},
-): S['PlannedStepOut'][] {
-  const byCode = new Map(
-    steps.map((step) => [STEP_CATALOGUE.find((item) => item.name === step.name)?.code, step]),
-  )
-  const ordered = codes
-    ? codes
-        .map((code) => byCode.get(code))
-        .filter((step): step is S['PlannedStepOut'] => step !== undefined)
-    : steps
-  return ordered.map((step, index) => {
-    const code = STEP_CATALOGUE.find((item) => item.name === step.name)?.code
-    const saved = code ? schedule[code] : undefined
-    return {
-      ...step,
-      stepOrder: codes ? index + 1 : step.stepOrder,
-      startsAt: saved ? saved.startsAt : step.startsAt,
-      deadline: saved ? saved.deadline : step.deadline,
-    }
+// 세부 수정 저장 (#106 ④). 일정은 Step, 나머지는 Action 으로 간다.
+// 바뀐 것만 보낸다 — PATCH 가 보낸 밭만 덮으므로 건드리지 않은 값은 그대로 남는다.
+export function useSaveStepDetail() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      step,
+      draft,
+    }: {
+      step: S['PlannedStepOut']
+      draft: {
+        startsAt: string | null
+        deadline: string | null
+        actions: Record<
+          string,
+          { title: string; amount: number | null; payload: S['ActionPayloadOut'] }
+        >
+      }
+    }) => {
+      if (draft.startsAt !== step.startsAt || draft.deadline !== step.deadline) {
+        await planningApi.updateStep(step.id, {
+          startsAt: draft.startsAt,
+          deadline: draft.deadline,
+        })
+      }
+      for (const action of step.actions) {
+        const next = draft.actions[action.id]
+        if (!next) continue
+        const changed =
+          next.title !== action.title ||
+          next.amount !== action.amount ||
+          JSON.stringify(next.payload) !== JSON.stringify(action.payload)
+        if (changed) {
+          await planningApi.updateAction(action.id, {
+            // 조회에서 받은 version을 그대로 돌려보낸다. 그사이 내용이 바뀌었으면
+            // 서버가 409로 거절하고 다시 불러오게 한다.
+            expectedVersion: action.version,
+            title: next.title,
+            amount: next.amount,
+            payload: next.payload,
+          })
+        }
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
   })
-}
-
-// 서버가 만든 일정을 StepCode 기준으로 모은다. 수정 화면의 출발점이 된다.
-export function scheduleFromSteps(
-  steps: S['PlannedStepOut'][],
-): Record<string, LocalSchedule> {
-  const result: Record<string, LocalSchedule> = {}
-  for (const step of steps) {
-    const code = STEP_CATALOGUE.find((item) => item.name === step.name)?.code
-    if (code) result[code] = { startsAt: step.startsAt, deadline: step.deadline }
-  }
-  return result
 }

@@ -97,7 +97,8 @@ async function copy(text: string) {
 
 interface ActionCardProps {
   action: EventAction
-  // 실행 대기에서 "게시했습니다"처럼 밖에서 직접 끝냈다고 알릴 때
+  // 실행 대기에서 "게시했습니다"처럼 밖에서 직접 끝냈다고 알릴 때.
+  // 끝난 행사처럼 더 처리할 수 없는 자리에서는 주지 않는다 — 버튼을 그리지 않는다.
   onComplete?: (action: EventAction) => void
   // 승인 대기에서 [검토하기] · [답변하기]를 눌렀을 때. 모달은 화면 쪽에서 띄운다.
   onReview?: (action: EventAction) => void
@@ -124,9 +125,15 @@ export function ActionCard({ action, onComplete, onReview }: ActionCardProps) {
           <Box label={question ? '토리가 모르는 것' : '토리가 준비한 초안'}>{action.content}</Box>
         )}
         <div className="flex items-center gap-[8px]">
-          <Button onClick={() => onReview?.(action)}>{question ? '답변하기' : '검토하기'}</Button>
+          {onReview && (
+            <Button onClick={() => onReview(action)}>{question ? '답변하기' : '검토하기'}</Button>
+          )}
           <span className="text-[11px] text-mute">
-            {question ? '답변하면 바로 완료로 가요' : '승인 전에는 실행하지 않아요'}
+            {onReview
+              ? question
+                ? '답변하면 바로 완료로 가요'
+                : '승인 전에는 실행하지 않아요'
+              : '처리하지 못한 채 끝났어요'}
           </span>
         </div>
       </>
@@ -141,7 +148,8 @@ export function ActionCard({ action, onComplete, onReview }: ActionCardProps) {
           {content}
         </Box>
         <div className="flex gap-[8px]">
-          {(content || !step.copy) && (
+          {/* 복사는 끝난 행사에서도 쓸 수 있다. 다시 검토하는 쪽만 막는다 */}
+          {(content || (!step.copy && onReview)) && (
             <Button
               variant="secondary"
               onClick={content ? () => copy(content) : () => onReview?.(action)}
@@ -149,7 +157,7 @@ export function ActionCard({ action, onComplete, onReview }: ActionCardProps) {
               {step.secondary}
             </Button>
           )}
-          <Button onClick={() => onComplete?.(action)}>{step.primary}</Button>
+          {onComplete && <Button onClick={() => onComplete(action)}>{step.primary}</Button>}
         </div>
       </>
     )

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { EXPENSE_PAGE_SIZE } from '@/features/accounting/api'
 import { ExpenseForm } from '@/features/accounting/components/ExpenseForm'
-import { useExpenses } from '@/features/accounting/hooks'
+import { expenseFormErrorMessage, useDeleteExpense, useExpenses } from '@/features/accounting/hooks'
 import type { Expense } from '@/features/accounting/types'
 import { ApiError } from '@/shared/api/types'
 import { formatCurrency, formatDotDate } from '@/shared/lib/format'
+import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
@@ -32,6 +33,10 @@ export function ExpensesPanel({ clubId }: { clubId: string }) {
 function ClubExpensesPanel({ clubId }: { clubId: string }) {
   const [page, setPage] = useState(1)
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<Expense | null>(null)
+  // 지우기 전에 한 번 되묻는다. 지출은 되돌릴 수 없다.
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const remove = useDeleteExpense(clubId)
   const expenses = useExpenses(clubId, page)
   const rows = expenses.data?.data
   const totalCount = expenses.data?.meta?.totalCount ?? rows?.length ?? 0
@@ -53,7 +58,14 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
           >
             {expenses.isFetching ? '불러오는 중…' : '새로고침'}
           </Button>
-          <Button size="sm" aria-expanded={adding} onClick={() => setAdding((open) => !open)}>
+          <Button
+            size="sm"
+            aria-expanded={adding}
+            onClick={() => {
+              setEditing(null)
+              setAdding((open) => !open)
+            }}
+          >
             지출 등록
           </Button>
         </div>
@@ -67,6 +79,14 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
             // 새 지출은 첫 페이지에 들어간다. 뒤쪽을 보고 있었다면 거기로 데려간다.
             setPage(1)
           }}
+        />
+      )}
+      {editing && (
+        <ExpenseForm
+          key={editing.id}
+          clubId={clubId}
+          expense={editing}
+          onDone={() => setEditing(null)}
         />
       )}
 
@@ -109,6 +129,9 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
                 <th scope="col" className="px-[22px] py-[12px] font-medium">
                   기록 방식
                 </th>
+                <th scope="col" className="px-[22px] py-[12px] font-medium">
+                  <span className="sr-only">수정·삭제</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -133,6 +156,55 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
                   </td>
                   <td className="whitespace-nowrap px-[22px] py-[16px] text-mute">
                     {SOURCE_LABEL[expense.source]}
+                  </td>
+                  <td className="whitespace-nowrap px-[22px] py-[16px]">
+                    {confirmingId === expense.id ? (
+                      <span className="flex items-center gap-[6px]">
+                        <span className="text-[11.5px] font-bold text-failed">지울까요?</span>
+                        <Button
+                          size="sm"
+                          disabled={remove.isPending}
+                          onClick={() => {
+                            void remove
+                              .mutateAsync(expense)
+                              .then(
+                                () => setConfirmingId(null),
+                                (cause) =>
+                                  toast.show({
+                                    kind: 'error',
+                                    title: '지우지 못했어요',
+                                    desc: expenseFormErrorMessage(cause),
+                                  }),
+                              )
+                          }}
+                        >
+                          지우기
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setConfirmingId(null)}>
+                          취소
+                        </Button>
+                      </span>
+                    ) : (
+                      <span className="flex gap-[6px]">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setAdding(false)
+                            setEditing(expense)
+                          }}
+                        >
+                          수정
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfirmingId(expense.id)}
+                        >
+                          삭제
+                        </Button>
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

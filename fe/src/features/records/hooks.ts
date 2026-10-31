@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getRecord,
   getRecords,
+  deleteRecord,
   retryRecordIndex,
   searchRecords,
   uploadRecord,
@@ -35,6 +36,17 @@ export function useRetryRecordIndex(clubId: string, recordId: string) {
     mutationFn: () => retryRecordIndex(recordId),
     onSuccess: (record) => {
       queryClient.setQueryData(['records', clubId, recordId], record)
+      void queryClient.invalidateQueries({ queryKey: listKey(clubId) })
+    },
+  })
+}
+
+export function useDeleteRecord(clubId: string, recordId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => deleteRecord(recordId),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ['records', clubId, recordId] })
       void queryClient.invalidateQueries({ queryKey: listKey(clubId) })
     },
   })

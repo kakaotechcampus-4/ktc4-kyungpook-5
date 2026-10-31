@@ -30,7 +30,7 @@ export function LoginForm() {
   if (token && me) {
     return (
       <Card className="mt-[26px] flex w-[400px] max-w-full flex-col gap-[16px] px-[28px] py-[28px]">
-        <h2 className="text-h3">회의를 진행할 팀·조직 선택</h2>
+        <h2 className="text-h3">들어갈 팀·조직 선택</h2>
         <p className="break-all text-[12px] text-mute">{me.email}</p>
         {me.clubs.length ? (
           <div className="flex flex-col gap-[9px]">
@@ -43,7 +43,7 @@ export function LoginForm() {
               >
                 <span>{club.name}</span>
                 <span className="shrink-0 text-[11px]">
-                  {MEMBER_ROLE_LABEL[club.role]} · 회의로 ›
+                  {MEMBER_ROLE_LABEL[club.role]} · 들어가기 ›
                 </span>
               </Button>
             ))}

@@ -3,16 +3,26 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AnswerModal } from '@/features/events/components/AnswerModal'
 import { CancelConfirmModal } from '@/features/events/components/CancelConfirmModal'
+import { CompleteConfirmModal } from '@/features/events/components/CompleteConfirmModal'
 import { ConfirmationList } from '@/features/events/components/ConfirmationList'
+import { PendingApprovalList } from '@/features/events/components/PendingApprovalList'
 import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
 import { ReviewModal } from '@/features/events/components/ReviewModal'
 import { StepModal } from '@/features/events/components/StepModal'
 import {
+  actionErrorMessage,
+  useApproveAction,
+  useCompleteEvent,
+  useCompleteStep,
   useConfirmations,
+  usePendingApprovals,
+  useDenyAction,
   useEventDetail,
   useEventSteps,
+  useMarkActionDone,
+  useResolveAction,
   useResolvedActions,
   useStepActions,
 } from '@/features/events/hooks'
@@ -47,58 +57,111 @@ export default function EventDetailPage() {
   const stepActions = stepActionsQuery.data?.filter((a) => !finishedIds.includes(a.id))
 
   // 처리한 확인 요청. 서버 연동 전이라 화면에서만 빼 둔다.
+  const pendingApprovals = usePendingApprovals(shownId).data ?? []
   const [answeredIds, setAnsweredIds] = useState<string[]>([])
   const confirmations = (useConfirmations(shownId).data ?? []).filter(
     (a) => !answeredIds.includes(a.id),
   )
 
-  // TODO(연동): POST /actions/{id}/resolve 에 { choice } 로 보낸다
-  const resolveConfirmation = (action: EventAction, choice: string) => {
+  const resolve = useResolveAction(shownId)
+  const resolveConfirmation = (action: EventAction, choice: string, manualValue?: string) => {
     setAnsweredIds((ids) => [...ids, action.id])
-    toast.show({
-      kind: 'done',
-      title: choice === 'MANUAL' ? '직접 처리로 넘겼어요' : '처리했어요',
-      desc: action.title,
-    })
+    void resolve.mutateAsync({ action, choice, manualValue }).then(
+      () =>
+        toast.show({
+          kind: 'done',
+          title: choice === 'MANUAL' ? '직접 처리로 넘겼어요' : '처리했어요',
+          desc: action.title,
+        }),
+      (cause) => {
+        // 서버가 받지 않았으니 숨겼던 카드를 되돌린다.
+        setAnsweredIds((ids) => ids.filter((id) => id !== action.id))
+        toast.show({ kind: 'error', title: '처리하지 못했어요', desc: actionErrorMessage(cause) })
+      },
+    )
   }
 
-  // TODO(연동): 실행을 마쳤다는 기록 API가 명세에 없다
+  const markDone = useMarkActionDone(shownId)
   const finishAction = (action: EventAction) => {
     setFinishedIds((ids) => [...ids, action.id])
-    toast.show({ kind: 'done', title: '완료로 표시했어요', desc: action.title })
+    void markDone.mutateAsync(action).then(
+      () => toast.show({ kind: 'done', title: '완료로 표시했어요', desc: action.title }),
+      (cause) => {
+        setFinishedIds((ids) => ids.filter((id) => id !== action.id))
+        toast.show({ kind: 'error', title: '완료로 표시하지 못했어요', desc: actionErrorMessage(cause) })
+      },
+    )
   }
 
   // 행사 취소 확인 모달. 확인하면 취소 정리 화면으로 간다.
   const [cancelOpen, setCancelOpen] = useState(false)
+
+  // 행사 완료. 앱이 끝났다고 판단하지 않고 운영진이 직접 표시한다.
+  const [completeOpen, setCompleteOpen] = useState(false)
+  const complete = useCompleteEvent(shownId)
+  const completeEvent = () =>
+    void complete.mutateAsync(undefined).then(
+      () => {
+        setCompleteOpen(false)
+        toast.show({ kind: 'done', title: '행사를 완료로 표시했어요' })
+      },
+      (cause) =>
+        toast.show({ kind: 'error', title: '완료하지 못했어요', desc: actionErrorMessage(cause) }),
+    )
 
   // 검토·답변 모달에 띄울 Action. 유형에 따라 둘 중 하나가 열린다.
   const [reviewing, setReviewing] = useState<EventAction>()
   const answering = reviewing?.type === 'CONFIRMATION' ? reviewing : undefined
   const deciding = reviewing && reviewing.type !== 'CONFIRMATION' ? reviewing : undefined
 
-  // TODO(연동): POST /actions/{id}/approve
+  const approve = useApproveAction(shownId)
   const approveAction = (action: EventAction) => {
     setReviewing(undefined)
     setOpenStepId(null)
-    toast.show({ kind: 'done', title: '승인했어요', desc: action.title })
+    void approve.mutateAsync(action).then(
+      () => toast.show({ kind: 'done', title: '승인했어요', desc: action.title }),
+      (cause) =>
+        toast.show({ kind: 'error', title: '승인하지 못했어요', desc: actionErrorMessage(cause) }),
+    )
   }
 
-  // TODO(연동): POST /actions/{id}/deny 에 { reason } 으로 보낸다
+  const deny = useDenyAction(shownId)
   const denyAction = (action: EventAction, reason: string) => {
     setReviewing(undefined)
     setOpenStepId(null)
-    toast.show({
-      kind: 'done',
-      title: '진행하지 않기로 했어요',
-      desc: `${action.title} · ${reason}`,
-    })
+    void deny.mutateAsync({ action, reason }).then(
+      () =>
+        toast.show({
+          kind: 'done',
+          title: '진행하지 않기로 했어요',
+          desc: `${action.title} · ${reason}`,
+        }),
+      (cause) =>
+        toast.show({ kind: 'error', title: '거절하지 못했어요', desc: actionErrorMessage(cause) }),
+    )
   }
 
-  // TODO(연동): POST /steps/{stepId}/complete. 미처리 Action이 남아 있으면 먼저 확인을 받는다(명세).
+  const finishStep = useCompleteStep(shownId)
   const completeStep = (step: EventStep) => {
     setOpenStepId(null)
-    toast.show({ kind: 'done', title: '단계를 완료로 표시했어요', desc: step.name })
+    void finishStep.mutateAsync(step).then(
+      (result) =>
+        toast.show({
+          kind: 'done',
+          title: '단계를 완료로 표시했어요',
+          // 남은 행동이 있어도 완료는 된다. 그냥 넘기면 뭘 안 했는지 모른 채 지나간다.
+          desc: result.pendingActionCount
+            ? `${step.name} · 아직 처리하지 않은 일 ${result.pendingActionCount}건이 있어요`
+            : step.name,
+        }),
+      (cause) =>
+        toast.show({ kind: 'error', title: '완료로 표시하지 못했어요', desc: actionErrorMessage(cause) }),
+    )
   }
+
+  // 처리(승인·거절·답변·완료)는 서버가 운영 중인 행사에서만 받는다. 끝난 행사는
+  // 기록을 보러 들어오는 자리라, 누르면 실패할 버튼을 아예 그리지 않는다.
+  const operating = detailQuery.data?.status === 'ON_GOING'
 
   if (detailQuery.isPending) return null
   if (detailQuery.isError) {
@@ -130,11 +193,19 @@ export default function EventDetailPage() {
             event={event}
             steps={steps}
             onSelectStep={(step) => setOpenStepId(step.id)}
-            onCancelEvent={() => setCancelOpen(true)}
+            onCancelEvent={operating ? () => setCancelOpen(true) : undefined}
+            onCompleteEvent={operating ? () => setCompleteOpen(true) : undefined}
           />
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-              <ConfirmationList actions={confirmations} onResolve={resolveConfirmation} />
+              <PendingApprovalList
+                actions={pendingApprovals}
+                onReview={operating ? setReviewing : undefined}
+              />
+              <ConfirmationList
+                actions={confirmations}
+                onResolve={operating ? resolveConfirmation : undefined}
+              />
               <ResolvedActionList
                 actions={resolved?.items ?? []}
                 totalCount={resolved?.totalCount ?? 0}
@@ -158,9 +229,9 @@ export default function EventDetailPage() {
               actionsFailed={stepActionsQuery.isError}
               onRetryActions={() => stepActionsQuery.refetch()}
               onClose={() => setOpenStepId(null)}
-              onCompleteAction={finishAction}
-              onReviewAction={setReviewing}
-              onCompleteStep={completeStep}
+              onCompleteAction={operating ? finishAction : undefined}
+              onReviewAction={operating ? setReviewing : undefined}
+              onCompleteStep={operating ? completeStep : undefined}
             />
           )}
           <ReviewModal
@@ -176,13 +247,21 @@ export default function EventDetailPage() {
             // TODO(연동): POST /events/{id}/cancel. 취소 Action은 아직 정의 전이다(#73).
             onConfirm={() => navigate(`/events/${eventId}/cancel${search}`)}
           />
+          <CompleteConfirmModal
+            open={completeOpen}
+            event={event}
+            remainingSteps={steps.filter((step) => step.state !== 'DONE').length}
+            pendingApprovals={pendingApprovals.length}
+            pending={complete.isPending}
+            onClose={() => setCompleteOpen(false)}
+            onConfirm={completeEvent}
+          />
           <AnswerModal
             action={answering}
             onClose={() => setReviewing(undefined)}
-            // TODO(연동): 직접 처리면 manualValue도 함께 보낸다. 명세는 객체({ memberId })라 글로 받는 지금 화면과 맞춰야 한다.
-            onAnswer={(action, choice) => {
+            onAnswer={(action, choice, manualValue) => {
               setReviewing(undefined)
-              resolveConfirmation(action, choice)
+              resolveConfirmation(action, choice, manualValue)
             }}
           />
         </>

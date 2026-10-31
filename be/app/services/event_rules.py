@@ -118,6 +118,15 @@ def is_editable(status: ActionStatus) -> bool:
     return status in (ActionStatus.PENDING, ActionStatus.APPROVED)
 
 
+def is_step_editable(completed_at: datetime | None) -> bool:
+    """단계의 일정을 고칠 수 있는지 (#106 ③).
+
+    끝난 단계는 결과 기록이라 건드리지 않는다. Action의 is_editable과 달리
+    되돌릴 방법이 없어 APPROVED 같은 중간 상태가 없다.
+    """
+    return completed_at is None
+
+
 class _StepLike(Protocol):
     id: str
     completed_at: datetime | None

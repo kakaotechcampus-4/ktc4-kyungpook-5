@@ -1,4 +1,5 @@
 import {
+  apiDelete,
   apiDownload,
   apiGet,
   apiGetEnvelope,
@@ -43,4 +44,9 @@ export function searchRecords(clubId: string, query: string, page: number) {
     components['schemas']['RecordSearchData'],
     components['schemas']['PageMeta']
   >(`/records/search?${params}`)
+}
+
+// 올린 자료를 내린다. 색인까지 끝난 자료는 AI 검색에서도 함께 빠진다.
+export function deleteRecord(recordId: string) {
+  return apiDelete<void>(`/records/${encodeURIComponent(recordId)}`)
 }

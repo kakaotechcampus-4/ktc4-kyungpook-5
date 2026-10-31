@@ -10,11 +10,24 @@ from collections.abc import Sequence
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.enums import ActionStatus, ActionType, EventStatus, StepState
+from app.core.enums import ActionStatus, ActionType, EventStatus, StepCode, StepState
+from app.ai.planning_catalog import (
+    PLANNING_PHASE_ORDER,
+    PLANNING_STEP_ACTIONS,
+    PLANNING_STEP_ACTORS,
+    PLANNING_STEP_NAMES,
+    PLANNING_STEP_PHASES,
+)
+from app.core.exceptions import (
+    EventStateConflict,
+    NotEditable,
+    ValidationFailed,
+    VersionConflict,
+)
 from app.models.clubs import Member
 from app.models.events import Action, Event, Step
 from app.services import event_rules
@@ -237,6 +250,8 @@ def action_out(action: Action, *, member: Member, event_status: EventStatus) -> 
         # CONFIRMATION 선택지는 payload(JSONB)에 들어 있다. 응답 평탄화는 여기서만 한다.
         "options": payload.get("options"),
         "allow_manual": payload.get("allow_manual"),
+        # 유형별 설정값(#106 ①). CONFIRMATION은 위에서 이미 펼쳤으므로 비운다.
+        "payload": None if action.type == ActionType.CONFIRMATION else action.payload,
         "can_approve": event_rules.can_approve(
             member.role,
             action.status,
@@ -290,3 +305,203 @@ async def list_actions(
     return [
         action_out(a, member=member, event_status=event_status) for a in actions
     ], total or 0
+
+
+def planned_step_out(step: Step) -> dict:
+    """PlannedStepOut 한 건. actions를 미리 불러온 Step이어야 한다.
+
+    계획 화면의 세부 수정 모달이 쓰는 모양이다. 승인 흐름의 action_out과 달리
+    resolver·canApprove를 넣지 않는다 — 계획 중에는 아직 쓰이지 않는다.
+    """
+    return {
+        "id": step.id,
+        "code": step.code,
+        "step_order": step.step_order,
+        "name": step.name,
+        "actor": step.actor,
+        "starts_at": step.starts_at,
+        "deadline": step.deadline,
+        "editable": event_rules.is_step_editable(step.completed_at),
+        "actions": [
+            {
+                "id": action.id,
+                "type": action.type,
+                "title": action.title,
+                "subtitle": action.subtitle,
+                "amount": action.amount,
+                "due_date": action.due_date,
+                # CONFIRMATION의 payload는 선택지라 세부 수정 대상이 아니다.
+                "payload": (
+                    None if action.type == ActionType.CONFIRMATION else action.payload
+                ),
+                "editable": event_rules.is_editable(action.status),
+                "version": action.version,
+            }
+            for action in step.actions
+        ],
+    }
+
+
+async def update_step(
+    session: AsyncSession, *, step: Step, starts_at: datetime | None, deadline: datetime | None,
+    fields: set[str],
+) -> Step:
+    """단계 일정을 고친다 (#106 ④). 보낸 밭만 바꾼다.
+
+    fields는 요청에 실제로 실려 온 키다. None을 "비우기"로 받아야 해서
+    값만 보고는 생략과 구분할 수 없다.
+    """
+    if not event_rules.is_step_editable(step.completed_at):
+        raise NotEditable()
+    if "starts_at" in fields:
+        step.starts_at = starts_at
+    if "deadline" in fields:
+        step.deadline = deadline
+    await session.commit()
+    await session.refresh(step, ["actions"])
+    return step
+
+
+async def update_action(
+    session: AsyncSession,
+    *,
+    action: Action,
+    values: dict,
+    payload_values: dict | None,
+    expected_version: int,
+) -> Action:
+    """Action 세부를 고친다 (#106 ④).
+
+    payload는 통째로 바꾸지 않고 보낸 키만 덮는다 — 모달이 그리지 않는 키
+    (CONFIRMATION의 선택지 등)를 지우면 안 된다.
+
+    금액을 고치면 행사 쪽 파생값을 다시 맞춘다(#106 ②). 참가비 수금과 지출
+    정산만 Event로 올라가고, 예약 계약금·환급액은 그 Action 안에서만 쓴다.
+    """
+    if not event_rules.is_editable(action.status):
+        raise NotEditable()
+    # 본 뒤에 내용이 바뀌었으면 덮어쓰지 않고 다시 불러오게 한다(#41과 같은 규칙).
+    if action.version != expected_version:
+        raise VersionConflict()
+    for key, value in values.items():
+        setattr(action, key, value)
+    if payload_values:
+        action.payload = {**(action.payload or {}), **payload_values}
+    if "amount" in values and action.step is not None:
+        event = await session.get(Event, action.event_id)
+        if event is not None:
+            if action.step.code == StepCode.COLLECT_FEES:
+                event.fee_per_person = action.amount
+            elif action.step.code == StepCode.SETTLE_EXPENSES:
+                event.budget_total = action.amount
+    action.version += 1
+    # 승인된 내용을 고쳤으면 다시 승인을 받는다 (event_rules.is_editable 주석).
+    if action.status == ActionStatus.APPROVED:
+        action.status = ActionStatus.PENDING
+        action.resolved_at = None
+        action.resolved_by = None
+    await session.commit()
+    await session.refresh(action)
+    return action
+
+
+async def replace_plan_steps(
+    session: AsyncSession, *, event: Event, codes: list[StepCode]
+) -> list[Step]:
+    """계획의 단계 구성을 보낸 목록으로 맞춘다 (#213 3단계).
+
+    남은 단계는 행을 그대로 둔다 — id가 바뀌면 이미 고쳐 둔 일정과 Action이
+    같이 날아간다. 빠진 단계만 지우고, 새로 들어온 단계만 카탈로그에서 만든다.
+
+    묶음은 카탈로그가 정하므로 보낸 순서를 그대로 쓰지 않고 묶음 순서로 한 번
+    정렬한다. 사전 준비 단계가 마무리 뒤로 가는 구성을 막기 위해서다.
+    """
+    if event.status != EventStatus.PLANNING:
+        raise EventStateConflict("계획 중인 행사만 단계 구성을 바꿀 수 있습니다.")
+    if not codes:
+        raise ValidationFailed({"codes": "단계를 하나 이상 남겨 주세요."})
+    if len(set(codes)) != len(codes):
+        raise ValidationFailed({"codes": "같은 단계를 두 번 넣을 수 없습니다."})
+
+    existing = {
+        step.code: step
+        for step in await session.scalars(select(Step).where(Step.event_id == event.id))
+    }
+    for code, step in existing.items():
+        if code not in codes:
+            await session.execute(delete(Action).where(Action.step_id == step.id))
+            await session.delete(step)
+    await session.flush()
+
+    phase_rank = {phase: rank for rank, phase in enumerate(PLANNING_PHASE_ORDER)}
+    ordered = sorted(codes, key=lambda code: phase_rank[PLANNING_STEP_PHASES[code]])
+
+    for order, code in enumerate(ordered, start=1):
+        step = existing.get(code)
+        if step is None:
+            step = Step(
+                event_id=event.id,
+                step_order=order,
+                phase=PLANNING_STEP_PHASES[code],
+                code=code,
+                name=PLANNING_STEP_NAMES[code],
+                actor=PLANNING_STEP_ACTORS[code],
+            )
+            session.add(step)
+            await session.flush()
+            # 다시 넣은 단계도 계획이 만들어 주던 것과 같은 Action을 갖는다.
+            for action_type in PLANNING_STEP_ACTIONS.get(code, ()):
+                irreversible, approve_needed = event_rules.action_defaults(action_type)
+                session.add(
+                    Action(
+                        event_id=event.id,
+                        step_id=step.id,
+                        type=action_type,
+                        title=PLANNING_STEP_NAMES[code],
+                        irreversible=irreversible,
+                        approve_needed=approve_needed,
+                        status=ActionStatus.PENDING,
+                    )
+                )
+        else:
+            step.step_order = order
+    await session.commit()
+
+    return list(
+        await session.scalars(
+            select(Step)
+            .where(Step.event_id == event.id)
+            .options(selectinload(Step.actions))
+            .order_by(Step.step_order)
+        )
+    )
+
+
+async def change_event_status(
+    session: AsyncSession, *, event: Event, to: EventStatus
+) -> Event:
+    """행사 상태를 옮긴다 (#213 3단계).
+
+    계획 → 진행 중 → 완료 한 방향뿐이다. 되돌리기와 취소는 환불·정산 정리가
+    얽혀 있어 따로 다룬다(#73).
+    """
+    allowed = {
+        EventStatus.ON_GOING: EventStatus.PLANNING,
+        EventStatus.COMPLETE: EventStatus.ON_GOING,
+    }
+    if event.status != allowed[to]:
+        raise EventStateConflict(
+            "계획 중인 행사만 시작할 수 있습니다."
+            if to == EventStatus.ON_GOING
+            else "진행 중인 행사만 완료할 수 있습니다."
+        )
+    if to == EventStatus.ON_GOING:
+        has_step = await session.scalar(
+            select(Step.id).where(Step.event_id == event.id).limit(1)
+        )
+        if has_step is None:
+            raise EventStateConflict("단계가 하나도 없는 행사는 시작할 수 없습니다.")
+    event.status = to
+    await session.commit()
+    return event
+

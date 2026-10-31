@@ -25,11 +25,11 @@ interface StepModalProps {
   actionsFailed: boolean
   onRetryActions: () => void
   onClose: () => void
-  // Action 카드의 [게시했습니다] 등
-  onCompleteAction: (action: EventAction) => void
+  // Action 카드의 [게시했습니다] 등. 끝난 행사에서는 주지 않아 버튼이 사라진다.
+  onCompleteAction?: (action: EventAction) => void
   // 승인 대기 Action의 [검토하기]. 결정 검토 모달은 화면 쪽에서 띄운다.
-  onReviewAction: (action: EventAction) => void
-  onCompleteStep: (step: EventStep) => void
+  onReviewAction?: (action: EventAction) => void
+  onCompleteStep?: (step: EventStep) => void
 }
 
 export function StepModal({
@@ -84,7 +84,7 @@ export function StepModal({
             닫기
           </Button>
           {/* 끝난 단계는 다시 완료할 수 없고, 아직 시작 안 한 단계는 건너뛰지 않는다 */}
-          {step.state === 'CURRENT' && (
+          {step.state === 'CURRENT' && onCompleteStep && (
             <Button onClick={() => onCompleteStep(step)}>단계 완료로 표시</Button>
           )}
         </>
