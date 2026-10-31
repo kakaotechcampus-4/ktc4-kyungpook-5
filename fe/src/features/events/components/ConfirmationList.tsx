@@ -9,7 +9,8 @@ import { EmptyState } from '@/shared/ui/EmptyState'
 interface ConfirmationListProps {
   actions: EventAction[]
   // choice는 options[].key, 직접 처리면 'MANUAL' (POST /actions/{id}/resolve 요청 값과 같다)
-  onResolve: (action: EventAction, choice: string) => void
+  // 끝난 행사에서는 주지 않는다 — 답할 수 있는 질문이 아니라 남은 기록이다.
+  onResolve?: (action: EventAction, choice: string) => void
   className?: string
 }
 
@@ -42,22 +43,26 @@ export function ConfirmationList({ actions, onResolve, className }: Confirmation
                 <p className="text-[12.5px] leading-[19px] text-ink2">{action.subtitle}</p>
               )}
               {/* 첫 선택지가 토리가 가장 그럴듯하다고 본 답이라 파랗게 둔다 */}
-              <div className="flex gap-[8px]">
-                {(action.options ?? []).map((option, i) => (
-                  <Button
-                    key={option.key}
-                    variant={i === 0 ? 'primary' : 'secondary'}
-                    onClick={() => onResolve(action, option.key)}
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-                {action.allowManual && (
-                  <Button variant="secondary" onClick={() => onResolve(action, 'MANUAL')}>
-                    직접 처리
-                  </Button>
-                )}
-              </div>
+              {onResolve ? (
+                <div className="flex gap-[8px]">
+                  {(action.options ?? []).map((option, i) => (
+                    <Button
+                      key={option.key}
+                      variant={i === 0 ? 'primary' : 'secondary'}
+                      onClick={() => onResolve(action, option.key)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                  {action.allowManual && (
+                    <Button variant="secondary" onClick={() => onResolve(action, 'MANUAL')}>
+                      직접 처리
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[12px] text-mute">답하지 못한 채 끝난 질문이에요.</p>
+              )}
             </li>
           ))}
         </ul>

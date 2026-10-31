@@ -13,7 +13,8 @@ interface EventHeaderCardProps {
   steps: EventStep[]
   // 스테퍼에서 단계를 누르면(Step 모달)
   onSelectStep: (step: EventStep) => void
-  onCancelEvent: () => void
+  // 끝난 행사는 취소할 게 없다. 안 주면 버튼을 그리지 않는다.
+  onCancelEvent?: () => void
 }
 
 export function EventHeaderCard({

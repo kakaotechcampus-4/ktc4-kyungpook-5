@@ -141,6 +141,10 @@ export default function EventDetailPage() {
     )
   }
 
+  // 처리(승인·거절·답변·완료)는 서버가 운영 중인 행사에서만 받는다. 끝난 행사는
+  // 기록을 보러 들어오는 자리라, 누르면 실패할 버튼을 아예 그리지 않는다.
+  const operating = detailQuery.data?.status === 'ON_GOING'
+
   if (detailQuery.isPending) return null
   if (detailQuery.isError) {
     return <ServerErrorScreen onRetry={() => detailQuery.refetch()} onHome={() => navigate('/')} />
@@ -171,11 +175,14 @@ export default function EventDetailPage() {
             event={event}
             steps={steps}
             onSelectStep={(step) => setOpenStepId(step.id)}
-            onCancelEvent={() => setCancelOpen(true)}
+            onCancelEvent={operating ? () => setCancelOpen(true) : undefined}
           />
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-              <ConfirmationList actions={confirmations} onResolve={resolveConfirmation} />
+              <ConfirmationList
+                actions={confirmations}
+                onResolve={operating ? resolveConfirmation : undefined}
+              />
               <ResolvedActionList
                 actions={resolved?.items ?? []}
                 totalCount={resolved?.totalCount ?? 0}
@@ -199,9 +206,9 @@ export default function EventDetailPage() {
               actionsFailed={stepActionsQuery.isError}
               onRetryActions={() => stepActionsQuery.refetch()}
               onClose={() => setOpenStepId(null)}
-              onCompleteAction={finishAction}
-              onReviewAction={setReviewing}
-              onCompleteStep={completeStep}
+              onCompleteAction={operating ? finishAction : undefined}
+              onReviewAction={operating ? setReviewing : undefined}
+              onCompleteStep={operating ? completeStep : undefined}
             />
           )}
           <ReviewModal
