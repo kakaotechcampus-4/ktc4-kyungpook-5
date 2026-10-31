@@ -16,7 +16,6 @@ export function getEvents(clubId: string, status?: EventStatus) {
   return apiGet<EventSummary[]>(`/events?${query}`)
 }
 
-// BE에는 있다. useEventDetail에는 아직 붙이지 않았다.
 export function getEventDetail(eventId: string) {
   return apiGet<EventDetail>(`/events/${eventId}`)
 }
