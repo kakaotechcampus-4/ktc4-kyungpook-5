@@ -201,6 +201,7 @@ export const DEMO_ACTIONS: Record<string, EventAction[]> = {
   evt_9f2c8a: [
     {
       id: 'act_21',
+      version: 1,
       type: 'EXTERNAL_SEND',
       title: '미납자 4명에게 2차 납부 안내 문자 보내기',
       subtitle: '대상 4명 · 비용 0원',
@@ -209,6 +210,7 @@ export const DEMO_ACTIONS: Record<string, EventAction[]> = {
     },
     {
       id: 'act_22',
+      version: 1,
       type: 'TRANSFER',
       title: '펜션 계약금 100,000원 이체하고 예약 확정',
       subtitle: '마감 다음 날부터 환불 불가 · 잔고 2,412,000원',
@@ -217,6 +219,7 @@ export const DEMO_ACTIONS: Record<string, EventAction[]> = {
     },
     {
       id: 'act_23',
+      version: 1,
       type: 'EXPENSE',
       title: '장보기·버스 잔금 등 지출 4건 묶음 승인',
       subtitle: '합계 182,000원 · 영수증 4건 확인됨',
@@ -227,6 +230,7 @@ export const DEMO_ACTIONS: Record<string, EventAction[]> = {
   evt_c41d07: [
     {
       id: 'act_31',
+      version: 1,
       type: 'CONTRACT',
       title: '공대 7호관 세미나실 1박 2일 대관 신청서 제출',
       subtitle: '학과 사무실 승인 필요 · 야간 사용 신청 포함',
@@ -241,6 +245,7 @@ export const DEMO_CONFIRMATIONS: Record<string, EventAction[]> = {
   evt_9f2c8a: [
     {
       id: 'act_31',
+      version: 1,
       type: 'CONFIRMATION',
       title: '입금자명이 명단과 다릅니다',
       subtitle: '"박지영 母" 45,000원 — 박지영 님 회비로 처리할까요?',
@@ -254,6 +259,7 @@ export const DEMO_CONFIRMATIONS: Record<string, EventAction[]> = {
     },
     {
       id: 'act_32',
+      version: 1,
       type: 'CONFIRMATION',
       title: '어느 행사인지 모르겠습니다',
       subtitle: '학생회 지원금 500,000원 — 봄 MT에 넣을까요, 공동 회계로 둘까요?',
@@ -278,6 +284,7 @@ export const DEMO_RESOLVED: Record<string, ActionPage> = {
     items: [
       {
         id: 'act_41',
+        version: 1,
         type: 'CONTRACT',
         title: '장소 후보를 펜션 A로 확정',
         subtitle: null,
@@ -288,6 +295,7 @@ export const DEMO_RESOLVED: Record<string, ActionPage> = {
       },
       {
         id: 'act_42',
+        version: 1,
         type: 'EXTERNAL_SEND',
         title: '모집 공고를 단톡방에 발송',
         subtitle: null,
@@ -298,6 +306,7 @@ export const DEMO_RESOLVED: Record<string, ActionPage> = {
       },
       {
         id: 'act_09',
+        version: 1,
         type: 'TRANSFER',
         title: '버스 대절 업체 B와 계약',
         subtitle: null,
@@ -313,6 +322,7 @@ export const DEMO_RESOLVED: Record<string, ActionPage> = {
     items: [
       {
         id: 'act_51',
+        version: 1,
         type: 'NOTICE',
         title: '해커톤 주제 후보 3개를 단톡방에 공지',
         subtitle: null,
@@ -332,6 +342,7 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
     stp_3: [
       {
         id: 'act_42',
+        version: 1,
         type: 'EXTERNAL_SEND',
         title: '모집 공고를 단톡방에 발송',
         subtitle: '대상 전체 회원 32명',
@@ -345,6 +356,7 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
     stp_4: [
       {
         id: 'act_21',
+        version: 1,
         type: 'EXTERNAL_SEND',
         title: '미납자 4명에게 2차 납부 안내 문자 보내기',
         subtitle: '대상 4명 · 비용 0원',
@@ -354,6 +366,7 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
       },
       {
         id: 'act_25',
+        version: 1,
         type: 'NOTICE',
         title: '미응답 회원 9명에게 신청 마감 안내',
         subtitle: '대상 9명 · 비용 0원',
@@ -366,6 +379,7 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
       },
       {
         id: 'act_26',
+        version: 1,
         type: 'EXTERNAL_SEND',
         title: '미납자 5명에게 1차 납부 안내 문자 보내기',
         subtitle: '대상 5명 · 비용 0원',
@@ -381,6 +395,7 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
     stp_2: [
       {
         id: 'act_31',
+        version: 1,
         type: 'CONTRACT',
         title: '공대 7호관 세미나실 1박 2일 대관 신청서 제출',
         subtitle: '학과 사무실 승인 필요 · 야간 사용 신청 포함',

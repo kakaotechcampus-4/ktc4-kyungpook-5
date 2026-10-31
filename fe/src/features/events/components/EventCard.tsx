@@ -43,6 +43,9 @@ export function EventCard({ event }: { event: EventSummary }) {
     ? `/planning?eventId=${encodeURIComponent(event.id)}`
     : `/events/${event.id}${search}`
 
+  // 끝난 행사는 흐리게 둔다. 기록으로 남는 것이지 지금 챙길 일이 아니다.
+  const ended = event.status === 'COMPLETE' || event.status === 'CANCELLED'
+
   return (
     <Link
       to={to}
@@ -52,6 +55,8 @@ export function EventCard({ event }: { event: EventSummary }) {
         event.status === 'ON_GOING'
           ? 'border-[1.5px] border-blue-200 hover:border-blue-300'
           : 'border border-line hover:border-soft',
+        // 흐리게 하되 글자는 읽을 수 있게 둔다. 올리면 원래 색으로 돌아온다.
+        ended && 'opacity-60 hover:opacity-100',
       )}
     >
       <div className="flex items-center justify-between">

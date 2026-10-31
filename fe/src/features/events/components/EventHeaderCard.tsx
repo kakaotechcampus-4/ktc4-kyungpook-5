@@ -13,7 +13,10 @@ interface EventHeaderCardProps {
   steps: EventStep[]
   // 스테퍼에서 단계를 누르면(Step 모달)
   onSelectStep: (step: EventStep) => void
-  onCancelEvent: () => void
+  // 끝난 행사는 취소할 게 없다. 안 주면 버튼을 그리지 않는다.
+  onCancelEvent?: () => void
+  // 운영이 끝났다고 직접 표시할 때. 앱이 판단하지 않는다.
+  onCompleteEvent?: () => void
 }
 
 export function EventHeaderCard({
@@ -21,6 +24,7 @@ export function EventHeaderCard({
   steps,
   onSelectStep,
   onCancelEvent,
+  onCompleteEvent,
 }: EventHeaderCardProps) {
   // 진행 중인 단계까지 센다(완료 + 진행 중)
   const reached = steps.filter((s) => s.state !== 'TODO').length
@@ -46,9 +50,12 @@ export function EventHeaderCard({
           <Button variant="secondary" disabled>
             계획 수정
           </Button>
-          <Button variant="secondary" onClick={onCancelEvent}>
-            행사 취소
-          </Button>
+          {onCancelEvent && (
+            <Button variant="secondary" onClick={onCancelEvent}>
+              행사 취소
+            </Button>
+          )}
+          {onCompleteEvent && <Button onClick={onCompleteEvent}>행사 완료</Button>}
         </div>
       </div>
 

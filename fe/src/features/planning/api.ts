@@ -28,6 +28,4 @@ export const planningApi = {
     }),
   start: (eventId: string) =>
     apiPost<S['EventStartOut']>(`/events/${encodeURIComponent(eventId)}/start`),
-  complete: (eventId: string) =>
-    apiPost<S['EventStatusOut']>(`/events/${encodeURIComponent(eventId)}/complete`),
 }
