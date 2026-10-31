@@ -122,6 +122,34 @@ class ValidationFailed(ApiError):
         super().__init__("입력을 확인해 주세요.", fields=fields)
 
 
+class InvitationInvalid(ApiError):
+    status_code = 422
+    code = "INVITATION_INVALID"
+    def __init__(self) -> None:
+        super().__init__("초대 링크가 유효하지 않습니다.")
+
+
+class InvitationAlreadyHandled(ApiError):
+    status_code = 422
+    code = "INVITATION_ALREADY_HANDLED"
+    def __init__(self) -> None:
+        super().__init__("이미 처리된 초대 링크입니다.")
+
+
+class InvitationExpired(ApiError):
+    status_code = 422
+    code = "INVITATION_EXPIRED"
+    def __init__(self) -> None:
+        super().__init__("초대 링크가 만료되었습니다.")
+
+
+class InvitationMembershipConflict(ApiError):
+    status_code = 422
+    code = "INVITATION_MEMBERSHIP_CONFLICT"
+    def __init__(self) -> None:
+        super().__init__("이미 이 동아리에 속해 있습니다.")
+
+
 class AIUnavailable(ApiError):
     """AIRetryableError/AITimeoutError. 호출 쪽이 잠시 뒤 다시 시도할 수 있다."""
 
