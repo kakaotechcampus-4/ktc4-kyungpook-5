@@ -1,8 +1,8 @@
 """동아리·멤버십 도메인 요청·응답 스키마."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import EmailStr
+from pydantic import EmailStr, StringConstraints
 
 from app.core.enums import ClubCategory
 from app.schemas.common import CamelModel, ServiceMemberRole, UtcDateTime
@@ -10,6 +10,19 @@ from app.schemas.common import CamelModel, ServiceMemberRole, UtcDateTime
 
 class ClubCreateIn(CamelModel):
     name: str
+    category: ClubCategory | None = None
+    description: str | None = None
+
+
+class ClubUpdateIn(CamelModel):
+    """동아리 정보 수정 (#213). 보낸 필드만 바꾸고, null을 보내면 그 값을 비운다.
+
+    이름은 비울 수 없다. 길이 제한은 clubs.name 컬럼(100자)과 같다.
+    """
+
+    name: Annotated[
+        str | None, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+    ] = None
     category: ClubCategory | None = None
     description: str | None = None
 
