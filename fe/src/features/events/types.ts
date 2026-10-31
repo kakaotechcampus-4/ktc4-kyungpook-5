@@ -121,3 +121,9 @@ export interface StepComplete {
   // 끝나지 않은 행동 수. 남아 있어도 완료는 되고, 화면이 그 사실을 알린다.
   pendingActionCount: number
 }
+
+// POST /events/{id}/complete 결과
+export interface EventDetailStatus {
+  id: string
+  status: EventStatus
+}

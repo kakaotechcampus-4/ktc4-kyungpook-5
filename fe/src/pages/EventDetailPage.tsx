@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AnswerModal } from '@/features/events/components/AnswerModal'
 import { CancelConfirmModal } from '@/features/events/components/CancelConfirmModal'
+import { CompleteConfirmModal } from '@/features/events/components/CompleteConfirmModal'
 import { ConfirmationList } from '@/features/events/components/ConfirmationList'
 import { PendingApprovalList } from '@/features/events/components/PendingApprovalList'
 import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
@@ -13,6 +14,7 @@ import { StepModal } from '@/features/events/components/StepModal'
 import {
   actionErrorMessage,
   useApproveAction,
+  useCompleteEvent,
   useCompleteStep,
   useConfirmations,
   usePendingApprovals,
@@ -93,6 +95,19 @@ export default function EventDetailPage() {
 
   // 행사 취소 확인 모달. 확인하면 취소 정리 화면으로 간다.
   const [cancelOpen, setCancelOpen] = useState(false)
+
+  // 행사 완료. 앱이 끝났다고 판단하지 않고 운영진이 직접 표시한다.
+  const [completeOpen, setCompleteOpen] = useState(false)
+  const complete = useCompleteEvent(shownId)
+  const completeEvent = () =>
+    void complete.mutateAsync(undefined).then(
+      () => {
+        setCompleteOpen(false)
+        toast.show({ kind: 'done', title: '행사를 완료로 표시했어요' })
+      },
+      (cause) =>
+        toast.show({ kind: 'error', title: '완료하지 못했어요', desc: actionErrorMessage(cause) }),
+    )
 
   // 검토·답변 모달에 띄울 Action. 유형에 따라 둘 중 하나가 열린다.
   const [reviewing, setReviewing] = useState<EventAction>()
@@ -179,6 +194,7 @@ export default function EventDetailPage() {
             steps={steps}
             onSelectStep={(step) => setOpenStepId(step.id)}
             onCancelEvent={operating ? () => setCancelOpen(true) : undefined}
+            onCompleteEvent={operating ? () => setCompleteOpen(true) : undefined}
           />
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
@@ -230,6 +246,15 @@ export default function EventDetailPage() {
             onClose={() => setCancelOpen(false)}
             // TODO(연동): POST /events/{id}/cancel. 취소 Action은 아직 정의 전이다(#73).
             onConfirm={() => navigate(`/events/${eventId}/cancel${search}`)}
+          />
+          <CompleteConfirmModal
+            open={completeOpen}
+            event={event}
+            remainingSteps={steps.filter((step) => step.state !== 'DONE').length}
+            pendingApprovals={pendingApprovals.length}
+            pending={complete.isPending}
+            onClose={() => setCompleteOpen(false)}
+            onConfirm={completeEvent}
           />
           <AnswerModal
             action={answering}

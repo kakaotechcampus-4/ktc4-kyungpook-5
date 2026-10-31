@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
   approveAction,
+  completeEvent,
   completeStep,
   denyAction,
   getEventActionPage,
@@ -173,6 +174,10 @@ export function useMarkActionDone(eventId: string | undefined) {
   return useEventMutation(eventId, (action: EventAction) =>
     markActionDone(action.id, action.version),
   )
+}
+
+export function useCompleteEvent(eventId: string | undefined) {
+  return useEventMutation(eventId, () => completeEvent(eventId!))
 }
 
 export function useCompleteStep(eventId: string | undefined) {

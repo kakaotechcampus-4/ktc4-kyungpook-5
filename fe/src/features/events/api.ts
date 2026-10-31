@@ -2,6 +2,7 @@
 import { apiGet, apiGetPage, apiPost } from '@/shared/api/client'
 import type {
   ActionPage,
+  EventDetailStatus,
   StepComplete,
   EventAction,
   EventDetail,
@@ -77,4 +78,9 @@ export function markActionDone(actionId: string, expectedVersion: number) {
 
 export function completeStep(stepId: string) {
   return apiPost<StepComplete>(`/steps/${encodeURIComponent(stepId)}/complete`)
+}
+
+// 운영이 끝났다고 운영진이 직접 표시한다. 앱이 판단하지 않는다.
+export function completeEvent(eventId: string) {
+  return apiPost<EventDetailStatus>(`/events/${encodeURIComponent(eventId)}/complete`)
 }
