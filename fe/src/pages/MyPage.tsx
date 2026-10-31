@@ -88,6 +88,7 @@ export default function MyPage() {
         <MyInfoTab
           profile={profile}
           club={club}
+          clubId={clubId ?? undefined}
           linkedAccounts={demo ? 'Google · 카카오' : undefined}
           onLogout={() => {
             // 두 번 눌러도 요청은 한 번만 보낸다

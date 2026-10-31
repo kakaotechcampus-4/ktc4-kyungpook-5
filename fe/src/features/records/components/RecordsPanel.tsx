@@ -1,6 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { downloadRecord, RECORD_PAGE_SIZE } from '@/features/records/api'
-import { useRecordDetail, useRecordUploads, useRetryRecordIndex } from '@/features/records/hooks'
+import {
+  useDeleteRecord,
+  useRecordDetail,
+  useRecordUploads,
+  useRetryRecordIndex,
+} from '@/features/records/hooks'
 import {
   formatFileSize,
   parseErrorMessage,
@@ -19,6 +24,10 @@ function RecordStatusRow({ clubId, record }: { clubId: string; record: ClubRecor
   const retryIndex = useRetryRecordIndex(clubId, record.id)
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState(false)
+  // 지우기 전에 한 번 되묻는다. 색인까지 끝난 자료는 AI 검색에서도 함께 빠진다.
+  const [confirming, setConfirming] = useState(false)
+  const [deleteError, setDeleteError] = useState(false)
+  const remove = useDeleteRecord(clubId, record.id)
   const current = detail.data ?? record
   const status = RECORD_STATUS[current.parseStatus]
 
@@ -93,8 +102,35 @@ function RecordStatusRow({ clubId, record }: { clubId: string; record: ClubRecor
           >
             {detail.isFetching ? '상태 확인 중…' : '상태 다시 확인'}
           </Button>
+          {confirming ? (
+            <>
+              <span className="self-center text-[11.5px] font-bold text-failed">지울까요?</span>
+              <Button
+                size="sm"
+                disabled={remove.isPending}
+                onClick={() => {
+                  setDeleteError(false)
+                  remove.mutate(undefined, { onError: () => setDeleteError(true) })
+                }}
+              >
+                {remove.isPending ? '지우는 중…' : '지우기'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+                취소
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => setConfirming(true)}>
+              삭제
+            </Button>
+          )}
         </div>
       </div>
+      {deleteError && (
+        <p role="alert" className="text-[11.5px] text-failed">
+          자료를 지우지 못했어요. 연결 상태를 확인한 뒤 다시 시도해 주세요.
+        </p>
+      )}
     </li>
   )
 }

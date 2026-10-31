@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createExpense, getExpenses } from './api'
-import type { CreateExpenseInput } from './types'
+import { createExpense, deleteExpense, getExpenses, updateExpense } from './api'
+import type { CreateExpenseInput, Expense, UpdateExpenseInput } from './types'
 import { ApiError } from '@/shared/api/types'
 
 export function useExpenses(clubId: string, page: number) {
@@ -21,11 +21,30 @@ export function useCreateExpense(clubId: string) {
   })
 }
 
+export function useUpdateExpense(clubId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ expense, body }: { expense: Expense; body: UpdateExpenseInput }) =>
+      updateExpense(clubId, expense.id, body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['accounting', clubId, 'expenses'] }),
+  })
+}
+
+export function useDeleteExpense(clubId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (expense: Expense) => deleteExpense(clubId, expense.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['accounting', clubId, 'expenses'] }),
+  })
+}
+
 export function expenseFormErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     const reason = error.fields && Object.values(error.fields)[0]
     if (reason) return reason
-    if (error.code === 'FORBIDDEN') return '지출을 등록할 권한이 없어요. 회장·임원만 등록할 수 있어요.'
+    if (error.code === 'VERSION_CONFLICT')
+      return '내용이 그사이 바뀌었어요. 새로고침한 뒤 다시 고쳐 주세요.'
+    if (error.code === 'FORBIDDEN') return '회장·임원만 지출을 고치거나 지울 수 있어요.'
     if (error.code === 'UNAUTHORIZED') return '로그인이 만료됐어요. 다시 로그인해 주세요.'
   }
   return '지출을 등록하지 못했어요. 잠시 뒤 다시 시도해 주세요.'

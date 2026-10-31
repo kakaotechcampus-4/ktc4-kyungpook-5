@@ -1,7 +1,13 @@
 // 마이 페이지 서버 상태 훅. ?demo면 부르지 않고 화면이 예시(mock.ts)를 쓴다.
-import { useQuery } from '@tanstack/react-query'
-import { getMembers, type MemberOut } from '@/features/mypage/api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  getMembers,
+  updateClub,
+  type ClubUpdateIn,
+  type MemberOut,
+} from '@/features/mypage/api'
 import type { Member } from '@/features/mypage/types'
+import { ApiError } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/auth/store'
 import { formatDateTime } from '@/shared/lib/format'
 
@@ -28,4 +34,26 @@ export function useMembers(demo: boolean) {
       clubId ? (await getMembers(clubId)).map(toMember) : [],
     enabled: !demo,
   })
+}
+
+// 동아리 이름·분야·소개를 고친다. 바뀌면 /me의 소속 이름도 달라져 함께 다시 받는다.
+export function useUpdateClub(clubId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: ClubUpdateIn) => updateClub(clubId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+      void queryClient.invalidateQueries({ queryKey: ['mypage'] })
+    },
+  })
+}
+
+export function clubUpdateErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    const reason = error.fields && Object.values(error.fields)[0]
+    if (reason) return reason
+    if (error.code === 'FORBIDDEN') return '회장·임원만 동아리 정보를 고칠 수 있어요.'
+    return error.message || '저장하지 못했어요.'
+  }
+  return '저장하지 못했어요. 연결 상태를 확인해 주세요.'
 }

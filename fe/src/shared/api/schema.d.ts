@@ -144,6 +144,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clubs/{club_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Club */
+        patch: operations["update_club_api_v1_clubs__club_id__patch"];
+        trace?: never;
+    };
     "/api/v1/clubs/{club_id}/invitations": {
         parameters: {
             query?: never;
@@ -224,10 +241,12 @@ export interface paths {
         get: operations["get_expense_api_v1_clubs__club_id__expenses__expense_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Expense */
+        delete: operations["delete_expense_api_v1_clubs__club_id__expenses__expense_id__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update Expense */
+        patch: operations["update_expense_api_v1_clubs__club_id__expenses__expense_id__patch"];
         trace?: never;
     };
     "/api/v1/clubs/{club_id}/receipt-imports": {
@@ -447,7 +466,8 @@ export interface paths {
         get: operations["get_record_api_v1_records__record_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Record */
+        delete: operations["delete_record_api_v1_records__record_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1590,6 +1610,19 @@ export interface components {
             /** Executivecount */
             executiveCount: number;
         };
+        /**
+         * ClubUpdateIn
+         * @description 동아리 정보 수정 (#213). 보낸 필드만 바꾸고, null을 보내면 그 값을 비운다.
+         *
+         *     이름은 비울 수 없다. 길이 제한은 clubs.name 컬럼(100자)과 같다.
+         */
+        ClubUpdateIn: {
+            /** Name */
+            name?: string | null;
+            category?: components["schemas"]["ClubCategory"] | null;
+            /** Description */
+            description?: string | null;
+        };
         /** ConditionMetaOut */
         ConditionMetaOut: {
             /**
@@ -2298,6 +2331,8 @@ export interface components {
             source: components["schemas"]["ExpenseSource"];
             /** Receiptrecordid */
             receiptRecordId: string | null;
+            /** Eventid */
+            eventId: string | null;
             /** Version */
             version: number;
         };
@@ -2326,6 +2361,29 @@ export interface components {
          * @enum {string}
          */
         ExpenseSource: "MANUAL" | "CSV_IMPORT" | "OCR_IMPORT";
+        /**
+         * ExpenseUpdateIn
+         * @description 지출 수정 (#213). 보낸 필드만 바꾸고, null을 보내면 그 값을 비운다.
+         *
+         *     지출일·금액·통화는 비울 수 없다. 클라이언트가 본 지출의 version을 함께 보낸다.
+         */
+        ExpenseUpdateIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+            /** Spentat */
+            spentAt?: string | null;
+            /** Merchant */
+            merchant?: string | null;
+            /** Amount */
+            amount?: number | null;
+            currency?: components["schemas"]["CurrencyCode"] | null;
+            /** Category */
+            category?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Eventid */
+            eventId?: string | null;
+        };
         /** FixtureConnectionCreateIn */
         FixtureConnectionCreateIn: {
             mode: components["schemas"]["DiscordConnectionMode"];
@@ -3796,6 +3854,43 @@ export interface operations {
             };
         };
     };
+    update_club_api_v1_clubs__club_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClubUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ClubOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_invitation_api_v1_clubs__club_id__invitations_post: {
         parameters: {
             query?: never;
@@ -3987,6 +4082,76 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ExpenseOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_expense_api_v1_clubs__club_id__expenses__expense_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+                expense_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_expense_api_v1_clubs__club_id__expenses__expense_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+                expense_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseUpdateIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4527,6 +4692,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Envelope_RecordDetailOut_"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_record_api_v1_records__record_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                record_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
