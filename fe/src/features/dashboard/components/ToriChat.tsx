@@ -193,20 +193,20 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
           </p>
         </div>
       </div>
-      <div className="my-5 flex flex-wrap gap-2">
+      <div className="mt-5 flex flex-wrap gap-2">
         {examples.map((example) => (
           <button
             key={example}
             type="button"
             disabled={!clubId || busy}
             onClick={() => void send(example)}
-            className="rounded-xl border border-soft px-3 py-2 text-left text-caption hover:bg-bg disabled:opacity-50"
+            className="rounded-lg border border-soft px-3 py-2 text-left text-caption text-ink2 hover:bg-bg focus-visible:outline-2 disabled:opacity-50"
           >
             {example}
           </button>
         ))}
       </div>
-      <div aria-live="polite" className="space-y-4 pb-5">
+      <div aria-live="polite" className="my-5 max-h-[min(55vh,560px)] space-y-4 overflow-y-auto pr-1">
         {turns.map((turn) => (
           <div key={turn.id} className="space-y-2">
             <p className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-xl bg-blue-600 p-3 text-caption text-white">
