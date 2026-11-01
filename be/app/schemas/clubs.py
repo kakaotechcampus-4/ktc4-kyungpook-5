@@ -50,12 +50,13 @@ class MeOut(CamelModel):
 
 
 class InvitationCreateIn(CamelModel):
-    email: EmailStr
     role: ServiceMemberRole
 
 
 class InvitationCreateOut(CamelModel):
     id: str
+    token: str
+    expires_at: UtcDateTime
 
 
 class InvitationAcceptIn(CamelModel):
