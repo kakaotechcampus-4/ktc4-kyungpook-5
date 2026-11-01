@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import ai
 from app.core.deps import get_current_account, require_member
+from app.core.enums import EventStatus
 from app.core.exceptions import AIMisconfigured, AIUnavailable
 from app.db.session import get_session
 from app.models.auth import Account
@@ -15,7 +16,7 @@ from app.models.reminders import ConfirmedTask
 from app.schemas.common import Envelope
 from app.schemas.reminders import ConfirmedTaskOut
 from app.schemas.tori import ToriMessageIn, ToriMessageOut
-from app.services import record_discovery_service
+from app.services import event_service, record_discovery_service
 
 router = APIRouter(prefix='/api/v1/clubs/{club_id}/tori', tags=['tori'])
 TZ = ZoneInfo('Asia/Seoul')
@@ -67,6 +68,23 @@ async def message(club_id: str, body: ToriMessageIn,
                  'date_from': result.date_from.isoformat() if result.date_from else None,
                  'date_to': result.date_to.isoformat() if result.date_to else None}
         return Envelope(data=ToriMessageOut(intent=result.intent, reply='요청하신 범위의 확정된 일정과 할 일을 보여드릴게요. 회의나 행사별 구분은 적용되지 않아요.', tasks=tasks))
+    if result.intent == 'event_list':
+        status = EventStatus(result.event_status) if result.event_status else None
+        events, total = await event_service.list_events(session, club_id=club_id, status=status, page=1, size=20)
+        labels = {'PLANNING': '계획 중', 'ON_GOING': '진행 중', 'COMPLETE': '완료',
+                  'CANCELLING': '취소 중', 'CANCELLED': '취소됨'}
+        label = labels[status.value] if status else '전체'
+        if not events:
+            reply = f'{label} 행사가 없어요.'
+        else:
+            lines = [f'{label} 행사 {total}건이에요.']
+            for event in events:
+                day = event['start_date'].isoformat() if event['start_date'] else '날짜 미정'
+                lines.append(f"• {event['title']} ({labels[event['status'].value]} · {day})")
+            if total > len(events):
+                lines.append(f'처음 {len(events)}건을 보여드렸어요. 전체 목록은 행사 화면에서 확인해 주세요.')
+            reply = '\n'.join(lines)
+        return Envelope(data=ToriMessageOut(intent=result.intent, reply=reply))
     if result.intent == 'event_planning':
         return Envelope(data=ToriMessageOut(intent=result.intent, reply='행사 계획 화면으로 이동할 수 있어요.', navigation='/planning'))
     if result.intent == 'meeting':

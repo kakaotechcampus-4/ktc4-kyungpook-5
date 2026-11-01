@@ -15,6 +15,7 @@ interface EventHeaderCardProps {
   onSelectStep: (step: EventStep) => void
   onCancelEvent: () => void
   onStartEvent?: () => void
+  onCompleteEvent?: () => void
   readOnly?: boolean
 }
 
@@ -24,6 +25,7 @@ export function EventHeaderCard({
   onSelectStep,
   onCancelEvent,
   onStartEvent,
+  onCompleteEvent,
   readOnly = false,
 }: EventHeaderCardProps) {
   // 진행 중인 단계까지 센다(완료 + 진행 중)
@@ -46,6 +48,9 @@ export function EventHeaderCard({
         <div className="flex gap-[8px]">
           {event.status === 'PLANNING' && onStartEvent && (
             <Button onClick={onStartEvent}>행사 시작</Button>
+          )}
+          {event.status === 'ON_GOING' && onCompleteEvent && (
+            <Button onClick={onCompleteEvent}>행사 완료</Button>
           )}
           {/* 운영 중인 행사는 세부 사항만, 끝나지 않은 것만 고칠 수 있다. 아직 못 켜는 건
               세부 수정 모달이 Action 스키마를 기다리고 있어서다(#106).

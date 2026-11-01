@@ -25,7 +25,7 @@ async def _operating_member(
     """행동의 행사에 속한 운영진인지, 행사가 운영 중인지 본다."""
     event = await action_service.action_event(session, action_id)
     member = await ensure_member(session, club_id=event.club_id, account=account)
-    action_service.ensure_operating(event)
+    event = await action_service.lock_operating_event(session, event.id)
     return event, member
 
 

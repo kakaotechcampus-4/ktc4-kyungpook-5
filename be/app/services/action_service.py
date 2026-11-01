@@ -93,6 +93,41 @@ def ensure_operating(event: Event) -> None:
         raise EventNotOnGoing()
 
 
+async def lock_operating_event(session: AsyncSession, event_id: str) -> Event:
+    event = await session.scalar(
+        select(Event).where(Event.id == event_id).with_for_update().execution_options(populate_existing=True)
+    )
+    if event is None:
+        raise EventNotFound()
+    ensure_operating(event)
+    return event
+
+
+async def complete_event(session: AsyncSession, *, event_id: str) -> Event:
+    event = await lock_operating_event(session, event_id)
+    remaining_steps = await session.scalar(
+        select(func.count()).select_from(Step).where(Step.event_id == event_id, Step.completed_at.is_(None))
+    )
+    remaining_actions = await session.scalar(
+        select(func.count()).select_from(Action).where(
+            Action.event_id == event_id, Action.status.in_((ActionStatus.PENDING, ActionStatus.APPROVED))
+        )
+    )
+    if remaining_steps or remaining_actions:
+        raise EventIncomplete()
+    event.status = EventStatus.COMPLETE
+    await session.commit()
+    return event
+
+
+class EventIncomplete(ApiError):
+    status_code = 409
+    code = "EVENT_INCOMPLETE"
+
+    def __init__(self) -> None:
+        super().__init__("남은 단계와 할 일을 처리한 뒤 행사를 완료해 주세요.")
+
+
 async def start_event(session: AsyncSession, *, event_id: str) -> Event:
     """계획을 확정해 운영을 시작한다. 첫 단계부터 진행 상태가 계산된다(#213, FE 명세 v1 :confirm)."""
     event = await session.scalar(select(Event).where(Event.id == event_id).with_for_update())

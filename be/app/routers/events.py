@@ -136,6 +136,17 @@ async def start_event(
     return Envelope(data=EventStartOut.model_validate(event))
 
 
+@router.post("/{event_id}/complete", response_model=Envelope[EventStartOut])
+async def complete_event(
+    event_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[EventStartOut]:
+    await _get_event_for_account(session, event_id=event_id, account=account)
+    event = await action_service.complete_event(session, event_id=event_id)
+    return Envelope(data=EventStartOut.model_validate(event))
+
+
 @router.post("/{event_id}/plan/chat", response_model=Envelope[PlanViewOut])
 async def chat_plan(
     event_id: str,

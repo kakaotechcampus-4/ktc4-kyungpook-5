@@ -444,6 +444,26 @@ async def test_시작일이나_단계가_없으면_확정할_수_없다(client: 
     assert _post(client, member_headers, f"/events/{event_id}/start").status_code == 403
 
 
+async def test_행사_완료는_남은_단계와_행동을_확인한다(client: TestClient, app_db: None) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id)
+    step_id = await add_step(event_id, 10)
+    action_id = await add_action(event_id, step_id=step_id, approve_needed=False)
+    member_headers = await member_of(client, club_id, MemberRole.MEMBER, "member")
+
+    assert _post(client, member_headers, f"/events/{event_id}/complete").status_code == 403
+    blocked = _post(client, headers, f"/events/{event_id}/complete")
+    assert blocked.status_code == 409
+    assert blocked.json()["error"]["code"] == "EVENT_INCOMPLETE"
+    assert _post(client, headers, f"/steps/{step_id}/complete").status_code == 200
+    assert _post(client, headers, f"/events/{event_id}/complete").status_code == 409
+    assert _post(client, headers, f"/actions/{action_id}/done", {"expectedVersion": 1}).status_code == 200
+    completed = _post(client, headers, f"/events/{event_id}/complete")
+    assert completed.status_code == 200
+    assert completed.json()["data"]["status"] == "COMPLETE"
+    assert _post(client, headers, f"/events/{event_id}/complete").status_code == 409
+
+
 async def test_확정된_행사는_계획_대화와_생성을_받지_않는다(
     client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:

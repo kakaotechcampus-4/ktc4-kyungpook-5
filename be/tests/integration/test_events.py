@@ -19,6 +19,7 @@ from app.core.enums import (
 )
 from app.db import session as db_session
 from app.services.event_service import today_kst
+from app import ai
 from tests.integration.event_seed import (
     add_action,
     add_event,
@@ -32,6 +33,25 @@ pytestmark = [pytest.mark.db, pytest.mark.anyio]
 
 EVENTS_URL = "/api/v1/events"
 DONE_AT = datetime(2026, 3, 1, tzinfo=UTC)
+
+
+async def test_tori_event_list_filters_status_and_club(client, app_db, monkeypatch):
+    headers, club_id = owner_with_club(client, 'tori-events')
+    await add_event(club_id, title='준비 행사', status=EventStatus.PLANNING)
+    await add_event(club_id, title='진행 행사', status=EventStatus.ON_GOING)
+    _, other_club = owner_with_club(client, 'tori-other')
+    await add_event(other_club, title='다른 소속 행사', status=EventStatus.PLANNING)
+
+    async def classify(_request):
+        return ai.ToriIntentResult(intent='event_list', event_status='PLANNING')
+
+    monkeypatch.setattr(ai, 'classify_tori_intent', classify)
+    result = client.post(f'/api/v1/clubs/{club_id}/tori/messages', headers=headers,
+                         json={'message': '준비 중인 행사 알려줘'})
+    assert result.status_code == 200, result.text
+    reply = result.json()['data']['reply']
+    assert '계획 중 행사 1건' in reply and '준비 행사' in reply
+    assert '진행 행사' not in reply and '다른 소속 행사' not in reply
 
 
 @pytest.fixture

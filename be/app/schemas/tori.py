@@ -29,7 +29,7 @@ class ToriTasks(CamelModel):
 
 
 class ToriMessageOut(CamelModel):
-    intent: Literal['record_search', 'task_list', 'event_planning', 'meeting', 'clarify', 'unsupported']
+    intent: Literal['record_search', 'task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported']
     reply: str
     records: RecordSearchData | None = None
     record_total_count: int | None = None

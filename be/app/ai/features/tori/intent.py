@@ -27,12 +27,13 @@ class ToriIntentRequest(ContractModel):
 
 
 class ToriIntentResult(ContractModel):
-    intent: Literal['record_search', 'task_list', 'event_planning', 'meeting', 'clarify', 'unsupported']
+    intent: Literal['record_search', 'task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported']
     query: NonBlankStr | None = None
     scope: Literal['self', 'all'] | None = None
     kind: Literal['task', 'schedule', 'all'] | None = None
     date_from: date | None = None
     date_to: date | None = None
+    event_status: Literal['PLANNING', 'ON_GOING', 'COMPLETE', 'CANCELLING', 'CANCELLED'] | None = None
 
     @model_validator(mode='after')
     def validate_fields(self) -> Self:
@@ -40,6 +41,8 @@ class ToriIntentResult(ContractModel):
             raise ValueError('자료 검색에만 검색어가 필요합니다')
         if self.intent != 'task_list' and any(x is not None for x in (self.scope, self.kind, self.date_from, self.date_to)):
             raise ValueError('일정 검색 필드는 조회 요청에만 허용됩니다')
+        if self.intent != 'event_list' and self.event_status is not None:
+            raise ValueError('행사 상태는 행사 목록 조회에만 허용됩니다')
         if self.date_from and self.date_to and self.date_from > self.date_to:
             raise ValueError('날짜 범위 순서가 잘못됐습니다')
         return self

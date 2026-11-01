@@ -18,6 +18,7 @@ import {
   useStepActions,
   useApproveAction,
   useCompleteStep,
+  useCompleteEvent,
   useDenyAction,
   useMarkActionDone,
   useResolveAction,
@@ -39,6 +40,7 @@ export default function EventDetailPage() {
   const demo = useDemo()
   const startMutation = useStartEvent()
   const completeMutation = useCompleteStep()
+  const completeEventMutation = useCompleteEvent()
   const resolveMutation = useResolveAction()
   const approveMutation = useApproveAction()
   const denyMutation = useDenyAction()
@@ -67,52 +69,51 @@ export default function EventDetailPage() {
   const confirmationsQuery = useConfirmations(shownId)
   const confirmations = (confirmationsQuery.data ?? []).filter((a) => !answeredIds.includes(a.id))
 
-  const resolveConfirmation = (action: EventAction, choice: string) => {
-    if (!demo) void resolveMutation.mutateAsync({ action, choice })
-    setAnsweredIds((ids) => [...ids, action.id])
-    toast.show({
-      kind: 'done',
-      title: choice === 'MANUAL' ? '직접 처리로 넘겼어요' : '처리했어요',
-      desc: action.title,
-    })
+  const run = async (operation: () => Promise<unknown>, title: string, desc?: string) => {
+    try {
+      if (!demo) await operation()
+      toast.show({ kind: 'done', title, desc })
+      return true
+    } catch (error) {
+      toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+      return false
+    }
   }
 
-  const finishAction = (action: EventAction) => {
-    if (!demo) void doneMutation.mutateAsync(action)
-    setFinishedIds((ids) => [...ids, action.id])
-    toast.show({ kind: 'done', title: '완료로 표시했어요', desc: action.title })
+  const resolveConfirmation = async (action: EventAction, choice: string, manualValue?: string) => {
+    if (await run(() => resolveMutation.mutateAsync({ action, choice, manualValue }), '처리했어요', action.title)) {
+      if (demo) setAnsweredIds((ids) => [...ids, action.id])
+      setReviewing(undefined)
+    }
   }
 
-  // 행사 취소 확인 모달. 확인하면 취소 정리 화면으로 간다.
+  const finishAction = async (action: EventAction) => {
+    if (await run(() => doneMutation.mutateAsync(action), '완료로 표시했어요', action.title) && demo) {
+      setFinishedIds((ids) => [...ids, action.id])
+    }
+  }
+
   const [cancelOpen, setCancelOpen] = useState(false)
-
-  // 검토·답변 모달에 띄울 Action. 유형에 따라 둘 중 하나가 열린다.
   const [reviewing, setReviewing] = useState<EventAction>()
   const answering = reviewing?.type === 'CONFIRMATION' ? reviewing : undefined
   const deciding = reviewing && reviewing.type !== 'CONFIRMATION' ? reviewing : undefined
 
-  const approveAction = (action: EventAction) => {
-    if (!demo) void approveMutation.mutateAsync(action)
-    setReviewing(undefined)
-    setOpenStepId(null)
-    toast.show({ kind: 'done', title: '승인했어요', desc: action.title })
+  const approveAction = async (action: EventAction) => {
+    if (await run(() => approveMutation.mutateAsync(action), '승인했어요', action.title)) {
+      setReviewing(undefined)
+      setOpenStepId(null)
+    }
   }
 
-  const denyAction = (action: EventAction, reason: string) => {
-    if (!demo) void denyMutation.mutateAsync({ action, reason })
-    setReviewing(undefined)
-    setOpenStepId(null)
-    toast.show({
-      kind: 'done',
-      title: '진행하지 않기로 했어요',
-      desc: `${action.title} · ${reason}`,
-    })
+  const denyAction = async (action: EventAction, reason: string) => {
+    if (await run(() => denyMutation.mutateAsync({ action, reason }), '진행하지 않기로 했어요', action.title)) {
+      setReviewing(undefined)
+      setOpenStepId(null)
+    }
   }
 
-  const completeStep = (step: EventStep) => {
-    if (!demo) void completeMutation.mutateAsync(step.id)
-    setOpenStepId(null)
-    toast.show({ kind: 'done', title: '단계를 완료로 표시했어요', desc: step.name })
+  const completeStep = async (step: EventStep) => {
+    if (await run(() => completeMutation.mutateAsync(step.id), '단계를 완료로 표시했어요', step.name)) setOpenStepId(null)
   }
 
   if (detailQuery.isPending) return null
@@ -156,29 +157,28 @@ export default function EventDetailPage() {
 
       {event ? (
         <>
-          {!demo && (
-            <p className="rounded-[10px] bg-bg px-[16px] py-[12px] text-[13px] text-ink2">
-              행사 조회를 연결했습니다. 승인·완료·취소 처리는 준비 중입니다.
-            </p>
-          )}
           <EventHeaderCard
             readOnly={!demo}
             event={event}
             steps={steps}
             onSelectStep={(step) => setOpenStepId(step.id)}
             onCancelEvent={() => setCancelOpen(true)}
-            onStartEvent={
-              demo
-                ? undefined
-                : () => void startMutation.mutateAsync(event.id).then(() => detailQuery.refetch())
-            }
+            onStartEvent={demo ? undefined : () => void run(() => startMutation.mutateAsync(event.id), '행사를 시작했어요')}
+            onCompleteEvent={demo ? undefined : () => {
+              if (window.confirm('행사를 완료하시겠어요? 완료 후에는 할 일을 처리할 수 없습니다.')) {
+                void run(() => completeEventMutation.mutateAsync(event.id), '행사를 완료했어요')
+              }
+            }}
           />
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
               <ConfirmationList
                 actions={confirmations}
-                onResolve={resolveConfirmation}
-                readOnly={!demo}
+                onResolve={(action, choice) => {
+                  if (choice === 'MANUAL') setReviewing(action)
+                  else void resolveConfirmation(action, choice)
+                }}
+                readOnly={!demo && event.status !== 'ON_GOING'}
               />
               <ResolvedActionList
                 actions={resolved?.items ?? []}
@@ -206,7 +206,7 @@ export default function EventDetailPage() {
               onCompleteAction={finishAction}
               onReviewAction={setReviewing}
               onCompleteStep={completeStep}
-              readOnly={!demo}
+              readOnly={!demo && event.status !== 'ON_GOING'}
             />
           )}
           <ReviewModal
@@ -225,11 +225,7 @@ export default function EventDetailPage() {
           <AnswerModal
             action={answering}
             onClose={() => setReviewing(undefined)}
-            // TODO(연동): 직접 처리면 manualValue도 함께 보낸다. 명세는 객체({ memberId })라 글로 받는 지금 화면과 맞춰야 한다.
-            onAnswer={(action, choice) => {
-              setReviewing(undefined)
-              resolveConfirmation(action, choice)
-            }}
+            onAnswer={(action, choice, manualValue) => void resolveConfirmation(action, choice, manualValue)}
           />
         </>
       ) : (

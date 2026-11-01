@@ -125,11 +125,11 @@ export function ActionCard({ action, onComplete, onReview, readOnly = false }: A
           <Box label={question ? '토리가 모르는 것' : '토리가 준비한 초안'}>{action.content}</Box>
         )}
         <div className="flex items-center gap-[8px]">
-          <Button disabled={readOnly} onClick={() => onReview?.(action)}>
-            {question ? '답변하기' : '검토하기'}
+          <Button disabled={readOnly} onClick={() => !question && action.approveNeeded === false ? onComplete?.(action) : onReview?.(action)}>
+            {question ? '답변하기' : action.approveNeeded === false ? '완료로 표시' : '검토하기'}
           </Button>
           <span className="text-[11px] text-mute">
-            {question ? '답변하면 바로 완료로 가요' : '승인 전에는 실행하지 않아요'}
+            {question ? '답변하면 바로 완료로 가요' : action.approveNeeded === false ? '직접 처리한 후 완료로 표시해 주세요' : '승인 전에는 실행하지 않아요'}
           </span>
         </div>
       </>
