@@ -37,12 +37,14 @@ from app.schemas.events import (
     PlannedStepOut,
     PlannedStepListResponse,
     PlanGenerateIn,
+    PlanReviewIn,
+    PlanReviewOut,
     PlanScreenOut,
     PlanViewOut,
     StepListResponse,
 )
 from app.schemas.common import Envelope
-from app.services import action_service, event_service, planning_service
+from app.services import action_service, event_service, plan_review_service, planning_service
 
 router = APIRouter(prefix="/api/v1/events", tags=["events"])
 
@@ -313,6 +315,26 @@ async def get_plan(
         session, club_id=event.club_id, event_id=event_id
     )
     return Envelope(data=PlanScreenOut.model_validate(screen))
+
+
+@router.post("/{event_id}/plan/review", response_model=Envelope[PlanReviewOut])
+async def request_plan_review(
+    event_id: str,
+    body: PlanReviewIn,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[PlanReviewOut]:
+    """계획 수정 후 AI 검토 (#177). AI 실패는 200 + status FAILED로 돌려준다.
+
+    서비스가 AI 호출 전에 커밋해 이 세션의 트랜잭션을 닫는다.
+    """
+    event, member = await _get_event_for_account(session, event_id=event_id, account=account)
+    if member.role not in WRITER_ROLES:
+        raise Forbidden()
+    review = await plan_review_service.request_review(
+        session, event=event, expected_revision=body.expected_revision
+    )
+    return Envelope(data=PlanReviewOut.model_validate(review))
 
 
 def _parse_statuses(raw: str | None) -> list[ActionStatus] | None:

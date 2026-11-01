@@ -1,11 +1,16 @@
 """계획 편집 버전과 AI 검토 기준 스냅샷 (#177).
 
 버전은 PLANNING 계획이 실제로 바뀐 뒤에만 올린다 — 바뀌었는지 판단은 호출하는 쪽 몫이다.
+
+검토 요청은 planning_service의 chat/generate와 같이 AI를 부르기 전에 커밋해서,
+모델을 기다리는 동안 DB 커넥션·잠금을 쥐지 않는다.
 """
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
+from uuid import uuid4
 
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +23,7 @@ from app.ai.planning_catalog import (
     PLANNING_STEP_PHASES,
 )
 from app.core.enums import ActionType, EventStatus, PlanReviewStatus, StepCode
+from app.core.exceptions import EventStateConflict, VersionConflict
 from app.models.events import Action, Event, PlanReview, Step
 
 
@@ -238,3 +244,159 @@ def build_review_request(
         excluded_steps=excluded,
         changes=changes,
     )
+
+
+# 처리 중 서버가 죽어도 「검토 중」에 갇히지 않게, 이보다 오래된 REVIEWING은 실패로 보인다.
+REVIEW_TIMEOUT = timedelta(seconds=90)
+
+
+def _timed_out(row: PlanReview, now: datetime) -> bool:
+    return row.requested_at is None or now - row.requested_at > REVIEW_TIMEOUT
+
+
+def review_out(row: PlanReview | None, *, now: datetime) -> dict | None:
+    """PlanReviewOut 모양. 오래된 REVIEWING은 응답에서만 FAILED로 바꾼다(DB는 그대로)."""
+    if row is None:
+        return None
+    status, error_code = row.status, row.error_code
+    if status == PlanReviewStatus.REVIEWING and _timed_out(row, now):
+        status, error_code = PlanReviewStatus.FAILED, "REVIEW_TIMEOUT"
+    return {
+        "status": status,
+        "generated_revision": row.generated_revision,
+        "reviewed_revision": row.reviewed_revision,
+        "outcome": row.outcome,
+        "items": [
+            {
+                **item,
+                # 이름은 AI 출력이 아니라 카탈로그로 붙인다.
+                "step_names": [PLANNING_STEP_NAMES.get(code, code) for code in item["step_codes"]],
+            }
+            for item in row.items or []
+        ],
+        "error_code": error_code,
+    }
+
+
+def _error_code(error: Exception) -> str | None:
+    """AI 실패를 저장할 코드로 바꾼다. AI 실패가 아니면(버그) None."""
+    # AIInvalidResponseError는 AIRetryableError의 하위 타입이라 먼저 본다.
+    if isinstance(error, (ai.AIInvalidResponseError, PydanticValidationError)):
+        return "AI_INVALID_RESPONSE"
+    if isinstance(error, ai.AIConfigError):
+        return "AI_MISCONFIGURED"
+    if isinstance(error, ai.AIRetryableError):
+        return "AI_UNAVAILABLE"
+    if isinstance(error, ai.AIError):
+        return "AI_INVALID_RESPONSE"
+    return None
+
+
+async def _lock_review(session: AsyncSession, event_id: str) -> PlanReview | None:
+    # 앞선 트랜잭션에서 읽은 행이 세션에 남아 있어도 지금 DB 값으로 다시 채운다.
+    return await session.scalar(
+        select(PlanReview)
+        .where(PlanReview.event_id == event_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+
+
+async def _store_result(
+    session: AsyncSession,
+    *,
+    event_id: str,
+    request_id: str,
+    result: ai.PlanEditReviewResult | None = None,
+    error_code: str | None = None,
+) -> dict:
+    """요청이 아직 최신일 때만 결과를 쓴다. 그사이 새 요청·재생성이 있었으면 버린다."""
+    # 재생성(_finish → reset_baseline)과 같은 순서로 행사 → 검토 행을 잠근다.
+    # events는 잠그기만 한다 — 쓰면 modified_at이 올라 사용자 수정으로 읽힌다.
+    await session.execute(select(Event.id).where(Event.id == event_id).with_for_update())
+    row = await _lock_review(session, event_id)
+    now = datetime.now(UTC)
+    current = (
+        row is not None
+        and row.request_id == request_id
+        and row.status == PlanReviewStatus.REVIEWING
+    )
+    if current:
+        if result is not None:
+            row.status = PlanReviewStatus.DONE
+            row.outcome = result.outcome
+            row.items = [item.model_dump(mode="json") for item in result.items]
+        else:
+            row.status = PlanReviewStatus.FAILED
+            row.error_code = error_code
+        row.finished_at = now
+    out = review_out(row, now=now)
+    await session.commit()
+    return out
+
+
+async def request_review(session: AsyncSession, *, event: Event, expected_revision: int) -> dict:
+    """지금 계획을 AI로 검토한다. AI 실패도 FAILED로 저장해 200으로 돌려준다."""
+    # planning_service·event_service가 이 모듈을 불러오므로 순환을 피해 여기서 불러온다.
+    from app.services import event_service, planning_service
+
+    event_id = event.id
+    # ① 행사 → ② 검토 행 순서로 잠근다. plan_revision은 세션에 남은 값 대신 지금 값을 읽는다.
+    locked = (
+        await session.execute(
+            select(Event.status, Event.plan_revision, Event.plan_excluded_steps)
+            .where(Event.id == event_id)
+            .with_for_update()
+        )
+    ).one()
+    if locked.status != EventStatus.PLANNING:
+        raise EventStateConflict("계획 중인 행사만 검토할 수 있어요.")
+    if locked.plan_revision != expected_revision:
+        raise VersionConflict()
+    row = await _lock_review(session, event_id)
+    if row is None:
+        raise EventStateConflict("초안을 만든 뒤 검토할 수 있어요.")
+
+    # ③ 같은 버전을 이미 끝냈거나 아직 검토 중이면 AI를 다시 부르지 않는다.
+    now = datetime.now(UTC)
+    if row.reviewed_revision == expected_revision and (
+        row.status == PlanReviewStatus.DONE
+        or (row.status == PlanReviewStatus.REVIEWING and not _timed_out(row, now))
+    ):
+        out = review_out(row, now=now)
+        await session.commit()
+        return out
+
+    # ④ 요청을 만들고 REVIEWING으로 커밋한다 — AI를 기다리는 동안 잠금·커넥션을 놓는다.
+    request = build_review_request(
+        draft=await planning_service.current_draft(session, event_id),
+        today=event_service.today_kst(),
+        current=await snapshot_plan(session, event_id),
+        baseline=row.baseline,
+        ai_excluded=locked.plan_excluded_steps or [],
+    )
+    request_id = uuid4().hex
+    row.status = PlanReviewStatus.REVIEWING
+    row.request_id = request_id
+    row.reviewed_revision = expected_revision
+    row.outcome = None
+    row.items = None
+    row.error_code = None
+    row.requested_at = now
+    row.finished_at = None
+    await session.commit()
+
+    # ⑤ 트랜잭션 없이 모델을 부른다. ⑥ 결과는 요청이 아직 최신일 때만 저장한다.
+    try:
+        result = await ai.review_plan_edit(request)
+    except Exception as error:
+        code = _error_code(error)
+        # 버그여도 행이 REVIEWING에 머물지 않게 실패로 남기고 다시 던진다.
+        out = await _store_result(
+            session, event_id=event_id, request_id=request_id,
+            error_code=code or "INTERNAL_ERROR",
+        )
+        if code is None:
+            raise
+        return out
+    return await _store_result(session, event_id=event_id, request_id=request_id, result=result)

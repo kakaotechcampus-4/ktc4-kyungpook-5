@@ -34,7 +34,7 @@ from app.db.base import new_id
 from app.db.session import get_sessionmaker
 from app.models.chat import Conversation, Message
 from app.models.common import IdempotencyKey
-from app.models.events import Action, Event, Step
+from app.models.events import Action, Event, PlanReview, Step
 
 from app.services import event_rules, plan_review_service
 from app.services.record_search_port import PostgresRecordSearch
@@ -97,6 +97,10 @@ def _resume_state(conversation: Conversation) -> "ai.PlanningResumeState | None"
     if conversation.resume_state is None:
         return None
     return ai.parse_resume_state(json.dumps(conversation.resume_state))
+
+
+def _basis_draft(resume_state: "ai.PlanningResumeState | None") -> "ai.PlanningDraft":
+    return resume_state.payload.basis_draft if resume_state is not None else ai.PlanningDraft()
 
 
 def _draft_out(draft: "ai.PlanningDraft") -> dict:
@@ -417,11 +421,7 @@ async def _prepare(
             raise VersionConflict()
 
         resume_state = _resume_state(conversation)
-        draft = (
-            resume_state.payload.basis_draft
-            if resume_state is not None
-            else ai.PlanningDraft()
-        )
+        draft = _basis_draft(resume_state)
         context = {
             "request_id": new_id("req"),
             "club_id": club_id,
@@ -566,20 +566,29 @@ async def generate(
     return await _run_once(idem, work)
 
 
+async def _latest_conversation(session: AsyncSession, event_id: str) -> Conversation | None:
+    return await session.scalar(
+        select(Conversation)
+        .where(Conversation.event_id == event_id)
+        .order_by(Conversation.created_at.desc())
+        .limit(1)
+    )
+
+
+async def current_draft(session: AsyncSession, event_id: str) -> "ai.PlanningDraft":
+    """최신 대화의 조건 초안. 대화가 없으면 빈 초안."""
+    conversation = await _latest_conversation(session, event_id)
+    return _basis_draft(_resume_state(conversation) if conversation is not None else None)
+
+
 async def get_plan_screen(
     session: AsyncSession, *, club_id: str, event_id: str
 ) -> dict:
     event = await get_event(session, club_id=club_id, event_id=event_id)
-    conversation = await session.scalar(
-        select(Conversation)
-        .where(Conversation.event_id == event.id)
-        .order_by(Conversation.created_at.desc())
-        .limit(1)
-    )
+    # 대화 이력·생성 가능 여부에도 resume_state가 필요해 current_draft 대신 같은 부품을 쓴다.
+    conversation = await _latest_conversation(session, event.id)
     resume_state = _resume_state(conversation) if conversation is not None else None
-    draft = (
-        resume_state.payload.basis_draft if resume_state is not None else ai.PlanningDraft()
-    )
+    draft = _basis_draft(resume_state)
 
     total = await session.scalar(
         select(func.count()).select_from(Step).where(Step.event_id == event.id)
@@ -593,6 +602,7 @@ async def get_plan_screen(
             )
         ).all()
     )
+    review = await session.scalar(select(PlanReview).where(PlanReview.event_id == event.id))
     return {
         "draft": _draft_out(draft),
         "last_record_lookup": conversation.last_record_lookup if conversation is not None else None,
@@ -616,4 +626,7 @@ async def get_plan_screen(
             ai.planning_generation_readiness(draft, resume_state=resume_state).model_dump(mode="json")
             if resume_state is not None else None
         ),
+        "plan_revision": event.plan_revision,
+        # 초안 생성 전에는 검토 행이 없어 null이다.
+        "review": plan_review_service.review_out(review, now=datetime.now(UTC)),
     }
