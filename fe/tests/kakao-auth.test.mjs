@@ -63,6 +63,13 @@ test('authorization contains fresh state and matching same-origin callback', () 
   assert.equal(callback.next, '/dashboard')
   assert.throws(() => auth.consumeKakaoCallback(`?state=${url.searchParams.get('state')}&code=ok`))
 })
+test('email consent retry requests only the email scope and retains the destination', () => {
+  const { auth, destination } = setup()
+  auth.beginKakaoLogin('/meetings', true)
+  const url = new URL(destination())
+  assert.equal(url.searchParams.get('scope'), 'account_email')
+  assert.equal(auth.consumeKakaoCallback(`?state=${url.searchParams.get('state')}&code=ok`).next, '/meetings')
+})
 test('mismatched state or denied consent never accepts a code', () => {
   const { auth, values } = setup()
   auth.beginKakaoLogin()

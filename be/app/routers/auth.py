@@ -90,9 +90,12 @@ async def _exchange_kakao_code(code: str) -> tuple[str, str]:
         user = user_res.json()
 
     kakao_user_id = str(user["id"])
-    email = user.get("kakao_account", {}).get("email")
+    kakao_account = user.get("kakao_account") or {}
+    email = kakao_account.get("email")
     if not email:
-        raise ValidationFailed({"email": "카카오 계정에 이메일 동의가 필요합니다."})
+        if kakao_account.get("email_needs_agreement") is True:
+            raise ValidationFailed({"emailConsent": "카카오 이메일 제공 동의가 필요합니다."})
+        raise ValidationFailed({"email": "카카오 계정에서 이메일을 제공받지 못했습니다."})
     return kakao_user_id, email
 
 
