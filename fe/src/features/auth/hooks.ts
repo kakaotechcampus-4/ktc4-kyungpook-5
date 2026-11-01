@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getMe, login, loginWithKakao, logout, signup, type LoginInput } from '@/features/auth/api'
 import { ApiError } from '@/shared/api/types'
 import { getRefreshToken, useAuthStore } from '@/shared/auth/store'
+import { safeDestination } from './destination'
 
 const ME_KEY = ['auth', 'me'] as const
 
@@ -86,23 +87,6 @@ export function authErrorMessage(error: unknown): string {
     return '로그인 정보를 확인하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
   }
   return '서버에 연결하지 못했어요. API 주소와 서버 실행 상태를 확인해 주세요.'
-}
-
-function safeDestination(next: string | null): string {
-  if (!next) return '/meetings'
-  try {
-    const url = new URL(next, window.location.origin)
-    if (
-      url.origin !== window.location.origin ||
-      url.pathname === '/login' ||
-      url.pathname === '/signup'
-    ) {
-      return '/meetings'
-    }
-    return `${url.pathname}${url.search}${url.hash}`
-  } catch {
-    return '/meetings'
-  }
 }
 
 export function useClubSelection() {

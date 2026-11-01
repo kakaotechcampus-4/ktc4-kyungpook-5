@@ -12,17 +12,19 @@ export default function KakaoCallbackPage() {
   useEffect(() => {
     if (started.current) return
     started.current = true
-    let code: string
+    let callback: ReturnType<typeof consumeKakaoCallback>
     try {
-      code = consumeKakaoCallback(window.location.search)
+      callback = consumeKakaoCallback(window.location.search)
     } catch {
       window.history.replaceState(null, '', window.location.pathname)
       setError('카카오 인증을 확인하지 못했어요. 다시 시도해 주세요.')
       return
     }
     window.history.replaceState(null, '', window.location.pathname)
-    void mutateAsync(code)
-      .then(() => navigate('/login', { replace: true }))
+    void mutateAsync(callback.code)
+      .then(() =>
+        navigate(`/login?${new URLSearchParams({ next: callback.next })}`, { replace: true }),
+      )
       .catch(() => {
         setError('카카오 로그인에 실패했어요. 이메일 동의와 연결 상태를 확인해 주세요.')
       })
