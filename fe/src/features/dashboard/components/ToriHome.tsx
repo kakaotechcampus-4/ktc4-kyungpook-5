@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDashboardOverview } from '@/features/dashboard/overview'
 import { useAuthStore } from '@/shared/auth/store'
@@ -15,6 +16,7 @@ const format = (value: string | null) =>
 
 export function ToriHome() {
   const { me, clubId } = useAuthStore()
+  const [conversationStarted, setConversationStarted] = useState(false)
   const overview = useDashboardOverview(clubId, me?.id)
   const items = overview.tasks.data?.filter((item) => item.status === 'ACTIVE') ?? []
   const schedules = items
@@ -41,15 +43,34 @@ export function ToriHome() {
   }
   return (
     <div className="mx-auto max-w-[1200px] space-y-6">
-      <header>
-        <p className="text-caption text-mute">
-          {me?.clubs.find((club) => club.id === clubId)?.name ?? '운영해'}
-        </p>
-        <h1 className="mt-1 text-h1">안녕하세요, 토리예요</h1>
-        <p className="mt-2 text-ink2">회의와 행사 준비를 함께 살펴볼게요.</p>
-      </header>
-      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
-        <ToriChat key={`${me?.id}:${clubId}`} clubId={clubId} />
+      <div
+        className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+          conversationStarted ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'
+        }`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <header
+            aria-hidden={conversationStarted}
+            className={`pb-6 transition-[opacity,transform] duration-200 ease-out ${
+              conversationStarted
+                ? 'pointer-events-none -translate-y-2 opacity-0'
+                : 'translate-y-0 opacity-100'
+            }`}
+          >
+            <p className="text-caption text-mute">
+              {me?.clubs.find((club) => club.id === clubId)?.name ?? '운영해'}
+            </p>
+            <h1 className="mt-1 text-h1">안녕하세요, 토리예요</h1>
+            <p className="mt-2 text-ink2">회의와 행사 준비를 함께 살펴볼게요.</p>
+          </header>
+        </div>
+      </div>
+      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_220px]">
+        <ToriChat
+          key={`${me?.id}:${clubId}`}
+          clubId={clubId}
+          onConversationStarted={() => setConversationStarted(true)}
+        />
         <aside className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
           <Card className="space-y-3 rounded-none border-0 border-t border-line bg-transparent px-0 py-5">
             <div className="flex justify-between gap-2">

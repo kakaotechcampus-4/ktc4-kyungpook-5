@@ -153,7 +153,13 @@ function Reply({ result }: { result: Result }) {
     </div>
   )
 }
-export function ToriChat({ clubId }: { clubId: string | null }) {
+export function ToriChat({
+  clubId,
+  onConversationStarted,
+}: {
+  clubId: string | null
+  onConversationStarted?: () => void
+}) {
   const [draft, setDraft] = useState('')
   const [turns, setTurns] = useState<Turn[]>([])
   const [busy, setBusy] = useState(false)
@@ -176,6 +182,7 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
     const message = text.trim()
     if (!clubId || !message || locked.current) return
     locked.current = true
+    if (turns.length === 0) onConversationStarted?.()
     setBusy(true)
     setError('')
     setDraft(message)
@@ -203,7 +210,7 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
       className={`flex min-w-0 flex-col overflow-hidden border-0 bg-transparent p-0 ${turns.length ? 'h-[min(65dvh,680px)] min-h-[400px]' : 'min-h-[360px]'}`}
     >
       <div className="flex shrink-0 items-start gap-4 border-b border-line pb-5">
-        <Tori size={48} thinking={busy} />
+        <Tori size={48} />
         <div>
           <h2 className="text-h2">무엇을 도와드릴까요?</h2>
           <p className="mt-2 text-caption leading-6 text-ink2">
