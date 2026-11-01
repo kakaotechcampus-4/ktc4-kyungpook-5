@@ -1,10 +1,16 @@
 // P2-b 단계 수정. 13개 고정 카탈로그에서 넣고 빼고, 묶음 안의 순서를 바꾼다.
 // 계획 중에만 들어올 수 있다 — 진행 중인 행사의 단계는 여기서 못 바꾼다.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DEMO_INCLUDED, STEP_CATALOGUE } from '@/features/planning/catalogue'
 import { planningError } from '@/features/planning/errors'
-import { codesFromSteps, usePlanStepsSnapshot, useSavePlanSteps } from '@/features/planning/hooks'
+import { planningApi } from '@/features/planning/api'
+import {
+  codesFromSteps,
+  usePlanStepsSnapshot,
+  useRequestPlanReview,
+  useSavePlanSteps,
+} from '@/features/planning/hooks'
 import { ExcludedSteps } from '@/features/planning/components/ExcludedSteps'
 import { StepBoard } from '@/features/planning/components/StepBoard'
 import { StepDetailModal } from '@/features/planning/components/StepDetailModal'
@@ -24,7 +30,11 @@ export default function PlanStepsPage() {
   // 서버가 만든 단계를 밑바탕으로 쓴다. 한 번 저장한 뒤로는 그 결과가 우선이다.
   const snapshot = usePlanStepsSnapshot(demo ? null : eventId)
   const save = useSavePlanSteps(eventId)
+  const review = useRequestPlanReview(eventId)
   const serverSteps = snapshot.data?.steps
+  // 편집을 시작할 때 본 계획 버전 (#177). baseRevision과 같은 스냅샷에서 읽으므로,
+  // 저장이 성공했다면 이 값도 그때 최신이었다 — 저장 뒤 값이 커졌으면 실제로 바뀐 것이다.
+  const entryPlanRevision = useRef<number | null>(null)
 
   // 포함한 단계의 코드. 배열 순서가 곧 묶음 안의 순서다.
   const [codes, setCodes] = useState<string[] | null>(demo ? Object.keys(DEMO_INCLUDED) : null)
@@ -46,7 +56,10 @@ export default function PlanStepsPage() {
 
   const current = resolved ?? []
   const editCodes = (update: (previous: string[]) => string[]) => {
-    if (!demo && editingRevision === null && snapshot.data) setEditingRevision(snapshot.data.baseRevision)
+    if (!demo && editingRevision === null && snapshot.data) {
+      setEditingRevision(snapshot.data.baseRevision)
+      entryPlanRevision.current = snapshot.data.planRevision
+    }
     setCodes((previous) => update(previous ?? current))
   }
   const included = current
@@ -63,15 +76,26 @@ export default function PlanStepsPage() {
       `${removed.map((step) => step.name).join(', ')} 단계를 빼면 해당 단계의 일정과 행동도 삭제됩니다. 저장할까요?`,
     )) return
     setSaveError('')
+    const planRevisionBefore = entryPlanRevision.current ?? snapshot.data?.planRevision ?? null
     try {
       await save.mutateAsync({
         codes: current,
         expectedRevision: editingRevision ?? snapshot.data?.baseRevision ?? 0,
       })
-      goBack()
     } catch (cause) {
       setSaveError(planningError(cause))
+      return
     }
+    // 바뀐 게 있을 때만 검토를 요청한다. 응답은 기다리지 않는다 — 계획 화면이 '검토 중'을 보여준다.
+    try {
+      const latest = await planningApi.stepsSnapshot(eventId)
+      if (planRevisionBefore !== null && latest.planRevision > planRevisionBefore) {
+        review.mutate(latest.planRevision)
+      }
+    } catch {
+      // 단계 구성은 이미 저장됐다. 검토만 못 보낸 채 돌아가고, 계획 화면에서 「검토 받기」로 다시 요청한다.
+    }
+    goBack()
   }
 
   // 묶음 안에서만 자리를 바꾼다. 묶음 사이 이동은 카탈로그가 막는다.
@@ -127,6 +151,7 @@ export default function PlanStepsPage() {
             <Button variant="secondary" size="sm" onClick={() => {
               setCodes(null)
               setEditingRevision(null)
+              entryPlanRevision.current = null
               setSaveError('')
               void reloadLatest()
             }}>

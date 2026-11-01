@@ -250,12 +250,15 @@ async def get_plan_steps_snapshot(
         select(Conversation).where(Conversation.event_id == event_id)
         .order_by(Conversation.created_at.desc()).limit(1)
     )
+    # 잠근 뒤 컬럼을 다시 읽는다. 세션에 올라온 Event는 잠그기 전 값일 수 있다.
+    plan_revision = await session.scalar(select(Event.plan_revision).where(Event.id == event_id))
     rows = await session.scalars(
         select(Step).where(Step.event_id == event_id)
         .options(selectinload(Step.actions)).order_by(Step.step_order)
     )
     return Envelope(data=PlanStepsSnapshotOut(
         base_revision=conversation.base_revision if conversation else 0,
+        plan_revision=plan_revision or 0,
         steps=[PlannedStepOut.model_validate(event_service.planned_step_out(row)) for row in rows],
     ))
 

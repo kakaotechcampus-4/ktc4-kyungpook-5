@@ -351,6 +351,8 @@ class PlanStepsSnapshotOut(CamelModel):
     """단계 구성과 그 구성을 읽은 시점의 버전."""
 
     base_revision: int
+    # 계획 편집 버전 (#177). 저장 뒤 값과 비교해 실제로 바뀌었을 때만 검토를 요청한다.
+    plan_revision: int
     steps: list[PlannedStepOut]
 
 
