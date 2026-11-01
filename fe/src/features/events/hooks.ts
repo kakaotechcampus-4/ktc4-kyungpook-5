@@ -144,7 +144,10 @@ export function useBeginCancellation() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (eventId: string) => beginEventCancellation(eventId),
-    onSuccess: (_data, eventId) => client.invalidateQueries({ queryKey: ['events', undefined, undefined, eventId] }),
+    onSuccess: (_data, eventId) => {
+      void client.invalidateQueries({ queryKey: ['events'] })
+      void client.invalidateQueries({ queryKey: ['events', undefined, undefined, eventId, 'cancelTasks'] })
+    },
   })
 }
 
@@ -152,7 +155,10 @@ export function useCompleteCancelTask() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: ({ eventId, taskId }: { eventId: string; taskId: string }) => completeCancelTask(eventId, taskId),
-    onSuccess: (_data, variables) => client.invalidateQueries({ queryKey: ['events', undefined, undefined, variables.eventId] }),
+    onSuccess: (_data, variables) => {
+      void client.invalidateQueries({ queryKey: ['events'] })
+      void client.invalidateQueries({ queryKey: ['events', undefined, undefined, variables.eventId, 'cancelTasks'] })
+    },
   })
 }
 

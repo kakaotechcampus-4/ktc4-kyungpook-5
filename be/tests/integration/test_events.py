@@ -66,6 +66,15 @@ async def test_event_cancel_persists_tasks_and_final_status(client, app_db):
     detail = client.get(f'{EVENTS_URL}/{event_id}', headers=headers).json()['data']
     assert detail['status'] == 'CANCELLED'
 
+async def test_event_cancel_tasks_must_be_completed_in_order(client, app_db):
+    headers, club_id = owner_with_club(client, 'cancel-order')
+    event_id = await add_event(club_id, title='순서 행사', status=EventStatus.ON_GOING)
+    assert client.post(f'{EVENTS_URL}/{event_id}/cancel', headers=headers).status_code == 200
+    tasks = client.get(f'{EVENTS_URL}/{event_id}/cancel/tasks', headers=headers).json()['data']
+    out_of_order = client.post(f'{EVENTS_URL}/{event_id}/cancel/tasks/{tasks[1]["id"]}/complete', headers=headers)
+    assert out_of_order.status_code == 409
+    assert out_of_order.json()['error']['code'] == 'CANCEL_TASK_OUT_OF_ORDER'
+
 
 @pytest.fixture
 async def app_db(
