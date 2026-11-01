@@ -61,6 +61,13 @@ async def test_vad_suppresses_silence_and_short_click() -> None:
     assert vad.feed(pcm(3000, 0) + pcm(40) + pcm(1000, 0)) == []
     assert vad.flush() is None
 
+async def test_stream_rejects_odd_pcm16_payload_before_vad() -> None:
+    socket = Socket([start(), msg({"type": "audio", "audioSeq": 1, "startMs": 0, "endMs": 1}),
+                         {"type": "websocket.receive", "bytes": b"\x00"}])
+    audio = stream(socket)
+    await audio.run()
+    assert any(event.get("code") == "AUDIO_ODD_PCM" for event in socket.sent)
+
 
 async def test_vad_preserves_pcm_across_arbitrary_frame_boundaries_and_flushes_tail() -> None:
     vad = PcmVad()
