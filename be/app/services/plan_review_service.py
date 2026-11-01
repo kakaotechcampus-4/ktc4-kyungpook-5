@@ -47,7 +47,12 @@ async def bump_plan_revision(session: AsyncSession, event_id: str) -> int | None
 
 
 def _iso(value: Any) -> str | None:
-    return value.isoformat() if value is not None else None
+    """시각은 UTC로, 날짜는 그대로 쓴다 — 저장 시점마다 오프셋이 달라도 같은 순간이 같은 문자열이 되게."""
+    if value is None:
+        return None
+    if isinstance(value, datetime) and value.tzinfo is not None:
+        return value.astimezone(UTC).isoformat()
+    return value.isoformat()
 
 
 async def snapshot_plan(session: AsyncSession, event_id: str) -> dict:
@@ -147,6 +152,12 @@ def _moved_codes(current: list[StepCode], baseline: list[StepCode]) -> tuple[Ste
     return tuple(code for code in current if code in moved)
 
 
+def _field_value(field: str, action: dict) -> Any:
+    # 문자열이 아니라 값으로 비교한다 — 표기만 다른 같은 날짜를 변경으로 보지 않는다.
+    value = action.get(field)
+    return _d(value) if field == "due_date" else value
+
+
 def _action_changes(code: StepCode, before: list[dict], after: list[dict]) -> list[ai.ActionChange]:
     old = {action["title"]: action for action in before}
     changes = []
@@ -155,7 +166,7 @@ def _action_changes(code: StepCode, before: list[dict], after: list[dict]) -> li
         if previous is None:
             continue
         for field in ("amount", "due_date"):
-            if previous.get(field) != action.get(field):
+            if _field_value(field, previous) != _field_value(field, action):
                 changes.append(
                     ai.ActionChange(
                         code=code,
@@ -218,7 +229,10 @@ def build_review_request(
         old = old_steps.get(code)
         if old is None:
             continue
-        if (old["starts_at"], old["deadline"]) != (step["starts_at"], step["deadline"]):
+        if (_dt(old["starts_at"]), _dt(old["deadline"])) != (
+            _dt(step["starts_at"]),
+            _dt(step["deadline"]),
+        ):
             schedule_changes.append(
                 ai.ScheduleChange(
                     code=code,
@@ -356,6 +370,12 @@ async def request_review(session: AsyncSession, *, event: Event, expected_revisi
     row = await _lock_review(session, event_id)
     if row is None:
         raise EventStateConflict("초안을 만든 뒤 검토할 수 있어요.")
+
+    # 생성 직후 그대로인 계획은 검토할 게 없다 — 직접 호출돼도 AI를 부르지 않는다.
+    if row.status == PlanReviewStatus.NOT_REQUESTED and expected_revision == row.generated_revision:
+        out = review_out(row, now=datetime.now(UTC))
+        await session.commit()
+        return out
 
     # ③ 같은 버전을 이미 끝냈거나 아직 검토 중이면 AI를 다시 부르지 않는다.
     now = datetime.now(UTC)

@@ -197,6 +197,26 @@ async def test_행동_세부가_바뀌면_버전이_오른다(client: TestClient
     assert await _revision(event_id) == 1
 
 
+async def test_payload만_바뀌어도_버전이_오르고_같은_payload는_오르지_않는다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id, _step_id, action_id = await _planning_event_with_steps(club_id)
+    body = {"payload": {"channel": "카카오톡"}}
+
+    res = client.patch(
+        f"/api/v1/actions/{action_id}", headers=headers, json={"expectedVersion": 1, **body}
+    )
+    assert res.status_code == 200, res.text
+    assert await _revision(event_id) == 1
+
+    same = client.patch(
+        f"/api/v1/actions/{action_id}", headers=headers, json={"expectedVersion": 2, **body}
+    )
+    assert same.status_code == 200, same.text
+    assert await _revision(event_id) == 1
+
+
 async def test_운영_중_수정은_버전을_올리지_않는다(client: TestClient, app_db: None) -> None:
     headers, club_id = owner_with_club(client)
     event_id = await add_event(club_id, status=EventStatus.ON_GOING)

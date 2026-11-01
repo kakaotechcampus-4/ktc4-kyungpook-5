@@ -968,10 +968,10 @@ history_usage = PlanningHistoryUsage.from_count(len(state.payload.history))
 
 ## 수정 → 검토: P2 계획 수정 후 AI 검토 (#177)
 
-생성된 계획에서 운영진이 "수요 조사"를 빼고 저장한 뒤 "검토 요청"을 누르는 예시다. 인원은 "대략 30명"으로 잠정이다. 평가 케이스 `survey_removed`와 같은 입력이다.
+생성된 계획에서 운영진이 "수요 조사"를 빼고 「단계 수정」에서 저장하면 검토가 자동으로 이어지는 예시다(카드에는 「검토 받기」·「다시 시도」·「다시 검토」 버튼이 있다). 인원은 "대략 30명"으로 잠정이다. 평가 케이스 `survey_removed`와 같은 입력이다.
 
 ```text
-FE: PlanReviewCard "검토 요청" → POST /api/v1/events/{id}/plan/review {expected_revision}
+FE: 「단계 수정」 저장 → POST /api/v1/events/{id}/plan/review {expectedRevision}
   → plan_review_service.request_review()
      · 행사·검토 행을 잠그고 버전 확인(다르면 409), 같은 버전을 이미 끝냈으면 AI를 다시 부르지 않음
      · build_review_request(draft, today, current, baseline, ai_excluded)
@@ -1003,7 +1003,7 @@ outcome=issues, items=[{step_codes:[DEMAND_SURVEY, CHECK_RESPONSES, CONFIRM_DETA
   message:"수요 조사를 빼면, 약 25명이라는 잠정 인원을 행사 전에 별도로 확인하는 단계가 없어져요. …",
   suggestion:"모집 공지와 신청 현황 확인에서 잠정 인원을 검증한 뒤 …"}]
   → BE가 status=DONE, items 저장 → PlanReviewCard가 항목별로 message와 suggestion 표시
-outcome=no_issues → "걱정되는 점이 없어요" 카드
+outcome=no_issues → "이번 검토에서는 추가로 짚을 주의점을 찾지 못했어요" 카드
 AI 오류 → status=FAILED(error_code) → 카드가 실패와 다시 시도 표시, 편집은 그대로
 ```
 

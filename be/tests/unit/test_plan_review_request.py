@@ -93,3 +93,29 @@ def test_일정이_없어도_차이를_만든다():
     req = _build(_plan(ALL), _plan(ALL))
     assert req.changes.schedule_changes == ()
     assert req.model_dump_json()
+
+
+def _deadline_plan(value, due=None):
+    fee = {"type": "TRANSFER", "title": "참가비", "amount": 30000, "due_date": due}
+    return _plan(ALL, **{StepCode.COLLECT_FEES: _step(
+        StepCode.COLLECT_FEES, starts=value, deadline=value, actions=[fee])})
+
+
+def test_같은_순간이면_시간대_표기가_달라도_일정_변경이_아니다():
+    base = _deadline_plan("2026-11-23T00:00:00+09:00")
+    cur = _deadline_plan("2026-11-22T15:00:00+00:00")
+    assert _build(cur, base).changes.schedule_changes == ()
+
+
+def test_시간대_표기가_달라도_실제_일정_변경은_담는다():
+    base = _deadline_plan("2026-11-23T00:00:00+09:00")
+    cur = _deadline_plan("2026-11-23T15:00:00+00:00")
+    changes = _build(cur, base).changes.schedule_changes
+    assert len(changes) == 1
+    assert changes[0].code == StepCode.COLLECT_FEES
+
+
+def test_iso는_시각을_UTC로_쓰고_날짜는_그대로_둔다():
+    assert svc._iso(datetime.fromisoformat("2026-11-23T00:00:00+09:00")) == "2026-11-22T15:00:00+00:00"
+    assert svc._iso(date(2026, 11, 23)) == "2026-11-23"
+    assert svc._iso(None) is None

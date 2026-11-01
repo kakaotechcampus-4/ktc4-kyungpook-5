@@ -16,7 +16,7 @@ from app.core.enums import EventStatus, PlanReviewStatus, StepCode
 from app.db import session as db_session
 from app.models.events import Event, PlanReview
 from app.services import plan_review_service
-from tests.integration.event_seed import add_event, owner_with_club
+from tests.integration.event_seed import add_event, member_of, owner_with_club
 from tests.integration.test_events_planning import _create_event, _fake_generation_result
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
@@ -41,8 +41,10 @@ async def _review_row(event_id: str) -> PlanReview | None:
         return await session.scalar(select(PlanReview).where(PlanReview.event_id == event_id))
 
 
-def _generated_event(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> tuple[dict, str]:
-    """초안까지 만든 PLANNING 행사의 (인증 헤더, eventId)."""
+def _generated_event(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, *, edited: bool = True
+) -> tuple[dict, str]:
+    """초안까지 만든 PLANNING 행사의 (인증 헤더, eventId). 기본은 일정을 한 번 고친 뒤다."""
     headers, club_id = owner_with_club(client, "review-owner")
     event_id = _create_event(client, headers, club_id)
 
@@ -54,6 +56,15 @@ def _generated_event(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> tup
         f"/api/v1/events/{event_id}/plan/generate", headers=headers, json={"baseRevision": 0}
     )
     assert res.status_code == 200, res.text
+    if edited:
+        # 검토는 수정된 계획에만 의미가 있으므로, 단계 일정을 하나 고쳐 버전을 올린다.
+        steps = client.get(f"/api/v1/events/{event_id}/steps", headers=headers)
+        assert steps.status_code == 200, steps.text
+        step_id = steps.json()["data"][0]["id"]
+        patched = client.patch(
+            f"/api/v1/steps/{step_id}", headers=headers, json={"deadline": "2027-05-01T09:00:00Z"}
+        )
+        assert patched.status_code == 200, patched.text
     return headers, event_id
 
 
@@ -106,7 +117,7 @@ async def test_검토하면_DONE과_주의점을_돌려준다(
     review = res.json()["data"]
     assert review["status"] == "DONE"
     assert review["reviewedRevision"] == revision
-    assert review["generatedRevision"] == revision
+    assert review["generatedRevision"] == revision - 1  # 생성 뒤 일정을 한 번 고쳤다
     assert review["outcome"] == "issues"
     assert review["errorCode"] is None
     assert review["items"][0]["stepCodes"] == ["DEMAND_SURVEY"]
@@ -351,6 +362,44 @@ async def test_비회원은_검토할_수_없다(
     outsider, _club = owner_with_club(client, "review-outsider")
 
     res = _post_review(client, outsider, event_id, revision)
+
+    assert res.status_code == 403, res.text
+    assert calls == []
+
+
+async def test_수정하지_않은_계획은_AI를_부르지_않는다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers, event_id = _generated_event(client, monkeypatch, edited=False)
+    calls = _patch_review(monkeypatch, _issues())
+    revision = await _revision(event_id)
+    # 직접 호출해도 생성 직후 그대로인 계획은 검토하지 않는다.
+    async with db_session.get_sessionmaker()() as session:
+        row = await session.scalar(select(PlanReview).where(PlanReview.event_id == event_id))
+        assert row is not None and row.status == PlanReviewStatus.NOT_REQUESTED
+        assert row.generated_revision == revision
+
+    res = _post_review(client, headers, event_id, revision)
+
+    assert res.status_code == 200, res.text
+    assert res.json()["data"]["status"] == "NOT_REQUESTED"
+    assert calls == []
+    assert (await _review_row(event_id)).status == PlanReviewStatus.NOT_REQUESTED
+
+
+async def test_글쓰기_권한이_없는_동아리원은_검토할_수_없다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.core.enums import MemberRole
+
+    headers, event_id = _generated_event(client, monkeypatch)
+    calls = _patch_review(monkeypatch, _issues())
+    revision = await _revision(event_id)
+    async with db_session.get_sessionmaker()() as session:
+        club_id = await session.scalar(select(Event.club_id).where(Event.id == event_id))
+    plain = await member_of(client, club_id, MemberRole.MEMBER, "review-plain")
+
+    res = _post_review(client, plain, event_id, revision)
 
     assert res.status_code == 403, res.text
     assert calls == []
