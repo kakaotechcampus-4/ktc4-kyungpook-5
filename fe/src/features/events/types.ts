@@ -71,6 +71,7 @@ export interface EventAction {
   subtitle: string | null
   dueDate: string | null
   status: ActionStatus
+  approveNeeded?: boolean
   // 단계에 안 묶인 확인 요청은 null
   stepId?: string | null
   resolvedAt?: string | null

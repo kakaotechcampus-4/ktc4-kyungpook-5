@@ -25,6 +25,6 @@ async def complete_step(
 ) -> Envelope[StepCompleteOut]:
     event = await action_service.step_event(session, step_id)
     member = await ensure_member(session, club_id=event.club_id, account=account)
-    action_service.ensure_operating(event)
+    await action_service.lock_operating_event(session, event.id)
     result = await action_service.complete_step(session, step_id=step_id, member=member)
     return Envelope(data=StepCompleteOut.model_validate(result))

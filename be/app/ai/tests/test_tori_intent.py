@@ -32,6 +32,7 @@ def test_model_failure_propagates(monkeypatch):
     dict(intent='record_search'),
     dict(intent='meeting', query='자료'),
     dict(intent='unsupported', scope='all'),
+    dict(intent='meeting', event_status='PLANNING'),
     dict(intent='task_list', date_from='2026-11-01', date_to='2026-10-30'),
 ])
 def test_inconsistent_output_is_rejected(data):
@@ -42,3 +43,7 @@ def test_inconsistent_output_is_rejected(data):
 def test_invalid_timezone_is_rejected():
     with pytest.raises(ValidationError):
         ToriIntentRequest(message='안녕', reference_date='2026-10-30', timezone='Invalid/Zone')
+
+
+def test_event_list_accepts_status():
+    assert ToriIntentResult(intent='event_list', event_status='PLANNING').event_status == 'PLANNING'

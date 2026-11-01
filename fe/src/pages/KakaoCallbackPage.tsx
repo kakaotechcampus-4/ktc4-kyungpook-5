@@ -32,8 +32,10 @@ export default function KakaoCallbackPage() {
         if (cause instanceof ApiError && cause.fields?.emailConsent) {
           setEmailConsentNext(callback.next)
           setError('가입하려면 카카오 이메일 제공 동의가 필요해요.')
+        } else if (cause instanceof ApiError && cause.fields?.kakaoConflict) {
+          setError('이미 가입된 이메일이에요. 기존 로그인 방식으로 로그인해 주세요.')
         } else if (cause instanceof ApiError && cause.fields?.email) {
-          setError('카카오 계정에서 이메일을 받지 못했어요. 카카오 계정의 이메일을 확인해 주세요.')
+          setError('카카오 계정의 이메일을 받지 못했거나 인증되지 않았어요. 카카오 계정 설정을 확인해 주세요.')
         } else {
           setError('카카오 로그인에 실패했어요. 다시 시도해 주세요.')
         }

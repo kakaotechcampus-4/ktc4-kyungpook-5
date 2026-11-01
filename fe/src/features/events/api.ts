@@ -56,13 +56,19 @@ export async function getEventActionPage(eventId: string, query: string): Promis
 
 export const startEvent = (eventId: string) =>
   apiPost<{ id: string; status: EventStatus; title: string; startDate: string | null }>(`/events/${encodeURIComponent(eventId)}/start`)
+export const completeEvent = (eventId: string) =>
+  apiPost<{ id: string; status: EventStatus; title: string; startDate: string | null }>(`/events/${encodeURIComponent(eventId)}/complete`)
 export const completeStep = (stepId: string) =>
   apiPost<{ id: string; completedAt: string; completedBy: unknown; pendingActionCount: number }>(`/steps/${encodeURIComponent(stepId)}/complete`)
+function actionVersion(action: EventAction): number {
+  if (action.version == null) throw new Error('행동 정보를 다시 불러온 뒤 처리해 주세요.')
+  return action.version
+}
 export const resolveAction = (action: EventAction, choice: string, manualValue?: string) =>
-  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/resolve`, { expectedVersion: action.version ?? 1, choice, manualValue })
+  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/resolve`, { expectedVersion: actionVersion(action), choice, manualValue })
 export const approveAction = (action: EventAction) =>
-  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/approve`, { expectedVersion: action.version ?? 1 })
+  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/approve`, { expectedVersion: actionVersion(action) })
 export const denyAction = (action: EventAction, reason: string) =>
-  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/deny`, { expectedVersion: action.version ?? 1, reason })
+  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/deny`, { expectedVersion: actionVersion(action), reason })
 export const markActionDone = (action: EventAction) =>
-  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/done`, { expectedVersion: action.version ?? 1 })
+  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/done`, { expectedVersion: actionVersion(action) })

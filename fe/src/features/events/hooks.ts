@@ -11,6 +11,7 @@ import {
   getEvents,
   approveAction,
   completeStep,
+  completeEvent,
   denyAction,
   markActionDone,
   resolveAction,
@@ -149,6 +150,10 @@ export function useStartEvent() {
 export function useCompleteStep() {
   const client = useQueryClient()
   return useMutation({ mutationFn: completeStep, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
+}
+export function useCompleteEvent() {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: completeEvent, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
 }
 export function useResolveAction() {
   const client = useQueryClient()

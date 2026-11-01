@@ -100,7 +100,7 @@ async def login_with_kakao(
         select(Account).where(Account.kakao_user_id == kakao_user_id)
     )
     if account is None:
-        # 같은 이메일의 LOCAL 계정이 있으면 그 계정에 카카오를 연결한다.
+        # 이메일만으로 기존 계정의 소유권을 증명할 수 없다.
         account = await session.scalar(select(Account).where(Account.email == email))
         if account is None:
             account = Account(
@@ -108,7 +108,7 @@ async def login_with_kakao(
             )
             session.add(account)
         else:
-            account.kakao_user_id = kakao_user_id
+            raise ValidationFailed({"kakaoConflict": "이미 가입된 이메일입니다. 기존 방식으로 로그인해 주세요."})
         await session.flush()
     tokens = await _issue_session(session, account)
     await session.commit()
