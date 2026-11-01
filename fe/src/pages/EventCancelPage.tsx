@@ -49,7 +49,13 @@ export default function EventCancelPage() {
 
   const completeServer = (task: CancelTask) => {
     if (!eventId) return
-    completeMutation.mutate({ eventId, taskId: task.id })
+    completeMutation.mutate(
+      { eventId, taskId: task.id },
+      {
+        onSuccess: () => toast.show({ kind: 'done', title: '완료로 표시했어요', desc: task.name }),
+        onError: (error) => toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' }),
+      },
+    )
   }
 
   const copyMessage = async (task: CancelTask) => {
@@ -93,7 +99,7 @@ export default function EventCancelPage() {
         <div className="flex items-center justify-between gap-[12px]">
           <span className="flex items-center gap-[10px]">
             <h1 className="text-h1">{event?.title ?? '행사 이름'}</h1>
-            <Chip tone="failed">취소 정리 중</Chip>
+            <Chip tone={event?.status === 'CANCELLED' ? 'done' : 'failed'}>{event?.status === 'CANCELLED' ? '취소 완료' : '취소 정리 중'}</Chip>
           </span>
           {/* TODO(연동): 정리 단계를 바꾸는 화면은 취소 Action이 정해진 뒤에 만든다(#73). */}
           <Button variant="secondary">정리 단계 수정</Button>

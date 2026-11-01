@@ -65,6 +65,12 @@ class CancelTaskNotFound(ApiError):
     def __init__(self):
         super().__init__("취소 정리 항목을 찾을 수 없어요.")
 
+class CancelTaskOutOfOrder(ApiError):
+    status_code = 409
+    code = "CANCEL_TASK_OUT_OF_ORDER"
+    def __init__(self):
+        super().__init__("앞 단계의 취소 정리를 먼저 완료해 주세요.")
+
 async def begin_event_cancellation(session: AsyncSession, *, event_id: str) -> Event:
     event = await session.scalar(select(Event).where(Event.id == event_id).with_for_update())
     if event is None:
@@ -89,6 +95,14 @@ async def complete_cancel_task(session: AsyncSession, *, event_id: str, task_id:
     event = await session.scalar(select(Event).where(Event.id == task.event_id).with_for_update())
     if event is None or event.id != event_id or event.status != EventStatus.CANCELLING:
         raise EventCancelNotAllowed()
+    first_open = await session.scalar(
+        select(EventCancelTask.task_order)
+        .where(EventCancelTask.event_id == event_id, EventCancelTask.completed_at.is_(None))
+        .order_by(EventCancelTask.task_order)
+        .limit(1)
+    )
+    if first_open is None or task.task_order != first_open:
+        raise CancelTaskOutOfOrder()
     if task.completed_at is None:
         task.completed_at = datetime.now(UTC)
         task.completed_by = member.id
