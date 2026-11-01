@@ -85,7 +85,7 @@ async def create_invitation(
     email: str,
     role: MemberRole,
     invited_by: Member,
-) -> Invitation:
+) -> tuple[Invitation, str]:
     if role not in SERVICE_ROLES:
         raise ValidationFailed({"role": "회장·임원 역할만 초대할 수 있습니다."})
     token = new_token()
@@ -101,7 +101,7 @@ async def create_invitation(
     await session.commit()
     # 더미 발송: 실제 메일 대신 콘솔에 남긴다 (이유는 auth_service.signup 참고).
     print(f"[더미 초대 메일 발송] {email}에게 토큰: {token}", flush=True)
-    return invitation
+    return invitation, token
 
 
 async def accept_invitation(

@@ -1,5 +1,5 @@
-import { useMutation } from '@tanstack/react-query'
-import { acceptInvitation, createClub } from '@/features/clubs/api'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { acceptInvitation, createClub, createInvitation, listClubMembers } from '@/features/clubs/api'
 import { ApiError } from '@/shared/api/types'
 
 export function useCreateClub() {
@@ -8,6 +8,22 @@ export function useCreateClub() {
 
 export function useJoinClub() {
   return useMutation({ mutationFn: acceptInvitation })
+}
+
+export function useClubMembers(clubId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ['clubs', clubId, 'members'],
+    queryFn: () => listClubMembers(clubId as string),
+    enabled: Boolean(clubId) && enabled,
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateInvitation() {
+  return useMutation({
+    mutationFn: ({ clubId, email, role }: { clubId: string; email: string; role: 'OWNER' | 'MANAGER' }) =>
+      createInvitation(clubId, { email, role }),
+  })
 }
 
 // 초대·생성 실패는 서버가 fields에 "이미 처리된 초대입니다" 같은 이유를 적어 보낸다.

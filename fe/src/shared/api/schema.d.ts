@@ -2311,6 +2311,10 @@ export interface components {
         InvitationCreateOut: {
             /** Id */
             id: string;
+            /** Token */
+            token: string;
+            /** Expires At */
+            expiresAt: string;
         };
         /**
          * JudgeKind

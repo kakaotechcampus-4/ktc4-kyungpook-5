@@ -22,7 +22,7 @@ const GROUPS: Array<{ value: MemberGroup; desc: string }> = [
 interface AddMemberModalProps {
   open: boolean
   onClose: () => void
-  onAdd: (member: { name: string; group: MemberGroup; subtitle: string; contact?: string }) => void
+  onAdd: (member: { name: string; group: MemberGroup; subtitle: string; contact?: string }) => void | Promise<void>
 }
 
 export function AddMemberModal({ open, onClose, onAdd }: AddMemberModalProps) {
@@ -40,9 +40,9 @@ export function AddMemberModal({ open, onClose, onAdd }: AddMemberModalProps) {
     setContact('')
   }
 
-  const submit = () => {
+  const submit = async () => {
     if (!name.trim()) return
-    onAdd({ name: name.trim(), group, subtitle, contact: contact.trim() || undefined })
+    await onAdd({ name: name.trim(), group, subtitle, contact: contact.trim() || undefined })
     reset()
     onClose()
   }

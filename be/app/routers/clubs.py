@@ -111,14 +111,18 @@ async def create_invitation(
     inviter: Member = Depends(require_club_role(MemberRole.OWNER, MemberRole.MANAGER)),
     session: AsyncSession = Depends(get_session),
 ) -> Envelope[InvitationCreateOut]:
-    invitation = await club_service.create_invitation(
+    invitation, token = await club_service.create_invitation(
         session,
         club_id=club_id,
         email=body.email,
         role=body.role,
         invited_by=inviter,
     )
-    return Envelope(data=InvitationCreateOut(id=invitation.id))
+    return Envelope(
+        data=InvitationCreateOut(
+            id=invitation.id, token=token, expires_at=invitation.expires_at
+        )
+    )
 
 
 @router.post("/invitations/accept", response_model=Envelope[InvitationAcceptOut])

@@ -7,6 +7,9 @@ export type ClubCategory = Schemas['ClubCategory']
 export type Club = Schemas['ClubOut']
 export type CreateClubInput = Schemas['ClubCreateIn']
 export type JoinResult = Schemas['InvitationAcceptOut']
+export type InvitationCreateInput = Schemas['InvitationCreateIn']
+export type InvitationCreateResult = Schemas['InvitationCreateOut']
+export type ClubMember = Schemas['MemberOut']
 
 // 선택 버튼을 그릴 순서. 서버 enum을 그대로 쓰고 문구만 labels에서 가져온다.
 export const CLUB_CATEGORIES: ClubCategory[] = [
