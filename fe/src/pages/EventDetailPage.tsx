@@ -19,6 +19,7 @@ import {
   useApproveAction,
   useCompleteStep,
   useCompleteEvent,
+  useBeginCancellation,
   useDenyAction,
   useMarkActionDone,
   useResolveAction,
@@ -41,6 +42,7 @@ export default function EventDetailPage() {
   const startMutation = useStartEvent()
   const completeMutation = useCompleteStep()
   const completeEventMutation = useCompleteEvent()
+  const cancelMutation = useBeginCancellation()
   const resolveMutation = useResolveAction()
   const approveMutation = useApproveAction()
   const denyMutation = useDenyAction()
@@ -220,7 +222,10 @@ export default function EventDetailPage() {
             event={event}
             onClose={() => setCancelOpen(false)}
             // TODO(연동): POST /events/{id}/cancel. 취소 Action은 아직 정의 전이다(#73).
-            onConfirm={() => navigate(`/events/${eventId}/cancel${search}`)}
+            onConfirm={() => {
+              if (demo) navigate(`/events/${eventId}/cancel${search}`)
+              else if (eventId) void cancelMutation.mutateAsync(eventId).then(() => navigate(`/events/${eventId}/cancel${search}`))
+            }}
           />
           <AnswerModal
             action={answering}

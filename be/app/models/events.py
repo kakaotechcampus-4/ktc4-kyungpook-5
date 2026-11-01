@@ -74,6 +74,20 @@ class Event(IdMixin, TimestampMixin, Base):
     actions: Mapped[list["Action"]] = relationship(back_populates="event")
     conversations: Mapped[list["Conversation"]] = relationship(back_populates="event")
     participants: Mapped[list["Participant"]] = relationship(back_populates="event")
+    cancel_tasks: Mapped[list["EventCancelTask"]] = relationship(back_populates="event", cascade="all, delete-orphan", order_by="EventCancelTask.task_order")
+
+
+class EventCancelTask(IdMixin, TimestampMixin, Base):
+    __tablename__ = "event_cancel_tasks"
+    __id_prefix__ = "ect"
+    event_id: Mapped[str] = mapped_column(String(ID_LENGTH), fk("events.id", ondelete="CASCADE"), nullable=False)
+    task_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(String(300), nullable=False)
+    message: Mapped[str | None] = mapped_column(Text)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_by: Mapped[str | None] = mapped_column(String(ID_LENGTH), fk("members.id", ondelete="SET NULL"))
+    event: Mapped["Event"] = relationship(back_populates="cancel_tasks")
 
 
 class Step(IdMixin, TimestampMixin, Base):

@@ -183,6 +183,18 @@ class EventStartOut(CamelModel):
     title: str
     start_date: date | None
 
+class EventCancelTaskOut(CamelModel):
+    id: str
+    task_order: int
+    name: str
+    description: str
+    message: str | None
+    state: Literal["DONE", "CURRENT", "TODO"]
+    completed_at: UtcDateTime | None
+
+class EventCancelTaskListResponse(CamelModel):
+    data: list[EventCancelTaskOut]
+
 
 class CurrentStepOut(CamelModel):
     id: str

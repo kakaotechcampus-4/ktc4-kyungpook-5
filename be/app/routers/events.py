@@ -25,6 +25,8 @@ from app.schemas.events import (
     EventCreateIn,
     EventCreateOut,
     EventStartOut,
+    EventCancelTaskListResponse,
+    EventCancelTaskOut,
     EventDetailOut,
     EventListResponse,
     PlanChatIn,
@@ -145,6 +147,25 @@ async def complete_event(
     await _get_event_for_account(session, event_id=event_id, account=account)
     event = await action_service.complete_event(session, event_id=event_id)
     return Envelope(data=EventStartOut.model_validate(event))
+
+@router.post("/{event_id}/cancel", response_model=Envelope[EventStartOut])
+async def cancel_event(event_id: str, account: Account = Depends(get_current_account), session: AsyncSession = Depends(get_session)) -> Envelope[EventStartOut]:
+    await _get_event_for_account(session, event_id=event_id, account=account)
+    event = await event_service.begin_event_cancellation(session, event_id=event_id)
+    return Envelope(data=EventStartOut.model_validate(event))
+
+@router.get("/{event_id}/cancel/tasks", response_model=EventCancelTaskListResponse)
+async def get_cancel_tasks(event_id: str, account: Account = Depends(get_current_account), session: AsyncSession = Depends(get_session)) -> EventCancelTaskListResponse:
+    event, _ = await _get_event_for_account(session, event_id=event_id, account=account)
+    tasks = await event_service.list_cancel_tasks(session, event_id=event.id)
+    first_open = next((task.task_order for task in tasks if task.completed_at is None), None)
+    return EventCancelTaskListResponse(data=[EventCancelTaskOut.model_validate({"id": task.id, "task_order": task.task_order, "name": task.name, "description": task.description, "message": task.message, "state": "DONE" if task.completed_at else ("CURRENT" if task.task_order == first_open else "TODO"), "completed_at": task.completed_at}) for task in tasks])
+
+@router.post("/{event_id}/cancel/tasks/{task_id}/complete", response_model=Envelope[EventCancelTaskOut])
+async def complete_cancel_task(event_id: str, task_id: str, account: Account = Depends(get_current_account), session: AsyncSession = Depends(get_session)) -> Envelope[EventCancelTaskOut]:
+    event, member = await _get_event_for_account(session, event_id=event_id, account=account)
+    task = await event_service.complete_cancel_task(session, event_id=event.id, task_id=task_id, member=member)
+    return Envelope(data=EventCancelTaskOut.model_validate({"id": task.id, "task_order": task.task_order, "name": task.name, "description": task.description, "message": task.message, "state": "DONE", "completed_at": task.completed_at}))
 
 
 @router.post("/{event_id}/plan/chat", response_model=Envelope[PlanViewOut])

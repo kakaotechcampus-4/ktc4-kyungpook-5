@@ -16,6 +16,9 @@ import {
   markActionDone,
   resolveAction,
   startEvent,
+  getCancelTasks,
+  completeCancelTask,
+  beginEventCancellation,
 } from './api'
 import {
   DEMO_ACTIONS,
@@ -123,6 +126,33 @@ export function useResolvedActions(eventId: string | undefined) {
         ? (DEMO_RESOLVED[eventId!] ?? NO_ACTIONS)
         : getEventActionPage(eventId!, 'status=APPROVED,DONE,DENIED&size=3'),
     enabled: !!eventId && (demo || Boolean(userId && clubId)),
+  })
+}
+
+export function useCancelTasks(eventId: string | undefined) {
+  const demo = useDemo()
+  const userId = useAuthStore((state) => state.me?.id)
+  const clubId = useAuthStore((state) => state.clubId)
+  return useQuery({
+    queryKey: ['events', userId, clubId, eventId, 'cancelTasks', demo],
+    queryFn: () => (demo ? [] : getCancelTasks(eventId!)),
+    enabled: !!eventId && (demo || Boolean(userId && clubId)),
+  })
+}
+
+export function useBeginCancellation() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (eventId: string) => beginEventCancellation(eventId),
+    onSuccess: (_data, eventId) => client.invalidateQueries({ queryKey: ['events', undefined, undefined, eventId] }),
+  })
+}
+
+export function useCompleteCancelTask() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ eventId, taskId }: { eventId: string; taskId: string }) => completeCancelTask(eventId, taskId),
+    onSuccess: (_data, variables) => client.invalidateQueries({ queryKey: ['events', undefined, undefined, variables.eventId] }),
   })
 }
 

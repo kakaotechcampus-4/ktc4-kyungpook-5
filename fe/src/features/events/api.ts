@@ -58,6 +58,12 @@ export const startEvent = (eventId: string) =>
   apiPost<{ id: string; status: EventStatus; title: string; startDate: string | null }>(`/events/${encodeURIComponent(eventId)}/start`)
 export const completeEvent = (eventId: string) =>
   apiPost<{ id: string; status: EventStatus; title: string; startDate: string | null }>(`/events/${encodeURIComponent(eventId)}/complete`)
+export const beginEventCancellation = (eventId: string) =>
+  apiPost<{ id: string; status: EventStatus; title: string; startDate: string | null }>(`/events/${encodeURIComponent(eventId)}/cancel`)
+export const getCancelTasks = (eventId: string) =>
+  apiGet<{ id: string; taskOrder: number; name: string; description: string; message: string | null; state: 'DONE' | 'CURRENT' | 'TODO'; completedAt: string | null }[]>(`/events/${encodeURIComponent(eventId)}/cancel/tasks`)
+export const completeCancelTask = (eventId: string, taskId: string) =>
+  apiPost(`/events/${encodeURIComponent(eventId)}/cancel/tasks/${encodeURIComponent(taskId)}/complete`)
 export const completeStep = (stepId: string) =>
   apiPost<{ id: string; completedAt: string; completedBy: unknown; pendingActionCount: number }>(`/steps/${encodeURIComponent(stepId)}/complete`)
 function actionVersion(action: EventAction): number {
