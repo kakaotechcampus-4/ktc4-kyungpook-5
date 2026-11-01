@@ -40,7 +40,7 @@ export function ToriHome() {
     return null
   }
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-[1100px] space-y-6">
       <header>
         <p className="text-caption text-mute">
           {me?.clubs.find((club) => club.id === clubId)?.name ?? '운영해'}
@@ -48,10 +48,10 @@ export function ToriHome() {
         <h1 className="mt-1 text-h1">안녕하세요, 토리예요</h1>
         <p className="mt-2 text-ink2">회의와 행사 준비를 함께 살펴볼게요.</p>
       </header>
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(260px,1fr)]">
         <ToriChat key={`${me?.id}:${clubId}`} clubId={clubId} />
         <aside className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-          <Card className="space-y-3 p-5">
+          <Card className="space-y-3 bg-transparent p-5">
             <div className="flex justify-between gap-2">
               <h2 className="text-h3">저장된 일정</h2>
               <Link className="text-caption text-blue-700 underline" to="/meetings">
@@ -75,7 +75,7 @@ export function ToriHome() {
                 <p className="text-caption text-mute">확인된 일정이 없어요.</p>
               ))}
           </Card>
-          <Card className="space-y-3 p-5">
+          <Card className="space-y-3 bg-transparent p-5">
             <div className="flex justify-between gap-2">
               <h2 className="text-h3">내 할 일</h2>
               <Link className="text-caption text-blue-700 underline" to="/meetings">
@@ -100,7 +100,7 @@ export function ToriHome() {
               담당자가 이름으로만 저장된 항목은 포함되지 않아요.
             </p>
           </Card>
-          <Card className="space-y-3 p-5">
+          <Card className="space-y-3 bg-transparent p-5">
             <div className="flex justify-between gap-2">
               <h2 className="text-h3">진행 행사</h2>
               <Link className="text-caption text-blue-700 underline" to="/planning">

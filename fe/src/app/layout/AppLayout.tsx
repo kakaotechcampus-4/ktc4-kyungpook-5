@@ -134,7 +134,7 @@ export function AppLayout() {
                     navigate(
                       pathname === '/records' || pathname === '/accounting'
                         ? pathname
-                        : '/meetings',
+                        : '/dashboard',
                     )
                   }}
                   className="max-w-[130px] truncate rounded-lg border border-line bg-card py-2 pl-2 pr-1 text-ink2 sm:max-w-[180px]"

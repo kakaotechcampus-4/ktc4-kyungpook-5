@@ -76,7 +76,7 @@ export function PrimaryNavigation({ onNavigate, preview = false }: NavigationPro
           className={cn(
             'min-w-[68px] rounded-lg border px-4 py-2 text-[13px] text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600',
             item.active
-              ? 'border-soft bg-card font-bold text-blue-700 shadow-sm'
+              ? 'border-soft bg-card font-bold text-blue-700'
               : 'border-transparent text-ink2 hover:bg-card',
           )}
         >
@@ -112,7 +112,7 @@ export function WorkspaceNavigation({ onNavigate, preview = false }: NavigationP
     <nav aria-label="전체 메뉴" className="space-y-7">
       {GROUPS.map((group) => (
         <section key={group.label}>
-          <h2 className="mb-2 px-3 text-[10.5px] font-bold tracking-wide text-mute">
+          <h2 className="mb-2 px-3 text-[12px] font-bold text-mute">
             {group.label}
           </h2>
           <div className="space-y-1">
@@ -125,7 +125,7 @@ export function WorkspaceNavigation({ onNavigate, preview = false }: NavigationP
                 data-onboarding={preview ? `nav-${item.icon}` : undefined}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-blue-600',
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] transition-colors focus-visible:outline-2 focus-visible:outline-blue-600',
                     isActive ? 'bg-blue-100 font-bold text-blue-700' : 'text-ink2 hover:bg-bg',
                   )
                 }
