@@ -7,18 +7,18 @@ docker compose exec -T api /app/.venv/bin/python -m app.ai.scripts.run_plan_revi
   --out app/ai/docs/planning/evaluation-results/plan-review-2026-11 --label baseline
 ```
 
-판정: `outcome`이 기대와 같고, `must_mention_codes`를 모두 언급하며, `must_not_mention_codes`는 언급하지 않으면 통과다. 기대 outcome이 `any`인 두 케이스는 자동 판정 대신 아래 수동 확인을 한다.
+판정: `outcome`이 기대와 같고, `must_mention_codes`를 모두 언급하며, `must_not_mention_codes`는 언급하지 않으면 통과다. 기대 outcome이 `any`인 두 케이스(`ai_excluded_readded`, `undecided_dates`)는 자동 판정 대상이 아니고 메시지를 읽어 수동으로 확인한다. 집계는 자동 판정 4건과 수동 확인 2건을 따로 센다.
 
-## 기준(프롬프트 수정 전): 4/6
+## 기준(프롬프트 수정 전): 자동 판정 4건 중 2건 일치, 수동 확인 2건 통과
 
 | id | 기대 | 실제 | 언급 코드 | 지연(ms) | 판정 |
 |---|---|---|---|---|---|
 | survey_removed | issues | no_issues | - | 6507 | 불일치 |
 | book_before_confirm | issues | issues | BOOK_VENUE, CONFIRM_DETAILS | 5311 | 통과 |
 | fee_deadline_after_event | issues | issues | COLLECT_FEES | 4410 | 통과 |
-| ai_excluded_readded | any | no_issues | - | 2970 | 통과 |
+| ai_excluded_readded | any | no_issues | - | 2970 | 수동: 통과 |
 | harmless_reorder | no_issues | issues | ASSIGN_ROLES, RESEARCH_VENUE | 3918 | 불일치 |
-| undecided_dates | any | issues | DEMAND_SURVEY | 6156 | 통과 |
+| undecided_dates | any | issues | DEMAND_SURVEY | 6156 | 수동: 통과 |
 
 원본: [results-baseline.json](results-baseline.json)
 
@@ -34,18 +34,18 @@ docker compose exec -T api /app/.venv/bin/python -m app.ai.scripts.run_plan_revi
 - 단계를 뺐다면 그 단계가 하던 확인이 다른 단계로 대신되는지 보고, 대신되지 않고 관련 조건이 잠정·미정이면 걱정거리로 본다.
 - 앞뒤 의존이 없는 단계끼리의 순서 바뀜은 걱정거리가 아니다. 한 단계의 결과가 다른 단계의 전제일 때만 순서를 짚는다.
 
-## 수정 후 같은 6케이스 재실행: 자동 판정 5/6 일치
+## 수정 후 같은 6케이스 재실행: 자동 판정 4건 중 3건 일치(`survey_removed` 불일치), 수동 확인 2건(통과 1, 부분 통과 1)
 
-수동 확인 케이스 중 `undecided_dates`는 날짜 미정 언급이 빠져 부분 통과다(아래). 표의 `통과`는 자동 판정만이다.
+`ai_excluded_readded`는 수동: 통과, `undecided_dates`는 수동: 부분 통과(날짜 미정 언급 누락, 아래)다.
 
 | id | 기대 | 실제 | 언급 코드 | 지연(ms) | 판정 |
 |---|---|---|---|---|---|
 | survey_removed | issues | no_issues | - | 4059 | 불일치 |
 | book_before_confirm | issues | issues | BOOK_VENUE, CONFIRM_DETAILS | 5583 | 통과 |
 | fee_deadline_after_event | issues | issues | COLLECT_FEES, EVENT_DAY | 4584 | 통과 |
-| ai_excluded_readded | any | no_issues | - | 2476 | 통과 |
+| ai_excluded_readded | any | no_issues | - | 2476 | 수동: 통과 |
 | harmless_reorder | no_issues | no_issues | - | 1480 | 통과 |
-| undecided_dates | any | issues | BOOK_VENUE, CHECK_RESPONSES, CONFIRM_DETAILS, DEMAND_SURVEY | 6609 | 통과 |
+| undecided_dates | any | issues | BOOK_VENUE, CHECK_RESPONSES, CONFIRM_DETAILS, DEMAND_SURVEY | 6609 | 수동: 부분 통과 |
 
 원본: [results-after-prompt.json](results-after-prompt.json)
 
@@ -54,17 +54,20 @@ docker compose exec -T api /app/.venv/bin/python -m app.ai.scripts.run_plan_revi
 | survey_removed | 불일치(no_issues) | 불일치(no_issues) |
 | book_before_confirm | 통과 | 통과 |
 | fee_deadline_after_event | 통과 | 통과(COLLECT_FEES, EVENT_DAY, kind schedule) |
-| ai_excluded_readded | no_issues | no_issues |
+| ai_excluded_readded | no_issues(수동: 통과) | no_issues(수동: 통과) |
 | harmless_reorder | 불일치(issues) | 통과(no_issues) |
-| undecided_dates | issues(DEMAND_SURVEY) | issues(DEMAND_SURVEY, CHECK_RESPONSES, CONFIRM_DETAILS, BOOK_VENUE) |
+| undecided_dates | issues(DEMAND_SURVEY), 수동: 통과 | issues(DEMAND_SURVEY, CHECK_RESPONSES, CONFIRM_DETAILS, BOOK_VENUE), 수동: 부분 통과 |
 
 한 번씩만 재서 `harmless_reorder`의 개선이 지침 때문인지 실행 간 변동인지는 구분하지 못한다.
 
-## 남은 불일치와 수동 확인
+## 남은 한계
 
-- `survey_removed`는 수정 후에도 no_issues다. 같은 조건에 날짜 미정을 더한 `undecided_dates`는 수요 조사 누락을 짚으므로, 모델이 "인원 잠정"만으로는 걱정거리로 보지 않는 것으로 추정한다. 이 케이스에 맞춘 문구를 더하면 과적합이라 이번 작업에서는 더 고치지 않았다. 남은 한계다.
-- 남은 한계: `survey_removed`의 누락, `undecided_dates`의 날짜 미정 언급 누락.
-- `undecided_dates`(수동 확인): 메시지가 "약 25명이라는 잠정 인원"이라고 말하고, 모집 공지와 신청 현황 확인으로 보완될 수 있다는 조건부 표현을 써서 확정 사실처럼 쓰지 않았다. 날짜 미정은 이번 메시지에서 언급하지 않았다. 기준("날짜 미정·인원 잠정이라고 분명히 말하는지") 중 인원 잠정만 충족해 **부분 통과**다(outcome 일치, 인원 잠정 언급, 날짜 미정 언급 누락). 남은 한계다.
+- `survey_removed`: 수정 후에도 no_issues다. 같은 조건에 날짜 미정을 더한 `undecided_dates`는 수요 조사 누락을 짚으므로, 모델이 "인원 잠정"만으로는 걱정거리로 보지 않는 것으로 추정한다. 이 케이스에 맞춘 문구를 더하면 과적합이라 이번 작업에서는 더 고치지 않았다.
+- `undecided_dates`: 날짜 미정 언급 누락(아래 수동 확인).
+
+## 수동 확인과 기타
+
+- `undecided_dates`(수동 확인): 메시지가 "약 25명이라는 잠정 인원"이라고 말하고, 모집 공지와 신청 현황 확인으로 보완될 수 있다는 조건부 표현을 써서 확정 사실처럼 쓰지 않았다. 날짜 미정은 이번 메시지에서 언급하지 않았다. 기준("날짜 미정·인원 잠정이라고 분명히 말하는지") 중 인원 잠정만 충족해 **수동: 부분 통과**다(인원 잠정 언급, 날짜 미정 언급 누락). 수정 전 메시지는 둘 다 언급해 통과였다.
 - `ai_excluded_readded`(수동 확인): 두 실행 모두 no_issues라 사용자의 재추가 의도를 거스르는 말투 문제는 없었다. 환불 단계를 다시 넣은 것을 걱정거리로 강제하지 않는 기대와 맞다.
 - `fee_deadline_after_event`: 수정 전후 모두 마감이 행사 종료일(11-22)보다 늦다는 일정 문제를 짚었다. 입력의 행사 시작일은 11-21이며 메시지는 종료일을 기준으로 썼다.
 
