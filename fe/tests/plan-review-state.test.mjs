@@ -36,7 +36,7 @@ test('not requested: hidden until the plan is edited after generation', () => {
 test('a request in flight always shows reviewing', () => {
   for (const r of [
     review('NOT_REQUESTED', 2),
-    review('NOT_REQUESTED', 2),
+    review('REVIEWING', 2, 3),
     review('DONE', 2, 3, 'issues'),
     review('FAILED', 2, 3),
     review('DONE', 2, 1, 'no_issues'),
@@ -53,7 +53,7 @@ test('server states for the current revision', () => {
 })
 
 test('a review of an older revision is stale', () => {
-  for (const status of ['DONE', 'FAILED', 'REVIEWING'])
+  for (const status of ['DONE', 'FAILED'])
     assert.equal(state(4, review(status, 2, 3, status === 'DONE' ? 'issues' : null)), 'stale')
 })
 
@@ -65,4 +65,13 @@ test('generation warnings hide once the plan was edited', () => {
   assert.equal(showGenerationWarnings(3, null), true)
   assert.equal(showGenerationWarnings(2, review('NOT_REQUESTED', 2)), true)
   assert.equal(showGenerationWarnings(3, review('NOT_REQUESTED', 2)), false)
+})
+
+test('server REVIEWING wins over a revision mismatch', () => {
+  assert.equal(state(4, review('REVIEWING', 2, 3)), 'reviewing')
+  assert.equal(state(4, review('REVIEWING', 2, null)), 'reviewing')
+})
+
+test('DONE without an outcome reads as clear', () => {
+  assert.equal(state(3, review('DONE', 2, 3, null)), 'clear')
 })
