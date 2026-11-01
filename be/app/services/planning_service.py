@@ -36,7 +36,7 @@ from app.models.chat import Conversation, Message
 from app.models.common import IdempotencyKey
 from app.models.events import Action, Event, Step
 
-from app.services import event_rules
+from app.services import event_rules, plan_review_service
 from app.services.record_search_port import PostgresRecordSearch
 
 _KST = ZoneInfo("Asia/Seoul")
@@ -240,6 +240,11 @@ async def _materialize_preview(
         for excl in preview.excluded_steps
     ]
     event.saved_at = datetime.now(UTC)
+    # 생성이 계획을 바꿨으니 버전을 올리고, 생성 직후 모양을 검토 기준으로 남긴다.
+    revision = await plan_review_service.bump_plan_revision(session, event.id)
+    await session.flush()
+    if revision is not None:
+        await plan_review_service.reset_baseline(session, event.id, revision)
 
 
 async def _save_turn(
@@ -252,6 +257,26 @@ async def _save_turn(
     user_message_text: str | None,
 ) -> None:
     conditions = result.view.draft.conditions
+    new_conditions = (
+        conditions.title or event.title,
+        conditions.event_type,
+        conditions.location,
+        conditions.start_date,
+        conditions.end_date,
+        conditions.headcount,
+        conditions.budget_total,
+        conditions.fee_per_person,
+    )
+    conditions_changed = new_conditions != (
+        event.title,
+        event.event_type,
+        event.location,
+        event.start_date,
+        event.end_date,
+        event.expected_headcount,
+        event.budget_total,
+        event.fee_per_person,
+    )
     event.title = conditions.title or event.title
     event.event_type = conditions.event_type
     event.location = conditions.location
@@ -260,6 +285,11 @@ async def _save_turn(
     event.expected_headcount = conditions.headcount
     event.budget_total = conditions.budget_total
     event.fee_per_person = conditions.fee_per_person
+    generation_result = result.view.generation_result
+    generated = generation_result is not None and generation_result.status == "generated"
+    # 같은 턴에 계획이 새로 만들어지면 _materialize_preview가 한 번 올리므로 여기선 건너뛴다.
+    if conditions_changed and not generated:
+        await plan_review_service.bump_plan_revision(session, event.id)
 
     conversation.resume_state = result.next_state.model_dump(mode="json")
     # null은 이번 턴 미조회다. 새 실패/없음은 저장하되 옛 성공을 최신으로 보이지 않는다.
@@ -296,8 +326,7 @@ async def _save_turn(
             )
         )
 
-    generation_result = result.view.generation_result
-    if generation_result is not None and generation_result.status == "generated":
+    if generated:
         await _materialize_preview(session, event, generation_result.preview)
 
 
