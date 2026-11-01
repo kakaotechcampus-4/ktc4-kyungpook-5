@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AuthShell, ErrorBanner, Field } from '@/shared/ui/AuthShell'
 import { useSignup } from '@/features/auth/hooks'
+import { beginKakaoLogin, kakaoConfigured } from '@/features/auth/kakao'
 import { ApiError } from '@/shared/api/types'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
@@ -105,6 +106,25 @@ export default function SignupPage() {
             <Button type="submit" size="lg" disabled={signup.isPending}>
               {signup.isPending ? '계정 만드는 중…' : '계정 만들기'}
             </Button>
+            <div className="flex flex-col gap-[9px] border-t border-line pt-[18px]">
+              <Button
+                type="button"
+                size="lg"
+                className="w-full !bg-[#FEE500] !text-[#191919] hover:!bg-[#f5dc00]"
+                disabled={!kakaoConfigured || signup.isPending}
+                onClick={() => {
+                  try {
+                    beginKakaoLogin()
+                  } catch {
+                    setError('카카오 인증을 시작하지 못했어요. 브라우저 설정을 확인해 주세요.')
+                  }
+                }}
+              >
+                카카오로 회원가입
+              </Button>
+              {!kakaoConfigured && <span className="text-[11px] text-mute">카카오 로그인은 준비 중이에요.</span>}
+              <p className="text-[12px] text-mute">카카오 인증 후 계정을 만들거나 기존 카카오 계정으로 로그인합니다.</p>
+            </div>
           </form>
         )}
       </Card>
