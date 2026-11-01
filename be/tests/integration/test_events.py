@@ -53,6 +53,19 @@ async def test_tori_event_list_filters_status_and_club(client, app_db, monkeypat
     assert '계획 중 행사 1건' in reply and '준비 행사' in reply
     assert '진행 행사' not in reply and '다른 소속 행사' not in reply
 
+async def test_event_cancel_persists_tasks_and_final_status(client, app_db):
+    headers, club_id = owner_with_club(client, 'cancel-flow')
+    event_id = await add_event(club_id, title='취소 행사', status=EventStatus.ON_GOING)
+    started = client.post(f'{EVENTS_URL}/{event_id}/cancel', headers=headers)
+    assert started.status_code == 200 and started.json()['data']['status'] == 'CANCELLING'
+    tasks = client.get(f'{EVENTS_URL}/{event_id}/cancel/tasks', headers=headers).json()['data']
+    assert len(tasks) == 4 and tasks[0]['state'] == 'CURRENT'
+    for task in tasks:
+        done = client.post(f'{EVENTS_URL}/{event_id}/cancel/tasks/{task["id"]}/complete', headers=headers)
+        assert done.status_code == 200, done.text
+    detail = client.get(f'{EVENTS_URL}/{event_id}', headers=headers).json()['data']
+    assert detail['status'] == 'CANCELLED'
+
 
 @pytest.fixture
 async def app_db(

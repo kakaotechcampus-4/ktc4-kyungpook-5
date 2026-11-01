@@ -5,8 +5,8 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { CancelTaskList } from '@/features/events/components/CancelTaskList'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
 import { StepStepper } from '@/features/events/components/StepStepper'
-import { useEventDetail, useResolvedActions } from '@/features/events/hooks'
-import { DEMO_CANCEL_TASKS, EMPTY_CANCEL_TASKS } from '@/features/events/mock'
+import { useEventDetail, useResolvedActions, useCancelTasks, useCompleteCancelTask } from '@/features/events/hooks'
+import { DEMO_CANCEL_TASKS } from '@/features/events/mock'
 import type { CancelTask } from '@/features/events/types'
 import { copyText } from '@/shared/lib/clipboard'
 import { formatDateRange } from '@/shared/lib/format'
@@ -26,21 +26,30 @@ export default function EventCancelPage() {
   const detailQuery = useEventDetail(eventId)
   const event = detailQuery.data
   const resolved = useResolvedActions(eventId).data
+  const cancelQuery = useCancelTasks(eventId)
+  const completeMutation = useCompleteCancelTask()
 
-  // TODO(연동): 취소 단계·Action은 아직 정의 전이다(#73).
-  const [tasks, setTasks] = useState<CancelTask[]>(demo ? DEMO_CANCEL_TASKS : EMPTY_CANCEL_TASKS)
+  const [demoTasks, setDemoTasks] = useState<CancelTask[]>(DEMO_CANCEL_TASKS)
+  const tasks: CancelTask[] = demo
+    ? demoTasks
+    : (cancelQuery.data ?? []).map((task) => ({ id: task.id, name: task.name, desc: task.description, state: task.state, message: task.message ?? undefined }))
   const current = tasks.find((t) => t.state === 'CURRENT')
   const doneCount = tasks.filter((t) => t.state === 'DONE').length
 
   // 하나를 끝내면 다음 것이 진행 중이 된다.
   const complete = (task: CancelTask) => {
-    setTasks((list) => {
+    setDemoTasks((list) => {
       const index = list.findIndex((t) => t.id === task.id)
       return list.map((t, i) =>
         i === index ? { ...t, state: 'DONE' } : i === index + 1 ? { ...t, state: 'CURRENT' } : t,
       )
     })
     toast.show({ kind: 'done', title: '완료로 표시했어요', desc: task.name })
+  }
+
+  const completeServer = (task: CancelTask) => {
+    if (!eventId) return
+    completeMutation.mutate({ eventId, taskId: task.id })
   }
 
   const copyMessage = async (task: CancelTask) => {
@@ -63,18 +72,6 @@ export default function EventCancelPage() {
     { label: '참가', value: event?.headcount ? `${event.headcount}명` : '—' },
     { label: '정리 단계', value: current?.name ?? '정리 완료', highlight: true },
   ]
-
-  if (!demo) {
-    return (
-      <Card className="flex flex-col gap-[16px] p-[24px]">
-        <h1 className="text-h1">행사 취소 정리 준비 중</h1>
-        <p>취소와 정리 단계는 아직 실제 저장에 연결되지 않았어요.</p>
-        <Link to={`/events/${eventId ?? ''}`} className="text-blue-700 underline">
-          행사 상세로 돌아가기
-        </Link>
-      </Card>
-    )
-  }
 
   // 행사 상세와 같은 방식. 받기 전에는 그리지 않고, 실패하면 자리값 대신 오류 화면을 보인다.
   if (detailQuery.isPending) return null
@@ -140,7 +137,7 @@ export default function EventCancelPage() {
 
       <div className="flex items-start gap-[20px]">
         <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-          <CancelTaskList tasks={tasks} onCopyMessage={copyMessage} onComplete={complete} />
+          <CancelTaskList tasks={tasks} onCopyMessage={copyMessage} onComplete={demo ? complete : completeServer} />
           <ResolvedActionList
             actions={resolved?.items ?? []}
             totalCount={resolved?.totalCount ?? 0}
