@@ -9,7 +9,9 @@ export function safeDestination(next: string | null): string {
       url.searchParams.getAll('invite').length === 1
     if (
       url.origin !== window.location.origin ||
+      url.pathname.startsWith('//') ||
       url.pathname === '/login' ||
+      url.pathname === '/auth/kakao/callback' ||
       (url.pathname === '/signup' && !invite)
     )
       return '/dashboard'

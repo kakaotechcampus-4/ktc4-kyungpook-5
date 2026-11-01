@@ -22,6 +22,8 @@ test('default and unsafe destinations go to the dashboard', () => {
     'https://other.test/a',
     '//other.test/a',
     '/login',
+    'https://example.test//other.test/path',
+    '/auth/kakao/callback?code=x',
     '/signup',
     '/signup?invite=x&other=y',
   ])
