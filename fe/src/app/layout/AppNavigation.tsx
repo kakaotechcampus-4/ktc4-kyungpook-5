@@ -35,6 +35,7 @@ function Icon({ name }: { name: NavigationIcon }) {
 interface NavigationProps {
   onNavigate?: () => void
   preview?: boolean
+  dark?: boolean
 }
 
 function navigationPath(path: string, preview: boolean): string {
@@ -107,12 +108,18 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: Navigat
   { label: '내 공간', items: [{ to: '/mypage', label: '마이페이지', icon: 'profile' }] },
 ]
 
-export function WorkspaceNavigation({ onNavigate, preview = false }: NavigationProps) {
+export function WorkspaceNavigation({
+  onNavigate,
+  preview = false,
+  dark = false,
+}: NavigationProps) {
   return (
     <nav aria-label="전체 메뉴" className="space-y-7">
       {GROUPS.map((group) => (
         <section key={group.label}>
-          <h2 className="mb-2 px-3 text-[12px] font-bold text-mute">
+          <h2
+            className={cn('mb-2 px-3 text-[12px] font-bold', dark ? 'text-[#aebbd0]' : 'text-mute')}
+          >
             {group.label}
           </h2>
           <div className="space-y-1">
@@ -126,7 +133,13 @@ export function WorkspaceNavigation({ onNavigate, preview = false }: NavigationP
                 className={({ isActive }) =>
                   cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] transition-colors focus-visible:outline-2 focus-visible:outline-blue-600',
-                    isActive ? 'bg-blue-100 font-bold text-blue-700' : 'text-ink2 hover:bg-bg',
+                    dark
+                      ? isActive
+                        ? 'bg-[#344b6a] font-bold text-white'
+                        : 'text-[#c2cddd] hover:bg-[#263b54] hover:text-white'
+                      : isActive
+                        ? 'bg-blue-100 font-bold text-blue-700'
+                        : 'text-ink2 hover:bg-bg',
                   )
                 }
               >

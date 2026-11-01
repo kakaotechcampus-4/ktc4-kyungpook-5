@@ -14,9 +14,9 @@ function SearchResult({ item }: { item: Item }) {
   const [downloading, setDownloading] = useState(false)
   const [failed, setFailed] = useState(false)
   return (
-    <li className="space-y-2 border-t border-line py-4 first:border-0">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="break-all text-h3">{item.fileName}</h3>
+    <li className="space-y-3 border-t border-line py-5 first:border-0">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h3 className="min-w-0 flex-1 break-words text-h3 leading-6">{item.fileName}</h3>
         <Button
           variant="secondary"
           size="sm"
@@ -35,11 +35,11 @@ function SearchResult({ item }: { item: Item }) {
       <p className="text-caption text-mute">
         {item.fileType} · {formatFileSize(item.size)} · {RECORD_STATUS[item.parseStatus].label}
       </p>
-      <p className="text-caption font-bold text-blue-700">
+      <p className="text-caption font-semibold text-blue-700">
         {item.matchTypes.map((type) => MATCH_LABEL[type]).join(' · ')}
       </p>
       {item.excerpts.map((excerpt, index) => (
-        <div key={index} className="rounded-xl bg-bg p-3 text-caption leading-6">
+        <div key={index} className="rounded-lg bg-bg px-4 py-3 text-[14px] leading-6">
           <p className="whitespace-pre-wrap break-words">{excerpt.text}</p>
           <p className="mt-1 text-mute">{excerpt.location?.label ?? '위치 정보 없음'}</p>
         </div>
@@ -72,7 +72,7 @@ export function RecordSearch({ clubId, userId }: { clubId: string; userId: strin
   const meta = results.data?.meta
   const pageCount = Math.max(1, Math.ceil((meta?.totalCount ?? 0) / 20))
   return (
-    <Card className="space-y-4 p-5">
+    <Card className="space-y-5 p-4 sm:p-6">
       <div>
         <h2 className="text-h2">자료 통합검색</h2>
         <p className="mt-1 text-caption text-mute">
@@ -100,7 +100,10 @@ export function RecordSearch({ clubId, userId }: { clubId: string; userId: strin
         </p>
       )}
       {query && results.isError && (
-        <div role="alert" className="text-caption text-failed">
+        <div
+          role="alert"
+          className="rounded-lg border border-failed-line bg-failed-bg p-3 text-caption text-failed"
+        >
           검색 결과를 불러오지 못했어요. 연결과 소속 권한을 확인해 주세요.{' '}
           <button className="underline" onClick={() => void results.refetch()}>
             다시 시도
@@ -141,7 +144,7 @@ export function RecordSearch({ clubId, userId }: { clubId: string; userId: strin
               ))}
             </ul>
           ) : (
-            <p className="py-4 text-caption text-mute">
+            <p className="rounded-lg bg-bg px-4 py-5 text-caption text-ink2">
               일치하는 자료가 없어요. 다른 검색어를 입력해 보세요.
             </p>
           )}

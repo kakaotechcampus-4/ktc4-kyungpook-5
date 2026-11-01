@@ -170,9 +170,9 @@ export function AppLayout() {
           <aside
             id="workspace-sidebar"
             aria-label="사이드 메뉴"
-            className="sticky top-[72px] hidden h-[calc(100dvh-72px)] w-[224px] shrink-0 flex-col gap-6 border-r border-line bg-card px-4 py-6 lg:flex"
+            className="workspace-sidebar sticky top-[72px] hidden h-[calc(100dvh-72px)] w-[240px] shrink-0 flex-col gap-6 overflow-y-auto bg-[#172333] px-4 py-6 lg:flex"
           >
-            <WorkspaceNavigation />
+            <WorkspaceNavigation dark />
             <Button size="sm" variant="secondary" onClick={() => navigate('/onboarding')}>
               처음 사용 가이드 (임시)
             </Button>
@@ -182,7 +182,7 @@ export function AppLayout() {
         <main
           id="main-content"
           tabIndex={-1}
-          className="min-w-0 flex-1 px-4 pt-7 pb-11 outline-none sm:px-7 lg:px-8"
+          className="min-w-0 flex-1 bg-white px-4 pt-7 pb-11 outline-none sm:px-7 lg:px-10"
         >
           <Outlet />
         </main>
