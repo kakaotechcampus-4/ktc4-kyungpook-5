@@ -1,6 +1,8 @@
-import { apiGet, apiPatch, apiPost } from '@/shared/api/client'
+import { apiGet, apiGetPage, apiPatch, apiPost } from '@/shared/api/client'
+import type { components } from '@/shared/api/schema'
 import type { Decision, Job, Meeting, Suggestion, TranscriptList } from './types'
 const id = encodeURIComponent
+type PageMeta = components['schemas']['PageMeta']
 export const meetingsApi = {
   create: (clubId: string, title: string) =>
     apiPost<Meeting>(`/clubs/${id(clubId)}/meetings`, {
@@ -9,6 +11,13 @@ export const meetingsApi = {
       recordingConsentConfirmed: true,
     }),
   get: (meetingId: string) => apiGet<Meeting>(`/meetings/${id(meetingId)}`),
+  list: (clubId: string, status?: Meeting['status']) => {
+    const params = new URLSearchParams({ size: '100' })
+    if (status) params.set('status', status)
+    return apiGetPage<Meeting, PageMeta>(
+      `/clubs/${id(clubId)}/meetings?${params.toString()}`,
+    )
+  },
   // afterSeq is a change cursor, never the last utterance seq or audio frame seq.
   transcripts: (meetingId: string) =>
     apiGet<TranscriptList>(`/meetings/${id(meetingId)}/transcripts?afterSeq=0`),

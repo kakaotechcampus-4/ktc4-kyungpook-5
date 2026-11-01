@@ -1,7 +1,7 @@
 """회의 세션·전사 도메인 요청·응답 스키마 (#135)."""
 
 from app.core.enums import MeetingStatus
-from app.schemas.common import CamelModel, UtcDateTime
+from app.schemas.common import CamelModel, PageMeta, UtcDateTime
 
 
 class MeetingCreateIn(CamelModel):
@@ -20,6 +20,11 @@ class MeetingOut(CamelModel):
     started_at: UtcDateTime | None
     ended_at: UtcDateTime | None
     version: int
+
+
+class MeetingListResponse(CamelModel):
+    data: list[MeetingOut]
+    meta: PageMeta
 
 
 class TranscriptSegmentOut(CamelModel):

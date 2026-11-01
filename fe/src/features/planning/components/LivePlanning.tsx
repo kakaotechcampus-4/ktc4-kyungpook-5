@@ -1,12 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import {
-  applyLocalCodes,
-  usePlanningChat,
-  usePlanningDrafts,
-  useStartEvent,
-} from '@/features/planning/hooks'
-import { planningApi } from '@/features/planning/api'
+import { usePlanningChat, usePlanningDrafts, useStartEvent } from '@/features/planning/hooks'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
 import type { components } from '@/shared/api/schema'
@@ -121,12 +115,7 @@ function Conversation({
     )
   const screen = live.snapshot.data?.screen
   // 단계 수정 화면에서 저장한 구성이 있으면 그걸 반영해 보여준다(#213 전까지 로컬).
-  const localPlan = eventId ? planningApi.local(eventId) : null
-  const steps = applyLocalCodes(
-    live.snapshot.data?.steps ?? [],
-    localPlan?.codes ?? null,
-    localPlan?.schedule,
-  )
+  const steps = live.snapshot.data?.steps ?? []
   const lookup = live.view?.recordLookup
   const readiness = live.view?.generationReadiness ?? screen?.generationReadiness ?? null
   const lastMessage = live.snapshot.data?.messages.at(-1)
@@ -189,7 +178,7 @@ function Conversation({
             >
               {live.busy ? '처리 중…' : '현재 조건으로 초안 생성'}
             </Button>
-            {screen && <StepSummaryLine summary={screen.summary} steps={steps} edited={!!localPlan?.codes} />}
+            {screen && <StepSummaryLine summary={screen.summary} steps={steps} edited={false} />}
             {screen?.warnings.map((warning, index) => (
               <p key={index} className="text-mute">
                 {warning}
@@ -231,12 +220,9 @@ function Conversation({
 }
 
 // 단계 수정 화면으로 보내고, 행사를 시작으로 표시한다.
-// 둘 다 서버 경로가 없어 이 브라우저에만 남는다(#213). 그래서 그렇다고 적어 둔다.
 function PlanHandoff({ eventId, hasSteps }: { eventId: string | null; hasSteps: boolean }) {
   const start = useStartEvent(eventId)
-  const [started, setStarted] = useState(() =>
-    eventId ? planningApi.local(eventId).started : false,
-  )
+  const [started, setStarted] = useState(false)
   if (!eventId || !hasSteps) return null
   return (
     <div className="space-y-3 border-t border-line pt-4">
@@ -261,7 +247,7 @@ function PlanHandoff({ eventId, hasSteps }: { eventId: string | null; hasSteps: 
         </div>
       )}
       <p className="text-mute">
-        단계 수정과 시작은 아직 이 브라우저에만 기록됩니다. 서버에는 반영되지 않아요(#213).
+        단계 수정과 시작은 행사 계획에 저장됩니다.
       </p>
     </div>
   )

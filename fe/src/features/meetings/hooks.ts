@@ -96,6 +96,14 @@ export function useMeetingData(clubId: string, meetingId: string | undefined) {
     finish,
   }
 }
+export function useMeetings(clubId: string, status?: Meeting['status']) {
+  return useQuery({
+    queryKey: ['meetings', clubId, status],
+    queryFn: () => meetingsApi.list(clubId, status),
+    enabled: Boolean(clubId),
+    retry: false,
+  })
+}
 export function useCreateMeeting(clubId: string) {
   return useMutation({ mutationFn: (title: string) => meetingsApi.create(clubId, title) })
 }

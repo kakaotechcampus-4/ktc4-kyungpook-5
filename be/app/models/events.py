@@ -115,6 +115,10 @@ class Step(IdMixin, TimestampMixin, Base):
     completed_by: Mapped[str | None] = mapped_column(
         String(ID_LENGTH), fk("members.id", ondelete="SET NULL")
     )
+    # 일정 수정의 낙관적 잠금. 기존 행은 migration에서 1로 시작한다.
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
 
     event: Mapped["Event"] = relationship(back_populates="steps")
     actions: Mapped[list["Action"]] = relationship(back_populates="step")

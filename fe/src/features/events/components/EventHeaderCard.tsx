@@ -14,6 +14,7 @@ interface EventHeaderCardProps {
   // 스테퍼에서 단계를 누르면(Step 모달)
   onSelectStep: (step: EventStep) => void
   onCancelEvent: () => void
+  readOnly?: boolean
 }
 
 export function EventHeaderCard({
@@ -21,6 +22,7 @@ export function EventHeaderCard({
   steps,
   onSelectStep,
   onCancelEvent,
+  readOnly = false,
 }: EventHeaderCardProps) {
   // 진행 중인 단계까지 센다(완료 + 진행 중)
   const reached = steps.filter((s) => s.state !== 'TODO').length
@@ -46,7 +48,7 @@ export function EventHeaderCard({
           <Button variant="secondary" disabled>
             계획 수정
           </Button>
-          <Button variant="secondary" onClick={onCancelEvent}>
+          <Button variant="secondary" onClick={onCancelEvent} disabled={readOnly}>
             행사 취소
           </Button>
         </div>

@@ -196,8 +196,8 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
     void send(draft)
   }
   return (
-    <Card className="flex min-h-[460px] min-w-0 flex-col p-4 sm:p-6">
-      <div className="flex items-start gap-4">
+    <Card className="flex h-[min(78vh,760px)] min-h-[560px] min-w-0 flex-col overflow-hidden p-4 sm:p-6">
+      <div className="flex shrink-0 items-start gap-4">
         <Tori size={48} />
         <div>
           <h2 className="text-h2">무엇을 도와드릴까요?</h2>
@@ -232,7 +232,7 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
           followLatest.current = atBottom
           if (atBottom) setHasUnseenReply(false)
         }}
-        className="my-5 max-h-[min(55vh,560px)] min-w-0 space-y-5 overflow-y-auto overscroll-contain pr-1"
+        className="my-5 min-h-0 min-w-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pr-1"
       >
         {turns.map((turn) => (
           <div key={turn.id} className="space-y-4">
@@ -281,7 +281,7 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
           {error}
         </p>
       )}
-      <form className="mt-auto space-y-2 border-t border-line pt-4" onSubmit={submit}>
+      <form className="shrink-0 space-y-2 border-t border-line pt-4" onSubmit={submit}>
         <Textarea
           label="토리에게 질문"
           className="min-h-[72px] bg-card text-[16px] sm:text-[14px]"

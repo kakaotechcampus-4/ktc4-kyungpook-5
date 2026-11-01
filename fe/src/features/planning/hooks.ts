@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
-import { STEP_CATALOGUE } from './catalogue'
-import type { LocalSchedule } from './localPlan'
+import { PartialPlanSaveError } from './errors'
 import type { ChatMessage, PlanFacts } from './types'
 import { FIRST_MESSAGE } from './mock'
 import { ApiError } from '@/shared/api/types'
@@ -168,14 +167,10 @@ export function usePlanningChat(
   return { messages, facts, busy, error, send, generate, snapshot, view: currentView, revision }
 }
 
-// --- 단계 수정 · 행사 시작 (#213 으로 서버 경로가 생기기 전까지 로컬) ----------
+// --- 단계 수정 · 행사 시작 --------------------------------------------------
 
-// 서버 단계 응답에는 StepCode 가 없고 이름만 온다. 카탈로그와 이름이
-// 13개 모두 같아서 지금은 이름으로 되찾는다. 서버가 code 를 내려주면 지운다.
 export function codesFromSteps(steps: S['PlannedStepOut'][]): string[] {
-  return steps
-    .map((step) => STEP_CATALOGUE.find((item) => item.name === step.name)?.code)
-    .filter((code): code is string => code !== undefined)
+  return steps.map((step) => step.code)
 }
 
 export function usePlanSteps(eventId: string | null) {
@@ -187,11 +182,20 @@ export function usePlanSteps(eventId: string | null) {
   })
 }
 
+export function usePlanRevision(eventId: string | null) {
+  return useQuery({
+    queryKey: ['planning', 'screen', eventId],
+    queryFn: () => planningApi.get(eventId!),
+    enabled: !!eventId,
+    retry: false,
+  })
+}
+
 export function useSavePlanSteps(eventId: string | null) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: { codes: string[]; schedule: Record<string, LocalSchedule> }) =>
-      planningApi.saveSteps(eventId!, input.codes, input.schedule),
+    mutationFn: (input: { codes: string[]; expectedRevision: number }) =>
+      planningApi.saveSteps(eventId!, input.codes, input.expectedRevision),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
   })
 }
@@ -204,41 +208,76 @@ export function useStartEvent(eventId: string | null) {
   })
 }
 
-// 저장한 단계 구성을 서버 응답 위에 덮어 보여준다. 뺀 단계는 빼고, 순서도 저장한
-// 대로 다시 세운다. 서버 경로가 생기면 서버 응답 자체가 이미 그 모양이라 사라진다.
+// 저장한 단계 구성을 서버가 반환한 목록에 적용하는 보조 함수.
 export function applyLocalCodes(
   steps: S['PlannedStepOut'][],
   codes: string[] | null,
-  schedule: Record<string, LocalSchedule> = {},
 ): S['PlannedStepOut'][] {
-  const byCode = new Map(
-    steps.map((step) => [STEP_CATALOGUE.find((item) => item.name === step.name)?.code, step]),
-  )
-  const ordered = codes
-    ? codes
-        .map((code) => byCode.get(code))
-        .filter((step): step is S['PlannedStepOut'] => step !== undefined)
-    : steps
-  return ordered.map((step, index) => {
-    const code = STEP_CATALOGUE.find((item) => item.name === step.name)?.code
-    const saved = code ? schedule[code] : undefined
-    return {
-      ...step,
-      stepOrder: codes ? index + 1 : step.stepOrder,
-      startsAt: saved ? saved.startsAt : step.startsAt,
-      deadline: saved ? saved.deadline : step.deadline,
-    }
-  })
+  if (!codes) return steps
+  const byCode = new Map<string, S['PlannedStepOut']>(steps.map((step) => [step.code, step]))
+  return codes
+    .map((code) => byCode.get(code))
+    .filter((step): step is S['PlannedStepOut'] => step !== undefined)
+    .map((step, index) => ({ ...step, stepOrder: index + 1 }))
 }
 
-// 서버가 만든 일정을 StepCode 기준으로 모은다. 수정 화면의 출발점이 된다.
-export function scheduleFromSteps(
-  steps: S['PlannedStepOut'][],
-): Record<string, LocalSchedule> {
-  const result: Record<string, LocalSchedule> = {}
-  for (const step of steps) {
-    const code = STEP_CATALOGUE.find((item) => item.name === step.name)?.code
-    if (code) result[code] = { startsAt: step.startsAt, deadline: step.deadline }
-  }
-  return result
+// 세부 수정 저장 (#106 ④). 일정은 Step, 나머지는 Action 으로 간다.
+// 바뀐 것만 보낸다 — PATCH 가 보낸 밭만 덮으므로 건드리지 않은 값은 그대로 남는다.
+export function useSaveStepDetail() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      step,
+      draft,
+    }: {
+      step: S['PlannedStepOut']
+      draft: {
+        startsAt: string | null
+        deadline: string | null
+        actions: Record<
+          string,
+          { title: string; amount: number | null; payload: S['ActionPayloadOut'] }
+        >
+      }
+    }) => {
+      const stepChanged = draft.startsAt !== step.startsAt || draft.deadline !== step.deadline
+      const changedActions = step.actions.filter((action) => {
+        const next = draft.actions[action.id]
+        return (
+          !!next &&
+          (next.title !== action.title ||
+            next.amount !== action.amount ||
+            JSON.stringify(next.payload) !== JSON.stringify(action.payload))
+        )
+      })
+      const totalChanges = (stepChanged ? 1 : 0) + changedActions.length
+      const completed: string[] = []
+      try {
+        if (stepChanged) {
+          await planningApi.updateStep(step.id, {
+            expectedVersion: step.version,
+            startsAt: draft.startsAt,
+            deadline: draft.deadline,
+          })
+          completed.push('일정')
+        }
+        for (const action of changedActions) {
+          const next = draft.actions[action.id]
+          await planningApi.updateAction(action.id, {
+            expectedVersion: action.version,
+            title: next.title,
+            amount: next.amount,
+            payload: next.payload,
+          })
+          completed.push(`작업 '${action.title}'`)
+        }
+      } catch (cause) {
+        if (completed.length) {
+          throw new PartialPlanSaveError(completed, Math.max(1, totalChanges - completed.length))
+        }
+        throw cause
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
+  })
 }

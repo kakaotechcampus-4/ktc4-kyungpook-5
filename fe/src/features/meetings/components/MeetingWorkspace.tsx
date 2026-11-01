@@ -5,6 +5,7 @@ import { Card } from '@/shared/ui/Card'
 import { Input } from '@/shared/ui/Input'
 import { Chip } from '@/shared/ui/Chip'
 import { useCreateMeeting, useMeetingData } from '../hooks'
+import { MeetingList } from './MeetingList'
 import { meetingError } from '../errors'
 import { MicControls } from '../audio'
 import { Timeline } from './Timeline'
@@ -71,6 +72,7 @@ export function MeetingWorkspace({
           </div>
         )}
       </div>
+      <MeetingList clubId={clubId} selectedId={meetingId} />
       {!meetingId && (
         <Card className="p-6">
           <form

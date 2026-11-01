@@ -37,6 +37,7 @@ from app.schemas.common import Envelope
 from app.schemas.meetings import (
     AudioChunkOut,
     MeetingCreateIn,
+    MeetingListResponse,
     MeetingOut,
     TranscriptListOut,
     TranscriptSegmentOut,
@@ -57,6 +58,27 @@ def _meeting_out(meeting: Meeting) -> MeetingOut:
         started_at=meeting.started_at,
         ended_at=meeting.ended_at,
         version=meeting.version,
+    )
+
+
+@router.get(
+    "/api/v1/clubs/{club_id}/meetings",
+    response_model=MeetingListResponse,
+)
+async def list_club_meetings(
+    club_id: str,
+    status: MeetingStatus | None = Query(None),
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    _member: Member = Depends(require_member),
+    session: AsyncSession = Depends(get_session),
+) -> MeetingListResponse:
+    rows, total = await meeting_service.list_meetings(
+        session, club_id=club_id, status=status, page=page, size=size
+    )
+    return MeetingListResponse(
+        data=[_meeting_out(row) for row in rows],
+        meta={"page": page, "size": size, "total_count": total},
     )
 
 

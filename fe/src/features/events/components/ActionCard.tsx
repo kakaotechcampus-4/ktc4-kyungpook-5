@@ -101,9 +101,10 @@ interface ActionCardProps {
   onComplete?: (action: EventAction) => void
   // 승인 대기에서 [검토하기] · [답변하기]를 눌렀을 때. 모달은 화면 쪽에서 띄운다.
   onReview?: (action: EventAction) => void
+  readOnly?: boolean
 }
 
-export function ActionCard({ action, onComplete, onReview }: ActionCardProps) {
+export function ActionCard({ action, onComplete, onReview, readOnly = false }: ActionCardProps) {
   const status = action.status
   const type = action.type
   const question = type === 'CONFIRMATION'
@@ -124,7 +125,9 @@ export function ActionCard({ action, onComplete, onReview }: ActionCardProps) {
           <Box label={question ? '토리가 모르는 것' : '토리가 준비한 초안'}>{action.content}</Box>
         )}
         <div className="flex items-center gap-[8px]">
-          <Button onClick={() => onReview?.(action)}>{question ? '답변하기' : '검토하기'}</Button>
+          <Button disabled={readOnly} onClick={() => onReview?.(action)}>
+            {question ? '답변하기' : '검토하기'}
+          </Button>
           <span className="text-[11px] text-mute">
             {question ? '답변하면 바로 완료로 가요' : '승인 전에는 실행하지 않아요'}
           </span>
@@ -149,7 +152,9 @@ export function ActionCard({ action, onComplete, onReview }: ActionCardProps) {
               {step.secondary}
             </Button>
           )}
-          <Button onClick={() => onComplete?.(action)}>{step.primary}</Button>
+          <Button disabled={readOnly} onClick={() => onComplete?.(action)}>
+            {step.primary}
+          </Button>
         </div>
       </>
     )
@@ -177,7 +182,9 @@ export function ActionCard({ action, onComplete, onReview }: ActionCardProps) {
         {action.failReason && <Box label="처리하지 못한 이유">{action.failReason}</Box>}
         {/* TODO(연동): 다시 시도 API가 생기면 연결한다 */}
         <div>
-          <Button variant="secondary">다시 시도</Button>
+          <Button variant="secondary" disabled>
+            다시 시도
+          </Button>
         </div>
       </>
     )

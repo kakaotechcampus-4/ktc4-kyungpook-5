@@ -26,6 +26,7 @@ from app.routers import (
     tasks,
     confirmed_tasks,
     reminder_recipients,
+    plan_items,
     push,
     steps,
     tori,
@@ -78,6 +79,8 @@ app.include_router(push.router)
 app.include_router(events.router)
 app.include_router(actions.router)
 app.include_router(steps.router)
+app.include_router(plan_items.steps_router)
+app.include_router(plan_items.actions_router)
 app.include_router(tori.router)
 
 if get_settings().test_mode:

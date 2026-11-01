@@ -144,6 +144,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clubs/{club_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Club */
+        patch: operations["update_club_api_v1_clubs__club_id__patch"];
+        trace?: never;
+    };
     "/api/v1/clubs/{club_id}/invitations": {
         parameters: {
             query?: never;
@@ -224,10 +241,12 @@ export interface paths {
         get: operations["get_expense_api_v1_clubs__club_id__expenses__expense_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Expense */
+        delete: operations["delete_expense_api_v1_clubs__club_id__expenses__expense_id__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update Expense */
+        patch: operations["update_expense_api_v1_clubs__club_id__expenses__expense_id__patch"];
         trace?: never;
     };
     "/api/v1/clubs/{club_id}/receipt-imports": {
@@ -447,7 +466,8 @@ export interface paths {
         get: operations["get_record_api_v1_records__record_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Record */
+        delete: operations["delete_record_api_v1_records__record_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -893,6 +913,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{event_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Event
+         * @description 계획을 확정해 운영을 시작한다(PLANNING → ON_GOING). 이후 승인·완료 처리를 받는다.
+         */
+        post: operations["start_event_api_v1_events__event_id__start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/{event_id}/plan/chat": {
         parameters: {
             query?: never;
@@ -941,7 +981,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Replace Plan Steps */
+        patch: operations["replace_plan_steps_api_v1_events__event_id__plan_steps_patch"];
         trace?: never;
     };
     "/api/v1/events/{event_id}/plan/generate": {
@@ -1012,6 +1053,131 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/actions/{action_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Action */
+        post: operations["approve_action_api_v1_actions__action_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/actions/{action_id}/deny": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deny Action */
+        post: operations["deny_action_api_v1_actions__action_id__deny_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/actions/{action_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve Action
+         * @description 확인 요청에 답한다. 승인·거절이 아니라 선택지 중 하나(또는 MANUAL)를 고른다.
+         */
+        post: operations["resolve_action_api_v1_actions__action_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/actions/{action_id}/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Action Done
+         * @description 운영진이 직접 실행을 마쳤다는 기록. 앱은 발송·이체를 대신하지 않는다.
+         */
+        post: operations["mark_action_done_api_v1_actions__action_id__done_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/steps/{step_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Step */
+        post: operations["complete_step_api_v1_steps__step_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/steps/{step_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Step */
+        patch: operations["update_step_api_v1_steps__step_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/actions/{action_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Action */
+        patch: operations["update_action_api_v1_actions__action_id__patch"];
+        trace?: never;
+    };
     "/api/v1/clubs/{club_id}/tori/messages": {
         parameters: {
             query?: never;
@@ -1029,94 +1195,17 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/test-support/auth/kakao-login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Kakao Login Bypass
-         * @description 카카오 동의 화면 없이 테스트 프로필로 바로 세션을 발급한다.
-         */
-        post: operations["kakao_login_bypass_api_v1_test_support_auth_kakao_login_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/test-support/clubs/{club_id}/meetings/{meeting_id}/transcripts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Inject Transcript
-         * @description 실제 Whisper 없이 전사 텍스트를 직접 주입한다 (meeting.curl.sh M05).
-         *
-         *     STT가 만든 전사와 같은 경로(meeting_service)로 저장한다. final이면 판단 작업이
-         *     자동으로 생기고, 연결된 WebSocket이 있으면 결과가 그쪽으로도 나간다.
-         *     분기를 입력으로 지정하지 않는다 — 판단은 문장만 보고 한다.
-         */
-        post: operations["inject_transcript_api_v1_test_support_clubs__club_id__meetings__meeting_id__transcripts_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/test-support/clubs/{club_id}/discord-connections": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create Fixture Connection
-         * @description 실제 bot credential 없이 이벤트 주입용 연결을 만든다. 외부 Discord에 접속하지 않는다.
-         */
-        post: operations["create_fixture_connection_api_v1_test_support_clubs__club_id__discord_connections_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/test-support/clubs/{club_id}/discord-events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Inject Discord Event
-         * @description 수집기가 받은 Discord 이벤트를 흉내 낸다. 메시지를 외부로 보내지 않는다.
-         */
-        post: operations["inject_discord_event_api_v1_test_support_clubs__club_id__discord_events_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionDenyIn */
+        ActionDenyIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+            /** Reason */
+            reason?: string | null;
+        };
         /** ActionListResponse */
         ActionListResponse: {
             /** Data */
@@ -1166,10 +1255,52 @@ export interface components {
             options: components["schemas"]["ActionOption"][] | null;
             /** Allowmanual */
             allowManual: boolean | null;
+            payload: components["schemas"]["ActionPayloadOut"] | null;
             /** Canapprove */
             canApprove: boolean;
             /** Editable */
             editable: boolean;
+            /** Resolvedchoice */
+            resolvedChoice: string | null;
+            /** Manualvalue */
+            manualValue: string | null;
+            /** Version */
+            version: number;
+        };
+        /**
+         * ActionPayloadOut
+         * @description Action 유형별 설정값 (#106 ①).
+         *
+         *     키는 ActionType마다 다르고, 해당 없는 키는 내려보내지 않는다 — FE는 없는
+         *     키의 입력 밭을 그리지 않는다. CONFIRMATION의 선택지는 ActionOut의
+         *     options·allow_manual로 평탄화해 내려보내므로 여기 담지 않는다.
+         */
+        ActionPayloadOut: {
+            /** Channel */
+            channel?: string | null;
+            /** Audience */
+            audience?: string | null;
+            /** Sendtiming */
+            sendTiming?: string | null;
+            /** Vendor */
+            vendor?: string | null;
+            /** Cancelterms */
+            cancelTerms?: string | null;
+            /** Account */
+            account?: string | null;
+            /** Receiptrequired */
+            receiptRequired?: boolean | null;
+            /** Approvalmode */
+            approvalMode?: ("BATCH" | "EACH") | null;
+        };
+        /** ActionResolveIn */
+        ActionResolveIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+            /** Choice */
+            choice: string;
+            /** Manualvalue */
+            manualValue?: string | null;
         };
         /**
          * ActionStatus
@@ -1184,6 +1315,31 @@ export interface components {
          * @enum {string}
          */
         ActionType: "EXTERNAL_SEND" | "TRANSFER" | "EXPENSE" | "CONTRACT" | "NOTICE" | "CONFIRMATION";
+        /**
+         * ActionUpdateIn
+         * @description Action 세부 수정 (#106 ④). 보낸 밭만 바뀐다.
+         */
+        ActionUpdateIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+            /** Title */
+            title?: string | null;
+            /** Subtitle */
+            subtitle?: string | null;
+            /** Amount */
+            amount?: number | null;
+            /** Duedate */
+            dueDate?: string | null;
+            payload?: components["schemas"]["ActionPayloadOut"] | null;
+        };
+        /**
+         * ActionVersionIn
+         * @description 승인·실행 완료 요청. 클라이언트가 본 행동의 version을 보낸다.
+         */
+        ActionVersionIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+        };
         /** ActivityConnectionOut */
         ActivityConnectionOut: {
             /** Id */
@@ -1338,6 +1494,19 @@ export interface components {
             ownerName: string;
             /** Executivecount */
             executiveCount: number;
+        };
+        /**
+         * ClubUpdateIn
+         * @description 동아리 정보 수정 (#213). 보낸 필드만 바꾸고, null을 보내면 그 값을 비운다.
+         *
+         *     이름은 비울 수 없다. 길이 제한은 clubs.name 컬럼(100자)과 같다.
+         */
+        ClubUpdateIn: {
+            /** Name */
+            name?: string | null;
+            category?: components["schemas"]["ClubCategory"] | null;
+            /** Description */
+            description?: string | null;
         };
         /** ConditionMetaOut */
         ConditionMetaOut: {
@@ -1621,6 +1790,12 @@ export interface components {
             /** Emailverified */
             emailVerified: boolean;
         };
+        /** Envelope[ActionOut] */
+        Envelope_ActionOut_: {
+            data: components["schemas"]["ActionOut"];
+            /** Meta */
+            meta?: null;
+        };
         /** Envelope[ActivitySnapshotOut] */
         Envelope_ActivitySnapshotOut_: {
             data: components["schemas"]["ActivitySnapshotOut"];
@@ -1687,15 +1862,15 @@ export interface components {
             /** Meta */
             meta?: null;
         };
-        /** Envelope[ExpenseOut] */
-        Envelope_ExpenseOut_: {
-            data: components["schemas"]["ExpenseOut"];
+        /** Envelope[EventStartOut] */
+        Envelope_EventStartOut_: {
+            data: components["schemas"]["EventStartOut"];
             /** Meta */
             meta?: null;
         };
-        /** Envelope[FixtureDiscordEventOut] */
-        Envelope_FixtureDiscordEventOut_: {
-            data: components["schemas"]["FixtureDiscordEventOut"];
+        /** Envelope[ExpenseOut] */
+        Envelope_ExpenseOut_: {
+            data: components["schemas"]["ExpenseOut"];
             /** Meta */
             meta?: null;
         };
@@ -1732,6 +1907,12 @@ export interface components {
         /** Envelope[PlanViewOut] */
         Envelope_PlanViewOut_: {
             data: components["schemas"]["PlanViewOut"];
+            /** Meta */
+            meta?: null;
+        };
+        /** Envelope[PlannedStepOut] */
+        Envelope_PlannedStepOut_: {
+            data: components["schemas"]["PlannedStepOut"];
             /** Meta */
             meta?: null;
         };
@@ -1795,15 +1976,15 @@ export interface components {
             /** Meta */
             meta?: null;
         };
-        /** Envelope[TaskSuggestionOut] */
-        Envelope_TaskSuggestionOut_: {
-            data: components["schemas"]["TaskSuggestionOut"];
+        /** Envelope[StepCompleteOut] */
+        Envelope_StepCompleteOut_: {
+            data: components["schemas"]["StepCompleteOut"];
             /** Meta */
             meta?: null;
         };
-        /** Envelope[TestSupportTranscriptOut] */
-        Envelope_TestSupportTranscriptOut_: {
-            data: components["schemas"]["TestSupportTranscriptOut"];
+        /** Envelope[TaskSuggestionOut] */
+        Envelope_TaskSuggestionOut_: {
+            data: components["schemas"]["TaskSuggestionOut"];
             /** Meta */
             meta?: null;
         };
@@ -1937,6 +2118,19 @@ export interface components {
             budget: unknown | null;
         };
         /**
+         * EventStartOut
+         * @description 계획 확정(행사 시작) 결과. FE 명세 v1의 :confirm을 #213 요청대로 /start로 연다.
+         */
+        EventStartOut: {
+            /** Id */
+            id: string;
+            status: components["schemas"]["EventStatus"];
+            /** Title */
+            title: string;
+            /** Startdate */
+            startDate: string | null;
+        };
+        /**
          * EventStatus
          * @enum {string}
          */
@@ -1949,6 +2143,8 @@ export interface components {
         /** ExcludedStepOut */
         ExcludedStepOut: {
             code: components["schemas"]["StepCode"];
+            /** Name */
+            name?: string | null;
             /** Reason */
             reason: string;
         };
@@ -1996,6 +2192,8 @@ export interface components {
             source: components["schemas"]["ExpenseSource"];
             /** Receiptrecordid */
             receiptRecordId: string | null;
+            /** Eventid */
+            eventId: string | null;
             /** Version */
             version: number;
         };
@@ -2024,55 +2222,28 @@ export interface components {
          * @enum {string}
          */
         ExpenseSource: "MANUAL" | "CSV_IMPORT" | "OCR_IMPORT";
-        /** FixtureConnectionCreateIn */
-        FixtureConnectionCreateIn: {
-            mode: components["schemas"]["DiscordConnectionMode"];
-            /** Guildid */
-            guildId: string;
-            /** Channelids */
-            channelIds: string[];
-            /**
-             * Enabled
-             * @default true
-             */
-            enabled: boolean;
-        };
-        /** FixtureDiscordEventIn */
-        FixtureDiscordEventIn: {
-            /** Connectionid */
-            connectionId: string;
-            /** Eventtype */
-            eventType: string;
+        /**
+         * ExpenseUpdateIn
+         * @description 지출 수정 (#213). 보낸 필드만 바꾸고, null을 보내면 그 값을 비운다.
+         *
+         *     지출일·금액·통화는 비울 수 없다. 클라이언트가 본 지출의 version을 함께 보낸다.
+         */
+        ExpenseUpdateIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+            /** Spentat */
+            spentAt?: string | null;
+            /** Merchant */
+            merchant?: string | null;
+            /** Amount */
+            amount?: number | null;
+            currency?: components["schemas"]["CurrencyCode"] | null;
+            /** Category */
+            category?: string | null;
+            /** Description */
+            description?: string | null;
             /** Eventid */
-            eventId: string;
-            /** Guildid */
-            guildId: string;
-            /** Channelid */
-            channelId: string;
-            /** Messageid */
-            messageId: string;
-            /** Authorid */
-            authorId?: string | null;
-            /**
-             * Sourceoccurredat
-             * Format: date-time
-             */
-            sourceOccurredAt: string;
-            /** Content */
-            content?: string | null;
-        };
-        /** FixtureDiscordEventOut */
-        FixtureDiscordEventOut: {
-            /** Eventid */
-            eventId: string;
-            /** Messageid */
-            messageId: string;
-            /** Sourceversion */
-            sourceVersion: number;
-            /** Duplicate */
-            duplicate: boolean;
-            /** Jobid */
-            jobId: string | null;
+            eventId?: string | null;
         };
         /** GenerationReadinessOut */
         GenerationReadinessOut: {
@@ -2095,6 +2266,18 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HistoryUsageOut
+         * @description 대화 이력 사용량 (#194). Tool 메시지까지 센 값이라 남은 대화 횟수가 아니다.
+         */
+        HistoryUsageOut: {
+            /** Messagecount */
+            messageCount: number;
+            /** Maxmessages */
+            maxMessages: number;
+            /** Nearlimit */
+            nearLimit: boolean;
         };
         /** InvitationAcceptIn */
         InvitationAcceptIn: {
@@ -2355,9 +2538,20 @@ export interface components {
             /** Excludedsteps */
             excludedSteps: components["schemas"]["ExcludedStepOut"][];
             summary: components["schemas"]["PlanSummaryOut"];
+            historyUsage?: components["schemas"]["HistoryUsageOut"] | null;
             /** Baserevision */
             baseRevision: number;
             generationReadiness?: components["schemas"]["GenerationReadinessOut"] | null;
+        };
+        /**
+         * PlanStepsUpdateIn
+         * @description 단계 구성 저장. expectedRevision은 최근 계획 대화 revision이다.
+         */
+        PlanStepsUpdateIn: {
+            /** Codes */
+            codes: components["schemas"]["StepCode"][];
+            /** Expectedrevision */
+            expectedRevision: number;
         };
         /** PlanSummaryOut */
         PlanSummaryOut: {
@@ -2380,8 +2574,34 @@ export interface components {
             recordLookup: components["schemas"]["RecordLookupOut"] | null;
             generationReadiness: components["schemas"]["GenerationReadinessOut"];
             generationResult: components["schemas"]["GenerationResultOut"] | null;
+            historyUsage?: components["schemas"]["HistoryUsageOut"] | null;
             /** Baserevision */
             baseRevision: number;
+        };
+        /**
+         * PlannedStepActionOut
+         * @description 계획 화면이 쓰는 Action 요약 (#106).
+         *
+         *     세부 수정 모달이 필요한 것만 담는다. 승인 흐름에 쓰는 ActionOut과 달리
+         *     content·resolver·canApprove는 넣지 않는다 — 계획 중에는 아직 쓰이지 않는다.
+         */
+        PlannedStepActionOut: {
+            /** Id */
+            id: string;
+            type: components["schemas"]["ActionType"];
+            /** Title */
+            title: string;
+            /** Subtitle */
+            subtitle: string | null;
+            /** Amount */
+            amount: number | null;
+            /** Duedate */
+            dueDate: string | null;
+            payload: components["schemas"]["ActionPayloadOut"] | null;
+            /** Editable */
+            editable: boolean;
+            /** Version */
+            version: number;
         };
         /** PlannedStepListResponse */
         PlannedStepListResponse: {
@@ -2394,8 +2614,11 @@ export interface components {
         PlannedStepOut: {
             /** Id */
             id: string;
+            code: components["schemas"]["StepCode"];
             /** Steporder */
             stepOrder: number;
+            /** Version */
+            version: number;
             /** Name */
             name: string;
             actor: components["schemas"]["StepActor"];
@@ -2403,6 +2626,10 @@ export interface components {
             startsAt: string | null;
             /** Deadline */
             deadline: string | null;
+            /** Editable */
+            editable: boolean;
+            /** Actions */
+            actions: components["schemas"]["PlannedStepActionOut"][];
         };
         /** PushDeleteOut */
         PushDeleteOut: {
@@ -2791,6 +3018,19 @@ export interface components {
          * @enum {string}
          */
         StepCode: "ASSIGN_ROLES" | "RESEARCH_VENUE" | "DEMAND_SURVEY" | "RECRUIT_NOTICE" | "CHECK_RESPONSES" | "CONFIRM_DETAILS" | "BOOK_VENUE" | "COLLECT_FEES" | "PRE_EVENT_NOTICE" | "EVENT_DAY" | "SETTLE_EXPENSES" | "REFUND_FEES" | "RECORD_FEEDBACK" | "CANCEL_NOTIFY_PARTICIPANTS" | "CANCEL_VENUE" | "CANCEL_REFUND" | "CANCEL_RECORD";
+        /**
+         * StepCompleteOut
+         * @description 단계 완료 처리 결과. 미처리 행동이 남아 있으면 FE가 확인 문구를 띄운다.
+         */
+        StepCompleteOut: {
+            /** Id */
+            id: string;
+            /** Completedat */
+            completedAt: string;
+            completedBy: components["schemas"]["ResolvedBy"] | null;
+            /** Pendingactioncount */
+            pendingActionCount: number;
+        };
         /** StepListResponse */
         StepListResponse: {
             /** Data */
@@ -2842,6 +3082,18 @@ export interface components {
          * @enum {string}
          */
         StepState: "DONE" | "CURRENT" | "TODO";
+        /**
+         * StepUpdateIn
+         * @description 단계 일정 수정 (#106 ④). 보낸 밭만 바뀐다.
+         */
+        StepUpdateIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+            /** Startsat */
+            startsAt?: string | null;
+            /** Deadline */
+            deadline?: string | null;
+        };
         /** TaskReminderOut */
         TaskReminderOut: {
             /** Id */
@@ -2964,57 +3216,6 @@ export interface components {
          * @enum {string}
          */
         TaskSuggestionStatus: "PROPOSED" | "ACCEPTED";
-        /**
-         * TestSupportTranscriptIn
-         * @description 실제 Whisper 없이 전사 텍스트를 직접 주입한다 (meeting.curl.sh M05와 동일한 패턴).
-         */
-        TestSupportTranscriptIn: {
-            /** Seq */
-            seq: number;
-            /** Startms */
-            startMs: number;
-            /** Endms */
-            endMs: number;
-            /** Final */
-            final: boolean;
-            /** Text */
-            text: string;
-            /** Speakerlabel */
-            speakerLabel?: string | null;
-            /** Expectedversion */
-            expectedVersion?: number | null;
-        };
-        /** TestSupportTranscriptOut */
-        TestSupportTranscriptOut: {
-            /** Id */
-            id: string;
-            /** Sourceid */
-            sourceId: string;
-            /** Sourceversion */
-            sourceVersion: number;
-            /** Seq */
-            seq: number;
-            /** Text */
-            text: string;
-            /** Final */
-            final: boolean;
-            /** Version */
-            version: number;
-            /** Speakerlabel */
-            speakerLabel: string | null;
-            /** Startms */
-            startMs: number | null;
-            /** Endms */
-            endMs: number | null;
-            /** Decisionjobid */
-            decisionJobId: string | null;
-            /** Createdat */
-            createdAt: string;
-            /** Modifiedat */
-            modifiedAt: string;
-            /** Jobid */
-            jobId: string | null;
-        };
         /** ToriMessageIn */
         ToriMessageIn: {
             /** Message */
@@ -3416,6 +3617,43 @@ export interface operations {
             };
         };
     };
+    update_club_api_v1_clubs__club_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClubUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ClubOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_invitation_api_v1_clubs__club_id__invitations_post: {
         parameters: {
             query?: never;
@@ -3607,6 +3845,76 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ExpenseOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_expense_api_v1_clubs__club_id__expenses__expense_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+                expense_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_expense_api_v1_clubs__club_id__expenses__expense_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+                expense_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseUpdateIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4147,6 +4455,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Envelope_RecordDetailOut_"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_record_api_v1_records__record_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                record_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5204,6 +5543,39 @@ export interface operations {
             };
         };
     };
+    start_event_api_v1_events__event_id__start_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EventStartOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     chat_plan_api_v1_events__event_id__plan_chat_post: {
         parameters: {
             query?: never;
@@ -5287,6 +5659,43 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlannedStepListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_plan_steps_api_v1_events__event_id__plan_steps_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanStepsUpdateIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -5454,6 +5863,261 @@ export interface operations {
             };
         };
     };
+    approve_action_api_v1_actions__action_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionVersionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ActionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deny_action_api_v1_actions__action_id__deny_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionDenyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ActionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_action_api_v1_actions__action_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionResolveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ActionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_action_done_api_v1_actions__action_id__done_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionVersionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ActionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_step_api_v1_steps__step_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                step_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_StepCompleteOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_step_api_v1_steps__step_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                step_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PlannedStepOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_action_api_v1_actions__action_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PlannedStepOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     message_api_v1_clubs__club_id__tori_messages_post: {
         parameters: {
             query?: never;
@@ -5478,151 +6142,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_ToriMessageOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    kakao_login_bypass_api_v1_test_support_auth_kakao_login_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["KakaoLoginIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_SessionOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    inject_transcript_api_v1_test_support_clubs__club_id__meetings__meeting_id__transcripts_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                club_id: string;
-                meeting_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TestSupportTranscriptIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_TestSupportTranscriptOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_fixture_connection_api_v1_test_support_clubs__club_id__discord_connections_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                club_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FixtureConnectionCreateIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_DiscordConnectionOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    inject_discord_event_api_v1_test_support_clubs__club_id__discord_events_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                club_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FixtureDiscordEventIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_FixtureDiscordEventOut_"];
                 };
             };
             /** @description Validation Error */

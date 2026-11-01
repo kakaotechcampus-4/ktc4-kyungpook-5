@@ -112,6 +112,27 @@ async def get_meeting(session: AsyncSession, *, club_id: str, meeting_id: str) -
     return meeting
 
 
+async def list_meetings(
+    session: AsyncSession,
+    *,
+    club_id: str,
+    status: MeetingStatus | None,
+    page: int,
+    size: int,
+) -> tuple[list[Meeting], int]:
+    """소속 회의를 최신 생성 순으로 페이지 조회한다."""
+    query = select(Meeting).where(Meeting.club_id == club_id)
+    if status is not None:
+        query = query.where(Meeting.status == status)
+    total = await session.scalar(select(func.count()).select_from(query.subquery())) or 0
+    rows = await session.scalars(
+        query.order_by(Meeting.created_at.desc(), Meeting.id.desc())
+        .offset((page - 1) * size)
+        .limit(size)
+    )
+    return list(rows), total
+
+
 async def finish_meeting(
     session: AsyncSession, *, club_id: str, meeting_id: str
 ) -> Meeting:

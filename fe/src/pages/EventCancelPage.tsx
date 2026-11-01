@@ -64,6 +64,18 @@ export default function EventCancelPage() {
     { label: '정리 단계', value: current?.name ?? '정리 완료', highlight: true },
   ]
 
+  if (!demo) {
+    return (
+      <Card className="flex flex-col gap-[16px] p-[24px]">
+        <h1 className="text-h1">행사 취소 정리 준비 중</h1>
+        <p>취소와 정리 단계는 아직 실제 저장에 연결되지 않았어요.</p>
+        <Link to={`/events/${eventId ?? ''}`} className="text-blue-700 underline">
+          행사 상세로 돌아가기
+        </Link>
+      </Card>
+    )
+  }
+
   // 행사 상세와 같은 방식. 받기 전에는 그리지 않고, 실패하면 자리값 대신 오류 화면을 보인다.
   if (detailQuery.isPending) return null
   if (detailQuery.isError) {
