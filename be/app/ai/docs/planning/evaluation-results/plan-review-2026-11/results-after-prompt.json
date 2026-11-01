@@ -1,0 +1,162 @@
+[
+  {
+    "id": "survey_removed",
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "DEMAND_SURVEY"
+      ],
+      "must_not_mention_codes": []
+    },
+    "latency_ms": 3771,
+    "error": null,
+    "result": {
+      "outcome": "no_issues",
+      "items": []
+    },
+    "checks": {
+      "outcome_match": false,
+      "mentions_match": false,
+      "kind_match": null
+    },
+    "passed": false
+  },
+  {
+    "id": "book_before_confirm",
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "BOOK_VENUE",
+        "CONFIRM_DETAILS"
+      ],
+      "must_not_mention_codes": []
+    },
+    "latency_ms": 4346,
+    "error": null,
+    "result": {
+      "outcome": "issues",
+      "items": [
+        {
+          "step_codes": [
+            "BOOK_VENUE",
+            "CONFIRM_DETAILS"
+          ],
+          "kind": "order",
+          "message": "장소 예약을 인원·세부 사항 확정보다 앞세우면, 현재 잠정인 약 30명 기준과 최종 신청 인원이 달라질 때 예약 조건을 다시 확인해야 할 수 있어요.",
+          "suggestion": "예약 시점에 인원 변경이나 예약 조정이 가능한지 확인하고, 불가능하다면 최종 인원을 확정한 뒤 예약하세요."
+        }
+      ]
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": true
+  },
+  {
+    "id": "fee_deadline_after_event",
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "COLLECT_FEES"
+      ],
+      "must_not_mention_codes": [],
+      "expected_kind": "schedule"
+    },
+    "latency_ms": 4191,
+    "error": null,
+    "result": {
+      "outcome": "issues",
+      "items": [
+        {
+          "step_codes": [
+            "COLLECT_FEES",
+            "EVENT_DAY"
+          ],
+          "kind": "schedule",
+          "message": "참가비 수납 마감이 2026-11-25로 바뀌어 행사 종료일인 2026-11-22보다 늦어요. 이대로면 행사 후에도 참가비를 받는 일정이 되므로, 행사 참여 전에 수납을 완료하려는 계획이라면 확인이 필요해요.",
+          "suggestion": "행사 후 수납도 의도한 것인지 확인하고, 아니라면 참가비 수납 마감을 행사 시작 전으로 정해 주세요."
+        }
+      ]
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": true
+    },
+    "passed": true
+  },
+  {
+    "id": "ai_excluded_readded",
+    "expect": {
+      "outcome": "any",
+      "must_mention_codes": [],
+      "must_not_mention_codes": [],
+      "manual_check": "무료 행사에 환불 단계를 다시 넣은 의도를 존중하는 말투인지 확인"
+    },
+    "latency_ms": 2886,
+    "error": null,
+    "result": {
+      "outcome": "no_issues",
+      "items": []
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": true
+  },
+  {
+    "id": "harmless_reorder",
+    "expect": {
+      "outcome": "no_issues",
+      "must_mention_codes": [],
+      "must_not_mention_codes": []
+    },
+    "latency_ms": 1914,
+    "error": null,
+    "result": {
+      "outcome": "no_issues",
+      "items": []
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": true
+  },
+  {
+    "id": "undecided_dates",
+    "expect": {
+      "outcome": "any",
+      "must_mention_codes": [],
+      "must_not_mention_codes": [],
+      "manual_check": "날짜 미정·인원 잠정이라고 분명히 말하는지, 확정 사실처럼 쓰지 않는지 확인"
+    },
+    "latency_ms": 3104,
+    "error": null,
+    "result": {
+      "outcome": "issues",
+      "items": [
+        {
+          "step_codes": [
+            "DEMAND_SURVEY",
+            "CONFIRM_DETAILS"
+          ],
+          "kind": "missing_step",
+          "message": "수요 조사를 뺐기 때문에 참가 의향과 실제 인원을 별도로 확인하는 단계가 없습니다. 현재 25명은 잠정값이고 날짜도 미뤄진 상태라, 모집 공지와 인원·세부 사항 확정만으로 진행하면 예상 인원과 행사 조건이 충분히 확인되지 않을 수 있어요.",
+          "suggestion": "이대로 진행한다면 모집 공지에서 참가 의향과 가능한 날짜를 함께 확인하고, 인원·세부 사항 확정 단계에서 그 결과를 반영해 주세요."
+        }
+      ]
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": true
+  }
+]

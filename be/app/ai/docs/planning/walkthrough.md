@@ -965,3 +965,46 @@ history_usage = PlanningHistoryUsage.from_count(len(state.payload.history))
 이후 버튼으로 생성해도 새 채팅 이력이 없으므로 48개를 유지한다. JSON 저장 후 복원한 상태를 다시 사용해도 같은 개수다. 과거 화면 응답에 필드가 없으면 null이며 0개로 꾸미지 않는다. Agent 상태 형식 버전은 바꾸지 않는다.
 
 독립 UI의 테스트 API도 같은 `from_count()`를 사용하고 화면은 `near_limit`만 읽어 안내를 표시한다. 프롬프트와 Tool은 바꾸지 않는다. 제품 HTTP 매핑은 [공개 계약 14절](p1-public-contract.md#14-대화-이력-안내-194)의 AI 구현안이며 BE/FE 합의와 실제 연결은 남아 있다.
+
+## 수정 → 검토: P2 계획 수정 후 AI 검토 (#177)
+
+생성된 계획에서 운영진이 "수요 조사"를 빼고 저장한 뒤 "검토 요청"을 누르는 예시다. 인원은 "대략 30명"으로 잠정이다.
+
+```text
+FE: PlanReviewCard "검토 요청" → POST /api/v1/events/{id}/plan/review {expected_revision}
+  → plan_review_service.request_review()
+     · 행사·검토 행을 잠그고 버전 확인(다르면 409), 같은 버전을 이미 끝냈으면 AI를 다시 부르지 않음
+     · build_review_request(draft, today, current, baseline, ai_excluded)
+         baseline(생성 직후 스냅샷)과 current를 비교해 changes를 채움
+     · REVIEWING으로 커밋한 뒤 잠금을 놓고 AI 호출
+  → app.ai.review_plan_edit(request)
+  → 결과를 요청이 아직 최신일 때만 저장(DONE/FAILED) → 카드 표시
+```
+
+`build_review_request()`가 만드는 입력의 핵심은 아래와 같다. DB 접근이 없는 순수 함수다.
+
+```python
+PlanEditReviewRequest(
+    draft=...,  # headcount=30은 condition_meta에서 tentative
+    included_steps=(ReviewStep(code=RECRUIT_NOTICE, ...), ...),
+    excluded_steps=(ReviewExcludedStep(code=DEMAND_SURVEY, excluded_by="user"),),
+    changes=PlanChangeSet(removed_codes=(DEMAND_SURVEY,)),
+)
+```
+
+`excluded_by`는 처음 생성 때 AI가 뺀 단계(`ai`)와 사용자가 뺀 단계(`user`)를 구분하려고 둔다. AI가 뺐던 단계를 사용자가 다시 넣으면 `added_codes`에 들어가고 제외 목록에서 사라진다.
+
+`features/planning/review/review.py`의 `review_plan_edit()`는 프롬프트(`prompts/review.md`)를 시스템 메시지로, 요청 JSON을 별도 사용자 메시지로 보내 `PlanEditReviewResult`를 받는다. 요청 속 문장은 데이터로만 취급한다. 결과의 `step_codes`가 입력의 포함·제외 단계에 없으면 `AIInvalidResponseError`를 낸다. 모델이 입력에 없는 단계를 지어내면 화면에 잘못된 안내가 나가기 때문이다.
+
+결과가 카드가 되는 모습은 이렇다.
+
+```text
+outcome=issues, items=[{step_codes:[DEMAND_SURVEY, CONFIRM_DETAILS], kind:missing_step,
+  message:"수요 조사를 뺐기 때문에 참가 의향과 실제 인원을 별도로 확인하는 단계가 없습니다. 현재 25명은 잠정값이고 …",
+  suggestion:"이대로 진행한다면 모집 공지에서 참가 의향과 가능한 날짜를 함께 확인하고 …"}]
+  → BE가 status=DONE, items 저장 → PlanReviewCard가 항목별로 message와 suggestion 표시
+outcome=no_issues → "걱정되는 점이 없어요" 카드
+AI 오류 → status=FAILED(error_code) → 카드가 실패와 다시 시도 표시, 편집은 그대로
+```
+
+위 결과 예시는 실제 모델 평가의 `undecided_dates`(날짜 미정·인원 잠정) 응답이다. 고정 케이스 6개의 결과와 프롬프트 수정 전후는 [평가 기록](evaluation.md#계획-수정-검토-실제-모델-확인-177-ai-plan-07-2026-11-01)에 있다. 직접 돌리려면 api 컨테이너에서 `python -m app.ai.scripts.run_plan_review_eval --out <폴더>`를 실행한다. AI는 계획을 자동으로 고치지 않으며 검토한 버전(`reviewed_revision`)과 현재 버전이 다르면 FE가 최신 검토로 표시하지 않는다.
