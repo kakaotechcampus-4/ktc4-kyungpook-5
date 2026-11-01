@@ -28,12 +28,12 @@ function Reply({ result }: { result: Result }) {
   const [downloadError, setDownloadError] = useState('')
   const [downloading, setDownloading] = useState<string | null>(null)
   return (
-    <div className="space-y-3 rounded-xl bg-bg p-4 text-caption leading-6">
+    <div className="min-w-0 space-y-4 text-[14px] leading-6">
       <p className="whitespace-pre-wrap">{result.reply}</p>
       {result.records && (
         <div className="space-y-3">
-          <p>
-            자료 {result.recordTotalCount ?? 0}건{' '}
+          <p className="border-t border-line pt-3 text-caption font-semibold text-ink2">
+            참고 자료 {result.recordTotalCount ?? 0}건{' '}
             {result.recordTotalCount && result.recordTotalCount > result.records.items.length
               ? `중 ${result.records.items.length}건 표시`
               : ''}
@@ -59,7 +59,7 @@ function Reply({ result }: { result: Result }) {
             </p>
           )}
           {result.records.items.map((item) => (
-            <div key={item.id} className="space-y-2 rounded-lg border border-line bg-card p-3">
+            <div key={item.id} className="space-y-2 rounded-lg border border-line bg-bg p-3">
               <p className="break-all font-bold">{item.fileName}</p>
               <p className="text-mute">
                 {item.matchTypes
@@ -196,7 +196,7 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
     void send(draft)
   }
   return (
-    <Card className="flex min-h-[460px] flex-col p-5 sm:p-7">
+    <Card className="flex min-h-[460px] min-w-0 flex-col p-4 sm:p-6">
       <div className="flex items-start gap-4">
         <Tori size={48} />
         <div>
@@ -206,19 +206,21 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
           </p>
         </div>
       </div>
-      <div className="mt-5 flex flex-wrap gap-2">
-        {examples.map((example) => (
-          <button
-            key={example}
-            type="button"
-            disabled={!clubId || busy}
-            onClick={() => void send(example)}
-            className="rounded-lg border border-soft px-3 py-2 text-left text-caption text-ink2 hover:bg-bg focus-visible:outline-2 disabled:opacity-50"
-          >
-            {example}
-          </button>
-        ))}
-      </div>
+      {turns.length === 0 && !busy && (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {examples.map((example) => (
+            <button
+              key={example}
+              type="button"
+              disabled={!clubId || busy}
+              onClick={() => void send(example)}
+              className="rounded-lg border border-soft px-3 py-2 text-left text-caption text-ink2 hover:bg-bg focus-visible:outline-2 disabled:opacity-50"
+            >
+              {example}
+            </button>
+          ))}
+        </div>
+      )}
       <div
         ref={conversation}
         aria-live="polite"
@@ -230,14 +232,20 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
           followLatest.current = atBottom
           if (atBottom) setHasUnseenReply(false)
         }}
-        className="my-5 max-h-[min(55vh,560px)] space-y-4 overflow-y-auto pr-1"
+        className="my-5 max-h-[min(55vh,560px)] min-w-0 space-y-5 overflow-y-auto overscroll-contain pr-1"
       >
         {turns.map((turn) => (
-          <div key={turn.id} className="space-y-2">
-            <p className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-xl bg-blue-600 p-3 text-caption text-white">
+          <div key={turn.id} className="space-y-4">
+            <p className="ml-auto w-fit max-w-[90%] whitespace-pre-wrap break-words rounded-xl bg-blue-600 px-4 py-3 text-[14px] leading-6 text-white sm:max-w-[80%]">
               {turn.message}
             </p>
-            <Reply result={turn.result} />
+            <div className="flex min-w-0 items-start gap-3">
+              <Tori size={32} />
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="text-caption font-semibold text-ink2">토리</p>
+                <Reply result={turn.result} />
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -256,18 +264,27 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
         </button>
       )}
       {busy && (
-        <p role="status" className="pb-3 text-caption text-mute">
-          토리가 확인하고 있어요…
-        </p>
+        <div className="space-y-3 pb-4">
+          <p className="ml-auto w-fit max-w-[90%] whitespace-pre-wrap break-words rounded-xl bg-blue-600 px-4 py-3 text-[14px] leading-6 text-white">
+            {draft}
+          </p>
+          <p role="status" className="text-caption text-ink2">
+            토리가 확인하고 있어요…
+          </p>
+        </div>
       )}
       {error && (
-        <p role="alert" className="pb-3 text-caption text-failed">
+        <p
+          role="alert"
+          className="mb-3 rounded-lg border border-failed-line bg-failed-bg px-3 py-2 text-caption text-failed"
+        >
           {error}
         </p>
       )}
       <form className="mt-auto space-y-2 border-t border-line pt-4" onSubmit={submit}>
         <Textarea
           label="토리에게 질문"
+          className="min-h-[72px] bg-card text-[16px] sm:text-[14px]"
           rows={2}
           maxLength={1000}
           disabled={!clubId || busy}
@@ -289,12 +306,16 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
             if (!event.repeat) event.currentTarget.form?.requestSubmit()
           }}
         />
-        <p className="text-caption text-mute">
-          Enter로 전송 · Shift+Enter로 줄바꿈 · 대화는 새로고침하면 사라져요.
-        </p>
-        <Button type="submit" disabled={!clubId || busy || !draft.trim()}>
-          보내기
-        </Button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-caption text-mute">
+            Enter로 전송 · Shift+Enter로 줄바꿈
+            <br />
+            대화는 새로고침하면 사라져요.
+          </p>
+          <Button type="submit" disabled={!clubId || busy || !draft.trim()}>
+            {busy ? '확인 중…' : '보내기'}
+          </Button>
+        </div>
       </form>
     </Card>
   )
