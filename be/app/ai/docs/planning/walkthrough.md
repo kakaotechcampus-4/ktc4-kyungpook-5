@@ -968,7 +968,7 @@ history_usage = PlanningHistoryUsage.from_count(len(state.payload.history))
 
 ## 수정 → 검토: P2 계획 수정 후 AI 검토 (#177)
 
-생성된 계획에서 운영진이 "수요 조사"를 빼고 저장한 뒤 "검토 요청"을 누르는 예시다. 인원은 "대략 30명"으로 잠정이다.
+생성된 계획에서 운영진이 "수요 조사"를 빼고 저장한 뒤 "검토 요청"을 누르는 예시다. 인원은 "대략 30명"으로 잠정이다. 평가 케이스 `survey_removed`와 같은 입력이다.
 
 ```text
 FE: PlanReviewCard "검토 요청" → POST /api/v1/events/{id}/plan/review {expected_revision}
@@ -999,12 +999,12 @@ PlanEditReviewRequest(
 결과가 카드가 되는 모습은 이렇다.
 
 ```text
-outcome=issues, items=[{step_codes:[DEMAND_SURVEY, CONFIRM_DETAILS], kind:missing_step,
-  message:"수요 조사를 뺐기 때문에 참가 의향과 실제 인원을 별도로 확인하는 단계가 없습니다. 현재 25명은 잠정값이고 …",
-  suggestion:"이대로 진행한다면 모집 공지에서 참가 의향과 가능한 날짜를 함께 확인하고 …"}]
+outcome=issues, items=[{step_codes:[DEMAND_SURVEY, CHECK_RESPONSES, CONFIRM_DETAILS, BOOK_VENUE], kind:missing_step,
+  message:"수요 조사를 빼면, 약 25명이라는 잠정 인원을 행사 전에 별도로 확인하는 단계가 없어져요. …",
+  suggestion:"모집 공지와 신청 현황 확인에서 잠정 인원을 검증한 뒤 …"}]
   → BE가 status=DONE, items 저장 → PlanReviewCard가 항목별로 message와 suggestion 표시
 outcome=no_issues → "걱정되는 점이 없어요" 카드
 AI 오류 → status=FAILED(error_code) → 카드가 실패와 다시 시도 표시, 편집은 그대로
 ```
 
-위 결과 예시는 실제 모델 평가의 `undecided_dates`(날짜 미정·인원 잠정) 응답이다. 고정 케이스 6개의 결과와 프롬프트 수정 전후는 [평가 기록](evaluation.md#계획-수정-검토-실제-모델-확인-177-ai-plan-07-2026-11-01)에 있다. 직접 돌리려면 api 컨테이너에서 `python -m app.ai.scripts.run_plan_review_eval --out <폴더>`를 실행한다. AI는 계획을 자동으로 고치지 않으며 검토한 버전(`reviewed_revision`)과 현재 버전이 다르면 FE가 최신 검토로 표시하지 않는다.
+위 결과 예시는 실제 모델 평가의 `undecided_dates`(날짜 미정, 인원 약 25명 잠정) 응답이며 입력 예시와 다른 케이스다. 입력 예시의 시나리오(`survey_removed`)는 평가에서 no_issues가 나왔다. 인원이 잠정이어도 수요 조사 누락을 짚지 않은 것으로, 남은 한계다. 고정 케이스 6개의 결과와 프롬프트 수정 전후는 [평가 기록](evaluation.md#계획-수정-검토-실제-모델-확인-177-ai-plan-07-2026-11-01)에 있다. 직접 돌리려면 api 컨테이너에서 `python -m app.ai.scripts.run_plan_review_eval --out <폴더>`를 실행한다. AI는 계획을 자동으로 고치지 않으며 검토한 버전(`reviewed_revision`)과 현재 버전이 다르면 FE가 최신 검토로 표시하지 않는다.

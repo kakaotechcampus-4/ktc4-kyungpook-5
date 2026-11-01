@@ -29,7 +29,7 @@ docker compose exec -T api /app/.venv/bin/python -m app.ai.scripts.run_plan_revi
 
 ## 프롬프트 수정 1회
 
-두 실패에 공통인 일반 기준 두 줄을 `prompts/review.md`에 더했다(특정 케이스 문장은 넣지 않았다).
+두 실패에 공통인 일반 기준 두 줄을 `prompts/review.md`에 더했다. 처음 수정에는 `harmless_reorder`와 같은 단계 쌍(역할 분담·장소 조사)을 괄호 예시로 넣었는데, 평가 케이스와 겹쳐 그 케이스가 지침 예시를 시험하는 셈이 되므로 예시를 빼고 같은 6케이스를 다시 쟀다. 아래 수정 후 결과와 원본은 예시를 뺀 최종 지침의 재실행이다(예시가 있던 중간 실행은 보존하지 않았다).
 
 - 단계를 뺐다면 그 단계가 하던 확인이 다른 단계로 대신되는지 보고, 대신되지 않고 관련 조건이 잠정·미정이면 걱정거리로 본다.
 - 앞뒤 의존이 없는 단계끼리의 순서 바뀜은 걱정거리가 아니다. 한 단계의 결과가 다른 단계의 전제일 때만 순서를 짚는다.
@@ -38,12 +38,12 @@ docker compose exec -T api /app/.venv/bin/python -m app.ai.scripts.run_plan_revi
 
 | id | 기대 | 실제 | 언급 코드 | 지연(ms) | 판정 |
 |---|---|---|---|---|---|
-| survey_removed | issues | no_issues | - | 3771 | 불일치 |
-| book_before_confirm | issues | issues | BOOK_VENUE, CONFIRM_DETAILS | 4346 | 통과 |
-| fee_deadline_after_event | issues | issues | COLLECT_FEES, EVENT_DAY | 4191 | 통과 |
-| ai_excluded_readded | any | no_issues | - | 2886 | 통과 |
-| harmless_reorder | no_issues | no_issues | - | 1914 | 통과 |
-| undecided_dates | any | issues | CONFIRM_DETAILS, DEMAND_SURVEY | 3104 | 통과 |
+| survey_removed | issues | no_issues | - | 4059 | 불일치 |
+| book_before_confirm | issues | issues | BOOK_VENUE, CONFIRM_DETAILS | 5583 | 통과 |
+| fee_deadline_after_event | issues | issues | COLLECT_FEES, EVENT_DAY | 4584 | 통과 |
+| ai_excluded_readded | any | no_issues | - | 2476 | 통과 |
+| harmless_reorder | no_issues | no_issues | - | 1480 | 통과 |
+| undecided_dates | any | issues | BOOK_VENUE, CHECK_RESPONSES, CONFIRM_DETAILS, DEMAND_SURVEY | 6609 | 통과 |
 
 원본: [results-after-prompt.json](results-after-prompt.json)
 
@@ -54,17 +54,17 @@ docker compose exec -T api /app/.venv/bin/python -m app.ai.scripts.run_plan_revi
 | fee_deadline_after_event | 통과 | 통과(COLLECT_FEES, EVENT_DAY, kind schedule) |
 | ai_excluded_readded | no_issues | no_issues |
 | harmless_reorder | 불일치(issues) | 통과(no_issues) |
-| undecided_dates | issues(DEMAND_SURVEY) | issues(DEMAND_SURVEY, CONFIRM_DETAILS) |
+| undecided_dates | issues(DEMAND_SURVEY) | issues(DEMAND_SURVEY, CHECK_RESPONSES, CONFIRM_DETAILS, BOOK_VENUE) |
 
 한 번씩만 재서 `harmless_reorder`의 개선이 지침 때문인지 실행 간 변동인지는 구분하지 못한다.
 
 ## 남은 불일치와 수동 확인
 
 - `survey_removed`는 수정 후에도 no_issues다. 같은 조건에 날짜 미정을 더한 `undecided_dates`는 수요 조사 누락을 짚으므로, 모델이 "인원 잠정"만으로는 걱정거리로 보지 않는 것으로 추정한다. 이 케이스에 맞춘 문구를 더하면 과적합이라 이번 작업에서는 더 고치지 않았다. 남은 한계다.
-- `undecided_dates`(수동 확인): 메시지가 "인원 25명은 잠정값이고 날짜도 미뤄진 상태"라고 분명히 말하고 확정 사실처럼 쓰지 않았다. 통과로 본다.
+- `undecided_dates`(수동 확인): 메시지가 "약 25명이라는 잠정 인원"이라고 말하고, 모집 공지와 신청 현황 확인으로 보완될 수 있다는 조건부 표현을 써서 확정 사실처럼 쓰지 않았다. 날짜 미정은 이번 메시지에서 직접 언급하지 않았다. 통과로 본다.
 - `ai_excluded_readded`(수동 확인): 두 실행 모두 no_issues라 사용자의 재추가 의도를 거스르는 말투 문제는 없었다. 환불 단계를 다시 넣은 것을 걱정거리로 강제하지 않는 기대와 맞다.
 - `fee_deadline_after_event`: 수정 전후 모두 마감이 행사 종료일(11-22)보다 늦다는 일정 문제를 짚었다. 입력의 행사 시작일은 11-21이며 메시지는 종료일을 기준으로 썼다.
 
 ## 지연
 
-케이스별 약 1.9~6.5초(단일 호출, 위 표). 반복 측정이 아니라 p50/p95는 내지 않는다.
+케이스별 약 1.5~6.6초(단일 호출, 위 표). 반복 측정이 아니라 p50/p95는 내지 않는다.
