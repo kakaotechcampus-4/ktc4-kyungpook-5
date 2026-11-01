@@ -318,7 +318,7 @@ function ReviewFields({
           </div>
         )}
       </fieldset>
-      <div className="rounded-xl bg-bg p-4 text-caption leading-6">
+      <div className="rounded-lg border border-line bg-bg p-4 text-caption leading-6">
         <p>
           <strong>{title || '내용 미입력'}</strong> · {kind === 'TASK' ? '할 일' : '일정'}
         </p>
@@ -364,7 +364,7 @@ function ReviewFields({
         </p>
       )}
       {notice && (
-        <p role="status" className="text-blue-700">
+        <p role="status" className="rounded-lg bg-done-bg px-3 py-2 text-done">
           {notice}
         </p>
       )}
@@ -389,7 +389,10 @@ export function Suggestions({
   })
   return (
     <section className="space-y-4" aria-label="일정·할 일 후보">
-      <h2 className="text-h2">확인할 일정·할 일</h2>
+      <h2 className="text-h2">
+        확인할 일정·할 일{' '}
+        <span className="text-caption font-medium text-mute">{suggestions.length}건</span>
+      </h2>
       <p className="text-caption text-ink2">
         내용과 시각, 실제 수신 계정을 확인한 뒤 저장·예약합니다.
       </p>
@@ -399,9 +402,9 @@ export function Suggestions({
         </Card>
       )}
       {suggestions.map((s) => (
-        <Card key={`${s.id}:${s.version}`} className="p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-h3">{s.title}</h3>
+        <Card key={`${s.id}:${s.version}`} className="min-w-0 p-4 sm:p-5">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+            <h3 className="min-w-0 flex-1 break-words text-h3 leading-6">{s.title}</h3>
             <Chip>{s.status === 'ACCEPTED' ? '수락 기록' : '검토 후보'}</Chip>
           </div>
           {confirmed.data?.some((item) => item.suggestionId === s.id) ? (

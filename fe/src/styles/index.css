@@ -73,10 +73,38 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Desktop workspace navigation; the mobile drawer keeps the light surface. */
+.workspace-sidebar > button {
+  border-color: #52647c;
+  background: transparent;
+  color: #e5ebf4;
+}
+.workspace-sidebar > button:hover {
+  background: #263b54;
+}
+.workspace-sidebar > div:last-child {
+  border-color: #41516a;
+}
+.workspace-sidebar > div:last-child p {
+  color: #d5deea;
+}
+.workspace-sidebar > div:last-child button {
+  color: #d5deea;
+}
+.workspace-sidebar > div:last-child button:hover {
+  background: #263b54;
+}
+.workspace-sidebar > a {
+  background: #344b6a;
+  color: #fff;
 }

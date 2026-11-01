@@ -31,7 +31,7 @@ export function Timeline({
           return (
             <article
               key={`t:${t.id}`}
-              className="rounded-2xl border border-soft bg-cream px-5 py-4"
+              className="rounded-lg border border-line bg-card px-4 py-4 sm:px-5"
             >
               <time className="text-caption text-mute">{transcriptTime(t, startedAt)}</time>
               <p className="mt-2 whitespace-pre-wrap leading-7">
@@ -47,7 +47,7 @@ export function Timeline({
         return (
           <article
             key={`d:${d.id}`}
-            className="ml-6 rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4"
+            className="ml-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-4 sm:ml-6 sm:px-5"
           >
             <div className="flex items-center gap-2 text-caption font-bold text-blue-700">
               <Tori size={24} />
@@ -68,9 +68,11 @@ export function Timeline({
               <ul className="mt-3 space-y-2" aria-label="답변 출처">
                 {d.citations.map((c, i) => (
                   <li key={i} className="rounded-lg bg-card p-3 text-caption">
-                    <strong>{str(c.fileName) || str(c.title) || '등록 자료'}</strong>
+                    <strong className="break-words">
+                      {str(c.fileName) || str(c.title) || '등록 자료'}
+                    </strong>
                     <p>{str((c.location as Record<string, unknown> | null)?.label)}</p>
-                    <p className="mt-1 text-ink2">{str(c.text)}</p>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-ink2">{str(c.text)}</p>
                   </li>
                 ))}
               </ul>

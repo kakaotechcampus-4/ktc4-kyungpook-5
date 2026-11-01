@@ -181,6 +181,15 @@ export function MeetingWorkspace({
                   </Button>
                 </p>
               )}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-h2">전사와 자료 답변</h2>
+                <a
+                  href="#meeting-suggestions"
+                  className="text-caption font-semibold text-blue-700 underline underline-offset-4 xl:hidden"
+                >
+                  일정·할 일 후보 보기
+                </a>
+              </div>
               <Timeline
                 key={meeting.id}
                 transcripts={data.transcripts.data?.items ?? EMPTY}
@@ -193,7 +202,7 @@ export function MeetingWorkspace({
           {records}
           <ConfirmedTasks clubId={clubId} highlightTaskId={highlightTaskId} />
         </div>
-        <aside className="space-y-6">
+        <aside id="meeting-suggestions" className="scroll-mt-24 space-y-6">
           {meeting && (
             <>
               {data.suggestionsQuery.isError && (
@@ -201,11 +210,15 @@ export function MeetingWorkspace({
                   후보 목록을 확인하지 못했습니다. {meetingError(data.suggestionsQuery.error)}
                 </p>
               )}
-              <Suggestions
-                clubId={clubId}
-                suggestions={data.suggestions}
-                onSaved={() => void data.refresh()}
-              />
+              {data.suggestionsQuery.isPending ? (
+                <p role="status">후보 목록을 불러오는 중입니다…</p>
+              ) : !data.suggestionsQuery.isError ? (
+                <Suggestions
+                  clubId={clubId}
+                  suggestions={data.suggestions}
+                  onSaved={() => void data.refresh()}
+                />
+              ) : null}
             </>
           )}
           {notifications}

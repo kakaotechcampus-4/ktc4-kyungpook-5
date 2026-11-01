@@ -32,19 +32,22 @@ function Reply({ result }: { result: Result }) {
       <p className="whitespace-pre-wrap">{result.reply}</p>
       {result.records && (
         <div className="space-y-3">
-          <p className="border-t border-line pt-3 text-caption font-semibold text-ink2">
+          <p className="border-t border-line pt-4 text-caption font-semibold text-ink2">
             참고 자료 {result.recordTotalCount ?? 0}건{' '}
             {result.recordTotalCount && result.recordTotalCount > result.records.items.length
               ? `중 ${result.records.items.length}건 표시`
               : ''}
           </p>
           {result.records.semanticStatus === 'UNAVAILABLE' && (
-            <p role="alert" className="text-failed">
+            <p
+              role="alert"
+              className="rounded-lg border border-failed-line bg-failed-bg px-3 py-2 text-failed"
+            >
               AI 추천을 불러오지 못해 파일명과 본문 일치 결과만 표시해요.
             </p>
           )}
           {result.records.semanticStatus === 'NO_INDEXED_RECORDS' && (
-            <p className="text-mute">
+            <p className="rounded-lg bg-bg px-3 py-2 text-ink2">
               AI 검색 준비가 된 자료가 없어 파일명과 읽은 본문만 검색했어요.
             </p>
           )}
@@ -59,7 +62,7 @@ function Reply({ result }: { result: Result }) {
             </p>
           )}
           {result.records.items.map((item) => (
-            <div key={item.id} className="space-y-2 rounded-lg border border-line bg-bg p-3">
+            <div key={item.id} className="space-y-2 rounded-lg border border-line bg-card p-4">
               <p className="break-all font-bold">{item.fileName}</p>
               <p className="text-mute">
                 {item.matchTypes
@@ -196,9 +199,11 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
     void send(draft)
   }
   return (
-    <Card className="flex h-[min(78vh,760px)] min-h-[560px] min-w-0 flex-col overflow-hidden p-4 sm:p-6">
-      <div className="flex shrink-0 items-start gap-4">
-        <Tori size={48} />
+    <Card
+      className={`flex min-w-0 flex-col overflow-hidden border-0 bg-transparent p-0 ${turns.length ? 'h-[min(65dvh,680px)] min-h-[400px]' : 'min-h-[360px]'}`}
+    >
+      <div className="flex shrink-0 items-start gap-4 border-b border-line pb-5">
+        <Tori size={48} thinking={busy} />
         <div>
           <h2 className="text-h2">무엇을 도와드릴까요?</h2>
           <p className="mt-2 text-caption leading-6 text-ink2">
@@ -236,7 +241,7 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
       >
         {turns.map((turn) => (
           <div key={turn.id} className="space-y-4">
-            <p className="ml-auto w-fit max-w-[90%] whitespace-pre-wrap break-words rounded-xl bg-blue-600 px-4 py-3 text-[14px] leading-6 text-white sm:max-w-[80%]">
+            <p className="ml-auto w-fit max-w-[90%] whitespace-pre-wrap break-words rounded-xl bg-blue-900 px-4 py-3 text-[14px] leading-6 text-white sm:max-w-[80%]">
               {turn.message}
             </p>
             <div className="flex min-w-0 items-start gap-3">
@@ -265,7 +270,7 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
       )}
       {busy && (
         <div className="space-y-3 pb-4">
-          <p className="ml-auto w-fit max-w-[90%] whitespace-pre-wrap break-words rounded-xl bg-blue-600 px-4 py-3 text-[14px] leading-6 text-white">
+          <p className="ml-auto w-fit max-w-[90%] whitespace-pre-wrap break-words rounded-xl bg-blue-900 px-4 py-3 text-[14px] leading-6 text-white">
             {draft}
           </p>
           <p role="status" className="text-caption text-ink2">
@@ -281,7 +286,10 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
           {error}
         </p>
       )}
-      <form className="shrink-0 space-y-2 border-t border-line pt-4" onSubmit={submit}>
+      <form
+        className="shrink-0 space-y-2 rounded-xl border border-soft bg-bg p-4"
+        onSubmit={submit}
+      >
         <Textarea
           label="토리에게 질문"
           className="min-h-[72px] bg-card text-[16px] sm:text-[14px]"
