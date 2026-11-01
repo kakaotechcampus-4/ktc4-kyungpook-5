@@ -1,6 +1,6 @@
 // 행사 서버 상태 훅. 화면은 반드시 이 훅을 거쳐 서버 데이터에 접근한다.
 // ?demo는 명시적인 시연 예시이며, 그 외에는 실제 서버를 조회한다.
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/shared/auth/store'
 import {
@@ -9,6 +9,12 @@ import {
   getEventDetail,
   getEventSteps,
   getEvents,
+  approveAction,
+  completeStep,
+  denyAction,
+  markActionDone,
+  resolveAction,
+  startEvent,
 } from './api'
 import {
   DEMO_ACTIONS,
@@ -134,4 +140,32 @@ export function useStepActions(eventId: string | undefined, stepId: string | und
           ),
     enabled: !!eventId && !!stepId && (demo || Boolean(userId && clubId)),
   })
+}
+
+export function useStartEvent() {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: startEvent, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
+}
+export function useCompleteStep() {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: completeStep, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
+}
+export function useResolveAction() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ action, choice, manualValue }: { action: EventAction; choice: string; manualValue?: string }) => resolveAction(action, choice, manualValue),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }),
+  })
+}
+export function useApproveAction() {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: approveAction, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
+}
+export function useDenyAction() {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: ({ action, reason }: { action: EventAction; reason: string }) => denyAction(action, reason), onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
+}
+export function useMarkActionDone() {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: markActionDone, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
 }

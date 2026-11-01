@@ -1,5 +1,5 @@
 // 행사 서버 호출. 화면은 이 파일을 직접 쓰지 않고 hooks.ts를 거친다.
-import { apiGet, apiGetPage } from '@/shared/api/client'
+import { apiGet, apiGetPage, apiPost } from '@/shared/api/client'
 import type {
   ActionPage,
   EventAction,
@@ -53,3 +53,16 @@ export async function getEventActionPage(eventId: string, query: string): Promis
   )
   return { items: res.data, totalCount: res.meta?.totalCount ?? res.data.length }
 }
+
+export const startEvent = (eventId: string) =>
+  apiPost<{ id: string; status: EventStatus; title: string; startDate: string | null }>(`/events/${encodeURIComponent(eventId)}/start`)
+export const completeStep = (stepId: string) =>
+  apiPost<{ id: string; completedAt: string; completedBy: unknown; pendingActionCount: number }>(`/steps/${encodeURIComponent(stepId)}/complete`)
+export const resolveAction = (action: EventAction, choice: string, manualValue?: string) =>
+  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/resolve`, { expectedVersion: action.version ?? 1, choice, manualValue })
+export const approveAction = (action: EventAction) =>
+  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/approve`, { expectedVersion: action.version ?? 1 })
+export const denyAction = (action: EventAction, reason: string) =>
+  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/deny`, { expectedVersion: action.version ?? 1, reason })
+export const markActionDone = (action: EventAction) =>
+  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/done`, { expectedVersion: action.version ?? 1 })

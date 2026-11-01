@@ -84,6 +84,7 @@ export interface EventAction {
   content?: string | null
   answer?: string | null
   failReason?: string | null
+  version?: number
 }
 
 // 목록 일부와 전체 개수("12건")

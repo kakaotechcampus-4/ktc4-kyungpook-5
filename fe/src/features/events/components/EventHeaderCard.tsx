@@ -14,6 +14,7 @@ interface EventHeaderCardProps {
   // 스테퍼에서 단계를 누르면(Step 모달)
   onSelectStep: (step: EventStep) => void
   onCancelEvent: () => void
+  onStartEvent?: () => void
   readOnly?: boolean
 }
 
@@ -22,6 +23,7 @@ export function EventHeaderCard({
   steps,
   onSelectStep,
   onCancelEvent,
+  onStartEvent,
   readOnly = false,
 }: EventHeaderCardProps) {
   // 진행 중인 단계까지 센다(완료 + 진행 중)
@@ -42,6 +44,9 @@ export function EventHeaderCard({
           <Chip tone={EVENT_STATUS_TONE[event.status]}>{EVENT_STATUS_LABEL[event.status]}</Chip>
         </div>
         <div className="flex gap-[8px]">
+          {event.status === 'PLANNING' && onStartEvent && (
+            <Button onClick={onStartEvent}>행사 시작</Button>
+          )}
           {/* 운영 중인 행사는 세부 사항만, 끝나지 않은 것만 고칠 수 있다. 아직 못 켜는 건
               세부 수정 모달이 Action 스키마를 기다리고 있어서다(#106).
               계획 중(PLANNING)의 단계 수정은 P2-b에 있다. */}

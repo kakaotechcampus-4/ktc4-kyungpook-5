@@ -16,6 +16,12 @@ import {
   useEventSteps,
   useResolvedActions,
   useStepActions,
+  useApproveAction,
+  useCompleteStep,
+  useDenyAction,
+  useMarkActionDone,
+  useResolveAction,
+  useStartEvent,
 } from '@/features/events/hooks'
 import type { EventAction, EventStep } from '@/features/events/types'
 import { toast } from '@/shared/lib/toast'
@@ -31,6 +37,12 @@ export default function EventDetailPage() {
   const toList = `/events${search}`
 
   const demo = useDemo()
+  const startMutation = useStartEvent()
+  const completeMutation = useCompleteStep()
+  const resolveMutation = useResolveAction()
+  const approveMutation = useApproveAction()
+  const denyMutation = useDenyAction()
+  const doneMutation = useMarkActionDone()
   const detailQuery = useEventDetail(eventId)
   const event = detailQuery.data
   // 행사가 없으면(초기 화면) 나머지는 부르지 않는다
@@ -55,8 +67,8 @@ export default function EventDetailPage() {
   const confirmationsQuery = useConfirmations(shownId)
   const confirmations = (confirmationsQuery.data ?? []).filter((a) => !answeredIds.includes(a.id))
 
-  // TODO(연동): POST /actions/{id}/resolve 에 { choice } 로 보낸다
   const resolveConfirmation = (action: EventAction, choice: string) => {
+    if (!demo) void resolveMutation.mutateAsync({ action, choice })
     setAnsweredIds((ids) => [...ids, action.id])
     toast.show({
       kind: 'done',
@@ -65,8 +77,8 @@ export default function EventDetailPage() {
     })
   }
 
-  // TODO(연동): 실행을 마쳤다는 기록 API가 명세에 없다
   const finishAction = (action: EventAction) => {
+    if (!demo) void doneMutation.mutateAsync(action)
     setFinishedIds((ids) => [...ids, action.id])
     toast.show({ kind: 'done', title: '완료로 표시했어요', desc: action.title })
   }
@@ -79,15 +91,15 @@ export default function EventDetailPage() {
   const answering = reviewing?.type === 'CONFIRMATION' ? reviewing : undefined
   const deciding = reviewing && reviewing.type !== 'CONFIRMATION' ? reviewing : undefined
 
-  // TODO(연동): POST /actions/{id}/approve
   const approveAction = (action: EventAction) => {
+    if (!demo) void approveMutation.mutateAsync(action)
     setReviewing(undefined)
     setOpenStepId(null)
     toast.show({ kind: 'done', title: '승인했어요', desc: action.title })
   }
 
-  // TODO(연동): POST /actions/{id}/deny 에 { reason } 으로 보낸다
   const denyAction = (action: EventAction, reason: string) => {
+    if (!demo) void denyMutation.mutateAsync({ action, reason })
     setReviewing(undefined)
     setOpenStepId(null)
     toast.show({
@@ -97,8 +109,8 @@ export default function EventDetailPage() {
     })
   }
 
-  // TODO(연동): POST /steps/{stepId}/complete. 미처리 Action이 남아 있으면 먼저 확인을 받는다(명세).
   const completeStep = (step: EventStep) => {
+    if (!demo) void completeMutation.mutateAsync(step.id)
     setOpenStepId(null)
     toast.show({ kind: 'done', title: '단계를 완료로 표시했어요', desc: step.name })
   }
@@ -155,6 +167,11 @@ export default function EventDetailPage() {
             steps={steps}
             onSelectStep={(step) => setOpenStepId(step.id)}
             onCancelEvent={() => setCancelOpen(true)}
+            onStartEvent={
+              demo
+                ? undefined
+                : () => void startMutation.mutateAsync(event.id).then(() => detailQuery.refetch())
+            }
           />
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
