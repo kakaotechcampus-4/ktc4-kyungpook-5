@@ -8,6 +8,8 @@ AI 설정(`AISettings`)은 여기서 새로 선언하지 않고 `app.ai.config`�
 
 from functools import lru_cache
 
+from typing import Literal
+
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -25,7 +27,7 @@ class Settings(BaseSettings):
 
     # 기존 로컬 키는 그대로 유지하고 새 업로드만 선택한 저장소에 기록한다.
     storage_dir: str = "./var/storage"
-    storage_backend: str = "local"
+    storage_backend: Literal["local", "s3"] = "local"
     s3_bucket: str = ""
     s3_region: str = "ap-northeast-2"
 
