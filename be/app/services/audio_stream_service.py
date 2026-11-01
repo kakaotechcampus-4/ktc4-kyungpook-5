@@ -213,6 +213,8 @@ class AudioStream:
                 raise AudioProtocolError("AUDIO_METADATA_REQUIRED", "오디오 메타데이터 다음에 binary 프레임을 보내 주세요.")
             meta = self.pending_meta
             pcm = message["bytes"]
+            if len(pcm) % 2:
+                raise AudioProtocolError("AUDIO_ODD_PCM", "PCM16 오디오는 2바이트 샘플 단위여야 합니다.")
             if len(pcm) != (meta["endMs"] - meta["startMs"]) * BYTES_PER_MS:
                 raise AudioProtocolError("AUDIO_SIZE_MISMATCH", "PCM 길이가 startMs/endMs와 맞지 않습니다.")
             for utterance in self.vad.feed(pcm):

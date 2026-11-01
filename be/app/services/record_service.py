@@ -60,13 +60,14 @@ async def upload_record(
         if event is None or event.club_id != club_id:
             raise ValidationFailed({"eventId": "같은 조직의 행사만 연결할 수 있습니다."})
 
+    storage_key = await run_in_threadpool(save_file, club_id, file_name, content)
     record = Record(
         club_id=club_id,
         event_id=event_id,
         file_name=file_name,
         file_type=file_type,
         category=category,
-        storage_key=await run_in_threadpool(save_file, club_id, file_name, content),
+        storage_key=storage_key,
         size=len(content),
         parse_status=RecordParseStatus.PARSING,
     )
@@ -80,9 +81,19 @@ async def upload_record(
             "params": error.params,
             "debugMessage": error.debug_message,
         }
-    session.add(record)
-    await session.commit()
-    await session.refresh(record)
+    except Exception:
+        # Parsing is done after the object is written. Remove the object when a
+        # parser unexpectedly fails so a rejected upload cannot leak storage.
+        await run_in_threadpool(delete_file, storage_key)
+        raise
+    try:
+        session.add(record)
+        await session.commit()
+        await session.refresh(record)
+    except Exception:
+        await session.rollback()
+        await run_in_threadpool(delete_file, storage_key)
+        raise
     if record.parse_status == RecordParseStatus.COMPLETED:
         return await index_record(session, record_id=record.id)
     return record

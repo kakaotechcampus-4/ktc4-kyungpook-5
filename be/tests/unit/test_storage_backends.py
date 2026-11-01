@@ -44,6 +44,21 @@ def test_s3_read_uses_saved_key(monkeypatch):
     assert calls == [{"Bucket": "private", "Key": "club-1/file.csv"}]
 
 
+def test_s3_delete_uses_saved_key(monkeypatch):
+    calls = []
+    client = SimpleNamespace(delete_object=lambda **kwargs: calls.append(kwargs))
+    monkeypatch.setitem(sys.modules, "boto3", SimpleNamespace(client=lambda service, region_name: client))
+    monkeypatch.setattr(storage, "get_settings", lambda: SimpleNamespace(s3_bucket="private", s3_region="ap-northeast-2"))
+    storage.delete_file("s3:club-1/file.csv")
+    assert calls == [{"Bucket": "private", "Key": "club-1/file.csv"}]
+
+
+def test_s3_requires_bucket_for_delete(monkeypatch):
+    monkeypatch.setattr(storage, "get_settings", lambda: SimpleNamespace(s3_bucket="", s3_region="ap-northeast-2"))
+    with pytest.raises(RuntimeError, match="S3_BUCKET"):
+        storage.delete_file("s3:club-1/file.csv")
+
+
 def test_local_read_blocks_escape(tmp_path, monkeypatch):
     monkeypatch.setattr(storage, "get_settings", lambda: SimpleNamespace(storage_dir=str(tmp_path)))
     with pytest.raises(ValueError):
