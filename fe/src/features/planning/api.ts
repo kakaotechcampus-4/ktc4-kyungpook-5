@@ -17,6 +17,9 @@ export const planningApi = {
   generate: (eventId: string, body: S['PlanGenerateIn']) =>
     apiPost<S['PlanViewOut']>(`${plan(eventId)}/generate`, body),
 
+  review: (eventId: string, expectedRevision: number) =>
+    apiPost<S['PlanReviewOut']>(`${plan(eventId)}/review`, { expectedRevision }),
+
   // 단계·Action 세부 수정 (#106 ④)
   updateStep: (stepId: string, body: S['StepUpdateIn']) =>
     apiPatch<S['PlannedStepOut']>(`/steps/${encodeURIComponent(stepId)}`, body),
