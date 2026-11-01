@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardApi } from '@/features/dashboard/api'
 import type { components } from '@/shared/api/schema'
@@ -156,6 +156,19 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const locked = useRef(false)
+  const conversation = useRef<HTMLDivElement>(null)
+  const followLatest = useRef(true)
+  const [hasUnseenReply, setHasUnseenReply] = useState(false)
+
+  useLayoutEffect(() => {
+    const element = conversation.current
+    if (!element || !turns.length) return
+    if (followLatest.current) {
+      element.scrollTop = element.scrollHeight
+    } else {
+      setHasUnseenReply(true)
+    }
+  }, [turns])
   const send = async (text: string) => {
     const message = text.trim()
     if (!clubId || !message || locked.current) return
@@ -206,7 +219,19 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
           </button>
         ))}
       </div>
-      <div aria-live="polite" className="my-5 max-h-[min(55vh,560px)] space-y-4 overflow-y-auto pr-1">
+      <div
+        ref={conversation}
+        aria-live="polite"
+        aria-label="토리 대화 내용"
+        tabIndex={0}
+        onScroll={(event) => {
+          const element = event.currentTarget
+          const atBottom = element.scrollHeight - element.clientHeight - element.scrollTop < 24
+          followLatest.current = atBottom
+          if (atBottom) setHasUnseenReply(false)
+        }}
+        className="my-5 max-h-[min(55vh,560px)] space-y-4 overflow-y-auto pr-1"
+      >
         {turns.map((turn) => (
           <div key={turn.id} className="space-y-2">
             <p className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-xl bg-blue-600 p-3 text-caption text-white">
@@ -216,6 +241,20 @@ export function ToriChat({ clubId }: { clubId: string | null }) {
           </div>
         ))}
       </div>
+      {hasUnseenReply && (
+        <button
+          type="button"
+          className="mb-3 self-end text-caption font-semibold text-blue-700 underline"
+          onClick={() => {
+            const element = conversation.current
+            if (element) element.scrollTop = element.scrollHeight
+            followLatest.current = true
+            setHasUnseenReply(false)
+          }}
+        >
+          최신 답변 보기
+        </button>
+      )}
       {busy && (
         <p role="status" className="pb-3 text-caption text-mute">
           토리가 확인하고 있어요…
