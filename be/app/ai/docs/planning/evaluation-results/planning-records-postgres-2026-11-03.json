@@ -1,0 +1,235 @@
+{
+  "data": "synthetic",
+  "database": "isolated pgvector",
+  "steps": [
+    {
+      "path": "/api/v1/auth/signup",
+      "status": 201,
+      "duration_seconds": 0.13
+    },
+    {
+      "path": "/api/v1/auth/login",
+      "status": 200,
+      "duration_seconds": 0.045
+    },
+    {
+      "path": "/api/v1/clubs",
+      "status": 201,
+      "duration_seconds": 0.012
+    },
+    {
+      "path": "/api/v1/events",
+      "status": 201,
+      "duration_seconds": 0.038
+    },
+    {
+      "path": "/api/v1/records",
+      "status": 201,
+      "duration_seconds": 0.839
+    },
+    {
+      "path": "/api/v1/events/evt_qUSKQzapHP2dEBki19qwa/plan/chat",
+      "status": 200,
+      "duration_seconds": 14.724
+    },
+    {
+      "path": "/api/v1/events/evt_qUSKQzapHP2dEBki19qwa/plan/chat",
+      "status": 200,
+      "duration_seconds": 15.998
+    },
+    {
+      "path": "/api/v1/events/evt_qUSKQzapHP2dEBki19qwa/plan",
+      "status": 200,
+      "duration_seconds": 0.017
+    },
+    {
+      "path": "/api/v1/events/evt_qUSKQzapHP2dEBki19qwa/plan/chat",
+      "status": 200,
+      "duration_seconds": 7.6
+    }
+  ],
+  "commit": "a7b1afaf206dbbf23b109dfa8c1d71ad3f4d8c79",
+  "dirty": false,
+  "indexed": true,
+  "views": [
+    {
+      "reply": "MT로 반영했어요. 참가비는 25,000원으로 정하고, 날짜·인원·장소는 미정으로 보류해둘게요.\n\n현재 조건으로 검토용 MT 계획 초안을 만들어볼까요?",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "eventType": "MT",
+          "headcount": null,
+          "feePerPerson": 25000,
+          "startDate": null,
+          "endDate": null,
+          "location": null,
+          "budgetTotal": null
+        },
+        "conditionMeta": {
+          "event_type": {
+            "status": "specified",
+            "evidenceMessageId": "233c3a2e-7706-469f-9b53-a5261222655b",
+            "evidenceQuote": "MT를 준비해."
+          },
+          "fee_per_person": {
+            "status": "specified",
+            "evidenceMessageId": "233c3a2e-7706-469f-9b53-a5261222655b",
+            "evidenceQuote": "올해 참가비는 25000원으로 정할게."
+          }
+        },
+        "deferredTopics": [
+          "dates",
+          "headcount",
+          "location"
+        ]
+      },
+      "changedFields": [
+        "event_type",
+        "fee_per_person"
+      ],
+      "recordLookup": null,
+      "generationReadiness": {
+        "canGenerate": true,
+        "reasons": []
+      },
+      "generationResult": null,
+      "historyUsage": {
+        "messageCount": 6,
+        "maxMessages": 60,
+        "nearLimit": false
+      },
+      "baseRevision": 1
+    },
+    {
+      "reply": "2025년 봄 MT의 1인 참가비는 **45,000원**이었어요.\n\n- **출처:** 「2025 봄 MT 참가비.csv」\n- **위치:** 2행\n\n올해 참가비 **25,000원은 변경하지 않았어요.**",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "eventType": "MT",
+          "headcount": null,
+          "feePerPerson": 25000,
+          "startDate": null,
+          "endDate": null,
+          "location": null,
+          "budgetTotal": null
+        },
+        "conditionMeta": {
+          "event_type": {
+            "status": "specified",
+            "evidenceMessageId": "233c3a2e-7706-469f-9b53-a5261222655b",
+            "evidenceQuote": "MT를 준비해."
+          },
+          "fee_per_person": {
+            "status": "specified",
+            "evidenceMessageId": "233c3a2e-7706-469f-9b53-a5261222655b",
+            "evidenceQuote": "올해 참가비는 25000원으로 정할게."
+          }
+        },
+        "deferredTopics": [
+          "dates",
+          "headcount",
+          "location"
+        ]
+      },
+      "changedFields": [],
+      "recordLookup": {
+        "status": "available",
+        "query": "자료함에서 2025년 봄 MT 기록을 찾아, 당시 1인 참가비가 얼마였는지 확인하고 실제 문서명과 자료 위치를 함께 알려줘. 현재 2026년 MT 참가비 25,000원은 변경하지 말 것.",
+        "reason": null,
+        "result": {
+          "facts": [
+            {
+              "content": "2025년 봄 MT의 1인 참가비는 45,000원이다. 문서명은 「2025 봄 MT 참가비.csv」이며 자료 위치는 2행이다.",
+              "sources": [
+                {
+                  "recordId": "rec_aLFz612RrnuIIaJIgGwRH",
+                  "fileName": "2025 봄 MT 참가비.csv",
+                  "location": {
+                    "label": "2행"
+                  }
+                }
+              ]
+            }
+          ],
+          "notFound": [],
+          "conflicts": []
+        }
+      },
+      "generationReadiness": {
+        "canGenerate": true,
+        "reasons": []
+      },
+      "generationResult": null,
+      "historyUsage": {
+        "messageCount": 10,
+        "maxMessages": 60,
+        "nearLimit": false
+      },
+      "baseRevision": 2
+    },
+    {
+      "reply": "올해 MT 1인 참가비를 **45,000원**으로 변경했어요.",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "eventType": "MT",
+          "headcount": null,
+          "feePerPerson": 45000,
+          "startDate": null,
+          "endDate": null,
+          "location": null,
+          "budgetTotal": null
+        },
+        "conditionMeta": {
+          "event_type": {
+            "status": "specified",
+            "evidenceMessageId": "233c3a2e-7706-469f-9b53-a5261222655b",
+            "evidenceQuote": "MT를 준비해."
+          },
+          "fee_per_person": {
+            "status": "specified",
+            "evidenceMessageId": "a21bbd7f-6228-4f3f-a534-1ca76599ea35",
+            "evidenceQuote": "올해도 그 금액으로 하자."
+          }
+        },
+        "deferredTopics": [
+          "dates",
+          "headcount",
+          "location"
+        ]
+      },
+      "changedFields": [
+        "fee_per_person"
+      ],
+      "recordLookup": null,
+      "generationReadiness": {
+        "canGenerate": true,
+        "reasons": []
+      },
+      "generationResult": null,
+      "historyUsage": {
+        "messageCount": 14,
+        "maxMessages": 60,
+        "nearLimit": false
+      },
+      "baseRevision": 3
+    }
+  ],
+  "lookup_restored": true,
+  "accepted_after_lookup": true,
+  "success": true,
+  "model": "gpt-5.6-luna",
+  "embedding_model": "text-embedding-3-small",
+  "agent_prompt_version": "planning-agent-v6",
+  "fixture": {
+    "file_name": "2025 봄 MT 참가비.csv",
+    "csv": "행사,항목,금액\n2025 봄 MT,1인 참가비,45000\n",
+    "current_fee_before_lookup": 25000,
+    "expected_past_fee": 45000
+  },
+  "limits": [
+    "합성 자료 한 건과 실제 모델 대화 한 세션이며 일반 품질·평균 지연이 아님",
+    "브라우저 UI·운영 DB·운영 배포 검증이 아님",
+    "첫 임시 도구 실행은 ASGI 요청별 루프 변경으로 중단. 단일 lifespan으로 수정 후 기록한 실행"
+  ]
+}

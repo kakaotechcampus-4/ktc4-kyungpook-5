@@ -1,6 +1,6 @@
 # BE-AI 데이터 계약 (contracts.py)
 
-새 P1의 구체적인 공개 입출력 제안은 [P1 공개 계약 초안](planning/p1-public-contract.md)을 따른다. 화면용 결과와 BE 보관 상태를 구분하며, #180/#181에서 타입과 실행 함수를 구현했다. 제품 BE/FE 팀 합의는 아직 남아 있다.
+새 P1의 공개 입출력은 [P1 공개 계약](planning/p1-public-contract.md)을 따른다. 화면용 결과와 BE 보관 상태를 구분하며, #180/#181에서 타입과 실행 함수를 구현했다. #235/#236에서 제품 BE의 실제 검색·상세 응답·마지막 조회 복원을 연결했다. 제품 출처 카드의 FE 연결은 후속이다.
 
 새 P1 Agent의 제품 연결은 [P1 인계 안내](planning/p1-handoff.md)와 [협업 이슈 #179](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/179)에서 계약을 맞춘다. 실행 사용처가 없던 이전 계획 대화 요청/응답은 제거했다(#182). 현재는 `PlanningChatRequest`와 `PlanningPublicResult`를 사용한다.
 
@@ -11,7 +11,7 @@
 `app.ai` 경계를 위한 내부 계약이다.
 
 행사 계획(조건 수집·계획안 생성)과 기록 색인에 필요한 타입을 정의한다.
-기록 색인은 `app.ai.index_record`, P1은 `app.ai.chat_planning`과 `app.ai.generate_planning_preview`로 호출한다. P1의 제품 연동 계약은 BE/FE 협의 전이다.
+기록 색인은 `app.ai.index_record`, P1은 `app.ai.chat_planning`과 `app.ai.generate_planning_preview`로 호출한다. P1 검색 port와 제품 응답·복원 필드는 [인계 안내 §9](planning/p1-handoff.md#9-검색-기능을-연결하려면)를 따른다.
 회의 발화 처리는 #113에서 합의할 AI 초안을 [아래](#회의-발화-처리-초안)에 둔다.
 
 ## 왜 필요한가
