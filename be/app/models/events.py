@@ -80,6 +80,8 @@ class Event(IdMixin, TimestampMixin, Base):
 class EventCancelTask(IdMixin, TimestampMixin, Base):
     __tablename__ = "event_cancel_tasks"
     __id_prefix__ = "ect"
+    # 기존 20261102 migration의 인덱스와 맞춰 Alembic이 삭제로 판단하지 않게 한다.
+    __table_args__ = (Index("ix_event_cancel_tasks_event_order", "event_id", "task_order", unique=True),)
     event_id: Mapped[str] = mapped_column(String(ID_LENGTH), fk("events.id", ondelete="CASCADE"), nullable=False)
     task_order: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)

@@ -1,7 +1,8 @@
 """Single-server PCM stream framing and speech detection.
 
-The receiver only validates frames and segments audio. Bounded, ordered workers
-perform STT/persistence and AI independently, so model latency does not stall capture.
+The receiver only validates frames and segments audio. One ordered worker performs
+STT/persistence; each saved segment then gets its own AI task (capped), so a slow
+judgment neither delays the next one nor stalls capture (#240).
 """
 
 import asyncio
@@ -132,6 +133,7 @@ class AudioStream:
         finalize: Callable[[bool], Awaitable[None]],
         begin_finalizing: Callable[[], Awaitable[None]],
         rms_threshold: float = 450,
+        ai_concurrency: int = 4,
     ) -> None:
         self.meeting_id = meeting_id
         self.ws = websocket
@@ -142,7 +144,10 @@ class AudioStream:
         self.begin_finalizing = begin_finalizing
         self.vad = PcmVad(rms_threshold=rms_threshold)
         self.audio_queue: asyncio.Queue[Utterance | None] = asyncio.Queue(maxsize=8)
-        self.ai_queue: asyncio.Queue[str | None] = asyncio.Queue(maxsize=16)
+        # 동시에 도는 AI 처리 수의 상한. 말이 몰려도 게이트웨이 호출이 한꺼번에 나가지 않게 한다.
+        # 자리를 기다리는 처리는 ai_tasks 안에서 들어온 순서대로 기다리고, 전사는 막지 않는다.
+        self.ai_slots = asyncio.Semaphore(ai_concurrency)
+        self.ai_tasks: set[asyncio.Task] = set()
         self.audio_seq = 0
         self.end_ms = 0
         self.stream_offset_ms = 0
@@ -171,7 +176,9 @@ class AudioStream:
                     return
                 segment_id = await self.transcribe(utterance)
                 if segment_id:
-                    await self.ai_queue.put(segment_id)
+                    # 기다리지 않고 바로 다음 음성 구간으로 간다. 전사는 발화 순서대로 저장되므로
+                    # 이 발화의 처리가 읽는 앞 발화(문맥)는 이미 DB에 있다.
+                    self._start_decision(segment_id)
             except SttError as exc:
                 await self.error(
                     exc.code, exc.message,
@@ -184,12 +191,16 @@ class AudioStream:
             finally:
                 self.audio_queue.task_done()
 
-    async def _ai_worker(self) -> None:
-        while True:
-            segment_id = await self.ai_queue.get()
+    def _start_decision(self, segment_id: str) -> None:
+        task = asyncio.create_task(self._decide_one(segment_id))
+        self.ai_tasks.add(task)
+        task.add_done_callback(self.ai_tasks.discard)
+
+    async def _decide_one(self, segment_id: str) -> None:
+        # 앞 발화의 처리가 끝나기를 기다리지 않는다. 결과는 끝나는 대로 화면에 가므로
+        # 발화 순서와 다르게 도착할 수 있고, 화면은 segmentId로 맞춘다(AI-MEET-06).
+        async with self.ai_slots:
             try:
-                if segment_id is None:
-                    return
                 await self.decide(segment_id)
             except Exception:
                 await self.error(
@@ -197,8 +208,6 @@ class AudioStream:
                     "전사는 저장했지만 자료 답·후보 처리에 실패했습니다.",
                     segmentId=segment_id,
                 )
-            finally:
-                self.ai_queue.task_done()
 
     def _enqueue(self, utterance: Utterance | None) -> None:
         if utterance is None:
@@ -253,10 +262,7 @@ class AudioStream:
                 _recorders.discard(self.meeting_id)
                 raise
             self.started = True
-            self.tasks = [
-                asyncio.create_task(self._audio_worker()),
-                asyncio.create_task(self._ai_worker()),
-            ]
+            self.tasks = [asyncio.create_task(self._audio_worker())]
             await self.send({
                 "type": "audio.ready", "format": "pcm_s16le",
                 "sampleRate": SAMPLE_RATE, "channels": 1, "maxFrameMs": MAX_FRAME_MS,
@@ -290,11 +296,12 @@ class AudioStream:
         return False
 
     async def _drain(self) -> None:
+        # 회의 종료·연결 끊김 모두 남은 전사를 마치고, 그 뒤 진행 중인 AI 처리를 모두 끝낸다.
+        # 전사 작업이 끝난 뒤에는 새 처리가 생기지 않으므로 이 시점의 ai_tasks가 전부다.
         if self.tasks:
             await self.audio_queue.put(None)
             await self.tasks[0]
-            await self.ai_queue.put(None)
-            await self.tasks[1]
+            await asyncio.gather(*self.ai_tasks)
 
     async def run(self) -> None:
         ended = False
@@ -335,8 +342,10 @@ class AudioStream:
             finally:
                 if self.started:
                     _recorders.discard(self.meeting_id)
-                for task in self.tasks:
+                # 정상 흐름에서는 _drain이 모두 끝냈다. 서버 종료처럼 run 자체가 취소된 경우만 남는다.
+                pending = [*self.tasks, *self.ai_tasks]
+                for task in pending:
                     if not task.done():
                         task.cancel()
-                if self.tasks:
-                    await asyncio.gather(*self.tasks, return_exceptions=True)
+                if pending:
+                    await asyncio.gather(*pending, return_exceptions=True)

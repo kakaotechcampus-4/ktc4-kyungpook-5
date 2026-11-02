@@ -191,6 +191,10 @@ export class MeetingAudioTransport {
       case 'transcript.final':
         this.callbacks.onTranscript()
         break
+      case 'judgment':
+        if (event.meetingId !== undefined && event.meetingId !== this.meetingId) return
+        this.callbacks.onTranscript()
+        break
       case 'audio.no_transcript':
         this.publishGap(event)
         break

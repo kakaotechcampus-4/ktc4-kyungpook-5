@@ -9,6 +9,7 @@ import time
 from datetime import timedelta
 from typing import Any
 
+from pydantic_core import to_jsonable_python
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -86,6 +87,9 @@ async def decide_live_meeting_segment(
     extraction_ok = not isinstance(extracted, BaseException)
     # Public result validates route/kind/source ids; never turn lookup failure into NONE.
     trace = judged.trace if lookup_ok else None
+    # 판단 시간은 실패해도 AIError.trace에 남아 온다(contracts.md "비동기와 실패").
+    # trace가 없는 실패(AIError가 아닌 예외, 공개 계약 없음)는 잰 값이 없어 null로 둔다.
+    judge_trace = getattr(judged, "trace", None)
     if trace is not None:
         tools.extend(item.model_dump(mode="json") for item in trace.tool_calls)
     if extraction_ok:
@@ -110,6 +114,10 @@ async def decide_live_meeting_segment(
         tool_calls=tools,
         model_version=trace.model if trace is not None else "unavailable",
         policy_version=trace.prompt_version if trace is not None else "unavailable",
+        # 그때 넘긴 요청을 그대로 남긴다. 전사는 고치면 덮어써지므로 나중에 id·version으로
+        # 다시 찾으면 그때 모델이 본 입력과 달라진다(#117 학습 데이터).
+        judge_input=to_jsonable_python(payload),
+        judge_ms=judge_trace.judge_ms if judge_trace is not None else None,
     )
     # AI 계약은 snake_case지만 FE 저장 출처는 기존 camelCase를 유지한다.
     if lookup_ok:

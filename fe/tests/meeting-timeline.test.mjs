@@ -13,7 +13,7 @@ const source = await readFile(
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 })
-const { reconcileTimeline, sourceOf, transcriptTime, visibleDecision, meetingAnswers, meetingMicStatus, meetingAudioVisible, meetingToriVisible } = await import(
+const { reconcileTimeline, sourceOf, transcriptTime, visibleDecision, meetingAnswers, latestTranscriptStatus, meetingMicStatus, meetingAudioVisible, meetingToriVisible } = await import(
   `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
 )
 
@@ -52,6 +52,25 @@ function decision(id, parent, overrides = {}) {
     ...overrides,
   }
 }
+
+test('latest transcript status follows job and matching decision without masking errors', () => {
+  const old = transcript('old', 1)
+  const latest = transcript('latest', 2, { sourceVersion: 2 })
+  const transcripts = [old, latest]
+  const earlier = decision('earlier', old)
+  const outdated = decision('outdated', latest, { sources: [{ sourceId: latest.sourceId, sourceVersion: 1 }] })
+  const status = (decisions, meeting, job, error = false, current = latest) =>
+    latestTranscriptStatus(current, transcripts, decisions, meeting, job, error)
+  assert.equal(status([earlier], 'RECORDING', undefined), 'waiting')
+  assert.equal(status([earlier], 'RECORDING', 'RUNNING'), 'processing')
+  assert.equal(status([earlier, outdated], 'RECORDING', 'SUCCEEDED'), 'waiting')
+  assert.equal(status([decision('answer', latest)], 'RECORDING', 'SUCCEEDED'), null)
+  assert.equal(status([decision('none', latest, {kind: 'NO_LOOKUP'})], 'RECORDING', 'SUCCEEDED'), 'no-lookup')
+  assert.equal(status([], 'COMPLETED', 'SUCCEEDED'), null)
+  assert.equal(status([], 'RECORDING', 'FAILED'), null)
+  assert.equal(status([], 'RECORDING', undefined, true), null)
+  assert.equal(status([], 'RECORDING', undefined, false, {...latest, text: ' '}), null)
+})
 
 test('only final transcripts and their answers enter the timeline', () => {
   const final = transcript('final', 1)

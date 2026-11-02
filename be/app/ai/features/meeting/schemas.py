@@ -87,6 +87,11 @@ class JudgeUtteranceRequest(ContractModel):
         return self
 
 
+class MeetingSearchRequest(RecordSearchRequest):
+    """검색어와 별도로 원발화의 의문 맥락을 근거 판단에 전달한다."""
+    original_question: NonBlankStr
+
+
 # 판단 뒤 AI가 부르는 도구. records.search는 기록 검색, llm.generate는 답 작성이다
 ToolName = Literal["records.search", "llm.generate"]
 
@@ -170,7 +175,7 @@ class JudgeUtteranceResult(ContractModel):
     def _kind_matches_fields(self) -> Self:
         """kind마다 있어야 할 값을 강제한다.
 
-        빈 답이나 출처 없는 답이 정상 결과로 나가면 "기록에 없음"과 구분되지 않는다(AI-MEET-07).
+        빈 답이나 출처 없는 답이 정상 결과로 나가면 검색한 자료에서 확인하지 못한 경우와 구분되지 않는다(AI-MEET-07).
         """
         if self.kind == "NO_LOOKUP":
             if self.route != "NONE":

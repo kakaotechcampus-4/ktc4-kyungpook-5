@@ -2679,6 +2679,7 @@ export interface components {
             /** Baserevision */
             baseRevision: number;
             generationReadiness?: components["schemas"]["GenerationReadinessOut"] | null;
+            lastRecordLookup?: components["schemas"]["RecordLookupOut"] | null;
         };
         /**
          * PlanStepsSnapshotOut
@@ -2977,6 +2978,42 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** RecordEvidenceConflictOut */
+        RecordEvidenceConflictOut: {
+            /** Description */
+            description: string;
+            /** Values */
+            values: components["schemas"]["RecordEvidenceFactOut"][];
+        };
+        /** RecordEvidenceFactOut */
+        RecordEvidenceFactOut: {
+            /** Content */
+            content: string;
+            /** Sources */
+            sources: components["schemas"]["RecordEvidenceSourceOut"][];
+        };
+        /** RecordEvidenceLocationOut */
+        RecordEvidenceLocationOut: {
+            /** Label */
+            label: string;
+        };
+        /** RecordEvidenceOut */
+        RecordEvidenceOut: {
+            /** Facts */
+            facts: components["schemas"]["RecordEvidenceFactOut"][];
+            /** Notfound */
+            notFound: string[];
+            /** Conflicts */
+            conflicts: components["schemas"]["RecordEvidenceConflictOut"][];
+        };
+        /** RecordEvidenceSourceOut */
+        RecordEvidenceSourceOut: {
+            /** Recordid */
+            recordId: string;
+            /** Filename */
+            fileName: string;
+            location: components["schemas"]["RecordEvidenceLocationOut"];
+        };
         /**
          * RecordFileType
          * @enum {string}
@@ -2999,6 +3036,7 @@ export interface components {
             query: string | null;
             /** Reason */
             reason: string | null;
+            result?: components["schemas"]["RecordEvidenceOut"] | null;
         };
         /** RecordOut */
         RecordOut: {
@@ -3363,10 +3401,29 @@ export interface components {
          * @enum {string}
          */
         TaskSuggestionStatus: "PROPOSED" | "ACCEPTED";
+        /** ToriClarification */
+        ToriClarification: {
+            /** Originalquestion */
+            originalQuestion: string;
+            /** Question */
+            question: string;
+            /** Options */
+            options?: string[];
+        };
+        /** ToriClarificationContext */
+        ToriClarificationContext: {
+            /** Originalquestion */
+            originalQuestion: string;
+            /** Question */
+            question?: string | null;
+            /** Options */
+            options?: string[];
+        };
         /** ToriMessageIn */
         ToriMessageIn: {
             /** Message */
             message: string;
+            clarificationContext?: components["schemas"]["ToriClarificationContext"] | null;
         };
         /** ToriMessageOut */
         ToriMessageOut: {
@@ -3379,6 +3436,7 @@ export interface components {
             reply: string;
             records?: components["schemas"]["RecordSearchData"] | null;
             recordAnswer?: components["schemas"]["ToriRecordAnswer"] | null;
+            clarification?: components["schemas"]["ToriClarification"] | null;
             /** Recordtotalcount */
             recordTotalCount?: number | null;
             tasks?: components["schemas"]["ToriTasks"] | null;

@@ -1,7 +1,9 @@
 """인증된 소속의 토리 조회. 내용 변경이나 예약은 수행하지 않는다."""
 from datetime import UTC, date, datetime, time, timedelta
+import re
 from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,11 +18,37 @@ from app.models.records import Record
 from app.models.reminders import ConfirmedTask
 from app.schemas.common import Envelope
 from app.schemas.reminders import ConfirmedTaskOut
-from app.schemas.tori import ToriMessageIn, ToriMessageOut, ToriRecordAnswer
+from app.schemas.tori import ToriClarification, ToriMessageIn, ToriMessageOut, ToriRecordAnswer
 from app.services import event_service, record_discovery_service
 
 router = APIRouter(prefix='/api/v1/clubs/{club_id}/tori', tags=['tori'])
 TZ = ZoneInfo('Asia/Seoul')
+
+
+def _clear_clarification_choice(message: str, options: list[str], today: date) -> bool:
+    """명시적 선택만 인정한다. 애매한 답을 특정 행사로 좁히지 않는다."""
+    if not options:
+        return True  # 예전 originalQuestion-only 요청은 기존 모델 처리 경로를 유지한다.
+    text = re.sub(r'[^0-9가-힣a-z]', '', message.lower())
+    if any(word in text for word in ('전체', '모두', '전부')):
+        return True
+    if re.fullmatch(r'(?:제)?(?:첫번째|첫째|두번째|둘째|세번째|셋째|[123]번?)(?:요|이요|로|으로)?', text):
+        return True
+    normalized_options = [re.sub(r'[^0-9가-힣a-z]', '', option.lower()) for option in options]
+    matches = [option for option in normalized_options if len(text) >= 2 and len(option) >= 2
+               and (text in option or option in text)]
+    if len(matches) == 1:
+        return True
+    explicit_years = set(re.findall(r'(?:19|20)\d{2}', text))
+    for word, year in (('재작년', today.year - 2), ('작년', today.year - 1), ('올해', today.year)):
+        if word in text:
+            explicit_years.add(str(year))
+            break
+    if explicit_years:
+        if len(explicit_years) > 1:
+            return True
+        return sum(any(year in option for year in explicit_years) for option in normalized_options) <= 1
+    return len(matches) == 1
 
 
 @router.post('/messages', response_model=Envelope[ToriMessageOut])
@@ -30,9 +58,24 @@ async def message(club_id: str, body: ToriMessageIn,
                   session: AsyncSession = Depends(get_session)) -> Envelope[ToriMessageOut]:
     # 권한 확인 뒤 모델 호출 중 DB 연결을 점유하지 않는다.
     await session.commit()
+    context = body.clarification_context
+    follow_up = None
+    question = body.message
     try:
-        result = await ai.classify_tori_intent(ai.ToriIntentRequest(
-            message=body.message, reference_date=datetime.now(TZ).date(), timezone='Asia/Seoul'))
+        if context is not None:
+            resolution = await ai.build_tori_record_query(ai.ToriRecordQueryRequest(
+                question=context.original_question, follow_up=body.message,
+                clarification_question=context.question, clarification_options=tuple(context.options)))
+            if resolution.disposition == 'follow_up':
+                question = context.original_question
+                follow_up = body.message
+                result = ai.ToriIntentResult(intent='record_search', query=resolution.query)
+            else:
+                result = await ai.classify_tori_intent(ai.ToriIntentRequest(
+                    message=body.message, reference_date=datetime.now(TZ).date(), timezone='Asia/Seoul'))
+        else:
+            result = await ai.classify_tori_intent(ai.ToriIntentRequest(
+                message=body.message, reference_date=datetime.now(TZ).date(), timezone='Asia/Seoul'))
     except ai.AIConfigError as error:
         raise AIMisconfigured() from error
     except ai.AIError as error:
@@ -40,8 +83,15 @@ async def message(club_id: str, body: ToriMessageIn,
     # 외부 호출 중 권한이 바뀔 수 있어 조회 전에 다시 검증한다.
     from app.core.deps import ensure_member
     await ensure_member(session, club_id=club_id, account=account)
+    ambiguous_follow_up = (context is not None and follow_up is not None
+                           and not _clear_clarification_choice(follow_up, context.options, datetime.now(TZ).date()))
+    if ambiguous_follow_up:
+        # 알 수 없는 선택을 모델이 임의 연도로 좁히지 않도록 원질문 범위를 요약한다.
+        result = ai.ToriIntentResult(intent='record_search', query=question[:200].strip())
     if result.intent == 'record_search':
-        if not result.query or len(result.query) > 200:
+        if not result.query or not result.query.strip() or len(result.query) > 200:
+            if follow_up is not None:
+                raise AIUnavailable()
             return Envelope(data=ToriMessageOut(intent='clarify', reply='찾을 자료를 조금 더 짧게 알려 주세요.'))
         chunks: list[ai.RetrievedChunk] = []
         lexical: list[ai.RetrievedChunk] = []
@@ -91,6 +141,7 @@ async def message(club_id: str, body: ToriMessageIn,
                 chunk.source.record_id for chunk in chunks
             }),
         )
+        clarification = None
         if records['semantic_status'] == 'UNAVAILABLE' and not chunks:
             answer = ToriRecordAnswer(status='failed', **answer_info)
         elif not chunks:
@@ -99,7 +150,11 @@ async def message(club_id: str, body: ToriMessageIn,
             await session.commit()
             try:
                 generated = await ai.answer_tori_records(ai.ToriRecordAnswerRequest(
-                    question=body.message, today=datetime.now(TZ).date(), chunks=tuple(chunks)))
+                    question=question, follow_up=follow_up,
+                    clarification_question=context.question if follow_up is not None else None,
+                    clarification_options=tuple(context.options) if follow_up is not None else (),
+                    clarification_allowed=follow_up is None,
+                    today=datetime.now(TZ).date(), chunks=tuple(chunks)))
             except ai.AIError:
                 answer = ToriRecordAnswer(status='failed', **answer_info)
             else:
@@ -107,7 +162,28 @@ async def message(club_id: str, body: ToriMessageIn,
                 facts = [*generated.facts, *(value for conflict in generated.conflicts for value in conflict.values)]
                 def fact_out(fact):
                     return {'text': fact.content, 'sources': [source.model_dump() for source in fact.sources]}
-                if any(source not in allowed for fact in facts for source in fact.sources):
+                if generated.status == 'clarification':
+                    if follow_up is not None:
+                        answer = ToriRecordAnswer(status='failed', **answer_info)
+                    else:
+                        limited = (answer_info['semantic_status'] != 'AVAILABLE'
+                                   or answer_info['unindexed_count'] > 0
+                                   or answer_info['candidate_limit_reached']
+                                   or answer_info['lexical_omitted']
+                                   or answer_info['filename_only_unanalyzed_count'] > 0)
+                        try:
+                            if not generated.clarification_question or not generated.clarification_question.strip():
+                                raise ValueError('명확화 질문이 비어 있습니다')
+                            clarification = ToriClarification(
+                                original_question=question,
+                                question=('현재 확인한 자료 기준으로, ' if limited else '')
+                                + generated.clarification_question,
+                                options=list(generated.clarification_options))
+                        except (ValidationError, ValueError):
+                            answer = ToriRecordAnswer(status='failed', **answer_info)
+                        else:
+                            answer = ToriRecordAnswer(status='insufficient', **answer_info)
+                elif any(source not in allowed for fact in facts for source in fact.sources):
                     answer = ToriRecordAnswer(status='failed', **answer_info)
                 else:
                     answer = ToriRecordAnswer(
@@ -130,6 +206,7 @@ async def message(club_id: str, body: ToriMessageIn,
             indexed_ids = {record.id for record in rows if record.parse_status == RecordParseStatus.INDEXED}
             if ids != current or not semantic_ids.issubset(indexed_ids):
                 answer = ToriRecordAnswer(status='failed', **answer_info)
+                clarification = None
             elif lexical:
                 current_blocks = {
                     (record.id, record.file_name, block.get('location', {}).get('label'), block.get('text'))
@@ -139,14 +216,20 @@ async def message(club_id: str, body: ToriMessageIn,
                 if any((chunk.source.record_id, chunk.source.file_name,
                         chunk.source.location.label, chunk.text) not in current_blocks for chunk in lexical):
                     answer = ToriRecordAnswer(status='failed', **answer_info)
+                    clarification = None
         item_ids = {item.id for item in records['items']}
         if item_ids:
             current_items = set((await session.scalars(select(Record.id).where(
                 Record.id.in_(item_ids), Record.club_id == club_id))).all())
             records['items'] = [item for item in records['items'] if item.id in current_items]
+        if clarification is not None:
+            return Envelope(data=ToriMessageOut(intent='record_search', reply=clarification.question,
+                                                 clarification=clarification))
         reply = {'answered': '자료에서 확인한 내용이에요.', 'partial': '자료에서 일부 내용을 확인했어요.',
                  'insufficient': '검색한 자료에서 답의 근거를 충분히 찾지 못했어요.',
                  'failed': '자료 답변을 만들지 못했어요. 검색 결과를 확인해 주세요.'}[answer.status]
+        if ambiguous_follow_up:
+            reply = '행사나 연도를 특정하지 않고 원래 질문의 자료 범위를 살펴봤어요. ' + reply
         return Envelope(data=ToriMessageOut(intent=result.intent, reply=reply, record_answer=answer,
                                              records=records, record_total_count=total))
     if result.intent == 'task_list':

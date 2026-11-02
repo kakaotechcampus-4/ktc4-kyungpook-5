@@ -64,7 +64,9 @@ def _no_lookup(payload: dict) -> SimpleNamespace:
         utterance_id=payload["utterance"]["utterance_id"],
         source_version=payload["utterance"]["version"], route="NONE", kind="NO_LOOKUP",
         question=None, answer=None, sources=(),
-        trace=SimpleNamespace(model="fixture-boundary", prompt_version="fixture-v1", tool_calls=()),
+        trace=SimpleNamespace(
+            model="fixture-boundary", prompt_version="fixture-v1", judge_ms=1480, tool_calls=(),
+        ),
     )
 
 
@@ -144,6 +146,8 @@ async def test_lookup_error_preserves_extracted_candidate_and_explicit_partial_f
             {"tool": "meeting.lookup", "status": "FAILED", "code": "AIError"}
         ]}
         assert "raw-sensitive" not in str(job.error) + str(decision.tool_calls) + str(decision.reason_summary)
+        # trace 없이 실패하면 잰 판단 시간이 없다. 0으로 채우면 빠른 판단처럼 보인다
+        assert decision.judge_ms is None
         candidates = list(await session.scalars(select(TaskSuggestion).where(TaskSuggestion.decision_id == decision_id)))
         assert len(candidates) == 1 and candidates[0].id in job.result["taskSuggestionIds"]
 
@@ -229,3 +233,93 @@ async def test_edit_while_model_waits_marks_old_decision_stale_and_discards_cand
         assert current.version == 2 and current.decision_job_id is None
         assert job.result["taskSuggestionIds"] == []
         assert not list(await session.scalars(select(TaskSuggestion).where(TaskSuggestion.decision_id == decision_id)))
+
+
+async def _saved_meeting_with_earlier_utterances(session, texts: list[str]) -> tuple[str, list[str]]:
+    """확정 전사 여러 개를 순번대로 저장한다. 마지막이 판단할 발화다."""
+    club = Club(name="판단 입력 저장 테스트")
+    session.add(club)
+    await session.flush()
+    owner = Member(club_id=club.id, name="회의 운영진", role=MemberRole.OWNER)
+    session.add(owner)
+    await session.flush()
+    meeting = await meeting_service.create_meeting(
+        session, club_id=club.id, event_id=None, title="MT 준비",
+        language="ko-KR", recording_consent_confirmed=True, created_by=owner.id,
+    )
+    segments = [
+        TranscriptSegment(
+            meeting_id=meeting.id, seq=seq, text=text, is_final=True, version=1,
+            change_seq=seq, start_ms=(seq - 1) * 2000, end_ms=(seq - 1) * 2000 + 1500,
+        )
+        for seq, text in enumerate(texts, start=1)
+    ]
+    session.add_all(segments)
+    meeting.transcript_cursor = len(texts)
+    await session.commit()
+    return meeting.id, [segment.id for segment in segments]
+
+
+async def test_decision_keeps_judge_input_as_sent_even_after_earlier_transcript_is_edited(app_db, monkeypatch) -> None:
+    sent: list[dict] = []
+
+    async def judge(payload):
+        sent.append(payload)
+        return _no_lookup(payload)
+
+    async def extract(payload):
+        return []
+
+    monkeypatch.setattr(meeting_ai_service, "judge", judge)
+    monkeypatch.setattr(meeting_ai_service, "extract", extract)
+    texts = [
+        "오늘 회의 시작할게요",
+        "다음 달 MT 준비 얘기해 볼게요",
+        "숙소는 작년이랑 같은 데로 하죠",
+        "작년 숙소비 기억나는 사람?",
+        "저도 잘…",
+        "그때 얼마였지?",
+    ]
+    factory = db_session.get_sessionmaker()
+    async with factory() as session:
+        meeting_id, segment_ids = await _saved_meeting_with_earlier_utterances(session, texts)
+        _, decision = await _decide(session, meeting_id, segment_ids[-1])
+        decision_id = decision.id
+    # 판단 뒤 앞 발화의 전사를 고친다. version이 오르고 text가 덮어써진다
+    async with factory() as session:
+        edited = await session.get(TranscriptSegment, segment_ids[3])
+        edited.version, edited.text = 2, "작년 숙박비 기억나는 사람?"
+        await session.commit()
+    async with factory() as session:
+        decision = await session.get(ContextDecision, decision_id)
+        request = ai.JudgeUtteranceRequest.model_validate(decision.judge_input)
+        assert decision.judge_ms == 1480
+        assert request.utterance.utterance_id == segment_ids[-1] and request.utterance.text == "그때 얼마였지?"
+        # 앞 발화는 마지막 4개만, 오래된 것부터 넘겼다. 첫 발화는 빠진다
+        assert [(item.utterance_id, item.version, item.text) for item in request.context] == [
+            (segment_ids[seq], 1, texts[seq]) for seq in range(1, 5)
+        ]
+        assert request == ai.JudgeUtteranceRequest.model_validate(sent[0])
+
+
+async def test_failed_judge_keeps_judge_time_from_error_trace(app_db, monkeypatch) -> None:
+    async def judge(payload):
+        error = ai.AITimeoutError("회의 판단이 제한 시간 안에 끝나지 않았습니다")
+        error.trace = ai.JudgeTrace(model="fixture-boundary", prompt_version="fixture-v1", judge_ms=10004)
+        raise error
+
+    async def extract(payload):
+        return []
+
+    monkeypatch.setattr(meeting_ai_service, "judge", judge)
+    monkeypatch.setattr(meeting_ai_service, "extract", extract)
+    factory = db_session.get_sessionmaker()
+    async with factory() as session:
+        _, meeting_id, segment_id = await _saved_transcript(session)
+        _, decision = await _decide(session, meeting_id, segment_id)
+        decision_id = decision.id
+    async with factory() as session:
+        decision = await session.get(ContextDecision, decision_id)
+        assert decision.route == JudgeRoute.ERROR
+        assert decision.judge_ms == 10004
+        assert ai.JudgeUtteranceRequest.model_validate(decision.judge_input).utterance.utterance_id == segment_id

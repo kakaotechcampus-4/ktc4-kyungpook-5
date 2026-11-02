@@ -13,6 +13,33 @@
 별도 `ADMIN` 역할은 없으며, 일반 동아리원은 서비스 이용 대상이 아닙니다.
 기존 `MEMBER` 명단 행은 보존하지만 소속 API·WS 접근/초대/알림 대상에서 제외합니다.
 
+## P1 과거 기록 검색과 출처 복원 (#235, #236)
+
+`POST /api/v1/events/{id}/plan/chat`는 권한 확인된 동아리의 `PostgresRecordSearch`를
+`app.ai.chat_planning`에 주입합니다. 검색은 현재 행사 ID로 제한하지 않으며 같은
+동아리의 `INDEXED` 자료만 조회합니다. 검색어 정리와 근거 판단은 기존 AI가 담당합니다.
+
+- POST의 `recordLookup`은 이번 턴의 조회입니다. `result.facts[].sources`에
+  `recordId`, `fileName`, `location.label`을 제공하고 `notFound`, `conflicts`도 전달합니다.
+- 이번 턴 미조회는 null이며, `available`/`not_found`/`failed`/`rejected`와 구분합니다.
+- `GET /api/v1/events/{id}/plan`의 `lastRecordLookup`은 마지막 조회 스냅샷입니다.
+  새로고침에서 모델을 다시 호출하지 않습니다. 새 조회가 없으면 유지하고, 새 실패나
+  자료 없음이 있으면 그 상태로 갱신합니다. 실패를 옛 성공으로 숨기지 않습니다.
+- 옛 응답에는 `result`가 없을 수 있습니다. null을 자료 없음으로 해석하지 않습니다.
+  새 필드가 없는 기존 대화의 `lastRecordLookup`도 null입니다.
+- 검색만으로 현재 조건은 바뀌지 않습니다. 사용자의 채택은 별도 조건 변경 Tool이며,
+  버튼 생성은 저장한 최근 검색 사실을 사용하고 추가 검색하지 않습니다.
+
+이 응답은 FE 인계 계약입니다. 제품의 과거 자료 카드 구현과 OpenAPI 타입 재생성은
+FE 후속이며, AI 독립 테스트 UI를 제품에서 import하지 않습니다. 파일 열기는 실제
+`recordId`의 기존 권한 검증 파일 API를 사용합니다. 벡터·내부 Tool 이력은 전송하지 않습니다.
+
+배포 전에 선택한 DB를 백업하고 `20261103_planning_record_lookup`까지 migration을
+운영 절차로 적용합니다. nullable JSONB 컬럼 하나를 추가하며 기존 Agent 상태는
+그대로 둡니다. 자동 배포는 migration을 대신하지 않고 head 불일치에서 preflight가
+실패하므로, 적용 순서를 먼저 맞춥니다. 검색 연결만으로 전체 자료의 재색인이 필요한
+것은 아닙니다. 기존 자료의 `INDEXED`/`indexError`를 확인해 필요한 자료만 재시도합니다.
+
 ## 기술 스택
 
 | 항목 | 선택 | 결정 이유 / 메모 |
@@ -182,7 +209,10 @@ BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE �
 팀장 요청 ERD 변경안(2026-10-12)에서는 curl 흐름에 필요한 것만 넣었습니다(`2ffdcc2aee5b` 리비전).
 작업(`agent_jobs`)·판단(`context_decisions`)·할 일 후보(`task_suggestions`)를 나누고, 회의 판단 결과는
 `transcript_segments`가 아니라 `context_decisions`에 둡니다. 판단 근거는 원문 id와 그때의 version을
-`sources`(JSONB)에 고정하고, 전사가 정정되면 이전 판단을 `STALE`로 바꿉니다. 변경안의
+`sources`(JSONB)에 고정하고, 전사가 정정되면 이전 판단을 `STALE`로 바꿉니다. 회의 판단은 그때 AI에
+넘긴 요청(방금 발화와 앞 발화 4개)을 `judge_input`(JSONB)에, 판단 호출 시간을 `judge_ms`에 함께 남깁니다.
+전사는 정정되면 덮어써지므로, 판단 기록만으로 그때 입력을 다시 만들어 학습 데이터로 쓰기 위해서입니다
+(#241, AI #117). 두 값은 화면·API에 내보내지 않습니다. 변경안의
 `context_sources`/`context_source_versions`, `agent_job_attempts`, `agent_tool_calls`, `transcript_events`,
 `discord_channels`, `task_suggestion_evidence`, `todos`는 아직 만들지 않았습니다(재시도·근거 버전 이력·
 채널별 cursor가 필요해질 때 추가).

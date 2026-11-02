@@ -51,9 +51,16 @@ segmentId. GET transcripts restores this unrecognized interval; the FE can show
 that gap. Pure silence produces no utterance or transcript row. Provider failures
 persist as FAILED STT jobs.
 
-The receiver and bounded ordered STT/AI workers are separate. `AUDIO_BACKPRESSURE`
-is an explicit failure if queued speech exceeds the local worker capacity. There
-is no distributed queue or replay of raw frames. Abrupt disconnect keeps queued
+The receiver, one ordered STT worker, and AI processing are separate. STT saves
+segments in speech order. Each saved segment then starts its own AI task
+(judgment + task extraction) without waiting for earlier ones; at most 4 run at
+once (`ai_concurrency`) and the rest wait in arrival order without blocking STT
+(#240). Results are broadcast as each task finishes, so `judgment` messages can
+arrive out of speech order; clients match them by `segmentId`. `AUDIO_BACKPRESSURE`
+is an explicit failure only if queued speech exceeds the STT worker capacity (8
+segments); slow AI no longer causes it. There is no distributed queue or replay of
+raw frames. `end` and disconnect both wait for running AI tasks, so their decisions
+are still saved. Abrupt disconnect keeps queued
 utterances and flushes received tail, but does not claim a complete meeting.
 Reconnecting capture has no resume/replay contract yet: a new start after persisted
 speech is rejected with AUDIO_RESUME_UNSUPPORTED. End one live capture with `end`
