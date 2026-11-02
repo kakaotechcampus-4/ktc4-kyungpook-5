@@ -6,7 +6,8 @@ chat()/generate()는 세션을 세 번 나눠 쓴다: (1) 짧은 세션으로 �
 PROCESSING 기록, (2) 세션 없이 app.ai 호출, (3) 새 짧은 세션으로 저장 — base_revision은
 저장 직전에 다시 확인한다(그 사이 다른 요청이 먼저 저장했을 수 있어서).
 
-검색 포트(records=)는 #141에서 실제 구현 전까지 주입하지 않는다 — Tool 없이 동작한다.
+검색은 권한 확인한 동아리의 PostgresRecordSearch를 주입한다 (#236).
+검색 port는 조회할 때만 짧은 세션을 열며 현재 행사로 과거 자료를 제한하지 않는다.
 """
 
 import json
@@ -36,6 +37,7 @@ from app.models.common import IdempotencyKey
 from app.models.events import Action, Event, Step
 
 from app.services import event_rules
+from app.services.record_search_port import PostgresRecordSearch
 
 _KST = ZoneInfo("Asia/Seoul")
 
@@ -124,17 +126,14 @@ def _draft_out(draft: "ai.PlanningDraft") -> dict:
     }
 
 
+def _record_lookup_out(lookup: "ai.RecordLookupResult | None") -> dict | None:
+    # 공개 조회 결과만 직렬화한다. 벡터나 내부 Tool 이력은 이 계약에 들어 있지 않다.
+    return lookup.model_dump(mode="json") if lookup is not None else None
+
+
 def _view_out(result: "ai.PlanningPublicResult", *, base_revision: int) -> dict:
     view = result.view
-    record_lookup = (
-        {
-            "status": view.record_lookup.status,
-            "query": view.record_lookup.query,
-            "reason": view.record_lookup.reason,
-        }
-        if view.record_lookup is not None
-        else None
-    )
+    record_lookup = _record_lookup_out(view.record_lookup)
     generation_result = (
         {"status": view.generation_result.status, "reason": view.generation_result.reason}
         if view.generation_result is not None
@@ -263,6 +262,9 @@ async def _save_turn(
     event.fee_per_person = conditions.fee_per_person
 
     conversation.resume_state = result.next_state.model_dump(mode="json")
+    # null은 이번 턴 미조회다. 새 실패/없음은 저장하되 옛 성공을 최신으로 보이지 않는다.
+    if result.view.record_lookup is not None:
+        conversation.last_record_lookup = _record_lookup_out(result.view.record_lookup)
     # AI는 base_revision을 올리지 않고 받은 값을 그대로 돌려준다(p1-handoff.md §4).
     # 버전 증가는 BE 책임이다.
     conversation.base_revision = new_base_revision
@@ -485,7 +487,10 @@ async def chat(
             ),
         )
         try:
-            result = await ai.chat_planning(prepared.request)
+            result = await ai.chat_planning(
+                prepared.request,
+                records=PostgresRecordSearch(club_id=prepared.request.club_id),
+            )
         except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
             raise _translate_ai_error(error) from error
         return await _finish(prepared, result, user_message_text=message_content)
@@ -561,6 +566,7 @@ async def get_plan_screen(
     )
     return {
         "draft": _draft_out(draft),
+        "last_record_lookup": conversation.last_record_lookup if conversation is not None else None,
         "warnings": [w.get("message", "") for w in (event.plan_warnings or [])],
         # #198 이전에 저장한 행에는 name이 없다 — 스키마가 null로 받는다.
         "excluded_steps": event.plan_excluded_steps or [],

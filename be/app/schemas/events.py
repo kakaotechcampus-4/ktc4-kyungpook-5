@@ -415,10 +415,38 @@ class GenerationResultOut(CamelModel):
     reason: str | None
 
 
+class RecordEvidenceLocationOut(CamelModel):
+    label: str
+
+
+class RecordEvidenceSourceOut(CamelModel):
+    record_id: str
+    file_name: str
+    location: RecordEvidenceLocationOut
+
+
+class RecordEvidenceFactOut(CamelModel):
+    content: str
+    sources: list[RecordEvidenceSourceOut] = Field(min_length=1)
+
+
+class RecordEvidenceConflictOut(CamelModel):
+    description: str
+    values: list[RecordEvidenceFactOut] = Field(min_length=2)
+
+
+class RecordEvidenceOut(CamelModel):
+    facts: list[RecordEvidenceFactOut]
+    not_found: list[str]
+    conflicts: list[RecordEvidenceConflictOut]
+
+
 class RecordLookupOut(CamelModel):
     status: Literal["available", "not_found", "failed", "rejected"]
     query: str | None
     reason: str | None
+    # 옛 멱등 응답에는 상세 결과가 없다. null은 근거 없음으로 바꾸지 않는다.
+    result: RecordEvidenceOut | None = None
 
 
 class HistoryUsageOut(CamelModel):
@@ -463,3 +491,4 @@ class PlanScreenOut(CamelModel):
     history_usage: HistoryUsageOut | None = None
     base_revision: int
     generation_readiness: GenerationReadinessOut | None = None
+    last_record_lookup: RecordLookupOut | None = None

@@ -13,6 +13,33 @@
 별도 `ADMIN` 역할은 없으며, 일반 동아리원은 서비스 이용 대상이 아닙니다.
 기존 `MEMBER` 명단 행은 보존하지만 소속 API·WS 접근/초대/알림 대상에서 제외합니다.
 
+## P1 과거 기록 검색과 출처 복원 (#235, #236)
+
+`POST /api/v1/events/{id}/plan/chat`는 권한 확인된 동아리의 `PostgresRecordSearch`를
+`app.ai.chat_planning`에 주입합니다. 검색은 현재 행사 ID로 제한하지 않으며 같은
+동아리의 `INDEXED` 자료만 조회합니다. 검색어 정리와 근거 판단은 기존 AI가 담당합니다.
+
+- POST의 `recordLookup`은 이번 턴의 조회입니다. `result.facts[].sources`에
+  `recordId`, `fileName`, `location.label`을 제공하고 `notFound`, `conflicts`도 전달합니다.
+- 이번 턴 미조회는 null이며, `available`/`not_found`/`failed`/`rejected`와 구분합니다.
+- `GET /api/v1/events/{id}/plan`의 `lastRecordLookup`은 마지막 조회 스냅샷입니다.
+  새로고침에서 모델을 다시 호출하지 않습니다. 새 조회가 없으면 유지하고, 새 실패나
+  자료 없음이 있으면 그 상태로 갱신합니다. 실패를 옛 성공으로 숨기지 않습니다.
+- 옛 응답에는 `result`가 없을 수 있습니다. null을 자료 없음으로 해석하지 않습니다.
+  새 필드가 없는 기존 대화의 `lastRecordLookup`도 null입니다.
+- 검색만으로 현재 조건은 바뀌지 않습니다. 사용자의 채택은 별도 조건 변경 Tool이며,
+  버튼 생성은 저장한 최근 검색 사실을 사용하고 추가 검색하지 않습니다.
+
+이 응답은 FE 인계 계약입니다. 제품의 과거 자료 카드 구현과 OpenAPI 타입 재생성은
+FE 후속이며, AI 독립 테스트 UI를 제품에서 import하지 않습니다. 파일 열기는 실제
+`recordId`의 기존 권한 검증 파일 API를 사용합니다. 벡터·내부 Tool 이력은 전송하지 않습니다.
+
+배포 전에 선택한 DB를 백업하고 `20261103_planning_record_lookup`까지 migration을
+운영 절차로 적용합니다. nullable JSONB 컬럼 하나를 추가하며 기존 Agent 상태는
+그대로 둡니다. 자동 배포는 migration을 대신하지 않고 head 불일치에서 preflight가
+실패하므로, 적용 순서를 먼저 맞춥니다. 검색 연결만으로 전체 자료의 재색인이 필요한
+것은 아닙니다. 기존 자료의 `INDEXED`/`indexError`를 확인해 필요한 자료만 재시도합니다.
+
 ## 기술 스택
 
 | 항목 | 선택 | 결정 이유 / 메모 |

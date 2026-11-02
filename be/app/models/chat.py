@@ -41,6 +41,8 @@ class Conversation(IdMixin, TimestampMixin, Base):
     resume_state: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
     # 마지막 턴의 생성 가능 여부. 재접속 시 AI를 다시 부르지 않고 그대로 돌려준다.
     generation_readiness: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
+    # 화면용 마지막 조회. 미조회 턴에는 유지하며 AI 내부 상태와 별도로 복원한다 (#236).
+    last_record_lookup: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
 
     member: Mapped["Member"] = relationship()
     event: Mapped["Event"] = relationship(back_populates="conversations")
