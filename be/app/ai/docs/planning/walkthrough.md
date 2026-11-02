@@ -435,6 +435,33 @@ model_calls = 대화 Agent 호출 수 / generation_model_calls = 생성 내부 �
 
 신규 39개(요청/권유 5, 생성/버튼 22, 대화 연결 12)와 이번 커밋 대상의 AI 회귀 680개가 통과했다. 테스트는 모델 응답을 대체한 실제 graph 실행이며, 생성 품질·친근함·자율 선택의 정확도 검증은 아니다. 실제 모델과 P2 UI 검증은 아래 5-3 절과 평가 기록을 따른다.
 
+## 생성 전 재확인 반복을 비교하기 (#239)
+
+예를 들어 30명일 때 권유한 뒤 인원만 40명으로 바꾸었다고 하자. 예전 권유는 여전히 30명 기준이고, 현재 draft와 변경 이력은 40명 기준이다. 이 상태에서 “최신 조건으로 초안 만들어줘.”와 버튼을 비교한다.
+
+```text
+같은 저장 JSON을 두 번 독립 복원
+  ├─ 채팅: chat_planning → Agent의 생성 Tool 선택 → 권유/근거 검사 ┐
+  └─ 버튼: generate_planning_preview → 공통 최소 조건 검사         ├→ 생성 Graph
+```
+
+`scripts/check_planning_generation_requests.py`의 `build_fixture()`는 공개 함수와 실제 조건/권유 처리기에 고정 대화 응답을 주입해 세 상태를 만든다. `current_offer`는 정상 권유, `changed_headcount`는 30→40명 뒤 옛 권유, `specified_dates`는 같은 일정의 잠정→명시 변경 뒤 옛 권유다. 최초 작성에 외부 모델을 사용하지 않았고 저장본은 `tests/fixtures/eval/planning_generation_requests.json`이다. 실제 멘토 세션을 복원한 것은 아니다.
+
+`make_request()`는 매번 그 JSON에서 새 객체를 만든다. `attempt()`는 공개 함수를 실제 실행하고 기존 #196 관측기로 대화/생성/검증 구간을 기록한다. `capture_tools()`는 합성 Tool 요청과 처리 상태만 선별해, 최종 답변이 예외로 끝나도 직전 생성 요청을 확인할 수 있게 한다. 모델 응답의 추론 블록이나 공급자 오류 원문을 저장하지 않는다.
+
+고정 응답 검사에서는 오래된 `offer_id`를 넣으면 생성 0회, 같은 새 요청에 ID를 넣지 않으면 생성 1회가 되는 분기를 비교한다. 이는 검사가 지켜지는지 확인하는 방법이고 실제 모델의 잘못된 선택을 관찰한 결과는 아니다. 실제 모델에서는 세 상태·두 경로를 3회씩 번갈아 호출하며, 결과를 기대값으로 고치거나 실패 표본을 대체하지 않는다.
+
+`be/`에서 실행한다.
+
+```sh
+# 설정/모델 없이 입력과 18개 예정 요청 확인
+.venv/bin/python -m app.ai.scripts.check_planning_generation_requests --dry-run
+# 실제 모델. 기존 폴더를 덮어쓰지 않도록 새 경로를 사용한다.
+.venv/bin/python -m app.ai.scripts.check_planning_generation_requests --output-dir /tmp/generation-requests-new
+```
+
+`session.json`은 모델·설정의 공개 가능한 항목·코드/입력 해시·예정/완료 수와 요약이다. `attempts.jsonl`은 시작/종료, Tool 인자/처리 결과와 구간 관측을 가진다. 입력을 고정했더라도 두 모델 응답은 달라질 수 있으므로 “버튼 성공·채팅 실패”만으로 해석 실패를 확정하지 않는다. 생성에 진입했는지와 그 뒤 어느 구간에서 실패했는지 먼저 본다. 실제 관찰과 한계는 [평가 기록](evaluation.md)에 별도로 남긴다.
+
 ## 5-3: 두 API의 실제 응답이 같은 P2에 표시된다
 
 [PlanningPlaygroundPage.tsx](../../tests/ui/planning/src/pages/PlanningPlaygroundPage.tsx)의 `session`은 `draft + history + generation`이다. `messages`는 화면 말풍선 목록이며 SDK Tool 이력인 history와 구분한다.
