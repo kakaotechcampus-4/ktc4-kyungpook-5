@@ -16,7 +16,7 @@ from app.models.records import Record
 from app.models.reminders import ConfirmedTask
 from app.schemas.common import Envelope
 from app.schemas.reminders import ConfirmedTaskOut
-from app.schemas.tori import ToriMessageIn, ToriMessageOut, ToriRecordAnswer
+from app.schemas.tori import ToriClarification, ToriMessageIn, ToriMessageOut, ToriRecordAnswer
 from app.services import event_service, record_discovery_service
 
 router = APIRouter(prefix='/api/v1/clubs/{club_id}/tori', tags=['tori'])
@@ -30,9 +30,23 @@ async def message(club_id: str, body: ToriMessageIn,
                   session: AsyncSession = Depends(get_session)) -> Envelope[ToriMessageOut]:
     # 권한 확인 뒤 모델 호출 중 DB 연결을 점유하지 않는다.
     await session.commit()
+    context = body.clarification_context
+    follow_up = None
+    question = body.message
     try:
-        result = await ai.classify_tori_intent(ai.ToriIntentRequest(
-            message=body.message, reference_date=datetime.now(TZ).date(), timezone='Asia/Seoul'))
+        if context is not None:
+            resolution = await ai.build_tori_record_query(ai.ToriRecordQueryRequest(
+                question=context.original_question, follow_up=body.message))
+            if resolution.disposition == 'follow_up':
+                question = context.original_question
+                follow_up = body.message
+                result = ai.ToriIntentResult(intent='record_search', query=resolution.query)
+            else:
+                result = await ai.classify_tori_intent(ai.ToriIntentRequest(
+                    message=body.message, reference_date=datetime.now(TZ).date(), timezone='Asia/Seoul'))
+        else:
+            result = await ai.classify_tori_intent(ai.ToriIntentRequest(
+                message=body.message, reference_date=datetime.now(TZ).date(), timezone='Asia/Seoul'))
     except ai.AIConfigError as error:
         raise AIMisconfigured() from error
     except ai.AIError as error:
@@ -41,7 +55,9 @@ async def message(club_id: str, body: ToriMessageIn,
     from app.core.deps import ensure_member
     await ensure_member(session, club_id=club_id, account=account)
     if result.intent == 'record_search':
-        if not result.query or len(result.query) > 200:
+        if not result.query or not result.query.strip() or len(result.query) > 200:
+            if follow_up is not None:
+                raise AIUnavailable()
             return Envelope(data=ToriMessageOut(intent='clarify', reply='찾을 자료를 조금 더 짧게 알려 주세요.'))
         chunks: list[ai.RetrievedChunk] = []
         lexical: list[ai.RetrievedChunk] = []
@@ -91,6 +107,7 @@ async def message(club_id: str, body: ToriMessageIn,
                 chunk.source.record_id for chunk in chunks
             }),
         )
+        clarification = None
         if records['semantic_status'] == 'UNAVAILABLE' and not chunks:
             answer = ToriRecordAnswer(status='failed', **answer_info)
         elif not chunks:
@@ -99,7 +116,9 @@ async def message(club_id: str, body: ToriMessageIn,
             await session.commit()
             try:
                 generated = await ai.answer_tori_records(ai.ToriRecordAnswerRequest(
-                    question=body.message, today=datetime.now(TZ).date(), chunks=tuple(chunks)))
+                    question=question, follow_up=follow_up,
+                    clarification_allowed=follow_up is None,
+                    today=datetime.now(TZ).date(), chunks=tuple(chunks)))
             except ai.AIError:
                 answer = ToriRecordAnswer(status='failed', **answer_info)
             else:
@@ -107,7 +126,15 @@ async def message(club_id: str, body: ToriMessageIn,
                 facts = [*generated.facts, *(value for conflict in generated.conflicts for value in conflict.values)]
                 def fact_out(fact):
                     return {'text': fact.content, 'sources': [source.model_dump() for source in fact.sources]}
-                if any(source not in allowed for fact in facts for source in fact.sources):
+                if generated.status == 'clarification':
+                    if follow_up is not None:
+                        answer = ToriRecordAnswer(status='failed', **answer_info)
+                    else:
+                        clarification = ToriClarification(
+                            question=generated.clarification_question,
+                            options=list(generated.clarification_options))
+                        answer = ToriRecordAnswer(status='insufficient', **answer_info)
+                elif any(source not in allowed for fact in facts for source in fact.sources):
                     answer = ToriRecordAnswer(status='failed', **answer_info)
                 else:
                     answer = ToriRecordAnswer(
@@ -130,6 +157,7 @@ async def message(club_id: str, body: ToriMessageIn,
             indexed_ids = {record.id for record in rows if record.parse_status == RecordParseStatus.INDEXED}
             if ids != current or not semantic_ids.issubset(indexed_ids):
                 answer = ToriRecordAnswer(status='failed', **answer_info)
+                clarification = None
             elif lexical:
                 current_blocks = {
                     (record.id, record.file_name, block.get('location', {}).get('label'), block.get('text'))
@@ -139,11 +167,15 @@ async def message(club_id: str, body: ToriMessageIn,
                 if any((chunk.source.record_id, chunk.source.file_name,
                         chunk.source.location.label, chunk.text) not in current_blocks for chunk in lexical):
                     answer = ToriRecordAnswer(status='failed', **answer_info)
+                    clarification = None
         item_ids = {item.id for item in records['items']}
         if item_ids:
             current_items = set((await session.scalars(select(Record.id).where(
                 Record.id.in_(item_ids), Record.club_id == club_id))).all())
             records['items'] = [item for item in records['items'] if item.id in current_items]
+        if clarification is not None:
+            return Envelope(data=ToriMessageOut(intent='record_search', reply=clarification.question,
+                                                 clarification=clarification))
         reply = {'answered': '자료에서 확인한 내용이에요.', 'partial': '자료에서 일부 내용을 확인했어요.',
                  'insufficient': '검색한 자료에서 답의 근거를 충분히 찾지 못했어요.',
                  'failed': '자료 답변을 만들지 못했어요. 검색 결과를 확인해 주세요.'}[answer.status]

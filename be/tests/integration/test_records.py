@@ -456,3 +456,71 @@ async def test_토리_상한으로_제외된_의미청크는_권한재검증_대
     assert answer_data['searchedChunkCount'] == 50
     assert answer_data['candidateLimitReached'] is True
     assert answer_data['lexicalChunkCount'] == 20
+
+async def test_토리_자료명확화_한번_후속과_새요청(client, app_db, monkeypatch, tmp_path):
+    import app.ai as ai
+    from app.ai.contracts import RecordFact
+    from app.core.config import get_settings
+
+    monkeypatch.setenv('STORAGE_DIR', str(tmp_path))
+    get_settings.cache_clear()
+    async def no_index(_request):
+        raise ai.AIConfigError('fixture')
+    async def classify(request):
+        if request.message == '이번 주 내 할 일':
+            return ai.ToriIntentResult(intent='task_list', scope='self', kind='task')
+        return ai.ToriIntentResult(intent='record_search', query='예산')
+    followups = []
+    async def build_query(request):
+        followups.append((request.question, request.follow_up))
+        if request.follow_up == '이번 주 내 할 일':
+            return ai.ToriRecordQueryResult(disposition='new_request', query=None)
+        return ai.ToriRecordQueryResult(disposition='follow_up', query='예산')
+    async def answer(request):
+        assert len(request.chunks) == 2
+        if request.follow_up is None:
+            assert request.clarification_allowed is True
+            return ai.ToriRecordAnswerResult(status='clarification',
+                clarification_question='어느 행사의 예산을 볼까요?',
+                clarification_options=('2025 환영회', '전체 요약'))
+        assert request.question == '행사 예산 관련 자료를 찾아줘'
+        assert request.clarification_allowed is False
+        return ai.ToriRecordAnswerResult(status='answered', facts=(
+            RecordFact(content='행사 예산 확인', sources=(request.chunks[0].source,)),))
+    monkeypatch.setattr(ai, 'index_record', no_index)
+    monkeypatch.setattr(ai, 'classify_tori_intent', classify)
+    monkeypatch.setattr(ai, 'build_tori_record_query', build_query)
+    monkeypatch.setattr(ai, 'answer_tori_records', answer)
+    headers, club_id = _owner_with_club(client)
+    other, other_club = _owner_with_club(client)
+    def upload(headers, club, name, amount):
+        response = client.post('/api/v1/records', headers=headers,
+            data={'clubId': club, 'category':'ETC'},
+            files={'file': (name, f'항목,금액\n예산,{amount}\n'.encode(), 'text/csv')})
+        assert response.status_code == 201, response.text
+    upload(headers, club_id, '2024 행사.csv', 100)
+    upload(headers, club_id, '2025 환영회.csv', 200)
+    upload(other, other_club, '타소속.csv', 900)
+    url = f'/api/v1/clubs/{club_id}/tori/messages'
+    original = '행사 예산 관련 자료를 찾아줘'
+    first = client.post(url, headers=headers, json={'message':original})
+    assert first.status_code == 200, first.text
+    data = first.json()['data']
+    assert data['reply'] == data['clarification']['question']
+    assert data['clarification']['options'] == ['2025 환영회', '전체 요약']
+    context = {'originalQuestion': original}
+    for choice in ('2025 환영회', '전체 요약', '잘 모르겠어'):
+        response = client.post(url, headers=headers,
+            json={'message':choice, 'clarificationContext':context})
+        assert response.status_code == 200, response.text
+        assert response.json()['data']['clarification'] is None
+        assert response.json()['data']['recordAnswer']['status'] == 'answered'
+    new = client.post(url, headers=headers,
+        json={'message':'이번 주 내 할 일', 'clarificationContext':context})
+    assert new.status_code == 200, new.text
+    assert new.json()['data']['intent'] == 'task_list'
+    assert new.json()['data']['clarification'] is None
+    assert client.post(url, headers=other,
+        json={'message':'2025 환영회', 'clarificationContext':context}).status_code == 403
+    assert followups == [(original, value) for value in
+        ('2025 환영회', '전체 요약', '잘 모르겠어', '이번 주 내 할 일')]

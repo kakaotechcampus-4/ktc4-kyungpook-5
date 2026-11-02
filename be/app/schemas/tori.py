@@ -1,14 +1,26 @@
 """토리 단일 요청: 데이터 조회와 화면 안내만 제공한다."""
 from datetime import date
-from typing import Literal
+from typing import Annotated, Literal
 from pydantic import Field, field_validator
 from app.schemas.common import CamelModel
 from app.schemas.records import RecordSearchData, RecordSearchLocation
 from app.schemas.reminders import ConfirmedTaskOut
 
 
+class ToriClarificationContext(CamelModel):
+    original_question: str = Field(min_length=1, max_length=4000)
+
+    @field_validator('original_question')
+    @classmethod
+    def nonblank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError('원래 질문을 입력해 주세요.')
+        return value.strip()
+
+
 class ToriMessageIn(CamelModel):
     message: str = Field(min_length=1, max_length=4000)
+    clarification_context: ToriClarificationContext | None = None
 
     @field_validator('message')
     @classmethod
@@ -59,11 +71,17 @@ class ToriRecordAnswer(CamelModel):
     filename_only_unanalyzed_count: int = Field(ge=0)
 
 
+class ToriClarification(CamelModel):
+    question: str = Field(min_length=1, max_length=500)
+    options: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(default_factory=list, max_length=3)
+
+
 class ToriMessageOut(CamelModel):
     intent: Literal['record_search', 'task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported']
     reply: str
     records: RecordSearchData | None = None
     record_answer: ToriRecordAnswer | None = None
+    clarification: ToriClarification | None = None
     record_total_count: int | None = None
     tasks: ToriTasks | None = None
     navigation: Literal['/planning', '/meetings'] | None = None
