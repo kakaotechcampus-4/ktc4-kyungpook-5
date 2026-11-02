@@ -69,9 +69,11 @@ export function MeetingWorkspace({
             <Button variant="secondary" onClick={() => void data.refresh()}>
               새로고침
             </Button>
-            <Link to="/meetings" className="text-caption underline">
-              새 회의
-            </Link>
+            {!audioActive && (
+              <Link to="/meetings" className="text-caption underline">
+                새 회의
+              </Link>
+            )}
           </div>
         )}
       </div>
@@ -79,6 +81,7 @@ export function MeetingWorkspace({
         <MeetingToriPanel
           meeting={meeting}
           phase={audioPhase}
+          audioActive={audioActive}
           transcripts={data.transcripts.data?.items ?? EMPTY}
           decisions={data.decisions.data ?? EMPTY}
           loading={data.transcripts.isPending || data.decisions.isPending}
@@ -161,7 +164,7 @@ export function MeetingWorkspace({
                 <p className="mt-2">
                   확정 전사만 표시합니다. 음성 전송과 마지막 전사 처리 상태를 확인해 주세요.
                 </p>
-                {meeting.status === 'RECORDING' && (
+                {(meeting.status === 'RECORDING' || (meeting.status === 'FINALIZING' && audioActive)) && (
                   <div className="mt-4">
                     <MicControls
                       meetingId={meeting.id}

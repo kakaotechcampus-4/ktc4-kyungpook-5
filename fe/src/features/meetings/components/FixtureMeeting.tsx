@@ -29,6 +29,7 @@ export function FixtureMeeting() {
       <MeetingToriPanel
         meeting={fixtureMeeting}
         phase="idle"
+        audioActive={false}
         transcripts={fixtureTranscripts}
         decisions={fixtureDecisions}
         loading={false}

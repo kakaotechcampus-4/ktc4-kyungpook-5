@@ -11,6 +11,7 @@ const value = (input: unknown) => (typeof input === 'string' ? input : '')
 export function MeetingToriPanel({
   meeting,
   phase,
+  audioActive,
   transcripts,
   decisions,
   loading,
@@ -19,6 +20,7 @@ export function MeetingToriPanel({
 }: {
   meeting: Meeting
   phase: AudioPhase
+  audioActive: boolean
   transcripts: Transcript[]
   decisions: Decision[]
   loading: boolean
@@ -43,7 +45,7 @@ export function MeetingToriPanel({
             </p>
           </div>
         </div>
-        {phase === 'idle' || phase === 'error' || phase === 'completed' ? (
+        {!audioActive ? (
           <Link
             className="shrink-0 text-caption font-semibold text-blue-700 underline underline-offset-4"
             to="/meetings"
