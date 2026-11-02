@@ -41,6 +41,7 @@ export interface MeetingAudioOptions {
   onCompleted: () => void
   onRefresh: () => void
   onActiveChange?: (active: boolean) => void
+  onPhaseChange?: (phase: AudioPhase) => void
   onAudioGap?: (gap: AudioGap) => void
 }
 
@@ -49,6 +50,7 @@ export function useMeetingAudio({
   onCompleted,
   onRefresh,
   onActiveChange,
+  onPhaseChange,
   onAudioGap,
 }: MeetingAudioOptions) {
   const [state, setState] = useState<AudioState>(INITIAL)
@@ -57,13 +59,14 @@ export function useMeetingAudio({
   const generation = useRef(0)
   const busy = useRef(false)
   const stopping = useRef(false)
-  const callbacks = useRef({ onCompleted, onRefresh, onActiveChange, onAudioGap })
+  const callbacks = useRef({ onCompleted, onRefresh, onActiveChange, onPhaseChange, onAudioGap })
   useEffect(() => {
-    callbacks.current = { onCompleted, onRefresh, onActiveChange, onAudioGap }
-  }, [onCompleted, onRefresh, onActiveChange, onAudioGap])
+    callbacks.current = { onCompleted, onRefresh, onActiveChange, onPhaseChange, onAudioGap }
+  }, [onCompleted, onRefresh, onActiveChange, onPhaseChange, onAudioGap])
 
   useEffect(() => {
     callbacks.current.onActiveChange?.(!['idle', 'error', 'completed'].includes(state.phase))
+    callbacks.current.onPhaseChange?.(state.phase)
   }, [state.phase])
 
   const cancel = useCallback(() => {
@@ -80,6 +83,7 @@ export function useMeetingAudio({
     () => () => {
       cancel()
       callbacks.current.onActiveChange?.(false)
+      callbacks.current.onPhaseChange?.('idle')
     },
     [meetingId, cancel],
   )

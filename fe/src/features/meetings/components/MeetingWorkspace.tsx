@@ -6,6 +6,8 @@ import { Input } from '@/shared/ui/Input'
 import { Chip } from '@/shared/ui/Chip'
 import { useCreateMeeting, useMeetingData } from '../hooks'
 import { MeetingList } from './MeetingList'
+import { MeetingToriPanel } from './MeetingToriPanel'
+import type { AudioPhase } from '../audio/useMeetingAudio'
 import { meetingError } from '../errors'
 import { MicControls } from '../audio'
 import { Timeline } from './Timeline'
@@ -31,6 +33,7 @@ export function MeetingWorkspace({
   notifications: ReactNode
 }) {
   const [audioActive, setAudioActive] = useState(false)
+  const [audioPhase, setAudioPhase] = useState<AudioPhase>('idle')
   const [title, setTitle] = useState('')
   const [consent, setConsent] = useState(false)
   const [resumeId, setResumeId] = useState('')
@@ -72,7 +75,19 @@ export function MeetingWorkspace({
           </div>
         )}
       </div>
-      <MeetingList clubId={clubId} selectedId={meetingId} />
+      {meeting && (meeting.status === 'RECORDING' || meeting.status === 'FINALIZING') ? (
+        <MeetingToriPanel
+          meeting={meeting}
+          phase={audioPhase}
+          transcripts={data.transcripts.data?.items ?? EMPTY}
+          decisions={data.decisions.data ?? EMPTY}
+          loading={data.transcripts.isPending || data.decisions.isPending}
+          error={data.transcripts.isError || data.decisions.isError}
+          onRefresh={() => void data.refresh()}
+        />
+      ) : !meetingId || meeting ? (
+        <MeetingList clubId={clubId} selectedId={meetingId} />
+      ) : null}
       {!meetingId && (
         <Card className="p-6">
           <form
@@ -153,6 +168,7 @@ export function MeetingWorkspace({
                       onCompleted={() => void data.refresh()}
                       onRefresh={() => void data.refresh()}
                       onActiveChange={setAudioActive}
+                      onPhaseChange={setAudioPhase}
                     />
                   </div>
                 )}

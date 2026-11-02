@@ -13,7 +13,7 @@ const source = await readFile(
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 })
-const { reconcileTimeline, sourceOf, transcriptTime, visibleDecision } = await import(
+const { reconcileTimeline, sourceOf, transcriptTime, visibleDecision, meetingAnswers, meetingMicStatus } = await import(
   `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
 )
 
@@ -126,4 +126,24 @@ test('an initial snapshot orders equal-time utterances by descending sequence', 
     { type: 'transcript', id: 'second' },
     { type: 'transcript', id: 'first' },
   ])
+})
+
+
+test('meeting answers show current source results newest first, retaining partial results', () => {
+  const first = transcript('first', 1)
+  const latest = transcript('latest', 2, { sourceVersion: 2 })
+  const old = decision('old', first)
+  const current = decision('current', latest, { status: 'PARTIAL' })
+  const outdated = decision('outdated', latest, { sources: [{ sourceId: latest.sourceId, sourceVersion: 1 }] })
+  const failed = decision('failed', latest, { status: 'FAILED' })
+  assert.deepEqual(meetingAnswers([first, latest], [old, outdated, failed, current]).map(({ decision: d }) => d.id), ['current', 'old'])
+})
+
+
+test('microphone status follows the local phase, not only the recording meeting', () => {
+  assert.match(meetingMicStatus('RECORDING', 'idle'), /마이크가 꺼져/)
+  assert.match(meetingMicStatus('RECORDING', 'recording'), /듣고 있어요/)
+  assert.match(meetingMicStatus('RECORDING', 'permission'), /준비/)
+  assert.match(meetingMicStatus('RECORDING', 'error'), /확인/)
+  assert.match(meetingMicStatus('FINALIZING', 'recording'), /마지막 전사/)
 })

@@ -1,4 +1,5 @@
-import type { Decision, TimelineEntry, Transcript } from './types'
+import type { Decision, Meeting, TimelineEntry, Transcript } from './types'
+import type { AudioPhase } from './audio/useMeetingAudio'
 export function sourceOf(decision: Decision, transcripts: Transcript[]): Transcript | undefined {
   return transcripts.find(
     (t) =>
@@ -24,7 +25,9 @@ export function reconcileTimeline(
 ): TimelineEntry[] {
   const visibleTranscripts = transcripts
     .filter((t) => t.final)
-    .sort((a, b) => b.seq - a.seq || b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+    .sort(
+      (a, b) => b.seq - a.seq || b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id),
+    )
   const visibleDecisions = decisions.filter((d) => visibleDecision(d, visibleTranscripts))
   const seen = new Set<string>()
   const entries: TimelineEntry[] = []
@@ -62,4 +65,28 @@ export function answerDelay(decision: Decision, transcript: Transcript, startedA
       ? new Date(startedAt).getTime() + transcript.startMs
       : new Date(transcript.createdAt).getTime()
   return Math.max(1, Math.floor((new Date(decision.createdAt).getTime() - at) / 60000))
+}
+
+export function meetingAnswers(transcripts: Transcript[], decisions: Decision[]) {
+  return decisions
+    .filter(
+      (d) =>
+        (d.status === 'SUCCEEDED' || d.status === 'PARTIAL') && visibleDecision(d, transcripts),
+    )
+    .map((decision) => ({ decision, transcript: sourceOf(decision, transcripts)! }))
+    .sort(
+      (a, b) =>
+        b.transcript.seq - a.transcript.seq ||
+        b.decision.createdAt.localeCompare(a.decision.createdAt),
+    )
+}
+
+export function meetingMicStatus(status: Meeting['status'], phase: AudioPhase) {
+  if (status === 'FINALIZING') return '마지막 전사와 답변을 처리하고 있어요.'
+  if (phase === 'recording') return '이 기기의 마이크로 회의를 듣고 있어요.'
+  if (phase === 'connecting' || phase === 'permission') return '마이크 연결을 준비하고 있어요.'
+  if (phase === 'flushing' || phase === 'ending' || phase === 'processing')
+    return '마지막 음성을 처리하고 있어요.'
+  if (phase === 'error') return '마이크 상태를 확인해 주세요.'
+  return '이 기기의 마이크가 꺼져 있어요.'
 }

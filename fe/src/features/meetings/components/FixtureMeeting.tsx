@@ -4,6 +4,7 @@ import { Card } from '@/shared/ui/Card'
 import { Input } from '@/shared/ui/Input'
 import { Chip } from '@/shared/ui/Chip'
 import { Timeline } from './Timeline'
+import { MeetingToriPanel } from './MeetingToriPanel'
 import { fixtureDecisions, fixtureMeeting, fixtureSuggestion, fixtureTranscripts } from '../fixture'
 export function FixtureMeeting() {
   const [title, setTitle] = useState(fixtureSuggestion.title)
@@ -25,6 +26,15 @@ export function FixtureMeeting() {
           최신 전사부터 표시하고, 자료 답변은 해당 전사 아래에 묶습니다.
         </p>
       </div>
+      <MeetingToriPanel
+        meeting={fixtureMeeting}
+        phase="idle"
+        transcripts={fixtureTranscripts}
+        decisions={fixtureDecisions}
+        loading={false}
+        error={false}
+        onRefresh={() => undefined}
+      />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Timeline
           transcripts={fixtureTranscripts}
