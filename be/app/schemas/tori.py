@@ -3,7 +3,7 @@ from datetime import date
 from typing import Literal
 from pydantic import Field, field_validator
 from app.schemas.common import CamelModel
-from app.schemas.records import RecordSearchData
+from app.schemas.records import RecordSearchData, RecordSearchLocation
 from app.schemas.reminders import ConfirmedTaskOut
 
 
@@ -28,10 +28,34 @@ class ToriTasks(CamelModel):
     timezone: Literal['Asia/Seoul'] = 'Asia/Seoul'
 
 
+class ToriRecordSource(CamelModel):
+    record_id: str
+    file_name: str
+    location: RecordSearchLocation
+
+
+class ToriRecordFact(CamelModel):
+    text: str = Field(min_length=1)
+    sources: list[ToriRecordSource] = Field(min_length=1)
+
+
+class ToriRecordConflict(CamelModel):
+    description: str = Field(min_length=1)
+    values: list[ToriRecordFact] = Field(min_length=2)
+
+
+class ToriRecordAnswer(CamelModel):
+    status: Literal['answered', 'partial', 'insufficient', 'failed']
+    facts: list[ToriRecordFact] = Field(default_factory=list)
+    conflicts: list[ToriRecordConflict] = Field(default_factory=list)
+    not_found: list[str] = Field(default_factory=list)
+
+
 class ToriMessageOut(CamelModel):
     intent: Literal['record_search', 'task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported']
     reply: str
     records: RecordSearchData | None = None
+    record_answer: ToriRecordAnswer | None = None
     record_total_count: int | None = None
     tasks: ToriTasks | None = None
     navigation: Literal['/planning', '/meetings'] | None = None
