@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import ts from 'typescript'
 
 const source = (await readFile(new URL('../src/features/meetings/audio/capture.ts', import.meta.url), 'utf8'))
-  .replace('import.meta.env.BASE_URL', "'/'")
+  .replaceAll('import.meta.env.BASE_URL', "'/'")
 const code = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText
