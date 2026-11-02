@@ -1,9 +1,10 @@
+import { useState } from 'react'
 import { Button } from '@/shared/ui/Button'
 import { useMeetingAudio, type AudioPhase, type MeetingAudioOptions } from './useMeetingAudio'
 
 const LABELS: Record<AudioPhase, string> = {
   idle: '마이크를 켜면 확정된 전사가 최신순으로 표시돼요.',
-  connecting: '서버의 음성 수신 준비를 확인하고 있어요.',
+  connecting: '음성 전송을 준비하고 있어요.',
   permission: '브라우저에서 마이크 권한을 허용해 주세요.',
   recording: '마이크가 켜졌어요. 음성을 서버로 보내고 있어요.',
   flushing: '마지막 음성을 보내고 있어요.',
@@ -19,6 +20,7 @@ export function MicControls(props: MeetingAudioOptions) {
 
 function MeetingMicControls(props: MeetingAudioOptions) {
   const audio = useMeetingAudio(props)
+  const [rnnoise, setRnnoise] = useState(false)
   const preparing = audio.phase === 'connecting' || audio.phase === 'permission'
   const processing =
     audio.phase === 'flushing' || audio.phase === 'ending' || audio.phase === 'processing'
@@ -61,9 +63,15 @@ function MeetingMicControls(props: MeetingAudioOptions) {
           {audio.error}
         </p>
       )}
+      {(audio.phase === 'idle' || audio.phase === 'error') && (
+        <label className="flex items-start gap-2 text-[12px] leading-[19px] text-ink2">
+          <input type="checkbox" checked={rnnoise} onChange={(event) => setRnnoise(event.target.checked)} />
+          <span>실험적 RNNoise 잡음 억제 사용 (작은 목소리가 누락될 수 있어요)</span>
+        </label>
+      )}
       <div className="flex flex-wrap gap-[8px]">
         {(audio.phase === 'idle' || audio.phase === 'error') && (
-          <Button onClick={() => void audio.start()}>
+          <Button onClick={() => void audio.start(rnnoise)}>
             {audio.phase === 'error' ? '마이크 다시 시작' : '마이크 켜기'}
           </Button>
         )}

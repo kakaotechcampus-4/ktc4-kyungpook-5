@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { startPcmCapture, type PcmCapture } from './capture'
+import { prepareRnnoise, startPcmCapture, type PcmCapture, type PreparedRnnoise } from './capture'
 import { MeetingAudioTransport, type AudioGap, type AudioProgress } from './transport'
 
 export type AudioPhase =
@@ -89,7 +89,7 @@ export function useMeetingAudio({
     [meetingId, cancel],
   )
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (rnnoise = false) => {
     if (busy.current) return
     cancel()
     busy.current = true
@@ -130,9 +130,14 @@ export function useMeetingAudio({
       onFailure: fail,
     })
     transport.current = connection
+    let prepared: PreparedRnnoise | undefined
     try {
+      if (rnnoise) {
+        prepared = await prepareRnnoise()
+        if (!active() || !busy.current) { prepared.dispose(); return }
+      }
       await connection.connect()
-      if (!active() || !busy.current) return
+      if (!active() || !busy.current) { prepared?.dispose(); return }
       setState((previous) => ({ ...previous, phase: 'permission' }))
       const microphone = await startPcmCapture(
         (frame) => connection.sendFrame(frame),
@@ -140,7 +145,9 @@ export function useMeetingAudio({
         (inputLevel) => {
           if (active()) setState((previous) => ({ ...previous, inputLevel }))
         },
+        prepared,
       )
+      prepared = undefined
       if (!active() || !busy.current) {
         microphone.cancel()
         return
@@ -148,6 +155,7 @@ export function useMeetingAudio({
       capture.current = microphone
       setState((previous) => ({ ...previous, phase: 'recording', noiseSuppression: microphone.noiseSuppression }))
     } catch (error) {
+      prepared?.dispose()
       fail(error)
     }
   }, [meetingId, cancel])

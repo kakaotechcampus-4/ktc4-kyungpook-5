@@ -1,4 +1,5 @@
 import { PcmFramer } from './pcm'
+import RnnoiseWorker from './rnnoise.worker?worker'
 
 export interface PcmCapture {
   noiseSuppression?: boolean
@@ -6,10 +7,43 @@ export interface PcmCapture {
   cancel: () => void
 }
 
+export interface PreparedRnnoise {
+  context: AudioContext
+  denoiser: Worker
+  dispose: () => void
+}
+
+export async function prepareRnnoise(): Promise<PreparedRnnoise> {
+  const context = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 })
+  let denoiser: Worker | undefined
+  const dispose = () => {
+    denoiser?.terminate()
+    if (context.state !== 'closed') void context.close().catch(() => undefined)
+  }
+  try {
+    if (context.sampleRate !== 48000) throw new Error('이 기기에서는 RNNoise의 48kHz 입력을 사용할 수 없어요.')
+    denoiser = new RnnoiseWorker()
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('잡음 제거 준비 시간이 초과됐어요.')), 5000)
+      denoiser!.onmessage = (event: MessageEvent) => {
+        if (event.data?.type === 'ready') { clearTimeout(timer); resolve() }
+        if (event.data?.type === 'error') { clearTimeout(timer); reject(new Error('잡음 제거를 시작하지 못했어요.')) }
+      }
+      denoiser!.onerror = () => { clearTimeout(timer); reject(new Error('잡음 제거를 시작하지 못했어요.')) }
+      denoiser!.postMessage({ type: 'init', assetsPath: new URL(`${import.meta.env.BASE_URL}rnnoise`, location.href).href })
+    })
+    return { context, denoiser, dispose }
+  } catch (error) {
+    dispose()
+    throw error
+  }
+}
+
 export async function startPcmCapture(
   onFrame: (frame: ArrayBuffer) => void,
   onFailure: (error: Error) => void,
   onLevel: (level: number) => void,
+  prepared?: PreparedRnnoise,
 ): Promise<PcmCapture> {
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     throw new Error('마이크는 HTTPS 또는 localhost에서 사용할 수 있어요.')
@@ -28,6 +62,7 @@ export async function startPcmCapture(
   let source: MediaStreamAudioSourceNode | null = null
   let worklet: AudioWorkletNode | null = null
   let silentOutput: GainNode | null = null
+  let denoiser: Worker | null = null
   let closed = false
   let stopPromise: Promise<void> | null = null
   let rejectFlush: ((error: Error) => void) | null = null
@@ -45,11 +80,13 @@ export async function startPcmCapture(
     worklet?.disconnect()
     worklet?.port.close()
     silentOutput?.disconnect()
+    denoiser?.terminate()
     if (context && context.state !== 'closed') void context.close().catch(() => undefined)
   }
 
   try {
-    context = new AudioContext({ latencyHint: 'interactive' })
+    context = prepared?.context ?? new AudioContext({ latencyHint: 'interactive' })
+    denoiser = prepared?.denoiser ?? null
     await context.audioWorklet.addModule(`${import.meta.env.BASE_URL}meeting-pcm-worklet.js`)
     const framer = new PcmFramer(context.sampleRate, onFrame)
     source = context.createMediaStreamSource(stream)
@@ -65,6 +102,7 @@ export async function startPcmCapture(
     let levelSamples = 0
     let lastLevelAt = performance.now()
     let displayedLevel = 0
+    let pendingNoiseSamples = 0
     worklet.port.onmessage = (event: MessageEvent) => {
       if (closed) return
       try {
@@ -84,11 +122,16 @@ export async function startPcmCapture(
             levelSamples = 0
             lastLevelAt = now
           }
-          framer.push(samples)
+          if (denoiser) {
+            pendingNoiseSamples += samples.length
+            if (pendingNoiseSamples > 96000) throw new Error('잡음 처리가 지연되어 음성 전송을 멈췄어요.')
+            denoiser.postMessage({ type: 'samples', samples }, [samples.buffer])
+          } else {
+            framer.push(samples)
+          }
         } else if (event.data?.type === 'flushed') {
-          // Flush the resampler and the short final PCM frame before end is sent.
-          framer.flush()
-          resolveFlush?.()
+          if (denoiser) denoiser.postMessage({ type: 'flush' })
+          else { framer.flush(); resolveFlush?.() }
         }
       } catch (error) {
         const failure = error instanceof Error ? error : new Error('음성 전송에 실패했어요.')
@@ -96,6 +139,37 @@ export async function startPcmCapture(
         cleanup()
         onFailure(failure)
       }
+    }
+    if (denoiser) denoiser.onmessage = (event: MessageEvent) => {
+      if (closed) return
+      if (event.data?.type === 'accepted') {
+        pendingNoiseSamples = Math.max(0, pendingNoiseSamples - event.data.samples)
+      } else if (event.data?.type === 'samples' && event.data.samples instanceof Float32Array) {
+        try { framer.push(event.data.samples) } catch {
+          const error = new Error('음성 전송 중 오류가 발생했어요. 저장된 전사를 확인해 주세요.')
+          rejectFlush?.(error)
+          cleanup()
+          onFailure(error)
+        }
+      } else if (event.data?.type === 'flushed') {
+        try { framer.flush(); resolveFlush?.() } catch {
+          const error = new Error('마지막 음성 전송에 실패했어요. 저장된 전사를 확인해 주세요.')
+          rejectFlush?.(error)
+          cleanup()
+          onFailure(error)
+        }
+      } else if (event.data?.type === 'error') {
+        const error = new Error('잡음 제거 중 오류가 발생했어요. 저장된 전사를 확인해 주세요.')
+        rejectFlush?.(error)
+        cleanup()
+        onFailure(error)
+      }
+    }
+    if (denoiser) denoiser.onerror = () => {
+      const error = new Error('잡음 제거 중 오류가 발생했어요. 저장된 전사를 확인해 주세요.')
+      rejectFlush?.(error)
+      cleanup()
+      onFailure(error)
     }
     worklet.onprocessorerror = () => {
       const error = new Error('마이크 오디오 처리에 실패했어요. 음성 전송을 멈췄어요.')
@@ -111,6 +185,8 @@ export async function startPcmCapture(
         }
       }
     })
+    if (stream.getAudioTracks().some((track) => track.readyState === 'ended'))
+      throw new Error('마이크 연결이 끊겼어요. 다시 시도해 주세요.')
     source.connect(worklet)
     worklet.connect(silentOutput)
     silentOutput.connect(context.destination)
