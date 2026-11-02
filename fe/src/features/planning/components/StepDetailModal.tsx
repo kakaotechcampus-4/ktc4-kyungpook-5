@@ -67,7 +67,7 @@ export function StepDetailModal({
 }
 
 function StepDetailForm({
-  step,
+  step: initialStep,
   onClose,
   onSaved,
   onReload,
@@ -77,6 +77,7 @@ function StepDetailForm({
   onSaved: () => void
   onReload: () => void
 }) {
+  const [step] = useState(() => initialStep)
   const [draft, setDraft] = useState<Draft>(() => toDraft(step))
   const [error, setError] = useState('')
   const save = useSaveStepDetail()
@@ -115,6 +116,7 @@ function StepDetailForm({
     >
       <div className="flex flex-col gap-[16px]">
         {error && (
+          <>
           <ErrorBanner
             title={error}
             action={
@@ -123,6 +125,8 @@ function StepDetailForm({
               </Button>
             }
           />
+          <p className="text-caption text-mute">최신 내용을 다시 불러오면 저장하지 않은 입력은 사라져요.</p>
+          </>
         )}
 
         <div className="flex flex-wrap gap-[14px]">

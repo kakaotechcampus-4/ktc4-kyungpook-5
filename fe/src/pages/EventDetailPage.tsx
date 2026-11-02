@@ -83,10 +83,12 @@ export default function EventDetailPage() {
   }
 
   const resolveConfirmation = async (action: EventAction, choice: string, manualValue?: string) => {
-    if (await run(() => resolveMutation.mutateAsync({ action, choice, manualValue }), '처리했어요', action.title)) {
+    const success = await run(() => resolveMutation.mutateAsync({ action, choice, manualValue }), '처리했어요', action.title)
+    if (success) {
       if (demo) setAnsweredIds((ids) => [...ids, action.id])
       setReviewing(undefined)
     }
+    return success
   }
 
   const finishAction = async (action: EventAction) => {
@@ -101,21 +103,37 @@ export default function EventDetailPage() {
   const deciding = reviewing && reviewing.type !== 'CONFIRMATION' ? reviewing : undefined
 
   const approveAction = async (action: EventAction) => {
-    if (await run(() => approveMutation.mutateAsync(action), '승인했어요', action.title)) {
+    const success = await run(() => approveMutation.mutateAsync(action), '승인했어요', action.title)
+    if (success) {
       setReviewing(undefined)
       setOpenStepId(null)
     }
+    return success
   }
 
   const denyAction = async (action: EventAction, reason: string) => {
-    if (await run(() => denyMutation.mutateAsync({ action, reason }), '진행하지 않기로 했어요', action.title)) {
+    const success = await run(() => denyMutation.mutateAsync({ action, reason }), '진행하지 않기로 했어요', action.title)
+    if (success) {
       setReviewing(undefined)
       setOpenStepId(null)
     }
+    return success
   }
 
   const completeStep = async (step: EventStep) => {
-    if (await run(() => completeMutation.mutateAsync(step.id), '단계를 완료로 표시했어요', step.name)) setOpenStepId(null)
+    try {
+      const result = demo ? null : await completeMutation.mutateAsync(step.id)
+      toast.show({
+        kind: 'done',
+        title: '단계를 완료로 표시했어요',
+        desc: result?.pendingActionCount
+          ? `미완료 행동 ${result.pendingActionCount}건이 남아 있어요. 행사 완료 전에 처리해 주세요.`
+          : step.name,
+      })
+      setOpenStepId(null)
+    } catch (error) {
+      toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+    }
   }
 
   if (detailQuery.isPending) return null
@@ -217,6 +235,7 @@ export default function EventDetailPage() {
             onClose={() => setReviewing(undefined)}
             onApprove={approveAction}
             onDeny={denyAction}
+            pending={approveMutation.isPending || denyMutation.isPending}
           />
           <CancelConfirmModal
             open={cancelOpen}
@@ -232,7 +251,8 @@ export default function EventDetailPage() {
           <AnswerModal
             action={answering}
             onClose={() => setReviewing(undefined)}
-            onAnswer={(action, choice, manualValue) => void resolveConfirmation(action, choice, manualValue)}
+            onAnswer={resolveConfirmation}
+            pending={resolveMutation.isPending}
           />
         </>
       ) : (

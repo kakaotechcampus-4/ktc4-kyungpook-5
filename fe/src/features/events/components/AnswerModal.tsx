@@ -18,17 +18,20 @@ interface AnswerModalProps {
   onClose: () => void
   // choice는 options[].key, 직접 처리면 'MANUAL'이고 적은 내용은 manualValue로 준다
   // (POST /actions/{id}/resolve 요청 값과 같다)
-  onAnswer: (action: EventAction, choice: string, manualValue?: string) => void
+  onAnswer: (action: EventAction, choice: string, manualValue?: string) => Promise<boolean>
+  pending: boolean
 }
 
-export function AnswerModal({ action, onClose, onAnswer }: AnswerModalProps) {
+export function AnswerModal({ action, onClose, onAnswer, pending }: AnswerModalProps) {
   const [picked, setPicked] = useState<string>()
   const [manual, setManual] = useState('')
+  const [error, setError] = useState(false)
 
   // 답변·닫기 어느 쪽으로 끝나든 비운다. 모달은 화면에 남아 있어 다음 질문으로 넘어가기 때문이다.
   const reset = () => {
     setPicked(undefined)
     setManual('')
+    setError(false)
   }
 
   const close = () => {
@@ -50,14 +53,15 @@ export function AnswerModal({ action, onClose, onAnswer }: AnswerModalProps) {
 
   const submit = () => {
     if (!choice) return
-    reset()
-    onAnswer(action, choice, choice === MANUAL_KEY ? manualValue : undefined)
+    setError(false)
+    void onAnswer(action, choice, choice === MANUAL_KEY ? manualValue : undefined).then((success) => { if (success) reset(); else setError(true) })
   }
 
   return (
     <Modal
       open
       onClose={close}
+      dismissible={!pending}
       title={action.title}
       chip={<Chip tone="pending">질문 대기</Chip>}
       subtitle="토리가 모르는 것을 묻고 있어요"
@@ -65,15 +69,16 @@ export function AnswerModal({ action, onClose, onAnswer }: AnswerModalProps) {
       footerNote="답변하면 바로 완료로 가요"
       footer={
         <>
-          <Button variant="secondary" onClick={close}>
+          <Button variant="secondary" disabled={pending} onClick={close}>
             취소
           </Button>
-          <Button disabled={!choice} onClick={submit}>
+          <Button disabled={pending || !choice} onClick={submit}>
             답변 완료
           </Button>
         </>
       }
     >
+      {error && <p role="alert" className="text-failed">답변을 저장하지 못했어요. 연결과 질문 상태를 확인한 뒤 다시 시도해 주세요.</p>}
       {action.subtitle && (
         <p className="rounded-[11px] border border-line bg-bg px-[14px] py-[12px] text-[12.5px] leading-[19px] text-ink2">
           {action.subtitle}
@@ -86,6 +91,7 @@ export function AnswerModal({ action, onClose, onAnswer }: AnswerModalProps) {
           <button
             key={option.key}
             type="button"
+              disabled={pending}
             aria-pressed={picked === option.key}
             onClick={() => setPicked(option.key)}
             className={cn(
@@ -117,6 +123,7 @@ export function AnswerModal({ action, onClose, onAnswer }: AnswerModalProps) {
         {action.allowManual && (
           <button
             type="button"
+            disabled={pending}
             aria-pressed={picked === MANUAL_KEY}
             onClick={() => setPicked(MANUAL_KEY)}
             className={cn(
@@ -134,6 +141,7 @@ export function AnswerModal({ action, onClose, onAnswer }: AnswerModalProps) {
       {picked === MANUAL_KEY && (
         <Textarea
           label="어떻게 처리할지"
+          disabled={pending}
           placeholder="어떻게 하면 되는지 적어 주세요"
           maxLength={200}
           value={manual}
