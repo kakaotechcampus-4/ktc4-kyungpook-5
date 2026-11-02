@@ -33,8 +33,15 @@ _YEAR = re.compile(r'(?<!\d)(?:19|20)\d{2}(?!\s*(?:원|명|개|건|%|월|일|만
 
 def _numbers(text: str) -> set[str]:
     text = _AMBIGUOUS_AMOUNT.sub('', text)
+    values = list(_NUMBER.findall(text))
+    for match in _KOREAN_NUMBER.finditer(text):
+        # 아라비아 숫자와 띄어 쓴 단위(예: 10 만원)는 별도 한글 수사가 아니다.
+        before = text[:match.start()].rstrip()
+        if before and (before[-1].isdigit() or before[-1] == '.'):
+            continue
+        values.append(match.group())
     return {re.sub(r'[,\s]', '', value).replace('−', '-').replace('마이너스', '-').replace('음수', '-').replace('플러스', '+').removeprefix('+')
-            for pattern in (_NUMBER, _KOREAN_NUMBER) for value in pattern.findall(text)}
+            for value in values}
 
 
 def _supported(item: EvidenceItem, chunks: tuple[RetrievedChunk, ...], years: set[str]) -> bool:
