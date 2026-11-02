@@ -3363,10 +3363,23 @@ export interface components {
          * @enum {string}
          */
         TaskSuggestionStatus: "PROPOSED" | "ACCEPTED";
+        /** ToriClarification */
+        ToriClarification: {
+            /** Question */
+            question: string;
+            /** Options */
+            options?: string[];
+        };
+        /** ToriClarificationContext */
+        ToriClarificationContext: {
+            /** Originalquestion */
+            originalQuestion: string;
+        };
         /** ToriMessageIn */
         ToriMessageIn: {
             /** Message */
             message: string;
+            clarificationContext?: components["schemas"]["ToriClarificationContext"] | null;
         };
         /** ToriMessageOut */
         ToriMessageOut: {
@@ -3379,6 +3392,7 @@ export interface components {
             reply: string;
             records?: components["schemas"]["RecordSearchData"] | null;
             recordAnswer?: components["schemas"]["ToriRecordAnswer"] | null;
+            clarification?: components["schemas"]["ToriClarification"] | null;
             /** Recordtotalcount */
             recordTotalCount?: number | null;
             tasks?: components["schemas"]["ToriTasks"] | null;

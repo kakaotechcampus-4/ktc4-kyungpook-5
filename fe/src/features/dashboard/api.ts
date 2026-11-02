@@ -3,8 +3,8 @@ import type { components } from '@/shared/api/schema'
 
 type S = components['schemas']
 export const dashboardApi = {
-  message: (clubId: string, message: string) =>
-    apiPost<S['ToriMessageOut']>(`/clubs/${encodeURIComponent(clubId)}/tori/messages`, { message }),
+  message: (clubId: string, input: S['ToriMessageIn']) =>
+    apiPost<S['ToriMessageOut']>(`/clubs/${encodeURIComponent(clubId)}/tori/messages`, input),
   download: (id: string, name: string) =>
     apiDownload(`/records/${encodeURIComponent(id)}/file`, name),
   tasks: (clubId: string) =>
