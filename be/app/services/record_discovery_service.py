@@ -20,7 +20,8 @@ def _excerpt(text: str, query: str | None = None) -> str:
 
 
 async def search_records(session: AsyncSession, *, club_id: str, query: str,
-                         page: int, size: int) -> tuple[dict, int]:
+                         page: int, size: int,
+                         chunks_out: list[ai.RetrievedChunk] | None = None) -> tuple[dict, int]:
     # blocks.text만 검색한다. 파일명과 내용 모두 LIKE 특수문자를 그대로 취급한다.
     blocks = func.jsonb_array_elements(Record.parse_result['blocks']).table_valued(
         column('value', JSONB)
@@ -48,6 +49,8 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
             )
         except ai.AIError:
             semantic_status = 'UNAVAILABLE'
+    if chunks_out is not None:
+        chunks_out.extend(semantic)
     semantic_by_record = {}
     for chunk in semantic:
         semantic_by_record.setdefault(chunk.source.record_id, chunk)

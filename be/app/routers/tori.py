@@ -7,15 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import ai
 from app.core.deps import get_current_account, require_member
-from app.core.enums import EventStatus
+from app.core.enums import EventStatus, RecordParseStatus
 from app.core.exceptions import AIMisconfigured, AIUnavailable
 from app.db.session import get_session
 from app.models.auth import Account
 from app.models.clubs import Member
+from app.models.records import Record
 from app.models.reminders import ConfirmedTask
 from app.schemas.common import Envelope
 from app.schemas.reminders import ConfirmedTaskOut
-from app.schemas.tori import ToriMessageIn, ToriMessageOut
+from app.schemas.tori import ToriMessageIn, ToriMessageOut, ToriRecordAnswer
 from app.services import event_service, record_discovery_service
 
 router = APIRouter(prefix='/api/v1/clubs/{club_id}/tori', tags=['tori'])
@@ -42,9 +43,67 @@ async def message(club_id: str, body: ToriMessageIn,
     if result.intent == 'record_search':
         if not result.query or len(result.query) > 200:
             return Envelope(data=ToriMessageOut(intent='clarify', reply='찾을 자료를 조금 더 짧게 알려 주세요.'))
+        chunks: list[ai.RetrievedChunk] = []
         records, total = await record_discovery_service.search_records(
-            session, club_id=club_id, query=result.query.strip(), page=1, size=20)
-        return Envelope(data=ToriMessageOut(intent=result.intent, reply='자료 검색 결과를 확인해 주세요.',
+            session, club_id=club_id, query=result.query.strip(), page=1, size=20,
+            chunks_out=chunks)
+        await ensure_member(session, club_id=club_id, account=account)
+        if chunks:
+            ids = {chunk.source.record_id for chunk in chunks}
+            current = set((await session.scalars(select(Record.id).where(
+                Record.id.in_(ids), Record.club_id == club_id,
+                Record.parse_status == RecordParseStatus.INDEXED))).all())
+            chunks = [chunk for chunk in chunks if chunk.source.record_id in current]
+        answer_info = dict(
+            semantic_status=records['semantic_status'],
+            unindexed_count=records['unindexed_count'],
+            searched_chunk_count=len(chunks),
+            candidate_limit=records['semantic_candidate_limit'],
+            candidate_limit_reached=len(chunks) >= records['semantic_candidate_limit'],
+        )
+        if records['semantic_status'] == 'UNAVAILABLE':
+            answer = ToriRecordAnswer(status='failed', **answer_info)
+        elif not chunks:
+            answer = ToriRecordAnswer(status='insufficient', **answer_info)
+        else:
+            await session.commit()
+            try:
+                generated = await ai.answer_tori_records(ai.ToriRecordAnswerRequest(
+                    question=body.message, today=datetime.now(TZ).date(), chunks=tuple(chunks)))
+            except ai.AIError:
+                answer = ToriRecordAnswer(status='failed', **answer_info)
+            else:
+                allowed = {chunk.source for chunk in chunks}
+                facts = [*generated.facts, *(value for conflict in generated.conflicts for value in conflict.values)]
+                def fact_out(fact):
+                    return {'text': fact.content, 'sources': [source.model_dump() for source in fact.sources]}
+                if any(source not in allowed for fact in facts for source in fact.sources):
+                    answer = ToriRecordAnswer(status='failed', **answer_info)
+                else:
+                    answer = ToriRecordAnswer(
+                        status='insufficient' if generated.status == 'no_evidence' else generated.status,
+                        facts=[fact_out(fact) for fact in generated.facts],
+                        conflicts=[{'description': conflict.description,
+                                    'values': [fact_out(value) for value in conflict.values]}
+                                   for conflict in generated.conflicts],
+                        not_found=list(generated.not_found), **answer_info)
+        await ensure_member(session, club_id=club_id, account=account)
+        if chunks:
+            ids = {chunk.source.record_id for chunk in chunks}
+            current = set((await session.scalars(select(Record.id).where(
+                Record.id.in_(ids), Record.club_id == club_id,
+                Record.parse_status == RecordParseStatus.INDEXED))).all())
+            if ids != current:
+                answer = ToriRecordAnswer(status='failed', **answer_info)
+        item_ids = {item.id for item in records['items']}
+        if item_ids:
+            current_items = set((await session.scalars(select(Record.id).where(
+                Record.id.in_(item_ids), Record.club_id == club_id))).all())
+            records['items'] = [item for item in records['items'] if item.id in current_items]
+        reply = {'answered': '자료에서 확인한 내용이에요.', 'partial': '자료에서 일부 내용을 확인했어요.',
+                 'insufficient': '검색한 자료에서 답의 근거를 충분히 찾지 못했어요.',
+                 'failed': '자료 답변을 만들지 못했어요. 검색 결과를 확인해 주세요.'}[answer.status]
+        return Envelope(data=ToriMessageOut(intent=result.intent, reply=reply, record_answer=answer,
                                              records=records, record_total_count=total))
     if result.intent == 'task_list':
         if result.scope is None or result.kind is None:

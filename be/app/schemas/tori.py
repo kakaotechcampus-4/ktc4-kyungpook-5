@@ -49,6 +49,11 @@ class ToriRecordAnswer(CamelModel):
     facts: list[ToriRecordFact] = Field(default_factory=list)
     conflicts: list[ToriRecordConflict] = Field(default_factory=list)
     not_found: list[str] = Field(default_factory=list)
+    semantic_status: Literal['AVAILABLE', 'UNAVAILABLE', 'NO_INDEXED_RECORDS']
+    unindexed_count: int = Field(ge=0)
+    searched_chunk_count: int = Field(ge=0)
+    candidate_limit: int = Field(ge=1)
+    candidate_limit_reached: bool
 
 
 class ToriMessageOut(CamelModel):
