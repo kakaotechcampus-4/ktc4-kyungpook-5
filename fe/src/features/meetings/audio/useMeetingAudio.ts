@@ -15,10 +15,12 @@ export type AudioPhase =
 interface AudioState extends AudioProgress {
   phase: AudioPhase
   error: string | null
+  inputLevel: number
 }
 const INITIAL: AudioState = {
   phase: 'idle',
   error: null,
+  inputLevel: 0,
   sentFrames: 0,
   acceptedFrames: 0,
   durationMs: 0,
@@ -95,7 +97,7 @@ export function useMeetingAudio({
       transport.current?.dispose()
       transport.current = null
       busy.current = false
-      setState((previous) => ({ ...previous, phase: 'error', error: microphoneError(error) }))
+      setState((previous) => ({ ...previous, phase: 'error', error: microphoneError(error), inputLevel: 0 }))
       callbacks.current.onRefresh()
     }
     setState({ ...INITIAL, phase: 'connecting' })
@@ -127,7 +129,13 @@ export function useMeetingAudio({
       await connection.connect()
       if (!active() || !busy.current) return
       setState((previous) => ({ ...previous, phase: 'permission' }))
-      const microphone = await startPcmCapture((frame) => connection.sendFrame(frame), fail)
+      const microphone = await startPcmCapture(
+        (frame) => connection.sendFrame(frame),
+        fail,
+        (inputLevel) => {
+          if (active()) setState((previous) => ({ ...previous, inputLevel }))
+        },
+      )
       if (!active() || !busy.current) {
         microphone.cancel()
         return
@@ -146,7 +154,7 @@ export function useMeetingAudio({
     const run = generation.current
     const microphone = capture.current
     const connection = transport.current
-    setState((previous) => ({ ...previous, phase: 'flushing' }))
+    setState((previous) => ({ ...previous, phase: 'flushing', inputLevel: 0 }))
     try {
       await microphone.stop()
       if (generation.current !== run) return
@@ -162,7 +170,7 @@ export function useMeetingAudio({
     } catch (error) {
       if (generation.current !== run) return
       cancel()
-      setState((previous) => ({ ...previous, phase: 'error', error: microphoneError(error) }))
+      setState((previous) => ({ ...previous, phase: 'error', error: microphoneError(error), inputLevel: 0 }))
       callbacks.current.onRefresh()
     }
   }, [state.phase, cancel])
@@ -172,6 +180,7 @@ export function useMeetingAudio({
     setState((previous) => ({
       ...previous,
       phase: 'error',
+      inputLevel: 0,
       error: '음성 전송을 중단했어요. 마지막 전사 완료는 확인되지 않았어요.',
     }))
     callbacks.current.onRefresh()

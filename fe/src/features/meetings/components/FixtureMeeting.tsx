@@ -22,7 +22,7 @@ export function FixtureMeeting() {
         <Chip>개발 예시</Chip>
         <h1 className="mt-3 text-h1">{fixtureMeeting.title}</h1>
         <p className="mt-2 text-ink2">
-          전사가 본문입니다. 늦은 답은 아래에 원래 시각을 표시합니다.
+          최신 전사부터 표시하고, 자료 답변은 해당 전사 아래에 묶습니다.
         </p>
       </div>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">

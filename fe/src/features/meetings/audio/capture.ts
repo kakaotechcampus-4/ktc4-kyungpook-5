@@ -8,6 +8,7 @@ export interface PcmCapture {
 export async function startPcmCapture(
   onFrame: (frame: ArrayBuffer) => void,
   onFailure: (error: Error) => void,
+  onLevel: (level: number) => void,
 ): Promise<PcmCapture> {
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     throw new Error('마이크는 HTTPS 또는 localhost에서 사용할 수 있어요.')
@@ -59,11 +60,27 @@ export async function startPcmCapture(
     silentOutput = context.createGain()
     silentOutput.gain.value = 0
     let resolveFlush: (() => void) | null = null
+    let levelSum = 0
+    let levelSamples = 0
+    let lastLevelAt = performance.now()
     worklet.port.onmessage = (event: MessageEvent) => {
       if (closed) return
       try {
         if (event.data?.type === 'samples' && event.data.samples instanceof Float32Array) {
-          framer.push(event.data.samples)
+          const samples = event.data.samples
+          for (const sample of samples) {
+            if (Number.isFinite(sample)) levelSum += sample * sample
+          }
+          levelSamples += samples.length
+          const now = performance.now()
+          if (now - lastLevelAt >= 100 && levelSamples) {
+            // RMS is scaled for a readable meter; it does not change the captured audio.
+            onLevel(Math.min(1, Math.sqrt(levelSum / levelSamples) * 8))
+            levelSum = 0
+            levelSamples = 0
+            lastLevelAt = now
+          }
+          framer.push(samples)
         } else if (event.data?.type === 'flushed') {
           // Flush the resampler and the short final PCM frame before end is sent.
           framer.flush()

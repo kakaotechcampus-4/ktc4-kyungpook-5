@@ -88,7 +88,7 @@ test('NO_LOOKUP and FAILED do not appear as answers; NOT_FOUND remains a query r
   ])
 })
 
-test('a late answer appends below already displayed speech and keeps its original source time', () => {
+test('a late answer stays with its utterance while newer speech remains first', () => {
   const first = transcript('first', 1)
   const second = transcript('second', 2)
   const alreadyDisplayed = reconcileTimeline([], [first, second], [])
@@ -96,11 +96,11 @@ test('a late answer appends below already displayed speech and keeps its origina
   const late = decision('late-answer', first)
   const result = reconcileTimeline(alreadyDisplayed, [first, second], [late])
   assert.deepEqual(result, [
-    { type: 'transcript', id: 'first' },
     { type: 'transcript', id: 'second' },
+    { type: 'transcript', id: 'first' },
     { type: 'decision', id: 'late-answer' },
   ])
-  assert.deepEqual(result.slice(0, alreadyDisplayed.length), alreadyDisplayed)
+  assert.deepEqual(reconcileTimeline([], [second, first], [late]), result)
   assert.equal(sourceOf(late, [first, second]), first)
   assert.equal(transcriptTime(sourceOf(late, [first, second]), '2026-10-19T05:00:00.000Z'), '14:00')
 })
@@ -119,11 +119,11 @@ test('repeated GET snapshots do not duplicate entries; a correction removes the 
   ])
 })
 
-test('an initial snapshot orders equal-time utterances by utterance sequence', () => {
+test('an initial snapshot orders equal-time utterances by descending sequence', () => {
   const first = transcript('first', 1)
   const second = transcript('second', 2, { createdAt: first.createdAt })
   assert.deepEqual(reconcileTimeline([], [second, first], []), [
-    { type: 'transcript', id: 'first' },
     { type: 'transcript', id: 'second' },
+    { type: 'transcript', id: 'first' },
   ])
 })

@@ -2,7 +2,7 @@ import { Button } from '@/shared/ui/Button'
 import { useMeetingAudio, type AudioPhase, type MeetingAudioOptions } from './useMeetingAudio'
 
 const LABELS: Record<AudioPhase, string> = {
-  idle: '마이크를 켜면 확정된 전사가 아래에 쌓여요.',
+  idle: '마이크를 켜면 확정된 전사가 최신순으로 표시돼요.',
   connecting: '서버의 음성 수신 준비를 확인하고 있어요.',
   permission: '브라우저에서 마이크 권한을 허용해 주세요.',
   recording: '마이크가 켜졌어요. 음성을 서버로 보내고 있어요.',
@@ -30,9 +30,26 @@ function MeetingMicControls(props: MeetingAudioOptions) {
       </p>
       {audio.durationMs > 0 && (
         <p className="text-[11px] text-mute">
-          전송 {Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, '0')} ·
-          서버 수신 {audio.acceptedFrames}/{audio.sentFrames}개
+          전송 {Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, '0')}
         </p>
+      )}
+      {audio.phase === 'recording' && (
+        <div className="flex items-center gap-3">
+          <span className="shrink-0 text-[12px] text-ink2">마이크 입력</span>
+          <div
+            role="meter"
+            aria-label="마이크 입력 레벨"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(audio.inputLevel * 100)}
+            className="h-2 w-full max-w-[180px] overflow-hidden rounded-full bg-line"
+          >
+            <div
+              className="h-full rounded-full bg-blue-600 transition-[width] duration-100"
+              style={{ width: `${audio.inputLevel * 100}%` }}
+            />
+          </div>
+        </div>
       )}
       {audio.error && (
         <p role="alert" className="text-[12px] leading-[19px] text-failed">

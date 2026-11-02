@@ -1,11 +1,35 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Card } from '@/shared/ui/Card'
 import { Button } from '@/shared/ui/Button'
 import { Tori } from '@/shared/ui/Tori'
-import { answerDelay, reconcileTimeline, sourceOf, transcriptTime } from '../timeline'
+import { reconcileTimeline, transcriptTime } from '../timeline'
 import { useDecisionJobs } from '../hooks'
-import type { Decision, TimelineEntry, Transcript } from '../types'
+import type { Decision, Transcript } from '../types'
 const str = (value: unknown) => (typeof value === 'string' ? value : '')
+function TranscriptText({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const content = text.trim() || '(알아듣지 못했어요)'
+  const lines = content.split('\n')
+  const preview = Array.from(lines.slice(0, 3).join('\n')).slice(0, 160).join('')
+  const long = lines.length > 3 || Array.from(content).length > 160
+  return (
+    <>
+      <p className="mt-2 whitespace-pre-wrap break-words leading-7">
+        {expanded || !long ? content : `${preview}…`}
+      </p>
+      {long && (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+          className="mt-2 text-caption font-semibold text-blue-700 underline underline-offset-4"
+        >
+          {expanded ? '접기' : '전체 보기'}
+        </button>
+      )}
+    </>
+  )
+}
 export function Timeline({
   transcripts,
   decisions,
@@ -17,15 +41,11 @@ export function Timeline({
   startedAt?: string | null
   onRefresh: () => void
 }) {
-  const [entries, setEntries] = useState<TimelineEntry[]>([])
-  useEffect(() => {
-    setEntries((old) => reconcileTimeline(old, transcripts, decisions))
-  }, [transcripts, decisions])
-  const visibleEntries = reconcileTimeline(entries, transcripts, decisions)
+  const visibleEntries = reconcileTimeline([], transcripts, decisions)
   const jobs = useDecisionJobs(transcripts)
   return (
     <div className="space-y-4" aria-label="확정 전사 타임라인" role="log">
-      {visibleEntries.map((entry, index) => {
+      {visibleEntries.map((entry) => {
         if (entry.type === 'transcript') {
           const t = transcripts.find((t) => t.id === entry.id)!
           return (
@@ -34,16 +54,11 @@ export function Timeline({
               className="rounded-lg border border-line bg-card px-4 py-4 sm:px-5"
             >
               <time className="text-caption text-mute">{transcriptTime(t, startedAt)}</time>
-              <p className="mt-2 whitespace-pre-wrap leading-7">
-                {t.text.trim() || '(알아듣지 못했어요)'}
-              </p>
+              <TranscriptText text={t.text} />
             </article>
           )
         }
         const d = decisions.find((d) => d.id === entry.id)!
-        const parent = sourceOf(d, transcripts)
-        const previous = visibleEntries[index - 1]
-        const late = previous?.type !== 'transcript' || previous.id !== parent?.id
         return (
           <article
             key={`d:${d.id}`}
@@ -52,12 +67,6 @@ export function Timeline({
             <div className="flex items-center gap-2 text-caption font-bold text-blue-700">
               <Tori size={24} />
               <span>토리 · 자료 답변</span>
-              {late && parent && (
-                <span>
-                  {answerDelay(d, parent, startedAt)}분 전 · {transcriptTime(parent, startedAt)}에
-                  나온 말
-                </span>
-              )}
             </div>
             <p className="mt-2 whitespace-pre-wrap leading-6">
               {d.kind === 'NOT_FOUND'

@@ -16,35 +16,32 @@ export function visibleDecision(decision: Decision, transcripts: Transcript[]) {
     !!sourceOf(decision, transcripts)
   )
 }
-// Append on first observation: a slow answer never jumps back into an old utterance.
+// Keep each answer with the utterance it used, including answers arriving later.
 export function reconcileTimeline(
-  previous: TimelineEntry[],
+  _previous: TimelineEntry[],
   transcripts: Transcript[],
   decisions: Decision[],
 ): TimelineEntry[] {
-  const visibleTranscripts = transcripts.filter((t) => t.final)
+  const visibleTranscripts = transcripts
+    .filter((t) => t.final)
+    .sort((a, b) => b.seq - a.seq || b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
   const visibleDecisions = decisions.filter((d) => visibleDecision(d, visibleTranscripts))
-  const next = previous.filter((e) =>
-    e.type === 'transcript'
-      ? visibleTranscripts.some((t) => t.id === e.id)
-      : visibleDecisions.some((d) => d.id === e.id),
-  )
-  const seen = new Set(next.map((e) => `${e.type}:${e.id}`))
-  const incoming: { entry: TimelineEntry; at: string; seq: number }[] = [
-    ...visibleTranscripts.map((t) => ({
-      entry: { type: 'transcript' as const, id: t.id },
-      at: t.createdAt,
-      seq: t.seq,
-    })),
-    ...visibleDecisions.map((d) => ({
-      entry: { type: 'decision' as const, id: d.id },
-      at: d.createdAt,
-      seq: Number.MAX_SAFE_INTEGER,
-    })),
-  ]
-  incoming.sort((a, b) => a.at.localeCompare(b.at) || a.seq - b.seq)
-  for (const { entry } of incoming) if (!seen.has(`${entry.type}:${entry.id}`)) next.push(entry)
-  return next
+  const seen = new Set<string>()
+  const entries: TimelineEntry[] = []
+  for (const transcript of visibleTranscripts) {
+    if (seen.has(`transcript:${transcript.id}`)) continue
+    seen.add(`transcript:${transcript.id}`)
+    entries.push({ type: 'transcript', id: transcript.id })
+    const answers = visibleDecisions
+      .filter((d) => sourceOf(d, visibleTranscripts)?.id === transcript.id)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+    for (const answer of answers) {
+      if (seen.has(`decision:${answer.id}`)) continue
+      seen.add(`decision:${answer.id}`)
+      entries.push({ type: 'decision', id: answer.id })
+    }
+  }
+  return entries
 }
 export function transcriptTime(transcript: Transcript, startedAt?: string | null) {
   const at =
