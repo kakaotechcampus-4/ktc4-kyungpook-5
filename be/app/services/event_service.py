@@ -80,7 +80,7 @@ async def begin_event_cancellation(session: AsyncSession, *, event_id: str) -> E
     event.status = EventStatus.CANCELLING
     existing = await session.scalar(select(func.count()).select_from(EventCancelTask).where(EventCancelTask.event_id == event_id))
     if not existing:
-        session.add_all([EventCancelTask(event_id=event_id, task_order=i + 1, name=name, description=description, message=message) for i, (name, description, message) in enumerate(_CANCEL_TASKS)])
+        session.add_all([EventCancelTask(event_id=event_id, task_order=i + 1, name=name, description=description, message=message, created_at=datetime.now(UTC)) for i, (name, description, message) in enumerate(_CANCEL_TASKS)])
     await session.commit()
     await session.refresh(event)
     return event
