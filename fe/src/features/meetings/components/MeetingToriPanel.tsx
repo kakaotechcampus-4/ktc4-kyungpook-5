@@ -2,7 +2,12 @@ import { Link } from 'react-router-dom'
 import { Card } from '@/shared/ui/Card'
 import { Tori } from '@/shared/ui/Tori'
 import { useDecisionJobs } from '../hooks'
-import { meetingAnswers, meetingMicStatus, sourceOf, transcriptTime } from '../timeline'
+import {
+  latestTranscriptStatus,
+  meetingAnswers,
+  meetingMicStatus,
+  transcriptTime,
+} from '../timeline'
 import type { AudioPhase } from '../audio/useMeetingAudio'
 import type { Decision, Meeting, Transcript } from '../types'
 
@@ -38,22 +43,18 @@ export function MeetingToriPanel({
   const latestJob = latest?.decisionJobId
     ? jobs[jobTranscripts.findIndex((item) => item.id === latest.id)]
     : undefined
-  const latestNoLookup =
-    latest &&
-    decisions.some(
-      (decision) =>
-        decision.kind === 'NO_LOOKUP' &&
-        decision.status === 'SUCCEEDED' &&
-        sourceOf(decision, transcripts)?.id === latest.id,
-    )
-  const latestProcessing =
-    latestJob &&
-    !latestJob.isError &&
-    (!latestJob.data || latestJob.data.status === 'QUEUED' || latestJob.data.status === 'RUNNING')
+  const failed = jobs.some((job) => job.data?.status === 'FAILED' || job.isError)
+  const latestStatus = latestTranscriptStatus(
+    latest,
+    transcripts,
+    decisions,
+    meeting.status,
+    latestJob?.data?.status,
+    error || failed,
+  )
   const processing = jobs.some(
     (job) => job.data?.status === 'QUEUED' || job.data?.status === 'RUNNING',
   )
-  const failed = jobs.some((job) => job.data?.status === 'FAILED' || job.isError)
   return (
     <Card className="flex h-[320px] min-w-0 flex-col p-5 sm:h-[340px]">
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line pb-3">
@@ -91,21 +92,30 @@ export function MeetingToriPanel({
             </button>
           </p>
         )}
-        {latestProcessing && latest && (
+        {latestStatus === 'processing' && latest && (
           <p role="status" className="text-caption text-ink2">
             최근 발화 ({transcriptTime(latest, meeting.startedAt)})를 처리하고 있어요.
           </p>
         )}
-        {!latestProcessing && latestNoLookup && latest && (
+        {latestStatus === 'waiting' && latest && (
+          <p role="status" className="text-caption text-ink2">
+            최근 발화 ({transcriptTime(latest, meeting.startedAt)})의 처리 결과를 기다리고 있어요.
+          </p>
+        )}
+        {latestStatus === 'no-lookup' && latest && (
           <p className="text-caption text-mute">
             최근 발화 ({transcriptTime(latest, meeting.startedAt)})는 자료 검색 없이 처리됐어요.
           </p>
         )}
-        {processing && !latestProcessing && (
-          <p role="status" className="text-caption text-ink2">
-            들은 내용을 처리하고 있어요.
-          </p>
-        )}
+        {processing &&
+          latestStatus !== 'processing' &&
+          latestStatus !== 'waiting' &&
+          !error &&
+          !failed && (
+            <p role="status" className="text-caption text-ink2">
+              들은 내용을 처리하고 있어요.
+            </p>
+          )}
         {failed && (
           <p role="alert" className="text-caption text-failed">
             일부 발화의 처리를 확인하지 못했어요.{' '}
