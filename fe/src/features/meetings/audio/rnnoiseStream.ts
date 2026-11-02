@@ -1,4 +1,5 @@
 const FRAME = 480
+const TAIL_FRAMES = 6
 
 type Denoise = { processFrame: (samples: Float32Array) => number; destroy: () => void }
 
@@ -9,6 +10,7 @@ export class RnnoiseStream {
   private inputSamples = 0
   private outputSamples = 0
   private primed = false
+  private tailSamples = 0
   constructor(private readonly denoiser: Denoise, private readonly emit: (samples: Float32Array) => void) {}
 
   push(samples: Float32Array) {
@@ -24,8 +26,11 @@ export class RnnoiseStream {
   }
 
   finish() {
-    if (this.pending) this.process()
-    if (this.inputSamples) this.process()
+    if (this.inputSamples) {
+      this.tailSamples = TAIL_FRAMES * FRAME
+      if (this.pending) this.process()
+      for (let i = 0; i < TAIL_FRAMES + 1; i++) this.process()
+    }
     this.denoiser.destroy()
   }
 
@@ -33,7 +38,7 @@ export class RnnoiseStream {
     for (let i = 0; i < FRAME; i++) this.frame[i] *= 32768
     this.denoiser.processFrame(this.frame)
     if (this.primed) {
-      const length = Math.min(FRAME, this.inputSamples - this.outputSamples)
+      const length = Math.min(FRAME, this.inputSamples + this.tailSamples - this.outputSamples)
       const out = this.frame.slice(0, length)
       for (let i = 0; i < length; i++) out[i] /= 32768
       if (length) this.emit(out)
