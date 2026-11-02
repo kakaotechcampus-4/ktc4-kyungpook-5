@@ -182,7 +182,10 @@ BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE �
 팀장 요청 ERD 변경안(2026-10-12)에서는 curl 흐름에 필요한 것만 넣었습니다(`2ffdcc2aee5b` 리비전).
 작업(`agent_jobs`)·판단(`context_decisions`)·할 일 후보(`task_suggestions`)를 나누고, 회의 판단 결과는
 `transcript_segments`가 아니라 `context_decisions`에 둡니다. 판단 근거는 원문 id와 그때의 version을
-`sources`(JSONB)에 고정하고, 전사가 정정되면 이전 판단을 `STALE`로 바꿉니다. 변경안의
+`sources`(JSONB)에 고정하고, 전사가 정정되면 이전 판단을 `STALE`로 바꿉니다. 회의 판단은 그때 AI에
+넘긴 요청(방금 발화와 앞 발화 4개)을 `judge_input`(JSONB)에, 판단 호출 시간을 `judge_ms`에 함께 남깁니다.
+전사는 정정되면 덮어써지므로, 판단 기록만으로 그때 입력을 다시 만들어 학습 데이터로 쓰기 위해서입니다
+(#241, AI #117). 두 값은 화면·API에 내보내지 않습니다. 변경안의
 `context_sources`/`context_source_versions`, `agent_job_attempts`, `agent_tool_calls`, `transcript_events`,
 `discord_channels`, `task_suggestion_evidence`, `todos`는 아직 만들지 않았습니다(재시도·근거 버전 이력·
 채널별 cursor가 필요해질 때 추가).
