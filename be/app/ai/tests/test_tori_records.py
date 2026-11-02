@@ -148,3 +148,14 @@ def test_evidence_amount_sign_is_preserved(monkeypatch, source, claim, expected)
 def test_ambiguous_or_korean_quantities_require_matching_evidence(monkeypatch, source, claim, expected):
     mock_assessment(monkeypatch, facts=[item(claim, 'c1')])
     assert run((chunk(source),)).status == expected
+
+
+def test_event_name_is_not_four_attendees_in_grounded_answer(monkeypatch):
+    mock_assessment(monkeypatch, facts=[item('연도와 행사명이 기재되지 않은 행사 총예산은 600000원이다.', 'c1')])
+    assert run((chunk('행사 총예산 600,000원'),)).status == 'answered'
+
+
+@pytest.mark.parametrize('claim', ['참가자는 사명', '참가자는사명', '참가자사명'])
+def test_korean_people_quantity_is_still_checked(monkeypatch, claim):
+    mock_assessment(monkeypatch, facts=[item(claim, 'c1')])
+    assert run((chunk('참가자 3명'),)).status == 'no_evidence'

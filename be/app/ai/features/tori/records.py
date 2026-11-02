@@ -39,7 +39,13 @@ def _numbers(text: str) -> set[str]:
         before = text[:match.start()].rstrip()
         if before and (before[-1].isdigit() or before[-1] == '.'):
             continue
-        values.append(match.group())
+        value = match.group().strip()
+        start = match.end() - len(match.group().lstrip())
+        if (start and '가' <= text[start - 1] <= '힣'
+                and re.fullmatch(r'[일이삼사오육칠팔구](?:명|원)', value)
+                and not before.endswith(('은', '는', '이', '가', '을', '를', '참가자', '참석자', '인원'))):
+            continue
+        values.append(value)
     return {re.sub(r'[,\s]', '', value).replace('−', '-').replace('마이너스', '-').replace('음수', '-').replace('플러스', '+').removeprefix('+')
             for value in values}
 
