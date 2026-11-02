@@ -76,7 +76,9 @@ function Reply({ result }: { result: Result }) {
   }
   return (
     <div className="min-w-0 space-y-4 text-[14px] leading-6">
-      <p className="whitespace-pre-wrap">{result.reply}</p>
+      <p role={answer?.status === 'failed' ? 'alert' : undefined} className="whitespace-pre-wrap">
+        {result.reply}
+      </p>
       {answer && (
         <div className="space-y-3">
           {answer.facts?.map((fact, index) => (
@@ -186,11 +188,6 @@ function Reply({ result }: { result: Result }) {
           {answer.semanticStatus === 'UNAVAILABLE' && (
             <p role="alert" className="text-caption text-failed">
               AI 검색을 사용할 수 없어 답변이 제한될 수 있어요.
-            </p>
-          )}
-          {answer.status === 'failed' && answer.semanticStatus !== 'UNAVAILABLE' && (
-            <p role="alert" className="text-caption text-failed">
-              자료 답변을 만들지 못했어요.
             </p>
           )}
         </div>
@@ -390,6 +387,7 @@ export function ToriChat({
       })
       const id = crypto.randomUUID()
       setTurns((items) => [...items, { id, message, result }])
+      if (pending && result.recordAnswer?.status === 'failed') return
       setPending(
         result.clarification
           ? { turnId: id, originalQuestion: pending?.originalQuestion ?? message }
@@ -528,7 +526,6 @@ export function ToriChat({
               disabled={busy}
               onClick={() => {
                 setPending(null)
-                setDraft('')
                 setError('')
               }}
             >
