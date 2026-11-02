@@ -56,6 +56,7 @@ class ToriRecordAnswer(CamelModel):
     candidate_limit_reached: bool
     lexical_chunk_count: int = Field(ge=0)
     lexical_omitted: bool
+    filename_only_unanalyzed_count: int = Field(ge=0)
 
 
 class ToriMessageOut(CamelModel):

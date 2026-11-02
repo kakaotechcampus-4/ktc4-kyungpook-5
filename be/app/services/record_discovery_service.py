@@ -25,7 +25,8 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
                          page: int, size: int,
                          chunks_out: list[ai.RetrievedChunk] | None = None,
                          lexical_out: list[ai.RetrievedChunk] | None = None,
-                         lexical_omitted: list[bool] | None = None) -> tuple[dict, int]:
+                         lexical_omitted: list[bool] | None = None,
+                         filename_only_out: list[str] | None = None) -> tuple[dict, int]:
     # blocks.text만 검색한다. 파일명과 내용 모두 LIKE 특수문자를 그대로 취급한다.
     blocks = func.jsonb_array_elements(Record.parse_result['blocks']).table_valued(
         column('value', JSONB)
@@ -109,6 +110,8 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
                 excerpts.append(excerpt)
         if not types:
             continue
+        if filename_only_out is not None and 'FILENAME' in types and 'CONTENT' not in types:
+            filename_only_out.append(record.id)
         items.append({'record': record, 'match_types': types, 'excerpts': excerpts,
                       'semantic_score': match.score if match is not None and 'SEMANTIC' in types else None})
     # Exact filename/content matches first; stable tie breaks for the same snapshot.

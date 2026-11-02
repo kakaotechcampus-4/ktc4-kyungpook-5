@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from app.schemas.common import Envelope
 from app.schemas.tori import ToriMessageOut
 
-META = {"semanticStatus": "AVAILABLE", "unindexedCount": 0, "searchedChunkCount": 1, "candidateLimit": 50, "candidateLimitReached": False, "lexicalChunkCount": 0, "lexicalOmitted": False}
+META = {"semanticStatus": "AVAILABLE", "unindexedCount": 0, "searchedChunkCount": 1, "candidateLimit": 50, "candidateLimitReached": False, "lexicalChunkCount": 0, "lexicalOmitted": False, "filenameOnlyUnanalyzedCount": 0}
 
 
 def test_record_answer_has_per_fact_camel_case_sources():

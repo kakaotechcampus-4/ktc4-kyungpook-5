@@ -388,6 +388,7 @@ async def test_토리_미색인_본문일치만_원문근거에_포함한다(cli
     assert data['recordAnswer']['semanticStatus'] == 'NO_INDEXED_RECORDS'
     assert data['recordAnswer']['unindexedCount'] == 2
     assert data['recordAnswer']['lexicalChunkCount'] == 1
+    assert data['recordAnswer']['filenameOnlyUnanalyzedCount'] == 1
     assert data['recordAnswer']['facts'][0]['sources'][0]['recordId'] == mine
     vector = (1.0,) + (0.0,) * 1535
     async def index(request):
@@ -409,3 +410,49 @@ async def test_토리_미색인_본문일치만_원문근거에_포함한다(cli
                           json={'message':'예산은 얼마야?'}).json()['data']
     assert limited['recordAnswer']['lexicalOmitted'] is True
     assert limited['recordAnswer']['lexicalChunkCount'] == 1
+
+async def test_토리_상한으로_제외된_의미청크는_권한재검증_대상에서_제외한다(client, app_db, monkeypatch):
+    import app.ai as ai
+    from app.ai.contracts import RecordFact
+    from app.core.enums import RecordCategory, RecordFileType, RecordParseStatus
+    from app.models.records import Record
+
+    headers, club_id = _owner_with_club(client)
+    async with db_session.get_sessionmaker()() as session:
+        lexical = [Record(club_id=club_id, file_name=f'키워드{i}.csv',
+            file_type=RecordFileType.CSV, category=RecordCategory.ETC,
+            storage_key=f'lex-{i}', size=1, parse_status=RecordParseStatus.COMPLETED,
+            parse_result={'blocks': [{'text': f'예산 {i}', 'location': {'label': '2행'}}]})
+            for i in range(20)]
+        semantic = [Record(club_id=club_id, file_name=f'semantic{i}.csv',
+            file_type=RecordFileType.CSV, category=RecordCategory.ETC,
+            storage_key=f'sem-{i}', size=1, parse_status=RecordParseStatus.INDEXED,
+            parse_result={'blocks': [{'text': f'값 {i}', 'location': {'label': '2행'}}]})
+            for i in range(40)]
+        session.add_all(lexical + semantic)
+        await session.flush()
+        chunks = tuple(ai.RetrievedChunk(text=f'값 {i}',
+            source=ai.RecordSource(record_id=record.id, file_name=record.file_name,
+                                   location=ai.SourceLocation(label='2행')),
+            category=RecordCategory.ETC, score=0.5) for i, record in enumerate(semantic))
+        await session.commit()
+    async def classify(_request):
+        return ai.ToriIntentResult(intent='record_search', query='예산')
+    async def search(_request, *, records):
+        return chunks
+    async def answer(request):
+        assert len(request.chunks) == 50
+        assert len({chunk.source.record_id for chunk in request.chunks}) == 50
+        return ai.ToriRecordAnswerResult(status='answered', facts=(
+            RecordFact(content='예산 확인', sources=(request.chunks[0].source,)),))
+    monkeypatch.setattr(ai, 'classify_tori_intent', classify)
+    monkeypatch.setattr(ai, 'search_related_records', search)
+    monkeypatch.setattr(ai, 'answer_tori_records', answer)
+    response = client.post(f'/api/v1/clubs/{club_id}/tori/messages', headers=headers,
+                           json={'message': '예산 확인해줘'})
+    assert response.status_code == 200, response.text
+    answer_data = response.json()['data']['recordAnswer']
+    assert answer_data['status'] == 'answered'
+    assert answer_data['searchedChunkCount'] == 50
+    assert answer_data['candidateLimitReached'] is True
+    assert answer_data['lexicalChunkCount'] == 20

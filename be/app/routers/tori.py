@@ -46,9 +46,11 @@ async def message(club_id: str, body: ToriMessageIn,
         chunks: list[ai.RetrievedChunk] = []
         lexical: list[ai.RetrievedChunk] = []
         lexical_omitted: list[bool] = []
+        filename_only: list[str] = []
         records, total = await record_discovery_service.search_records(
             session, club_id=club_id, query=result.query.strip(), page=1, size=20,
-            chunks_out=chunks, lexical_out=lexical, lexical_omitted=lexical_omitted)
+            chunks_out=chunks, lexical_out=lexical, lexical_omitted=lexical_omitted,
+            filename_only_out=filename_only)
         await ensure_member(session, club_id=club_id, account=account)
         if chunks:
             ids = {chunk.source.record_id for chunk in chunks}
@@ -71,11 +73,12 @@ async def message(club_id: str, body: ToriMessageIn,
                 chunk.source.record_id, chunk.source.file_name, chunk.source.location.label, chunk.text
             ) in allowed_blocks]
         semantic_capped = len(chunks) >= records['semantic_candidate_limit']
-        semantic_ids = {chunk.source.record_id for chunk in chunks}
         seen = {(chunk.source.record_id, chunk.source.location.label, chunk.text) for chunk in lexical}
-        chunks = lexical + [chunk for chunk in chunks if (
+        selected_semantic = [chunk for chunk in chunks if (
             chunk.source.record_id, chunk.source.location.label, chunk.text
         ) not in seen][:record_discovery_service.SEMANTIC_LIMIT - len(lexical)]
+        semantic_ids = {chunk.source.record_id for chunk in selected_semantic}
+        chunks = lexical + selected_semantic
         answer_info = dict(
             semantic_status=records['semantic_status'],
             unindexed_count=records['unindexed_count'],
@@ -84,6 +87,9 @@ async def message(club_id: str, body: ToriMessageIn,
             candidate_limit_reached=semantic_capped or len(chunks) >= records['semantic_candidate_limit'],
             lexical_chunk_count=len(lexical),
             lexical_omitted=bool(lexical_omitted and lexical_omitted[0]),
+            filename_only_unanalyzed_count=len(set(filename_only) - {
+                chunk.source.record_id for chunk in chunks
+            }),
         )
         if records['semantic_status'] == 'UNAVAILABLE' and not chunks:
             answer = ToriRecordAnswer(status='failed', **answer_info)
