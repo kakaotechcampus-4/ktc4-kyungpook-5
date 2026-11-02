@@ -8,36 +8,7 @@ import { Card } from '@/shared/ui/Card'
 import { Textarea } from '@/shared/ui/Input'
 import { Tori } from '@/shared/ui/Tori'
 
-// 서버 OpenAPI에 recordAnswer가 반영되면 생성 타입을 다시 사용한다.
-type RecordAnswer = {
-  status: 'answered' | 'partial' | 'insufficient' | 'failed'
-  facts?: {
-    text: string
-    sources: {
-      recordId: string
-      fileName: string
-      location: components['schemas']['RecordSearchLocation']
-    }[]
-  }[]
-  conflicts?: {
-    description: string
-    values: {
-      text: string
-      sources: {
-        recordId: string
-        fileName: string
-        location: components['schemas']['RecordSearchLocation']
-      }[]
-    }[]
-  }[]
-  notFound?: string[]
-  semanticStatus: 'AVAILABLE' | 'UNAVAILABLE' | 'NO_INDEXED_RECORDS'
-  unindexedCount: number
-  candidateLimitReached: boolean
-  lexicalOmitted: boolean
-  filenameOnlyUnanalyzedCount: number
-}
-type Result = components['schemas']['ToriMessageOut'] & { recordAnswer?: RecordAnswer | null }
+type Result = components['schemas']['ToriMessageOut']
 type Turn = { id: string; message: string; result: Result }
 const formatTime = (value: string | null) =>
   value
