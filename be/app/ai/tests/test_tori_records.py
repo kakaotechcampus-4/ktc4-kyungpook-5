@@ -155,7 +155,7 @@ def test_event_name_is_not_four_attendees_in_grounded_answer(monkeypatch):
     assert run((chunk('행사 총예산 600,000원'),)).status == 'answered'
 
 
-@pytest.mark.parametrize('claim', ['참가자는 사명', '참가자는사명', '참가자사명'])
+@pytest.mark.parametrize('claim', ['참가자는 사명', '참가자는사명', '참가자사명', '참가자는총사명', '참가인원약사명', '행사명사명'])
 def test_korean_people_quantity_is_still_checked(monkeypatch, claim):
     mock_assessment(monkeypatch, facts=[item(claim, 'c1')])
     assert run((chunk('참가자 3명'),)).status == 'no_evidence'

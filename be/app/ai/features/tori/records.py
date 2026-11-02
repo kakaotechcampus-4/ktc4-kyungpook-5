@@ -32,20 +32,15 @@ _YEAR = re.compile(r'(?<!\d)(?:19|20)\d{2}(?!\s*(?:원|명|개|건|%|월|일|만
 
 
 def _numbers(text: str) -> set[str]:
-    text = _AMBIGUOUS_AMOUNT.sub('', text)
+    # 일반 단어 '행사명'은 한글 수사 '사명'과 겹치므로 먼저 제외한다.
+    text = _AMBIGUOUS_AMOUNT.sub('', text).replace('행사명', '')
     values = list(_NUMBER.findall(text))
     for match in _KOREAN_NUMBER.finditer(text):
         # 아라비아 숫자와 띄어 쓴 단위(예: 10 만원)는 별도 한글 수사가 아니다.
         before = text[:match.start()].rstrip()
         if before and (before[-1].isdigit() or before[-1] == '.'):
             continue
-        value = match.group().strip()
-        start = match.end() - len(match.group().lstrip())
-        if (start and '가' <= text[start - 1] <= '힣'
-                and re.fullmatch(r'[일이삼사오육칠팔구](?:명|원)', value)
-                and not before.endswith(('은', '는', '이', '가', '을', '를', '참가자', '참석자', '인원'))):
-            continue
-        values.append(value)
+        values.append(match.group().strip())
     return {re.sub(r'[,\s]', '', value).replace('−', '-').replace('마이너스', '-').replace('음수', '-').replace('플러스', '+').removeprefix('+')
             for value in values}
 
