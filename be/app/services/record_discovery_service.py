@@ -9,6 +9,8 @@ from app.models.records import Record
 from app.services.record_search_port import PostgresRecordSearch
 
 SEMANTIC_LIMIT = 50
+LEXICAL_ANSWER_LIMIT = 20
+LEXICAL_BLOCK_MAX_CHARS = 4000
 
 
 def _excerpt(text: str, query: str | None = None) -> str:
@@ -21,7 +23,9 @@ def _excerpt(text: str, query: str | None = None) -> str:
 
 async def search_records(session: AsyncSession, *, club_id: str, query: str,
                          page: int, size: int,
-                         chunks_out: list[ai.RetrievedChunk] | None = None) -> tuple[dict, int]:
+                         chunks_out: list[ai.RetrievedChunk] | None = None,
+                         lexical_out: list[ai.RetrievedChunk] | None = None,
+                         lexical_omitted: list[bool] | None = None) -> tuple[dict, int]:
     # blocks.text만 검색한다. 파일명과 내용 모두 LIKE 특수문자를 그대로 취급한다.
     blocks = func.jsonb_array_elements(Record.parse_result['blocks']).table_valued(
         column('value', JSONB)
@@ -32,7 +36,7 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
     filename_match = Record.file_name.icontains(query, autoescape=True)
     lexical = list((await session.scalars(select(Record).where(
         Record.club_id == club_id, filename_match | content_match
-    ))).all())
+    ).order_by(Record.id))).all())
     counts = dict((await session.execute(select(Record.parse_status, func.count())
         .where(Record.club_id == club_id).group_by(Record.parse_status))).all())
     indexed_count = counts.get(RecordParseStatus.INDEXED, 0)
@@ -51,6 +55,29 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
             semantic_status = 'UNAVAILABLE'
     if chunks_out is not None:
         chunks_out.extend(semantic)
+    if lexical_out is not None:
+        omitted = False
+        for record in lexical:
+            if record.parse_status not in (RecordParseStatus.COMPLETED, RecordParseStatus.INDEXED):
+                continue
+            for block in (record.parse_result or {}).get('blocks', []):
+                text = block.get('text', '')
+                if not isinstance(text, str) or query.casefold() not in text.casefold():
+                    continue
+                location = block.get('location')
+                label = location.get('label') if isinstance(location, dict) else None
+                if not isinstance(label, str) or not label.strip() or len(text) > LEXICAL_BLOCK_MAX_CHARS:
+                    omitted = True
+                    continue
+                if len(lexical_out) >= LEXICAL_ANSWER_LIMIT:
+                    omitted = True
+                    continue
+                lexical_out.append(ai.RetrievedChunk(
+                    text=text, source=ai.RecordSource(record_id=record.id,
+                        file_name=record.file_name, location=ai.SourceLocation(label=label)),
+                    category=record.category, event_id=record.event_id, score=0.0))
+        if lexical_omitted is not None:
+            lexical_omitted.append(omitted)
     semantic_by_record = {}
     for chunk in semantic:
         semantic_by_record.setdefault(chunk.source.record_id, chunk)

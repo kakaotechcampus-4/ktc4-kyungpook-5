@@ -44,9 +44,11 @@ async def message(club_id: str, body: ToriMessageIn,
         if not result.query or len(result.query) > 200:
             return Envelope(data=ToriMessageOut(intent='clarify', reply='찾을 자료를 조금 더 짧게 알려 주세요.'))
         chunks: list[ai.RetrievedChunk] = []
+        lexical: list[ai.RetrievedChunk] = []
+        lexical_omitted: list[bool] = []
         records, total = await record_discovery_service.search_records(
             session, club_id=club_id, query=result.query.strip(), page=1, size=20,
-            chunks_out=chunks)
+            chunks_out=chunks, lexical_out=lexical, lexical_omitted=lexical_omitted)
         await ensure_member(session, club_id=club_id, account=account)
         if chunks:
             ids = {chunk.source.record_id for chunk in chunks}
@@ -54,14 +56,36 @@ async def message(club_id: str, body: ToriMessageIn,
                 Record.id.in_(ids), Record.club_id == club_id,
                 Record.parse_status == RecordParseStatus.INDEXED))).all())
             chunks = [chunk for chunk in chunks if chunk.source.record_id in current]
+        if lexical:
+            ids = {chunk.source.record_id for chunk in lexical}
+            rows = list(await session.scalars(select(Record).where(
+                Record.id.in_(ids), Record.club_id == club_id,
+                Record.parse_status.in_((RecordParseStatus.COMPLETED, RecordParseStatus.INDEXED)))
+                .execution_options(populate_existing=True)))
+            allowed_blocks = {
+                (record.id, record.file_name, block.get('location', {}).get('label'), block.get('text'))
+                for record in rows for block in (record.parse_result or {}).get('blocks', [])
+                if isinstance(block, dict) and isinstance(block.get('location'), dict)
+            }
+            lexical = [chunk for chunk in lexical if (
+                chunk.source.record_id, chunk.source.file_name, chunk.source.location.label, chunk.text
+            ) in allowed_blocks]
+        semantic_capped = len(chunks) >= records['semantic_candidate_limit']
+        semantic_ids = {chunk.source.record_id for chunk in chunks}
+        seen = {(chunk.source.record_id, chunk.source.location.label, chunk.text) for chunk in lexical}
+        chunks = lexical + [chunk for chunk in chunks if (
+            chunk.source.record_id, chunk.source.location.label, chunk.text
+        ) not in seen][:record_discovery_service.SEMANTIC_LIMIT - len(lexical)]
         answer_info = dict(
             semantic_status=records['semantic_status'],
             unindexed_count=records['unindexed_count'],
             searched_chunk_count=len(chunks),
             candidate_limit=records['semantic_candidate_limit'],
-            candidate_limit_reached=len(chunks) >= records['semantic_candidate_limit'],
+            candidate_limit_reached=semantic_capped or len(chunks) >= records['semantic_candidate_limit'],
+            lexical_chunk_count=len(lexical),
+            lexical_omitted=bool(lexical_omitted and lexical_omitted[0]),
         )
-        if records['semantic_status'] == 'UNAVAILABLE':
+        if records['semantic_status'] == 'UNAVAILABLE' and not chunks:
             answer = ToriRecordAnswer(status='failed', **answer_info)
         elif not chunks:
             answer = ToriRecordAnswer(status='insufficient', **answer_info)
@@ -81,7 +105,9 @@ async def message(club_id: str, body: ToriMessageIn,
                     answer = ToriRecordAnswer(status='failed', **answer_info)
                 else:
                     answer = ToriRecordAnswer(
-                        status='insufficient' if generated.status == 'no_evidence' else generated.status,
+                        status=('insufficient' if generated.status == 'no_evidence' else
+                                'partial' if generated.status == 'answered' and
+                                records['semantic_status'] == 'UNAVAILABLE' else generated.status),
                         facts=[fact_out(fact) for fact in generated.facts],
                         conflicts=[{'description': conflict.description,
                                     'values': [fact_out(value) for value in conflict.values]}
@@ -90,11 +116,23 @@ async def message(club_id: str, body: ToriMessageIn,
         await ensure_member(session, club_id=club_id, account=account)
         if chunks:
             ids = {chunk.source.record_id for chunk in chunks}
-            current = set((await session.scalars(select(Record.id).where(
+            rows = list(await session.scalars(select(Record).where(
                 Record.id.in_(ids), Record.club_id == club_id,
-                Record.parse_status == RecordParseStatus.INDEXED))).all())
-            if ids != current:
+                Record.parse_status.in_((RecordParseStatus.COMPLETED, RecordParseStatus.INDEXED)))
+                .execution_options(populate_existing=True)))
+            current = {record.id for record in rows}
+            indexed_ids = {record.id for record in rows if record.parse_status == RecordParseStatus.INDEXED}
+            if ids != current or not semantic_ids.issubset(indexed_ids):
                 answer = ToriRecordAnswer(status='failed', **answer_info)
+            elif lexical:
+                current_blocks = {
+                    (record.id, record.file_name, block.get('location', {}).get('label'), block.get('text'))
+                    for record in rows for block in (record.parse_result or {}).get('blocks', [])
+                    if isinstance(block, dict) and isinstance(block.get('location'), dict)
+                }
+                if any((chunk.source.record_id, chunk.source.file_name,
+                        chunk.source.location.label, chunk.text) not in current_blocks for chunk in lexical):
+                    answer = ToriRecordAnswer(status='failed', **answer_info)
         item_ids = {item.id for item in records['items']}
         if item_ids:
             current_items = set((await session.scalars(select(Record.id).where(

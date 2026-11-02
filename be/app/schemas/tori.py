@@ -54,6 +54,8 @@ class ToriRecordAnswer(CamelModel):
     searched_chunk_count: int = Field(ge=0)
     candidate_limit: int = Field(ge=1)
     candidate_limit_reached: bool
+    lexical_chunk_count: int = Field(ge=0)
+    lexical_omitted: bool
 
 
 class ToriMessageOut(CamelModel):

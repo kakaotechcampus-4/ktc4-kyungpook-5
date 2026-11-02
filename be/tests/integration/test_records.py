@@ -348,3 +348,64 @@ async def test_토리_모델_호출_중_권한상실은_결과를_반환하지_�
                            json={'message':'예산'})
     assert response.status_code == 403
     assert '예산 30만원' not in response.text
+
+async def test_토리_미색인_본문일치만_원문근거에_포함한다(client, app_db, monkeypatch, tmp_path):
+    import app.ai as ai
+    from app.ai.contracts import RecordFact
+    from app.core.config import get_settings
+    monkeypatch.setenv('STORAGE_DIR', str(tmp_path))
+    get_settings.cache_clear()
+    async def no_index(_request):
+        raise ai.AIConfigError('fixture')
+    async def classify(_request):
+        return ai.ToriIntentResult(intent='record_search', query='예산')
+    async def answer(request):
+        assert len(request.chunks) == 1
+        chunk = request.chunks[0]
+        assert chunk.text == '항목: 예산, 금액: 300000'
+        return ai.ToriRecordAnswerResult(status='answered', facts=(
+            RecordFact(content='예산 300000', sources=(chunk.source,)),))
+    monkeypatch.setattr(ai, 'index_record', no_index)
+    monkeypatch.setattr(ai, 'classify_tori_intent', classify)
+    monkeypatch.setattr(ai, 'answer_tori_records', answer)
+    headers, club_id = _owner_with_club(client)
+    other, other_club = _owner_with_club(client)
+    def upload(headers, club, filename, content):
+        response = client.post('/api/v1/records', headers=headers,
+            data={'clubId': club, 'category':'ETC'},
+            files={'file': (filename, content.encode(), 'text/csv')})
+        assert response.status_code == 201, response.text
+        return response.json()['data']['id']
+    mine = upload(headers, club_id, '내역.csv', '항목,금액\n예산,300000\n')
+    filename_only = upload(headers, club_id, '예산.csv', '항목,금액\n간식,100\n')
+    upload(other, other_club, '비밀.csv', '항목,금액\n예산,900000\n')
+    response = client.post(f'/api/v1/clubs/{club_id}/tori/messages', headers=headers,
+                           json={'message':'예산은 얼마야?'})
+    assert response.status_code == 200, response.text
+    data = response.json()['data']
+    assert {item['id'] for item in data['records']['items']} == {mine, filename_only}
+    assert data['recordAnswer']['status'] == 'answered'
+    assert data['recordAnswer']['semanticStatus'] == 'NO_INDEXED_RECORDS'
+    assert data['recordAnswer']['unindexedCount'] == 2
+    assert data['recordAnswer']['lexicalChunkCount'] == 1
+    assert data['recordAnswer']['facts'][0]['sources'][0]['recordId'] == mine
+    vector = (1.0,) + (0.0,) * 1535
+    async def index(request):
+        return ai.IndexRecordResult(chunks=(ai.IndexedChunk(text='기타',
+            location=ai.SourceLocation(label='2행'), block_indexes=(0,), embedding=vector),))
+    async def search_fails(_request, *, records):
+        raise ai.AIRetryableError('fixture')
+    monkeypatch.setattr(ai, 'index_record', index)
+    monkeypatch.setattr(ai, 'search_related_records', search_fails)
+    upload(headers, club_id, '기타.csv', '항목,금액\n기타,100\n')
+    degraded = client.post(f'/api/v1/clubs/{club_id}/tori/messages', headers=headers,
+                           json={'message':'예산은 얼마야?'}).json()['data']
+    assert degraded['recordAnswer']['status'] == 'partial'
+    assert degraded['recordAnswer']['semanticStatus'] == 'UNAVAILABLE'
+    assert degraded['recordAnswer']['facts'][0]['sources'][0]['recordId'] == mine
+    monkeypatch.setattr(ai, 'index_record', no_index)
+    upload(headers, club_id, '큰자료.csv', '항목,금액\n예산' + ('가' * 4100) + ',5\n')
+    limited = client.post(f'/api/v1/clubs/{club_id}/tori/messages', headers=headers,
+                          json={'message':'예산은 얼마야?'}).json()['data']
+    assert limited['recordAnswer']['lexicalOmitted'] is True
+    assert limited['recordAnswer']['lexicalChunkCount'] == 1
