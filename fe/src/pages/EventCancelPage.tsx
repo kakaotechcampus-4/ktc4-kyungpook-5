@@ -84,6 +84,10 @@ export default function EventCancelPage() {
   if (detailQuery.isError) {
     return <ServerErrorScreen onRetry={() => detailQuery.refetch()} onHome={() => navigate('/')} />
   }
+  if (!demo && cancelQuery.isPending) return null
+  if (!demo && cancelQuery.isError) {
+    return <ServerErrorScreen onRetry={() => cancelQuery.refetch()} onHome={() => navigate('/')} />
+  }
 
   return (
     <div className="flex flex-col gap-[20px]">
@@ -101,8 +105,6 @@ export default function EventCancelPage() {
             <h1 className="text-h1">{event?.title ?? '행사 이름'}</h1>
             <Chip tone={event?.status === 'CANCELLED' ? 'done' : 'failed'}>{event?.status === 'CANCELLED' ? '취소 완료' : '취소 정리 중'}</Chip>
           </span>
-          {/* TODO(연동): 정리 단계를 바꾸는 화면은 취소 Action이 정해진 뒤에 만든다(#73). */}
-          <Button variant="secondary">정리 단계 수정</Button>
         </div>
 
         <div className="flex flex-wrap gap-x-[36px] gap-y-[12px]">

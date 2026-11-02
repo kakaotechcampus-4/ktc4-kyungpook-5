@@ -18,6 +18,8 @@ export default function PlanStepsPage() {
   const params = useSearchParams()[0]
   const demo = params.has('demo')
   const eventId = params.get('eventId')
+  const returnToEvent = params.get('from') === 'event' && eventId
+  const goBack = () => returnToEvent ? navigate(`/events/${encodeURIComponent(returnToEvent)}`) : navigate(-1)
 
   // 서버가 만든 단계를 밑바탕으로 쓴다. 한 번 저장한 뒤로는 그 결과가 우선이다.
   const serverSteps = usePlanSteps(demo ? null : eventId)
@@ -26,6 +28,7 @@ export default function PlanStepsPage() {
 
   // 포함한 단계의 코드. 배열 순서가 곧 묶음 안의 순서다.
   const [codes, setCodes] = useState<string[] | null>(demo ? Object.keys(DEMO_INCLUDED) : null)
+  const [editingRevision, setEditingRevision] = useState<number | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [saveError, setSaveError] = useState('')
   const resolved =
@@ -42,33 +45,38 @@ export default function PlanStepsPage() {
   )
 
   const current = resolved ?? []
+  const editCodes = (update: (previous: string[]) => string[]) => {
+    if (!demo && editingRevision === null && screen.data) setEditingRevision(screen.data.baseRevision)
+    setCodes((previous) => update(previous ?? current))
+  }
   const included = current
     .map((code) => STEP_CATALOGUE.find((s) => s.code === code))
     .filter((s) => s !== undefined)
   const excluded = STEP_CATALOGUE.filter((s) => !current.includes(s.code))
   const reloadLatest = async () => {
-    setSaveError('')
     await Promise.all([serverSteps.refetch(), screen.refetch()])
   }
   const saveSteps = async () => {
-    if (!eventId) return navigate(-1)
+    if (!eventId) return goBack()
+    const removed = (serverSteps.data ?? []).filter((step) => !current.includes(step.code))
+    if (removed.length && !window.confirm(
+      `${removed.map((step) => step.name).join(', ')} 단계를 빼면 해당 단계의 일정과 행동도 삭제됩니다. 저장할까요?`,
+    )) return
     setSaveError('')
     try {
       await save.mutateAsync({
         codes: current,
-        expectedRevision: screen.data?.baseRevision ?? 0,
+        expectedRevision: editingRevision ?? screen.data?.baseRevision ?? 0,
       })
-      navigate(-1)
+      goBack()
     } catch (cause) {
       setSaveError(planningError(cause))
-      await reloadLatest()
     }
   }
 
   // 묶음 안에서만 자리를 바꾼다. 묶음 사이 이동은 카탈로그가 막는다.
   const reorder = (phase: StepPhase, from: number, to: number) =>
-    setCodes((previous) => {
-      const list = previous ?? current
+    editCodes((list) => {
       const inPhase = list.filter((c) => STEP_CATALOGUE.find((s) => s.code === c)?.phase === phase)
       const moved = [...inPhase]
       moved.splice(to, 0, ...moved.splice(from, 1))
@@ -89,11 +97,11 @@ export default function PlanStepsPage() {
           </p>
         </div>
         <div className="flex gap-[9px]">
-          <Button variant="secondary" onClick={() => navigate(-1)}>
+          <Button variant="secondary" onClick={goBack}>
             취소
           </Button>
           <Button
-            disabled={current.length === 0 || save.isPending || (!demo && (!serverSteps.data || !screen.data))}
+            disabled={current.length === 0 || save.isPending || !!saveError || (!demo && (!serverSteps.data || !screen.data || serverSteps.isError || screen.isError))}
             onClick={() => void saveSteps()}
           >
             {save.isPending ? '저장하는 중…' : '저장'}
@@ -106,12 +114,23 @@ export default function PlanStepsPage() {
           만들어진 단계를 불러오고 있어요.
         </p>
       )}
+      {!demo && eventId && (serverSteps.isError || screen.isError) && (
+        <ErrorBanner
+          title="행사 계획을 불러오지 못했어요."
+          action={<Button variant="secondary" size="sm" onClick={() => void reloadLatest()}>다시 불러오기</Button>}
+        />
+      )}
       {saveError && (
         <ErrorBanner
           title={saveError}
           action={
-            <Button variant="secondary" size="sm" onClick={() => void reloadLatest()}>
-              최신 내용 다시 불러오기
+            <Button variant="secondary" size="sm" onClick={() => {
+              setCodes(null)
+              setEditingRevision(null)
+              setSaveError('')
+              void reloadLatest()
+            }}>
+              최신 내용으로 다시 시작
             </Button>
           }
         />
@@ -124,8 +143,10 @@ export default function PlanStepsPage() {
       {!demo && eventId && (
         <>
           <p className="text-mute">
-            저장하면 행사 계획에 반영되고, 다른 화면에서도 같은 구성을 봅니다.
+            포함 단계와 순서는 저장을 눌러 반영해요. 단계별 일정과 행동은 상세 창에서 각각 저장합니다.
           </p>
+          <p className="text-mute">단계를 제외하고 저장하면 해당 단계의 일정과 행동도 삭제됩니다.</p>
+          {saveError && <p className="text-mute">최신 내용으로 다시 시작하면 저장하지 않은 단계 구성은 사라집니다.</p>}
           {(() => {
             const raw = (() => {
               try {
@@ -151,20 +172,20 @@ export default function PlanStepsPage() {
         </>
       )}
 
-      <div className="flex items-start gap-[20px]">
+      {(demo || (serverSteps.data && screen.data && !serverSteps.isError && !screen.isError)) && <div className="flex flex-col items-stretch gap-[20px] lg:flex-row lg:items-start">
         <StepBoard
           included={included}
           schedule={DEMO_INCLUDED}
           dates={demo ? undefined : dates}
           onEditDetail={demo ? undefined : setEditing}
           onReorder={reorder}
-          onRemove={(code) => setCodes((list) => (list ?? current).filter((c) => c !== code))}
+          onRemove={(code) => editCodes((list) => list.filter((c) => c !== code))}
         />
         <ExcludedSteps
           excluded={excluded}
-          onInclude={(code) => setCodes((list) => [...(list ?? current), code])}
+          onInclude={(code) => editCodes((list) => [...list, code])}
         />
-      </div>
+      </div>}
 
       <StepDetailModal
         step={editing ? (byCode.get(editing) ?? null) : null}

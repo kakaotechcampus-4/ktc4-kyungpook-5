@@ -160,11 +160,12 @@ export default function EventDetailPage() {
       {event ? (
         <>
           <EventHeaderCard
-            readOnly={!demo}
             event={event}
             steps={steps}
             onSelectStep={(step) => setOpenStepId(step.id)}
             onCancelEvent={() => setCancelOpen(true)}
+            onViewCancellation={() => navigate(`/events/${event.id}/cancel${search}`)}
+            onEditPlan={() => navigate(demo ? '/planning/steps?demo' : `/planning/steps?eventId=${encodeURIComponent(event.id)}&from=event`)}
             onStartEvent={demo ? undefined : () => void run(() => startMutation.mutateAsync(event.id), '행사를 시작했어요')}
             onCompleteEvent={demo ? undefined : () => {
               if (window.confirm('행사를 완료하시겠어요? 완료 후에는 할 일을 처리할 수 없습니다.')) {
@@ -221,10 +222,11 @@ export default function EventDetailPage() {
             open={cancelOpen}
             event={event}
             onClose={() => setCancelOpen(false)}
-            // TODO(연동): POST /events/{id}/cancel. 취소 Action은 아직 정의 전이다(#73).
+            pending={cancelMutation.isPending}
             onConfirm={() => {
               if (demo) navigate(`/events/${eventId}/cancel${search}`)
-              else if (eventId) void cancelMutation.mutateAsync(eventId).then(() => navigate(`/events/${eventId}/cancel${search}`))
+              else if (eventId) void run(() => cancelMutation.mutateAsync(eventId), '취소 정리를 시작했어요')
+                .then((success) => { if (success) navigate(`/events/${eventId}/cancel${search}`) })
             }}
           />
           <AnswerModal

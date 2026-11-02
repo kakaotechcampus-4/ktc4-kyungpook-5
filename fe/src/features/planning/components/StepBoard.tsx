@@ -47,9 +47,7 @@ export function StepBoard({
           <h2 className="text-h2 text-ink">포함된 단계</h2>
           <Chip tone="approved">{included.length}개</Chip>
         </span>
-        <span className="text-[11.5px] text-mute">
-          카드를 끌어 순서를 바꿉니다 · 묶음은 못 옮겨요
-        </span>
+        <span className="text-[11.5px] text-mute">같은 묶음 안에서 순서를 바꿀 수 있어요</span>
       </div>
 
       <div className="flex flex-col gap-[14px] px-[26px] pb-[20px]">
@@ -70,9 +68,9 @@ export function StepBoard({
 
               {rows.length === 0 ? (
                 <div className="flex flex-col items-center gap-[5px] rounded-[12px] border-[1.5px] border-dashed border-soft bg-card px-[18px] py-[22px]">
-                  <span className="text-[12.5px] font-bold text-mute">여기로 끌어다 놓기</span>
+                  <span className="text-[12.5px] font-bold text-mute">포함된 단계가 없어요</span>
                   <span className="text-[11px] text-mute">
-                    오른쪽 목록에서 + 를 눌러도 들어옵니다
+                    뺀 단계에서 + 버튼을 눌러 추가할 수 있어요
                   </span>
                 </div>
               ) : (
@@ -92,7 +90,7 @@ export function StepBoard({
                       setDragging(undefined)
                     }}
                     className={cn(
-                      'flex items-center gap-[13px] rounded-[12px] border bg-card px-[14px] py-[13px]',
+                      'flex flex-wrap items-center gap-[13px] rounded-[12px] border bg-card px-[14px] py-[13px]',
                       dragging?.phase === phase && dragging.index === index
                         ? 'border-blue-400 opacity-60'
                         : 'border-line',
@@ -101,6 +99,14 @@ export function StepBoard({
                     <span className="cursor-grab text-[15px] text-soft" aria-hidden>
                       ⠿
                     </span>
+                    <div className="flex shrink-0 flex-col gap-1">
+                      <button type="button" aria-label={`${step.name} 위로 이동`} disabled={index === 0}
+                        onClick={() => onReorder(phase, index, index - 1)}
+                        className="rounded border border-line px-2 text-ink2 disabled:opacity-30">↑</button>
+                      <button type="button" aria-label={`${step.name} 아래로 이동`} disabled={index === rows.length - 1}
+                        onClick={() => onReorder(phase, index, index + 1)}
+                        className="rounded border border-line px-2 text-ink2 disabled:opacity-30">↓</button>
+                    </div>
                     <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
                       <span className="truncate text-[13.5px] font-bold text-ink">{step.name}</span>
                       <span className="text-[11px] text-mute">
@@ -113,9 +119,10 @@ export function StepBoard({
                         <button
                           type="button"
                           onClick={() => onEditDetail(step.code)}
-                          className="rounded-[7px] border border-line px-[8px] py-[6px] text-[11.5px] font-bold text-ink2 hover:bg-bg"
+                          disabled={!dates?.[step.code]}
+                          className="rounded-[7px] border border-line px-[8px] py-[6px] text-[11.5px] font-bold text-ink2 hover:bg-bg disabled:opacity-50"
                         >
-                          세부 수정
+                          {dates?.[step.code] ? '세부 수정' : '저장 후 수정'}
                         </button>
                       </span>
                     ) : (
