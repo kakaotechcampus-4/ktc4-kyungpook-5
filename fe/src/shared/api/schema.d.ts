@@ -3365,6 +3365,8 @@ export interface components {
         TaskSuggestionStatus: "PROPOSED" | "ACCEPTED";
         /** ToriClarification */
         ToriClarification: {
+            /** Originalquestion */
+            originalQuestion: string;
             /** Question */
             question: string;
             /** Options */
@@ -3374,6 +3376,10 @@ export interface components {
         ToriClarificationContext: {
             /** Originalquestion */
             originalQuestion: string;
+            /** Question */
+            question?: string | null;
+            /** Options */
+            options?: string[];
         };
         /** ToriMessageIn */
         ToriMessageIn: {

@@ -347,7 +347,12 @@ export function ToriChat({
 }) {
   const [draft, setDraft] = useState('')
   const [turns, setTurns] = useState<Turn[]>([])
-  const [pending, setPending] = useState<{ turnId: string; originalQuestion: string } | null>(null)
+  const [pending, setPending] = useState<{
+    turnId: string
+    originalQuestion: string
+    question: string
+    options: string[]
+  } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const locked = useRef(false)
@@ -382,7 +387,13 @@ export function ToriChat({
       const result = await dashboardApi.message(clubId, {
         message,
         ...(pending
-          ? { clarificationContext: { originalQuestion: pending.originalQuestion } }
+          ? {
+              clarificationContext: {
+                originalQuestion: pending.originalQuestion,
+                question: pending.question,
+                options: pending.options,
+              },
+            }
           : {}),
       })
       const id = crypto.randomUUID()
@@ -390,7 +401,12 @@ export function ToriChat({
       if (pending && result.recordAnswer?.status === 'failed') return
       setPending(
         result.clarification
-          ? { turnId: id, originalQuestion: pending?.originalQuestion ?? message }
+          ? {
+              turnId: id,
+              originalQuestion: result.clarification.originalQuestion,
+              question: result.clarification.question,
+              options: result.clarification.options ?? [],
+            }
           : null,
       )
       setDraft('')
