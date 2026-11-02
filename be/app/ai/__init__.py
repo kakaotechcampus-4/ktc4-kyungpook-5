@@ -118,3 +118,6 @@ __all__ += ("ToriIntentRequest", "ToriIntentResult", "classify_tori_intent")
 
 from .features.tori.records import ToriRecordAnswerRequest, ToriRecordAnswerResult, answer_tori_records
 __all__ += ("ToriRecordAnswerRequest", "ToriRecordAnswerResult", "answer_tori_records")
+
+from .features.tori.query import ToriRecordQueryRequest, ToriRecordQueryResult, build_tori_record_query
+__all__ += ('ToriRecordQueryRequest', 'ToriRecordQueryResult', 'build_tori_record_query')
