@@ -13,7 +13,7 @@ const source = await readFile(
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 })
-const { reconcileTimeline, sourceOf, transcriptTime, visibleDecision, meetingAnswers, meetingMicStatus } = await import(
+const { reconcileTimeline, sourceOf, transcriptTime, visibleDecision, meetingAnswers, meetingMicStatus, meetingAudioVisible, meetingToriVisible } = await import(
   `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
 )
 
@@ -146,4 +146,19 @@ test('microphone status follows the local phase, not only the recording meeting'
   assert.match(meetingMicStatus('RECORDING', 'permission'), /준비/)
   assert.match(meetingMicStatus('RECORDING', 'error'), /확인/)
   assert.match(meetingMicStatus('FINALIZING', 'recording'), /마지막 전사/)
+})
+
+
+test('audio and Tori remain mounted until WebSocket processing ends even when DB reaches a terminal state', () => {
+  for (const status of ['RECORDING', 'FINALIZING', 'COMPLETED', 'FAILED']) {
+    assert.equal(meetingAudioVisible(status, true), true, `${status} must keep the active socket`)
+    assert.equal(meetingToriVisible(status, true), true, `${status} must keep the active status`)
+  }
+  assert.equal(meetingAudioVisible('RECORDING', false), true)
+  assert.equal(meetingAudioVisible('FINALIZING', false), false)
+  assert.equal(meetingToriVisible('FINALIZING', false), true)
+  for (const status of ['COMPLETED', 'FAILED']) {
+    assert.equal(meetingAudioVisible(status, false), false)
+    assert.equal(meetingToriVisible(status, false), false)
+  }
 })

@@ -90,3 +90,12 @@ export function meetingMicStatus(status: Meeting['status'], phase: AudioPhase) {
   if (phase === 'error') return '마이크 상태를 확인해 주세요.'
   return '이 기기의 마이크가 꺼져 있어요.'
 }
+
+// The terminal DB state can arrive before the last WebSocket acknowledgement.
+export function meetingAudioVisible(status: Meeting['status'], audioActive: boolean) {
+  return status === 'RECORDING' || audioActive
+}
+
+export function meetingToriVisible(status: Meeting['status'], audioActive: boolean) {
+  return status === 'FINALIZING' || meetingAudioVisible(status, audioActive)
+}

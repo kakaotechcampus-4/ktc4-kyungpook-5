@@ -9,6 +9,7 @@ import { MeetingList } from './MeetingList'
 import { MeetingToriPanel } from './MeetingToriPanel'
 import type { AudioPhase } from '../audio/useMeetingAudio'
 import { meetingError } from '../errors'
+import { meetingAudioVisible, meetingToriVisible } from '../timeline'
 import { MicControls } from '../audio'
 import { Timeline } from './Timeline'
 import { Suggestions, ConfirmedTasks } from './Suggestions'
@@ -63,8 +64,10 @@ export function MeetingWorkspace({
         </div>
         {meeting && (
           <div className="flex items-center gap-3">
-            <Chip tone={meeting.status === 'FAILED' ? 'failed' : 'neutral'}>
-              {statusLabel[meeting.status]}
+            <Chip tone={meeting.status === 'FAILED' && !audioActive ? 'failed' : 'neutral'}>
+              {audioActive && (meeting.status === 'COMPLETED' || meeting.status === 'FAILED')
+                ? '마지막 응답 확인 중'
+                : statusLabel[meeting.status]}
             </Chip>
             <Button variant="secondary" onClick={() => void data.refresh()}>
               새로고침
@@ -77,7 +80,7 @@ export function MeetingWorkspace({
           </div>
         )}
       </div>
-      {meeting && (meeting.status === 'RECORDING' || meeting.status === 'FINALIZING') ? (
+      {meeting && meetingToriVisible(meeting.status, audioActive) ? (
         <MeetingToriPanel
           meeting={meeting}
           phase={audioPhase}
@@ -164,7 +167,7 @@ export function MeetingWorkspace({
                 <p className="mt-2">
                   확정 전사만 표시합니다. 음성 전송과 마지막 전사 처리 상태를 확인해 주세요.
                 </p>
-                {(meeting.status === 'RECORDING' || (meeting.status === 'FINALIZING' && audioActive)) && (
+                {meetingAudioVisible(meeting.status, audioActive) && (
                   <div className="mt-4">
                     <MicControls
                       meetingId={meeting.id}
