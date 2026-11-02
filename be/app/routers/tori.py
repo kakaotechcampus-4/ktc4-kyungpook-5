@@ -2,6 +2,7 @@
 from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -130,10 +131,22 @@ async def message(club_id: str, body: ToriMessageIn,
                     if follow_up is not None:
                         answer = ToriRecordAnswer(status='failed', **answer_info)
                     else:
-                        clarification = ToriClarification(
-                            question=generated.clarification_question,
-                            options=list(generated.clarification_options))
-                        answer = ToriRecordAnswer(status='insufficient', **answer_info)
+                        limited = (answer_info['semantic_status'] != 'AVAILABLE'
+                                   or answer_info['unindexed_count'] > 0
+                                   or answer_info['candidate_limit_reached']
+                                   or answer_info['lexical_omitted']
+                                   or answer_info['filename_only_unanalyzed_count'] > 0)
+                        try:
+                            if not generated.clarification_question or not generated.clarification_question.strip():
+                                raise ValueError('명확화 질문이 비어 있습니다')
+                            clarification = ToriClarification(
+                                question=('현재 확인한 자료 기준으로, ' if limited else '')
+                                + generated.clarification_question,
+                                options=list(generated.clarification_options))
+                        except (ValidationError, ValueError):
+                            answer = ToriRecordAnswer(status='failed', **answer_info)
+                        else:
+                            answer = ToriRecordAnswer(status='insufficient', **answer_info)
                 elif any(source not in allowed for fact in facts for source in fact.sources):
                     answer = ToriRecordAnswer(status='failed', **answer_info)
                 else:

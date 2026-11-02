@@ -458,6 +458,7 @@ async def test_토리_상한으로_제외된_의미청크는_권한재검증_대
     assert answer_data['lexicalChunkCount'] == 20
 
 async def test_토리_자료명확화_한번_후속과_새요청(client, app_db, monkeypatch, tmp_path):
+    from types import SimpleNamespace
     import app.ai as ai
     from app.ai.contracts import RecordFact
     from app.core.config import get_settings
@@ -471,6 +472,13 @@ async def test_토리_자료명확화_한번_후속과_새요청(client, app_db,
             return ai.ToriIntentResult(intent='task_list', scope='self', kind='task')
         return ai.ToriIntentResult(intent='record_search', query='예산')
     followups = []
+    monkeypatch.setattr(ai, 'ToriRecordQueryRequest', SimpleNamespace, raising=False)
+    monkeypatch.setattr(ai, 'ToriRecordQueryResult', SimpleNamespace, raising=False)
+    monkeypatch.setattr(ai, 'ToriRecordAnswerRequest', SimpleNamespace)
+    def answer_result(**values):
+        defaults = dict(facts=(), conflicts=(), not_found=(), clarification_question=None, clarification_options=())
+        return SimpleNamespace(**(defaults | values))
+    monkeypatch.setattr(ai, 'ToriRecordAnswerResult', answer_result)
     async def build_query(request):
         followups.append((request.question, request.follow_up))
         if request.follow_up == '이번 주 내 할 일':
@@ -480,16 +488,22 @@ async def test_토리_자료명확화_한번_후속과_새요청(client, app_db,
         assert len(request.chunks) == 2
         if request.follow_up is None:
             assert request.clarification_allowed is True
+            if request.question == '긴 질문':
+                return ai.ToriRecordAnswerResult(status='clarification',
+                    clarification_question='가' * 501, clarification_options=())
             return ai.ToriRecordAnswerResult(status='clarification',
                 clarification_question='어느 행사의 예산을 볼까요?',
                 clarification_options=('2025 환영회', '전체 요약'))
         assert request.question == '행사 예산 관련 자료를 찾아줘'
         assert request.clarification_allowed is False
-        return ai.ToriRecordAnswerResult(status='answered', facts=(
-            RecordFact(content='행사 예산 확인', sources=(request.chunks[0].source,)),))
+        if request.follow_up == '다시 물어봐':
+            return ai.ToriRecordAnswerResult(status='clarification',
+                clarification_question='어느 행사인가요?', clarification_options=())
+        return SimpleNamespace(status='answered', conflicts=(), not_found=(),
+            facts=(RecordFact(content='행사 예산 확인', sources=(request.chunks[0].source,)),))
     monkeypatch.setattr(ai, 'index_record', no_index)
     monkeypatch.setattr(ai, 'classify_tori_intent', classify)
-    monkeypatch.setattr(ai, 'build_tori_record_query', build_query)
+    monkeypatch.setattr(ai, 'build_tori_record_query', build_query, raising=False)
     monkeypatch.setattr(ai, 'answer_tori_records', answer)
     headers, club_id = _owner_with_club(client)
     other, other_club = _owner_with_club(client)
@@ -507,7 +521,12 @@ async def test_토리_자료명확화_한번_후속과_새요청(client, app_db,
     assert first.status_code == 200, first.text
     data = first.json()['data']
     assert data['reply'] == data['clarification']['question']
+    assert data['reply'].startswith('현재 확인한 자료 기준으로, ')
     assert data['clarification']['options'] == ['2025 환영회', '전체 요약']
+    oversized = client.post(url, headers=headers, json={'message':'긴 질문'})
+    assert oversized.status_code == 200
+    assert oversized.json()['data']['clarification'] is None
+    assert oversized.json()['data']['recordAnswer']['status'] == 'failed'
     context = {'originalQuestion': original}
     for choice in ('2025 환영회', '전체 요약', '잘 모르겠어'):
         response = client.post(url, headers=headers,
@@ -515,6 +534,11 @@ async def test_토리_자료명확화_한번_후속과_새요청(client, app_db,
         assert response.status_code == 200, response.text
         assert response.json()['data']['clarification'] is None
         assert response.json()['data']['recordAnswer']['status'] == 'answered'
+    repeated = client.post(url, headers=headers,
+        json={'message':'다시 물어봐', 'clarificationContext':context})
+    assert repeated.status_code == 200
+    assert repeated.json()['data']['clarification'] is None
+    assert repeated.json()['data']['recordAnswer']['status'] == 'failed'
     new = client.post(url, headers=headers,
         json={'message':'이번 주 내 할 일', 'clarificationContext':context})
     assert new.status_code == 200, new.text
@@ -523,4 +547,4 @@ async def test_토리_자료명확화_한번_후속과_새요청(client, app_db,
     assert client.post(url, headers=other,
         json={'message':'2025 환영회', 'clarificationContext':context}).status_code == 403
     assert followups == [(original, value) for value in
-        ('2025 환영회', '전체 요약', '잘 모르겠어', '이번 주 내 할 일')]
+        ('2025 환영회', '전체 요약', '잘 모르겠어', '다시 물어봐', '이번 주 내 할 일')]
