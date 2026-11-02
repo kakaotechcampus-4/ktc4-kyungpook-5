@@ -74,3 +74,28 @@ test('unknown suppression support is not reported as enabled or disabled', async
   assert.equal(m.capture.noiseSuppression, undefined)
   m.capture.cancel()
 })
+
+test('RNNoise preparation failure cleans up without returning a processor', async () => {
+  let terminated = false
+  let closed = false
+  class TestContext {
+    state = 'suspended'
+    sampleRate = 48000
+    async close() { closed = true; this.state = 'closed' }
+  }
+  class BadWorker {
+    postMessage() { queueMicrotask(() => this.onmessage({ data: { type: 'error' } })) }
+    terminate() { terminated = true }
+  }
+  const exports = {}
+  vm.runInNewContext(code, {
+    exports,
+    require: (name) => name.includes('?worker') ? { default: BadWorker } : {},
+    window: { AudioContext: TestContext, AudioWorkletNode: class {}, Worker: BadWorker },
+    AudioContext: TestContext, location: { href: 'https://example.com/' }, URL,
+    setTimeout, clearTimeout,
+  })
+  await assert.rejects(exports.prepareRnnoise(), /잡음 제거를 시작하지 못했어요/)
+  assert.equal(terminated, true)
+  assert.equal(closed, true)
+})

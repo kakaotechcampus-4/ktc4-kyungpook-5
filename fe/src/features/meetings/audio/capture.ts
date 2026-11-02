@@ -14,6 +14,8 @@ export interface PreparedRnnoise {
 }
 
 export async function prepareRnnoise(): Promise<PreparedRnnoise> {
+  if (!window.AudioContext || !window.AudioWorkletNode || !window.Worker)
+    throw new Error('이 브라우저는 RNNoise 잡음 억제를 지원하지 않아요.')
   const context = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 })
   let denoiser: Worker | undefined
   const dispose = () => {
