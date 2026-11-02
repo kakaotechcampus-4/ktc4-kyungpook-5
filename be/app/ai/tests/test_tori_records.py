@@ -112,6 +112,31 @@ def test_amount_is_not_year(monkeypatch, question):
     assert run((chunk('예산은 2025원'),), question).status == 'answered'
 
 
+@pytest.mark.parametrize('question', [
+    '2023년부터 2025년까지 가을 MT를 요약해줘',
+    '2023~2025년 가을 MT를 요약해줘',
+])
+@pytest.mark.parametrize(('year', 'expected'), [
+    (2022, 'no_evidence'), (2023, 'answered'), (2024, 'answered'),
+    (2025, 'answered'), (2026, 'no_evidence'),
+])
+def test_requested_year_range_includes_only_in_range_sources(monkeypatch, question, year, expected):
+    mock_assessment(monkeypatch, facts=[item(f'{year}년 예산은 600000원', 'c1')])
+    assert run((chunk(f'{year}년 총 예산 600000원'),), question).status == expected
+
+
+def test_explicit_follow_up_year_restricts_original_range(monkeypatch):
+    mock_assessment(monkeypatch, facts=[item('2024년 예산은 600000원', 'c1')])
+    request = ToriRecordAnswerRequest(question='2023년부터 2025년 행사 예산',
+        follow_up='2025년', today='2026-11-03', chunks=(chunk('2024년 총 예산 600000원'),))
+    assert asyncio.run(answer_tori_records(request)).status == 'no_evidence'
+
+
+def test_requested_year_cannot_be_bypassed_by_other_year_in_same_chunk(monkeypatch):
+    mock_assessment(monkeypatch, facts=[item('2026년 예산은 600000원', 'c1')])
+    assert run((chunk('2024년과 2026년 총 예산 600000원'),), '2023~2025년 예산').status == 'no_evidence'
+
+
 @pytest.mark.parametrize(('source', 'claim', 'expected'), [
     ('잔액 -100,000원', '잔액 100,000원', 'no_evidence'),
     ('잔액 100,000원', '잔액 -100,000원', 'no_evidence'),

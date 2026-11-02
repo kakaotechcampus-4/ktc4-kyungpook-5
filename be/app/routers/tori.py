@@ -1,5 +1,6 @@
 """인증된 소속의 토리 조회. 내용 변경이나 예약은 수행하지 않는다."""
 from datetime import UTC, date, datetime, time, timedelta
+import re
 from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends
 from pydantic import ValidationError
@@ -22,6 +23,32 @@ from app.services import event_service, record_discovery_service
 
 router = APIRouter(prefix='/api/v1/clubs/{club_id}/tori', tags=['tori'])
 TZ = ZoneInfo('Asia/Seoul')
+
+
+def _clear_clarification_choice(message: str, options: list[str], today: date) -> bool:
+    """명시적 선택만 인정한다. 애매한 답을 특정 행사로 좁히지 않는다."""
+    if not options:
+        return True  # 예전 originalQuestion-only 요청은 기존 모델 처리 경로를 유지한다.
+    text = re.sub(r'[^0-9가-힣a-z]', '', message.lower())
+    if any(word in text for word in ('전체', '모두', '전부')):
+        return True
+    if re.fullmatch(r'(?:제)?(?:첫번째|첫째|두번째|둘째|세번째|셋째|[123]번?)(?:요|이요|로|으로)?', text):
+        return True
+    normalized_options = [re.sub(r'[^0-9가-힣a-z]', '', option.lower()) for option in options]
+    matches = [option for option in normalized_options if len(text) >= 2 and len(option) >= 2
+               and (text in option or option in text)]
+    if len(matches) == 1:
+        return True
+    explicit_years = set(re.findall(r'(?:19|20)\d{2}', text))
+    for word, year in (('재작년', today.year - 2), ('작년', today.year - 1), ('올해', today.year)):
+        if word in text:
+            explicit_years.add(str(year))
+            break
+    if explicit_years:
+        if len(explicit_years) > 1:
+            return True
+        return sum(any(year in option for year in explicit_years) for option in normalized_options) <= 1
+    return len(matches) == 1
 
 
 @router.post('/messages', response_model=Envelope[ToriMessageOut])
@@ -56,6 +83,10 @@ async def message(club_id: str, body: ToriMessageIn,
     # 외부 호출 중 권한이 바뀔 수 있어 조회 전에 다시 검증한다.
     from app.core.deps import ensure_member
     await ensure_member(session, club_id=club_id, account=account)
+    if (context is not None and follow_up is not None
+            and not _clear_clarification_choice(follow_up, context.options, datetime.now(TZ).date())):
+        return Envelope(data=ToriMessageOut(intent='record_search',
+            reply='선택할 범위를 확인하지 못했어요. 행사나 연도를 넣어 새 질문으로 요청해 주세요.'))
     if result.intent == 'record_search':
         if not result.query or not result.query.strip() or len(result.query) > 200:
             if follow_up is not None:

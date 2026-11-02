@@ -34,6 +34,9 @@ async def build_tori_record_query(request: ToriRecordQueryRequest) -> ToriRecord
     return await ainvoke_structured([
         SystemMessage('동아리 자료 원질문과 범위를 되묻고 받은 답을 함께 읽는다. '
                       '이번 주 내 할 일처럼 이전 자료 질문과 명백히 무관한 독립 요청이면 new_request, query는 null. '
+                      '후속 입력이 이전 질문과 다른 정보를 독립적으로 묻는 완전한 질문이면 new_request다. '
+                      '예를 들어 가을 MT 경비 질문 뒤 "2025년 행사 참가자 수 알려줘"는 새 질문이며 '
+                      '이전 가을 MT 조건을 붙이지 않는다. 새 질문 자체가 모호해도 new_request다. '
                       '2025 환영회, 전체 요약, 잘 모르겠어처럼 범위 답이면 follow_up이다. '
                       'follow_up의 query는 원래 주제와 답의 행사·연도를 보존한 200자 이내 검색어다. '
                       '전체 요약이나 모호한 답이면 원질문 범위를 유지한다. '

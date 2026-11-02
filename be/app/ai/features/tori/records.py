@@ -58,6 +58,15 @@ _NUMBER = re.compile(r'(?<![\d.])(?:₩\s*)?(?:[+\-−]|마이너스|음수|플�
 _KOREAN_NUMBER = re.compile(r'(?<![\d.])(?:[+\-−]|마이너스|음수|플러스)?\s*(?:[영공일이삼사오육칠팔구십백천만억조]+|(?:스물|서른|마흔|쉰|예순|일흔|여든|아흔)(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉)?|스무|한|두|세|네|다섯|여섯|일곱|여덟|아홉|열)\s*(?:원|명|개|건|%|퍼센트|년|월|일)')
 _AMBIGUOUS_AMOUNT = re.compile(r'\(\s*(?:₩\s*)?(?:\d[\d,]*(?:\.\d+)?|[영공일이삼사오육칠팔구십백천만억조]+)\s*(?:조|억|만|천|백|십)?\s*원?\s*\)')
 _YEAR = re.compile(r'(?<!\d)(?:19|20)\d{2}(?!\s*(?:원|명|개|건|%|월|일|만원|억원))(?=년|(?:에서|으로|부터|까지|에는|의|에|은|는|이|가|도|과|와)(?![가-힣])|[_\W]|$)')
+_YEAR_RANGE = re.compile(r'(?<!\d)((?:19|20)\d{2})(?:\s*년)?\s*(?:부터|에서|~|〜|～|–|—|-)\s*((?:19|20)\d{2})(?!\d)')
+
+
+def _requested_years(text: str) -> set[str]:
+    years = set(_YEAR.findall(text))
+    for start, end in _YEAR_RANGE.findall(text):
+        if int(start) <= int(end):
+            years.update(str(year) for year in range(int(start), int(end) + 1))
+    return years
 
 
 def _numbers(text: str) -> set[str]:
@@ -89,7 +98,9 @@ def _supported(item: EvidenceItem, chunks: tuple[RetrievedChunk, ...], years: se
     # 문서명 연도만 예외로 허용하고 금액·인원은 본문에서 확인한다.
     claimed = {number for number in _numbers(item.content)
                if number.removesuffix('년') not in evidence_years}
-    return bool(cited) and not (claimed - text_numbers) and (not years or bool(years & evidence_years))
+    claim_years = set(_YEAR.findall(item.content))
+    return (bool(cited) and not (claimed - text_numbers)
+            and (not years or (bool(years & evidence_years) and claim_years <= years)))
 
 
 async def answer_tori_records(request: ToriRecordAnswerRequest) -> ToriRecordAnswerResult:
@@ -97,7 +108,7 @@ async def answer_tori_records(request: ToriRecordAnswerRequest) -> ToriRecordAns
         return ToriRecordAnswerResult(status='no_evidence', not_found=(request.question,))
     # 이 호출은 검색을 다시 하지 않는다. BE가 승인한 청크 외의 출처는 생성할 수 없다.
     search = RecordSearchRequest(club_id='provided', query=request.question, today=request.today)
-    years = set(_YEAR.findall(request.question + ' ' + (request.follow_up or '')))
+    years = _requested_years(request.follow_up or '') or _requested_years(request.question)
     clarification = None
 
     def validate_options(options: list[EvidenceItem]) -> tuple[str, ...]:

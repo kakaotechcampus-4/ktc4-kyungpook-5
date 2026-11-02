@@ -490,6 +490,18 @@ export function ToriChat({
                         {option}
                       </button>
                     ))}
+                    {!turn.result.clarification.options?.some(
+                      (option) => option.replace(/\s/g, '') === '전체요약',
+                    ) && (
+                      <button
+                        type="button"
+                        disabled={busy || pending?.turnId !== turn.id}
+                        onClick={() => void send('전체 요약')}
+                        className="px-2 py-2 text-caption font-semibold text-blue-700 underline underline-offset-4 focus-visible:outline-2 disabled:opacity-50"
+                      >
+                        전체 요약
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

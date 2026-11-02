@@ -1,6 +1,8 @@
 import pytest
 from pydantic import ValidationError
 from app.schemas.tori import ToriMessageIn, ToriMessageOut
+from app.routers.tori import _clear_clarification_choice
+from datetime import date
 
 
 def test_context_and_clarification_camel_case():
@@ -38,3 +40,21 @@ def test_context_question_options_are_optional_and_bounded():
     with pytest.raises(ValidationError):
         ToriMessageIn.model_validate({'message': '답', 'clarificationContext': {
             'originalQuestion': '질문', 'options': [' ']}})
+
+
+@pytest.mark.parametrize(('message', 'expected'), [
+    ('예전 거', False), ('잘 모르겠어', False), ('2025년 가을 MT', True),
+    ('전체 요약', True), ('모두 보여줘', True), ('첫 번째', True),
+    ('작년', True), ('재작년', True), ('2023년부터 2025년까지', True),
+])
+def test_clarification_choice_requires_unambiguous_scope(message, expected):
+    assert _clear_clarification_choice(message, ['2023년', '2024년', '2025년'], date(2026, 11, 3)) is expected
+
+
+def test_legacy_context_without_options_remains_supported():
+    assert _clear_clarification_choice('2025년', [], date(2026, 11, 3))
+
+
+def test_named_option_or_synonym_can_be_selected_without_a_year():
+    assert _clear_clarification_choice('체육행사', ['2025년 가을 MT', '2025년 체육행사'], date(2026, 11, 3))
+    assert not _clear_clarification_choice('2025년', ['2025년 가을 MT', '2025년 체육행사'], date(2026, 11, 3))
