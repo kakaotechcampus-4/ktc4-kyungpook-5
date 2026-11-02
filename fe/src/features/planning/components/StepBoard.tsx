@@ -18,6 +18,7 @@ interface StepBoardProps {
   // 세부 수정을 열 수 있을 때만 준다. 없으면 schedule 문구를 읽기 전용으로 보인다.
   dates?: Record<string, { startsAt: string | null; deadline: string | null }>
   onEditDetail?: (code: string) => void
+  detailsDisabled?: boolean
 }
 
 // 일정 두 값을 "11/5 – 11/8" 한 줄로 줄인다. 한쪽만 있으면 그쪽만 보인다.
@@ -36,6 +37,7 @@ export function StepBoard({
   onRemove,
   dates,
   onEditDetail,
+  detailsDisabled = false,
 }: StepBoardProps) {
   // 끌고 있는 카드. 묶음이 다르면 받지 않는다.
   const [dragging, setDragging] = useState<{ phase: StepPhase; index: number }>()
@@ -119,7 +121,7 @@ export function StepBoard({
                         <button
                           type="button"
                           onClick={() => onEditDetail(step.code)}
-                          disabled={!dates?.[step.code]}
+                          disabled={detailsDisabled || !dates?.[step.code]}
                           className="rounded-[7px] border border-line px-[8px] py-[6px] text-[11.5px] font-bold text-ink2 hover:bg-bg disabled:opacity-50"
                         >
                           {dates?.[step.code] ? '세부 수정' : '저장 후 수정'}

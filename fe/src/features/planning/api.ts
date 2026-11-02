@@ -10,6 +10,8 @@ export const planningApi = {
   get: (eventId: string) => apiGet<S['PlanScreenOut']>(plan(eventId)),
   messages: (eventId: string) => apiGet<S['PlanMessageOut'][]>(`${plan(eventId)}/messages`),
   steps: (eventId: string) => apiGet<S['PlannedStepOut'][]>(`${plan(eventId)}/steps`),
+  stepsSnapshot: (eventId: string) =>
+    apiGet<{ baseRevision: number; steps: S['PlannedStepOut'][] }>(`${plan(eventId)}/steps/snapshot`),
   chat: (eventId: string, body: S['PlanChatIn']) =>
     apiPost<S['PlanViewOut']>(`${plan(eventId)}/chat`, body),
   generate: (eventId: string, body: S['PlanGenerateIn']) =>

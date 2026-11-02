@@ -173,19 +173,10 @@ export function codesFromSteps(steps: S['PlannedStepOut'][]): string[] {
   return steps.map((step) => step.code)
 }
 
-export function usePlanSteps(eventId: string | null) {
+export function usePlanStepsSnapshot(eventId: string | null) {
   return useQuery({
-    queryKey: ['planning', 'steps', eventId],
-    queryFn: () => planningApi.steps(eventId!),
-    enabled: !!eventId,
-    retry: false,
-  })
-}
-
-export function usePlanRevision(eventId: string | null) {
-  return useQuery({
-    queryKey: ['planning', 'screen', eventId],
-    queryFn: () => planningApi.get(eventId!),
+    queryKey: ['planning', 'steps-snapshot', eventId],
+    queryFn: () => planningApi.stepsSnapshot(eventId!),
     enabled: !!eventId,
     retry: false,
   })
