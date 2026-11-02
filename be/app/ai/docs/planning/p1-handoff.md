@@ -293,6 +293,34 @@ result = await chat_planning(request, records=record_search_port)
 
 `record_search_port`는 BE가 구현하는 기존 `RecordSearchPort`입니다. AI는 질문을 해석하고 임베딩/검색/답변을 연결합니다. BE는 주어진 동아리 범위의 청크와 출처를 조회합니다. 미주입 시 검색 Tool을 제공하지 않습니다.
 
+### 제품 검색 연결 계약 (#235, #236)
+
+BE는 권한을 확인한 `request.club_id`로 `PostgresRecordSearch`를 만들어 `records`에
+주입한다. 기존 `agent ↔ tools`와 `search_records(rewrite=True, max_rounds=1)`를
+사용하며 검색어 정리·임베딩·근거 판단 정책은 변경하지 않는다. 모델 대기 중에는
+DB 트랜잭션을 유지하지 않고, port가 청크를 조회할 때만 짧은 세션을 연다.
+
+`RecordLookupResult`, `RecordSearchResult`, `RecordFact`, `RecordConflict`도 `app.ai`의
+공개 타입이다. BE는 내부 retrieval 모듈을 import하지 않고 이 타입으로 결과를 처리한다.
+청크는 검색 port의 결과이고, P1의 결과는 사실과 출처·미확인 내용·자료 간 차이다.
+자료함의 `search_related_records`는 관련 청크를 찾는 별도 기능이므로 대체 호출하지 않는다.
+
+제품 POST 응답 `recordLookup`은 이번 턴의 결과다. `result`에 `facts`, `notFound`,
+`conflicts`와 실제 `recordId`, `fileName`, `location`을 담는다. 임베딩이나 내부 Tool
+이력은 제품 응답에 포함하지 않는다. `result`가 없는 옛 응답은 상세 근거 미보관으로
+처리하며 자료 없음으로 바꾸지 않는다.
+
+BE는 화면용 마지막 조회를 `Conversation.last_record_lookup`에 조건·답변·Agent 상태와
+같은 트랜잭션으로 보관하고, GET 계획 화면의 `lastRecordLookup`으로 반환한다.
+이번 결과가 null이면 기존 조회를 유지하고, 새 `not_found`/`failed`/`rejected` 결과가
+있으면 마지막 조회를 갱신한다. 새 실패를 예전 성공처럼 표시하지 않는다.
+BE가 카드 복원을 위해 `resume_state`의 내부 Tool 이력을 분석하지 않는다.
+
+제품 FE는 현재 조건과 과거 참고 카드를 분리하고, 마지막 조회 기준임을 표시한다.
+원문 열기는 실제 기록 ID와 권한 검증 파일 API를 사용한다. 응답·저장·복원 계약과
+제품 카드 구현은 구분하며, 이번 BE·AI 연결에서 제품 `fe/`는 수정하지 않는다.
+새로고침·재접속에서 AI를 다시 호출하지 않는다.
+
 현재 계획 행사 ID로 검색 범위를 제한하면 과거 행사를 찾지 못할 수 있습니다. 동아리 접근 범위를 검증하되 현재 행사와 과거 검색 대상을 구분해야 합니다.
 
 과거 참가비가 45,000원이라는 검색 결과만으로 현재 25,000원을 바꾸지 않습니다. 사용자가 채택하면 조건 Tool로 반영합니다. 버튼 생성은 새 검색을 하지 않고 저장된 최신 검색 근거를 사용합니다.

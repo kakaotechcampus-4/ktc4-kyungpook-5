@@ -5,6 +5,7 @@ from functools import partial
 import pytest
 from langchain_core.messages import AIMessage
 
+import app.ai as ai
 from app.ai import (chat_planning, generate_planning_preview, PlanningChatRequest,
     PlanningPreviewRequest, PlanningUserMessage, PlanningDraft, PlanningConditions,
     parse_resume_state, AITimeoutError)
@@ -160,6 +161,51 @@ def test_search_partial_failure_retains_chat(monkeypatch):
     assert result.view.record_lookup.status=='failed'
     assert result.view.draft==request().draft
     assert result.view.reply=='조회에 실패했어요.'
+
+
+@pytest.mark.parametrize('status', ['not_found', 'failed', 'rejected', 'conflict'])
+def test_latest_lookup_after_resume_does_not_reuse_old_success_for_generation(monkeypatch, status):
+    old_fact = ai.RecordFact(content='2025 봄 MT 참가비 45000원', sources=(
+        ai.RecordSource(record_id='r-old', file_name='옛 장부', location=ai.SourceLocation(label='2행')),
+    ))
+    if status == 'not_found':
+        latest = ai.RecordLookupResult(status=status, query='새 조회',
+            result=ai.RecordSearchResult(not_found=('새 조회',)))
+    elif status in {'failed', 'rejected'}:
+        latest = ai.RecordLookupResult(status=status, query='새 조회', reason='조회하지 못했어요.')
+    else:
+        latest = ai.RecordLookupResult(status='available', query='새 조회',
+            result=ai.RecordSearchResult(conflicts=(ai.RecordConflict(
+                description='같은 행사의 참가비가 다름', values=(old_fact,
+                    ai.RecordFact(content='2025 봄 MT 참가비 40000원', sources=old_fact.sources)),
+            ),)))
+    responses = iter((ai.RecordLookupResult(status='available', query='처음 조회',
+        result=ai.RecordSearchResult(facts=(old_fact,))), latest))
+
+    async def search(*args, **kwargs):
+        return next(responses)
+
+    monkeypatch.setattr(workflow, 'search_past_events', search)
+    scripted(monkeypatch, [tool(SEARCH_TOOL_NAME, dict(query='처음 조회'), id='s1'),
+        AIMessage(content='처음 조회 결과예요.'),
+        tool(SEARCH_TOOL_NAME, dict(query='새 조회'), id='s2'), AIMessage(content='새 조회 결과예요.')])
+    first = run(chat_planning(request(), records=object()))
+    second_request = request(request_id='r2', draft=first.view.draft,
+        resume_state=parse_resume_state(first.next_state.model_dump_json()),
+        message=PlanningUserMessage(id='u2', content='새 자료를 찾아줘'))
+    second = run(chat_planning(second_request, records=object()))
+    assert second.view.record_lookup == latest
+
+    async def generate(req):
+        # 새 실패·없음·충돌은 옛 성공이나 충돌값 하나를 확정 사실로 바꾸지 않는다.
+        assert req.reference_facts == ()
+        return await run_plan_generation(req, invoke=Model())
+
+    monkeypatch.setattr(workflow, 'run_plan_generation', generate)
+    restored = parse_resume_state(second.next_state.model_dump_json())
+    generated = run(generate_planning_preview(button(second_request,
+        request_id='button-3', resume_state=restored)))
+    assert generated.view.generation_result.status == 'generated'
 
 
 def test_condition_success_and_generation_failure_are_separate(monkeypatch):
