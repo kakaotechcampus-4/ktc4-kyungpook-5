@@ -35,6 +35,7 @@ type RecordAnswer = {
   unindexedCount: number
   candidateLimitReached: boolean
   lexicalOmitted: boolean
+  filenameOnlyUnanalyzedCount: number
 }
 type Result = components['schemas']['ToriMessageOut'] & { recordAnswer?: RecordAnswer | null }
 type Turn = { id: string; message: string; result: Result }
@@ -96,6 +97,12 @@ function Reply({ result }: { result: Result }) {
           {result.recordAnswer.lexicalOmitted && (
             <p className="text-mute">
               일치하는 본문 중 일부를 답변에 사용하지 못했어요. 자료함에서 추가로 확인해 주세요.
+            </p>
+          )}
+          {result.recordAnswer.filenameOnlyUnanalyzedCount > 0 && (
+            <p className="text-mute">
+              파일명으로 찾은 자료 중 {result.recordAnswer.filenameOnlyUnanalyzedCount}개는 답변 분석에
+              포함되지 않았어요. 원본을 확인해 주세요.
             </p>
           )}
           {result.recordAnswer.conflicts?.map((conflict, index) => (
