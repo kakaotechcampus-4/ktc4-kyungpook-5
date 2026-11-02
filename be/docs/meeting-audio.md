@@ -39,9 +39,10 @@ creation. Query tokens must be redacted from access logs by the deployment.
 WS WAV/PCM is used in memory for STT and is not written to retained files. Audio
 chunk rows keep hash, size, interval and job metadata with null storage_key; final
 transcripts remain in the DB. Audio replay/retention is outside this beta slice.
-Silence is suppressed by a deterministic 20ms RMS VAD (200ms pre-roll, 600ms silence
-endpoint, at least 160ms voiced audio, maximum 15s segments). Loud noise may pass;
-this detector has not been evaluated on beta devices. The threshold is adjustable
+Silence is suppressed by WebRTC VAD and a 20ms RMS floor (200ms pre-roll, 600ms
+silence endpoint, at least 160ms voiced audio, maximum 15s segments). Noise can
+still pass or quiet speech can be missed; this has not been evaluated on beta
+devices. The RMS threshold is adjustable
 with `AUDIO_VAD_RMS_THRESHOLD` (default 450 on signed PCM16 values). A provider that
 returns empty transcript text persists a final segment with `text:""` and the real
 voiced interval, then emits `transcript.final` plus `audio.no_transcript` with its

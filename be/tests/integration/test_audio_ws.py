@@ -1,5 +1,6 @@
 """Real WS+DB persistence, with only external STT and AI work replaced in tests."""
 
+import math
 import struct
 import uuid
 from collections.abc import AsyncIterator
@@ -18,6 +19,11 @@ from app.services import meeting_service
 from app.models.meetings import MeetingAudioChunk
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
+
+
+def voiced_pcm(amplitude: int = 2000) -> bytes:
+    samples = [int(amplitude * math.sin(2 * math.pi * 200 * i / 16000)) for i in range(4800)]
+    return struct.pack("<4800h", *samples)
 
 
 @pytest.fixture
@@ -70,7 +76,7 @@ async def test_ws_tail_is_committed_before_context_failure(client: TestClient, a
         # Metadata remains stream-relative. Stored evidence uses meeting time.
         # 300ms voiced tail with no trailing silence must survive end.
         ws.send_json({"type": "audio", "audioSeq": 1, "startMs": 0, "endMs": 300})
-        ws.send_bytes(struct.pack("<h", 2000) * 4800)
+        ws.send_bytes(voiced_pcm())
         assert ws.receive_json()["type"] == "audio.accepted"
         ws.send_json({"type": "end", "lastAudioSeq": 1})
         events = []
@@ -112,7 +118,7 @@ async def test_ws_provider_error_does_not_create_fake_transcript(client: TestCli
         ready = ws.receive_json()
         assert ready["type"] == "audio.ready" and ready["streamOffsetMs"] >= 4000
         ws.send_json({"type": "audio", "audioSeq": 1, "startMs": 0, "endMs": 300})
-        ws.send_bytes(struct.pack("<h", 2000) * 4800)
+        ws.send_bytes(voiced_pcm())
         assert ws.receive_json()["type"] == "audio.accepted"
         ws.send_json({"type": "end", "lastAudioSeq": 1})
         events = []
@@ -177,7 +183,7 @@ async def test_empty_voiced_stt_is_a_restorable_gap_but_silence_has_no_row(
         ws.send_json({"type": "start", "format": "pcm_s16le", "sampleRate": 16000, "channels": 1})
         assert ws.receive_json()["type"] == "audio.ready"
         ws.send_json({"type": "audio", "audioSeq": 1, "startMs": 0, "endMs": 300})
-        ws.send_bytes(struct.pack("<h", amplitude) * 4800)
+        ws.send_bytes(voiced_pcm(amplitude))
         assert ws.receive_json()["type"] == "audio.accepted"
         ws.send_json({"type": "end", "lastAudioSeq": 1})
         events = []

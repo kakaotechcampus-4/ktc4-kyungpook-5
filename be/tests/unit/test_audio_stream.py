@@ -2,6 +2,8 @@
 
 import asyncio
 import json
+import math
+import random
 import struct
 import uuid
 
@@ -15,7 +17,8 @@ pytestmark = pytest.mark.anyio
 
 
 def pcm(ms: int, amplitude: int = 2000) -> bytes:
-    return struct.pack("<h", amplitude) * (16 * ms)
+    samples = [int(amplitude * math.sin(2 * math.pi * 200 * i / 16000)) for i in range(16 * ms)]
+    return struct.pack(f"<{len(samples)}h", *samples)
 
 
 class Socket:
@@ -60,6 +63,28 @@ async def test_vad_suppresses_silence_and_short_click() -> None:
     vad = PcmVad()
     assert vad.feed(pcm(3000, 0) + pcm(40) + pcm(1000, 0)) == []
     assert vad.flush() is None
+
+
+async def test_vad_suppresses_stationary_noise_above_energy_threshold() -> None:
+    rng = random.Random(42)
+    samples = [rng.randint(-1800, 1800) for _ in range(16000 * 4)]
+    noise = struct.pack(f"<{len(samples)}h", *samples)
+    vad = PcmVad()
+    assert vad.feed(noise) == []
+    assert vad.flush() is None
+
+
+async def test_vad_suppresses_low_level_noise_and_preserves_short_voiced_tail() -> None:
+    rng = random.Random(11)
+    samples = [rng.randint(-300, 300) for _ in range(16000)]
+    noise = struct.pack(f"<{len(samples)}h", *samples)
+    vad = PcmVad()
+    assert vad.feed(noise) == []
+    assert vad.flush() is None
+
+    vad = PcmVad()
+    assert vad.feed(pcm(160)) == []
+    assert vad.flush() == Utterance(pcm(160), 0, 160)
 
 async def test_stream_rejects_odd_pcm16_payload_before_vad() -> None:
     socket = Socket([start(), msg({"type": "audio", "audioSeq": 1, "startMs": 0, "endMs": 1}),

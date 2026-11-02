@@ -1,4 +1,4 @@
-"""Single-server PCM stream framing and energy VAD.
+"""Single-server PCM stream framing and speech detection.
 
 The receiver only validates frames and segments audio. Bounded, ordered workers
 perform STT/persistence and AI independently, so model latency does not stall capture.
@@ -13,6 +13,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
+import webrtcvad
 from fastapi import WebSocket, WebSocketDisconnect
 
 from app.infra.stt import SttError
@@ -37,14 +38,15 @@ class Utterance:
 
 
 class PcmVad:
-    """20ms RMS VAD with 200ms pre-roll and 600ms silence endpointing.
+    """20ms speech detection with 200ms pre-roll and 600ms silence endpointing.
 
-    This deterministic first beta detector suppresses silence; loud background noise
-    may still count as speech. A 15s maximum keeps requests and memory bounded.
+    WebRTC VAD and an RMS floor reduce noise sent to STT; neither guarantees that
+    every speech segment or every kind of noise is classified correctly.
     """
 
     def __init__(self, *, rms_threshold: float = 450) -> None:
         self.threshold = rms_threshold
+        self.speech_detector = webrtcvad.Vad(2)
         self.pending = bytearray()
         self.offset_ms = 0
         self.pre_roll: deque[tuple[int, bytes]] = deque(maxlen=10)
@@ -68,7 +70,9 @@ class PcmVad:
         duration = len(block) // BYTES_PER_MS
         samples = struct.unpack(f"<{len(block) // 2}h", block)
         rms = math.sqrt(sum(sample * sample for sample in samples) / len(samples))
-        voiced = rms >= self.threshold
+        # WebRTC requires a complete 10, 20, or 30ms frame, including the final tail.
+        speech = self.speech_detector.is_speech(block.ljust(640, b"\0"), SAMPLE_RATE)
+        voiced = rms >= self.threshold and speech
         block_start = self.offset_ms
         self.offset_ms += duration
         if not self.active:

@@ -22,6 +22,7 @@ dependencies = [
     "pywebpush>=2.0",
     "sqlalchemy[asyncio]>=2.0.36",
     "uvicorn[standard]>=0.32",
+    "webrtcvad-wheels>=2.0.14.post1",
 ]
 
 # AI 모듈(app/ai)은 OpenAI 호환 ML API 게이트웨이를 사용하므로
