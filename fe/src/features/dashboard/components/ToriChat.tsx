@@ -34,6 +34,7 @@ type RecordAnswer = {
   semanticStatus: 'AVAILABLE' | 'UNAVAILABLE' | 'NO_INDEXED_RECORDS'
   unindexedCount: number
   candidateLimitReached: boolean
+  lexicalOmitted: boolean
 }
 type Result = components['schemas']['ToriMessageOut'] & { recordAnswer?: RecordAnswer | null }
 type Turn = { id: string; message: string; result: Result }
@@ -90,6 +91,11 @@ function Reply({ result }: { result: Result }) {
           {result.recordAnswer.candidateLimitReached && (
             <p className="text-mute">
               검색 후보 한도에 도달했어요. 다른 자료도 확인하려면 자료함에서 검색해 주세요.
+            </p>
+          )}
+          {result.recordAnswer.lexicalOmitted && (
+            <p className="text-mute">
+              일치하는 본문 중 일부를 답변에 사용하지 못했어요. 자료함에서 추가로 확인해 주세요.
             </p>
           )}
           {result.recordAnswer.conflicts?.map((conflict, index) => (
