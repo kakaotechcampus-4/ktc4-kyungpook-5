@@ -37,7 +37,8 @@ async def message(club_id: str, body: ToriMessageIn,
     try:
         if context is not None:
             resolution = await ai.build_tori_record_query(ai.ToriRecordQueryRequest(
-                question=context.original_question, follow_up=body.message))
+                question=context.original_question, follow_up=body.message,
+                clarification_question=context.question, clarification_options=tuple(context.options)))
             if resolution.disposition == 'follow_up':
                 question = context.original_question
                 follow_up = body.message
@@ -118,6 +119,8 @@ async def message(club_id: str, body: ToriMessageIn,
             try:
                 generated = await ai.answer_tori_records(ai.ToriRecordAnswerRequest(
                     question=question, follow_up=follow_up,
+                    clarification_question=context.question if follow_up is not None else None,
+                    clarification_options=tuple(context.options) if follow_up is not None else (),
                     clarification_allowed=follow_up is None,
                     today=datetime.now(TZ).date(), chunks=tuple(chunks)))
             except ai.AIError:
@@ -140,6 +143,7 @@ async def message(club_id: str, body: ToriMessageIn,
                             if not generated.clarification_question or not generated.clarification_question.strip():
                                 raise ValueError('명확화 질문이 비어 있습니다')
                             clarification = ToriClarification(
+                                original_question=question,
                                 question=('현재 확인한 자료 기준으로, ' if limited else '')
                                 + generated.clarification_question,
                                 options=list(generated.clarification_options))

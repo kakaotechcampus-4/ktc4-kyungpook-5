@@ -9,6 +9,8 @@ from app.schemas.reminders import ConfirmedTaskOut
 
 class ToriClarificationContext(CamelModel):
     original_question: str = Field(min_length=1, max_length=4000)
+    question: str | None = Field(default=None, min_length=1, max_length=500)
+    options: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(default_factory=list, max_length=3)
 
     @field_validator('original_question')
     @classmethod
@@ -16,6 +18,20 @@ class ToriClarificationContext(CamelModel):
         if not value.strip():
             raise ValueError('원래 질문을 입력해 주세요.')
         return value.strip()
+
+    @field_validator('question')
+    @classmethod
+    def valid_question(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError('확인 질문을 입력해 주세요.')
+        return value.strip() if value is not None else None
+
+    @field_validator('options')
+    @classmethod
+    def valid_options(cls, values: list[str]) -> list[str]:
+        if any(not value.strip() for value in values):
+            raise ValueError('빈 선택지는 허용되지 않습니다.')
+        return [value.strip() for value in values]
 
 
 class ToriMessageIn(CamelModel):
@@ -72,6 +88,7 @@ class ToriRecordAnswer(CamelModel):
 
 
 class ToriClarification(CamelModel):
+    original_question: str = Field(min_length=1, max_length=4000)
     question: str = Field(min_length=1, max_length=500)
     options: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(default_factory=list, max_length=3)
 
