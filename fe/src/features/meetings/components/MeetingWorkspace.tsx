@@ -146,7 +146,7 @@ export function MeetingWorkspace({
                 <p className="mt-2">
                   확정 전사만 표시합니다. 음성 전송과 마지막 전사 처리 상태를 확인해 주세요.
                 </p>
-                {(meeting.status === 'RECORDING' || meeting.status === 'FINALIZING') && (
+                {meeting.status === 'RECORDING' && (
                   <div className="mt-4">
                     <MicControls
                       meetingId={meeting.id}

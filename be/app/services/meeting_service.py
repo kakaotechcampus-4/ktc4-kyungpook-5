@@ -19,7 +19,7 @@ from app.core.enums import (
     AgentJobKind, AgentJobStage, AgentJobStatus, JudgeRoute, MeetingStatus,
 )
 from app.core.exceptions import ApiError, VersionConflict
-from app.infra.storage import save_file
+from app.infra.storage import delete_file, save_file
 from starlette.concurrency import run_in_threadpool
 from app.models.agent import AgentJob, ContextDecision
 from app.models.meetings import Meeting, MeetingAudioChunk, TranscriptSegment
@@ -405,7 +405,12 @@ async def begin_stream_utterance(
     start_ms: int,
     end_ms: int,
 ) -> tuple[str, str]:
-    """Persist audio metadata + running STT job; the WAV stays in request memory."""
+    """Persist the WAV and its running STT job before calling the provider.
+
+    The original WS path kept the bytes only in memory, which made a failed STT
+    segment impossible to inspect or retry. The configured storage backend now
+    owns the original bytes just like regular records.
+    """
     meeting = await session.scalar(select(Meeting).where(Meeting.id == meeting_id).with_for_update())
     if meeting is None:
         raise MeetingNotFound()
@@ -414,13 +419,21 @@ async def begin_stream_utterance(
     last_seq = await session.scalar(select(func.max(MeetingAudioChunk.seq)).where(MeetingAudioChunk.meeting_id == meeting_id))
     job = await agent_job_service.create_job(session, club_id=meeting.club_id, kind=AgentJobKind.MEETING_STT)
     agent_job_service.start(session, job, AgentJobStage.TRANSCRIBING)
+    storage_key = await run_in_threadpool(
+        save_file, meeting.club_id, f"meeting-{meeting_id}-{(last_seq or 0) + 1}.wav", wav
+    )
     chunk = MeetingAudioChunk(
         meeting_id=meeting_id, seq=(last_seq or 0) + 1, start_ms=start_ms, end_ms=end_ms,
-        storage_key=None,
+        storage_key=storage_key,
         sha256=hashlib.sha256(wav).hexdigest(), mime_type="audio/wav", size=len(wav), job_id=job.id,
     )
     session.add(chunk)
-    await session.commit()
+    try:
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        await run_in_threadpool(delete_file, storage_key)
+        raise
     return chunk.id, job.id
 
 
