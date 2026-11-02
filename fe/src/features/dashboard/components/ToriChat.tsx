@@ -8,7 +8,34 @@ import { Card } from '@/shared/ui/Card'
 import { Textarea } from '@/shared/ui/Input'
 import { Tori } from '@/shared/ui/Tori'
 
-type Result = components['schemas']['ToriMessageOut']
+// 서버 OpenAPI에 recordAnswer가 반영되면 생성 타입을 다시 사용한다.
+type RecordAnswer = {
+  status: 'answered' | 'partial' | 'insufficient' | 'failed'
+  facts?: {
+    text: string
+    sources: {
+      recordId: string
+      fileName: string
+      location: components['schemas']['RecordSearchLocation']
+    }[]
+  }[]
+  conflicts?: {
+    description: string
+    values: {
+      text: string
+      sources: {
+        recordId: string
+        fileName: string
+        location: components['schemas']['RecordSearchLocation']
+      }[]
+    }[]
+  }[]
+  notFound?: string[]
+  semanticStatus: 'AVAILABLE' | 'UNAVAILABLE' | 'NO_INDEXED_RECORDS'
+  unindexedCount: number
+  candidateLimitReached: boolean
+}
+type Result = components['schemas']['ToriMessageOut'] & { recordAnswer?: RecordAnswer | null }
 type Turn = { id: string; message: string; result: Result }
 const formatTime = (value: string | null) =>
   value
@@ -30,10 +57,145 @@ function Reply({ result }: { result: Result }) {
   return (
     <div className="min-w-0 space-y-4 text-[14px] leading-6">
       <p className="whitespace-pre-wrap">{result.reply}</p>
+      {result.recordAnswer && (
+        <div className="space-y-3">
+          {result.recordAnswer.status === 'partial' && (
+            <p className="text-mute">
+              일부 내용만 확인했어요. 확인되지 않은 내용이 있을 수 있어요.
+            </p>
+          )}
+          {result.recordAnswer.status === 'insufficient' && (
+            <p className="text-mute">검색된 자료만으로는 답을 확인하기 어려워요.</p>
+          )}
+          {result.recordAnswer.status === 'failed' && (
+            <p role="alert" className="text-failed">
+              자료를 바탕으로 답변을 만들지 못했어요.{' '}
+              {result.records?.items.length
+                ? '아래 검색된 자료를 확인해 주세요.'
+                : '잠시 후 다시 시도해 주세요.'}
+            </p>
+          )}
+          {result.recordAnswer.semanticStatus === 'NO_INDEXED_RECORDS' && (
+            <p className="text-mute">답변 검색에 사용할 AI 색인이 준비된 자료가 없어요.</p>
+          )}
+          {result.recordAnswer.semanticStatus === 'UNAVAILABLE' && (
+            <p className="text-failed">답변을 위한 AI 검색을 사용할 수 없었어요.</p>
+          )}
+          {result.recordAnswer.unindexedCount > 0 && (
+            <p className="text-mute">
+              답변 검색에서 AI 색인이 준비되지 않은 자료가 {result.recordAnswer.unindexedCount}개
+              있어요.
+            </p>
+          )}
+          {result.recordAnswer.candidateLimitReached && (
+            <p className="text-mute">
+              검색 후보 한도에 도달했어요. 다른 자료도 확인하려면 자료함에서 검색해 주세요.
+            </p>
+          )}
+          {result.recordAnswer.conflicts?.map((conflict, index) => (
+            <section key={index} className="space-y-2 rounded-lg border border-pending bg-bg p-3">
+              <p className="font-semibold">자료 간 내용이 달라요: {conflict.description}</p>
+              {conflict.values.map((value, valueIndex) => (
+                <div key={valueIndex} className="space-y-1">
+                  <p className="whitespace-pre-wrap break-words">{value.text}</p>
+                  <details>
+                    <summary className="cursor-pointer text-caption font-semibold text-blue-700">
+                      이 내용의 출처 {value.sources.length}건 보기
+                    </summary>
+                    <ul className="mt-2 space-y-2">
+                      {value.sources.map((source, sourceIndex) => (
+                        <li key={`${source.recordId}:${sourceIndex}`} className="space-y-1">
+                          <p className="break-all font-medium">{source.fileName}</p>
+                          <p className="text-caption text-mute">
+                            {source.location?.label ?? '위치 정보 없음'}
+                          </p>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={!!downloading}
+                            onClick={() => {
+                              setDownloading(source.recordId)
+                              setDownloadError('')
+                              void dashboardApi
+                                .download(source.recordId, source.fileName)
+                                .catch(() =>
+                                  setDownloadError(
+                                    '원본을 받지 못했어요. 권한과 파일 상태를 확인해 주세요.',
+                                  ),
+                                )
+                                .finally(() => setDownloading(null))
+                            }}
+                          >
+                            {downloading === source.recordId ? '받는 중…' : '원본 다운로드'}
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </div>
+              ))}
+            </section>
+          ))}
+          {!!result.recordAnswer.notFound?.length && (
+            <div className="space-y-1 text-ink2">
+              <p className="font-semibold">찾지 못한 내용</p>
+              <ul className="list-disc pl-5">
+                {result.recordAnswer.notFound.map((item, index) => (
+                  <li key={index}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {result.recordAnswer.facts?.map((fact, index) => (
+            <section key={index} className="space-y-2">
+              <p className="whitespace-pre-wrap break-words">{fact.text}</p>
+              <details className="rounded-lg border border-line bg-card p-3">
+                <summary className="cursor-pointer text-caption font-semibold text-blue-700">
+                  이 내용의 출처 {fact.sources.length}건 보기
+                </summary>
+                <ul className="mt-2 space-y-3">
+                  {fact.sources.map((source, sourceIndex) => (
+                    <li key={`${source.recordId}:${sourceIndex}`} className="space-y-1">
+                      <p className="break-all font-medium">{source.fileName}</p>
+                      <p className="text-caption text-mute">
+                        {source.location?.label ?? '위치 정보 없음'}
+                      </p>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={!!downloading}
+                        onClick={() => {
+                          setDownloading(source.recordId)
+                          setDownloadError('')
+                          void dashboardApi
+                            .download(source.recordId, source.fileName)
+                            .catch(() =>
+                              setDownloadError(
+                                '원본을 받지 못했어요. 권한과 파일 상태를 확인해 주세요.',
+                              ),
+                            )
+                            .finally(() => setDownloading(null))
+                        }}
+                      >
+                        {downloading === source.recordId ? '받는 중…' : '원본 다운로드'}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            </section>
+          ))}
+        </div>
+      )}
+      {downloadError && (
+        <p role="alert" className="text-failed">
+          {downloadError}
+        </p>
+      )}
       {result.records && (
         <div className="space-y-3">
           <p className="border-t border-line pt-4 text-caption font-semibold text-ink2">
-            참고 자료 {result.recordTotalCount ?? 0}건{' '}
+            검색된 자료 {result.recordTotalCount ?? 0}건{' '}
             {result.recordTotalCount && result.recordTotalCount > result.records.items.length
               ? `중 ${result.records.items.length}건 표시`
               : ''}
@@ -61,51 +223,66 @@ function Reply({ result }: { result: Result }) {
               AI 추천은 상위 {result.records.semanticCandidateLimit}개 청크를 바탕으로 한 후보예요.
             </p>
           )}
-          {result.records.items.map((item) => (
-            <div key={item.id} className="space-y-2 rounded-lg border border-line bg-card p-4">
-              <p className="break-all font-bold">{item.fileName}</p>
-              <p className="text-mute">
-                {item.matchTypes
-                  .map((type) =>
-                    type === 'SEMANTIC'
-                      ? 'AI 추천'
-                      : type === 'CONTENT'
-                        ? '본문 일치'
-                        : '파일명 일치',
-                  )
-                  .join(' · ')}
-              </p>
-              {item.excerpts.map((excerpt, index) => (
-                <p key={index} className="whitespace-pre-wrap break-words">
-                  {excerpt.text}
-                  <span className="block text-mute">
-                    {excerpt.location?.label ?? '위치 정보 없음'}
-                  </span>
-                </p>
-              ))}
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={!!downloading}
-                onClick={() => {
-                  setDownloading(item.id)
-                  setDownloadError('')
-                  void dashboardApi
-                    .download(item.id, item.fileName)
-                    .catch(() =>
-                      setDownloadError('원본을 받지 못했어요. 권한과 파일 상태를 확인해 주세요.'),
-                    )
-                    .finally(() => setDownloading(null))
-                }}
-              >
-                {downloading === item.id ? '받는 중…' : '원본 다운로드'}
-              </Button>
-            </div>
-          ))}
-          {downloadError && (
-            <p role="alert" className="text-failed">
-              {downloadError}
+          {result.records.items.length === 0 ? (
+            <p className="text-mute">
+              {result.records.semanticStatus === 'UNAVAILABLE'
+                ? '파일명과 본문 일치 결과가 없어요. AI 추천은 확인하지 못했어요.'
+                : '검색 조건에 맞는 자료를 찾지 못했어요.'}
             </p>
+          ) : (
+            <details className="rounded-lg border border-line bg-card p-3">
+              <summary className="cursor-pointer font-semibold">
+                검색된 자료 보기 ({result.records.items.length}건)
+              </summary>
+              <div className="mt-3 space-y-3">
+                {result.records.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="space-y-2 rounded-lg border border-line bg-card p-4"
+                  >
+                    <p className="break-all font-bold">{item.fileName}</p>
+                    <p className="text-mute">
+                      {item.matchTypes
+                        .map((type) =>
+                          type === 'SEMANTIC'
+                            ? 'AI 추천'
+                            : type === 'CONTENT'
+                              ? '본문 일치'
+                              : '파일명 일치',
+                        )
+                        .join(' · ')}
+                    </p>
+                    {item.excerpts.map((excerpt, index) => (
+                      <p key={index} className="whitespace-pre-wrap break-words">
+                        {excerpt.text}
+                        <span className="block text-mute">
+                          {excerpt.location?.label ?? '위치 정보 없음'}
+                        </span>
+                      </p>
+                    ))}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={!!downloading}
+                      onClick={() => {
+                        setDownloading(item.id)
+                        setDownloadError('')
+                        void dashboardApi
+                          .download(item.id, item.fileName)
+                          .catch(() =>
+                            setDownloadError(
+                              '원본을 받지 못했어요. 권한과 파일 상태를 확인해 주세요.',
+                            ),
+                          )
+                          .finally(() => setDownloading(null))
+                      }}
+                    >
+                      {downloading === item.id ? '받는 중…' : '원본 다운로드'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </details>
           )}
           <Link className="text-blue-700 underline" to="/records">
             자료함에서 검색하기
@@ -206,9 +383,7 @@ export function ToriChat({
     void send(draft)
   }
   return (
-    <Card
-      className="flex h-[max(460px,calc(100dvh-180px))] min-w-0 flex-col overflow-hidden border-0 bg-transparent p-0 lg:h-full lg:min-h-0"
-    >
+    <Card className="flex h-[max(460px,calc(100dvh-180px))] min-w-0 flex-col overflow-hidden border-0 bg-transparent p-0 lg:h-full lg:min-h-0">
       <div className="flex shrink-0 items-start gap-4 border-b border-line pb-5">
         <Tori size={48} />
         <div>
