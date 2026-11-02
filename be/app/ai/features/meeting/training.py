@@ -31,8 +31,8 @@ class ReviewedDecision(ContractModel):
     """판단 기록 하나와 그 판단에 붙은 검수 기록들"""
 
     decision_id: NonBlankStr
-    # 그때 판단에 넘긴 요청. BE가 판단 기록의 발화 id와 버전으로 다시 만든다.
-    # 나중에 고쳐진 전사로 만들면 그때 모델이 본 입력과 달라진다
+    # 그때 판단에 넘긴 요청. BE 판단 기록의 judge_input을 그대로 읽는다(#241).
+    # 전사는 고치면 덮어써지므로 발화 id·버전으로 다시 찾으면 그때 모델이 본 입력과 달라진다
     request: JudgeUtteranceRequest
     reviews: tuple[JudgeReview, ...] = ()
 
