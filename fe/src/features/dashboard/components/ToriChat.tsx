@@ -355,6 +355,7 @@ export function ToriChat({
   const [error, setError] = useState('')
   const locked = useRef(false)
   const conversation = useRef<HTMLDivElement>(null)
+  const latestReply = useRef<HTMLDivElement>(null)
   const followLatest = useRef(true)
   const [hasUnseenReply, setHasUnseenReply] = useState(false)
 
@@ -362,7 +363,12 @@ export function ToriChat({
     const element = conversation.current
     if (!element || !turns.length) return
     if (followLatest.current) {
-      element.scrollTop = element.scrollHeight
+      const reply = latestReply.current
+      if (reply && reply.offsetHeight > element.clientHeight) {
+        element.scrollTop += reply.getBoundingClientRect().top - element.getBoundingClientRect().top
+      } else {
+        element.scrollTop = element.scrollHeight
+      }
     } else {
       setHasUnseenReply(true)
     }
@@ -449,7 +455,10 @@ export function ToriChat({
             <p className="ml-auto w-fit max-w-[90%] whitespace-pre-wrap break-words rounded-xl bg-blue-900 px-4 py-3 text-[14px] leading-6 text-white sm:max-w-[80%]">
               {turn.message}
             </p>
-            <div className="flex min-w-0 items-start gap-3">
+            <div
+              ref={turn.id === turns[turns.length - 1]?.id ? latestReply : undefined}
+              className="flex min-w-0 items-start gap-3"
+            >
               <Tori size={32} />
               <div className="min-w-0 flex-1 space-y-1">
                 <p className="text-caption font-semibold text-ink2">토리</p>
