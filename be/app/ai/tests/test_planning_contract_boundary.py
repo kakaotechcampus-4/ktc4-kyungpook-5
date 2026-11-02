@@ -10,6 +10,12 @@ from app.ai import contracts, errors
 from app.ai import planning_contracts as previous_path
 
 
+def test_search_evidence_types_are_public_without_internal_imports():
+    for name in ("RecordLookupResult", "RecordSearchResult", "RecordFact", "RecordConflict"):
+        assert name in ai.__all__
+        assert getattr(ai, name) is getattr(contracts, name)
+
+
 def test_public_planning_models_and_nested_models_are_owned_by_contracts():
     seen = set()
 

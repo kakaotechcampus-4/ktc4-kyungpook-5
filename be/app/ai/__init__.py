@@ -13,6 +13,10 @@ from .contracts import (
     RecordBlock,
     RecordSource,
     RecordDiscoveryRequest,
+    RecordLookupResult,
+    RecordSearchResult,
+    RecordFact,
+    RecordConflict,
     SourceLocation,
 )
 from .errors import (
@@ -67,6 +71,10 @@ __all__ = (
     "ChunkSearchQuery",
     "RetrievedChunk",
     "RecordSource",
+    "RecordLookupResult",
+    "RecordSearchResult",
+    "RecordFact",
+    "RecordConflict",
     # 청크 벡터 컬럼 차원
     "EMBEDDING_DIMENSIONS",
     # 오류. BE가 타입으로 재시도 안내·FAILED 처리를 정한다 (docs/errors.md)
