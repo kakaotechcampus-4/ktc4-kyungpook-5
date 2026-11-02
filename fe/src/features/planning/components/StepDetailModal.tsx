@@ -12,6 +12,7 @@ import {
   type StepAction,
 } from '@/features/planning/stepDetail'
 import type { components } from '@/shared/api/schema'
+import { formatKstDateInput } from '@/shared/lib/format'
 import { Field, ErrorBanner } from '@/shared/ui/AuthShell'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
@@ -21,8 +22,9 @@ type Step = components['schemas']['PlannedStepOut']
 
 // <input type="date">는 yyyy-MM-dd만 받는다. 돌려줄 때는 그날 0시(한국)를 붙여
 // 서버가 주는 ISO 와 같은 모양으로 맞춘다.
-const toDateInput = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : '')
 const fromDateInput = (value: string) => (value ? `${value}T00:00:00+09:00` : null)
+const changedDate = (value: string, original: string | null) =>
+  value === formatKstDateInput(original) ? original : fromDateInput(value)
 
 interface Draft {
   startsAt: string | null
@@ -135,9 +137,9 @@ function StepDetailForm({
               <Input
                 type="date"
                 disabled={locked}
-                value={toDateInput(draft.startsAt)}
+                value={formatKstDateInput(draft.startsAt)}
                 onChange={(e) =>
-                  setDraft((d) => ({ ...d, startsAt: fromDateInput(e.target.value) }))
+                  setDraft((d) => ({ ...d, startsAt: changedDate(e.target.value, step.startsAt) }))
                 }
               />
             </Field>
@@ -147,9 +149,9 @@ function StepDetailForm({
               <Input
                 type="date"
                 disabled={locked}
-                value={toDateInput(draft.deadline)}
+                value={formatKstDateInput(draft.deadline)}
                 onChange={(e) =>
-                  setDraft((d) => ({ ...d, deadline: fromDateInput(e.target.value) }))
+                  setDraft((d) => ({ ...d, deadline: changedDate(e.target.value, step.deadline) }))
                 }
               />
             </Field>

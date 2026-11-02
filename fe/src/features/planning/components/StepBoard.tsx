@@ -6,6 +6,7 @@ import type { CatalogueStep } from '@/features/planning/catalogue'
 import { PHASES, PHASE_HINT } from '@/features/planning/catalogue'
 import type { StepPhase } from '@/features/planning/types'
 import { cn } from '@/shared/lib/cn'
+import { formatMonthDay } from '@/shared/lib/format'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 
@@ -23,7 +24,7 @@ interface StepBoardProps {
 
 // 일정 두 값을 "11/5 – 11/8" 한 줄로 줄인다. 한쪽만 있으면 그쪽만 보인다.
 function dateRange(range?: { startsAt: string | null; deadline: string | null }): string {
-  const day = (iso: string | null) => (iso ? iso.slice(5, 10).replace('-', '/') : '')
+  const day = (iso: string | null) => (iso ? formatMonthDay(iso) : '')
   const from = day(range?.startsAt ?? null)
   const to = day(range?.deadline ?? null)
   if (from && to) return `${from} – ${to}`
