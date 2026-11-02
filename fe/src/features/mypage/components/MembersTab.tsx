@@ -10,7 +10,7 @@ import { Tori } from '@/shared/ui/Tori'
 
 const ACCOUNT: Record<AccountStatus, { label: string; tone: 'done' | 'pending' | 'neutral' }> = {
   JOINED: { label: '계정 있음', tone: 'done' },
-  INVITED: { label: '가입 대기', tone: 'pending' },
+  INVITED: { label: '초대 중지', tone: 'neutral' },
   NONE: { label: '계정 없음', tone: 'neutral' },
 }
 
@@ -73,6 +73,7 @@ interface MembersTabProps {
   // 명단 전체 수. 목록에는 앞 몇 명만 보인다.
   total: number
   onAddClick: () => void
+  canAdd?: boolean
   onResolveRequest: (id: string) => void
 }
 
@@ -81,6 +82,7 @@ export function MembersTab({
   requests,
   total,
   onAddClick,
+  canAdd = true,
   onResolveRequest,
 }: MembersTabProps) {
   const groups: MemberGroup[] = ['임원', '동아리원']
@@ -120,12 +122,13 @@ export function MembersTab({
               <h2 className="text-h2 text-ink">동아리원</h2>
               <Chip tone="approved">{total}명</Chip>
             </span>
-            <Button onClick={onAddClick}>+ 직접 추가</Button>
+            <Button onClick={onAddClick} disabled={!canAdd}>+ 직접 추가</Button>
           </div>
           <p className="text-[12px] leading-[18px] text-mute">
             회장과 임원만 계정으로 서비스를 이용해요. 일반 동아리원은 계정 없이 내부 명단으로
             관리합니다.
           </p>
+          {!canAdd && <p className="text-[12px] text-mute">동아리원 추가와 초대 기능은 현재 사용할 수 없어요.</p>}
         </div>
 
         {groups.map((group) => {

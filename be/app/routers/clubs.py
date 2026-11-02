@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_account, require_club_role, require_member
 from app.core.enums import MemberRole
+from app.core.exceptions import InvitationUnavailable
 from app.db.session import get_session
 from app.models.auth import Account
 from app.models.clubs import Member
@@ -122,18 +123,7 @@ async def create_invitation(
     inviter: Member = Depends(require_club_role(MemberRole.OWNER, MemberRole.MANAGER)),
     session: AsyncSession = Depends(get_session),
 ) -> Envelope[InvitationCreateOut]:
-    invitation, token = await club_service.create_invitation(
-        session,
-        club_id=club_id,
-        email=body.email,
-        role=body.role,
-        invited_by=inviter,
-    )
-    return Envelope(
-        data=InvitationCreateOut(
-            id=invitation.id, token=token, expires_at=invitation.expires_at
-        )
-    )
+    raise InvitationUnavailable()
 
 
 @router.post("/invitations/accept", response_model=Envelope[InvitationAcceptOut])
@@ -142,12 +132,7 @@ async def accept_invitation(
     account: Account = Depends(get_current_account),
     session: AsyncSession = Depends(get_session),
 ) -> Envelope[InvitationAcceptOut]:
-    member = await club_service.accept_invitation(
-        session, token=body.token, account=account
-    )
-    return Envelope(
-        data=InvitationAcceptOut(club_id=member.club_id, role=member.role)
-    )
+    raise InvitationUnavailable()
 
 
 @router.get("/clubs/{club_id}/members", response_model=MemberListResponse)

@@ -201,8 +201,8 @@ async def test_legacy_pending_member_invitation_cannot_create_membership(
         headers=invitee["headers"],
         json={"token": token},
     )
-    assert result.status_code == 422, result.text
-    assert result.json()["error"]["code"] == "VALIDATION_FAILED"
+    assert result.status_code == 503, result.text
+    assert result.json()["error"]["code"] == "INVITATION_UNAVAILABLE"
     async with db_session.get_sessionmaker()() as session:
         assert await session.scalar(
             select(Member.id).where(

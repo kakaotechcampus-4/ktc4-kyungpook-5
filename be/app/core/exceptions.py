@@ -54,6 +54,14 @@ class Forbidden(ApiError):
         super().__init__(message)
 
 
+class InvitationUnavailable(ApiError):
+    status_code = 503
+    code = "INVITATION_UNAVAILABLE"
+
+    def __init__(self) -> None:
+        super().__init__("초대 기능을 현재 사용할 수 없습니다.")
+
+
 class VersionConflict(ApiError):
     """expectedVersion이 현재 값과 다를 때. 재시도 전에 리소스를 다시 조회해야 한다."""
 

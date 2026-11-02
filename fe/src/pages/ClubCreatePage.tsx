@@ -45,12 +45,6 @@ export default function ClubCreatePage() {
           </div>
           {error && <ErrorBanner title={error} />}
           <ClubCreateForm pending={create.isPending} onSubmit={(input) => void submit(input)} />
-          <p className="text-center text-[12px] text-mute">
-            이미 있는 동아리에 들어가려면{' '}
-            <Link to="/clubs/join" className="font-bold text-blue-700 underline">
-              초대 코드로 참여
-            </Link>
-          </p>
         </div>
       </Card>
     </AuthShell>

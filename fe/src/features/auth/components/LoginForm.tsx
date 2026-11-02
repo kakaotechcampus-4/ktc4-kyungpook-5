@@ -52,16 +52,10 @@ export function LoginForm() {
         ) : (
           <div className="flex flex-col gap-[11px]">
             <div className="rounded-[11px] bg-bg p-[15px] text-[13px] leading-relaxed text-ink2">
-              이용할 수 있는 소속이 없어요. 동아리를 직접 만들거나, 회장·임원이 보낸 초대 코드로
-              참여할 수 있어요.
+              이용할 수 있는 소속이 없어요. 동아리를 직접 만들 수 있어요.
             </div>
             <Link to="/clubs/new">
               <Button className="w-full">동아리 만들기</Button>
-            </Link>
-            <Link to="/clubs/join">
-              <Button variant="secondary" className="w-full">
-                초대 코드로 참여
-              </Button>
             </Link>
             <Link
               to="/dashboard"

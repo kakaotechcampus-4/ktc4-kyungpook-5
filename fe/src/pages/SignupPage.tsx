@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { AuthShell, ErrorBanner, Field } from '@/shared/ui/AuthShell'
 import { useSignup } from '@/features/auth/hooks'
 import { beginKakaoLogin, kakaoConfigured } from '@/features/auth/kakao'
@@ -9,6 +9,7 @@ import { Card } from '@/shared/ui/Card'
 import { Input } from '@/shared/ui/Input'
 
 export default function SignupPage() {
+  const [params] = useSearchParams()
   const signup = useSignup()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -52,11 +53,14 @@ export default function SignupPage() {
       }
     >
       <Card className="w-[480px] max-w-full px-[32px] py-[30px]">
+        {params.has('invite') && (
+          <p role="status" className="mb-4 text-[13px] text-mute">초대 기능을 현재 사용할 수 없어요.</p>
+        )}
         {created ? (
           <div className="flex flex-col gap-4" role="status">
             <h1 className="text-h1">계정이 만들어졌어요</h1>
             <p className="text-mute">
-              로그인할 수 있어요. 이메일 인증 메일 발송과 소속 생성·참여 화면은 아직 준비 중입니다.
+              로그인한 뒤 동아리를 만들 수 있어요.
             </p>
             <Link to="/login" className="text-blue-700 underline">
               로그인으로 이동
@@ -67,7 +71,7 @@ export default function SignupPage() {
             <div className="flex flex-col gap-2">
               <h1 className="text-h1">계정 만들기</h1>
               <p className="text-mute">
-                계정을 먼저 만들어요. 소속 생성과 참여 화면은 아직 준비 중입니다.
+                계정을 먼저 만들고 로그인한 뒤 동아리를 만들 수 있어요.
               </p>
               <p className="text-mute">이메일 인증 메일은 아직 발송되지 않습니다.</p>
             </div>

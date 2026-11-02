@@ -18,7 +18,7 @@ import type { JoinRequest, Member } from '@/features/mypage/types'
 import { cn } from '@/shared/lib/cn'
 import { useAuthStore } from '@/shared/auth/store'
 import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
-import { useClubMembers, useCreateInvitation, clubErrorMessage } from '@/features/clubs/hooks'
+import { useClubMembers } from '@/features/clubs/hooks'
 
 const TABS = ['내 정보', '동아리원', '동아리 자료'] as const
 type Tab = (typeof TABS)[number]
@@ -29,9 +29,7 @@ export default function MyPage() {
   const { user, me, clubId } = useAuthStore()
   const [tab, setTab] = useState<Tab>('내 정보')
   const [addOpen, setAddOpen] = useState(false)
-  const [inviteMessage, setInviteMessage] = useState('')
   const membersQuery = useClubMembers(demo ? null : clubId)
-  const createInvite = useCreateInvitation()
 
   const [members, setMembers] = useState<Member[]>(demo ? DEMO_MEMBERS : [])
   const [requests, setRequests] = useState<JoinRequest[]>(demo ? DEMO_JOIN_REQUESTS : [])
@@ -88,11 +86,6 @@ export default function MyPage() {
 
       {tab === '동아리원' && (
         <>
-          {inviteMessage && (
-            <div className="rounded-[12px] border border-blue-200 bg-blue-50 px-[16px] py-[12px] text-[12px] text-blue-800">
-              {inviteMessage}
-            </div>
-          )}
           <MembersTab
           members={demo ? members : (membersQuery.data ?? []).map((item) => ({
             id: item.id,
@@ -106,6 +99,7 @@ export default function MyPage() {
           requests={requests}
           total={demo ? DEMO_MEMBER_TOTAL : (membersQuery.data?.length ?? 0)}
           onAddClick={() => setAddOpen(true)}
+          canAdd={demo}
           onResolveRequest={(id) => setRequests((list) => list.filter((r) => r.id !== id))}
           />
         </>
@@ -116,24 +110,7 @@ export default function MyPage() {
       <AddMemberModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onAdd={async (member) => {
-          setInviteMessage('')
-          if (!demo && member.group === '임원' && member.contact?.includes('@') && clubId) {
-            try {
-              const invitation = await createInvite.mutateAsync({
-                clubId,
-                email: member.contact,
-                role: 'MANAGER',
-              })
-              const link = `${window.location.origin}/signup?invite=${encodeURIComponent(invitation.token)}`
-              await navigator.clipboard?.writeText(link)
-              setInviteMessage('초대 링크를 만들고 클립보드에 복사했어요. 7일 안에 한 번 사용할 수 있어요.')
-              await membersQuery.refetch()
-            } catch (error) {
-              setInviteMessage(clubErrorMessage(error))
-            }
-            return
-          }
+        onAdd={(member) => {
           setMembers((list) => [...list, { ...member, id: `mem_${list.length + 1}`, account: 'NONE' }])
         }}
       />
