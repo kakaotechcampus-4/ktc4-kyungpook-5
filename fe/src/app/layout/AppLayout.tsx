@@ -78,7 +78,7 @@ export function AppLayout() {
         <Avatar name={me.email} size={30} />
         <span className="min-w-0 truncate text-caption">{me.email}</span>
       </Link>
-      <Button size="sm" variant="ghost" className="w-full justify-start !text-[#d5deea] hover:!bg-[#263b54] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" disabled={logout.isPending} onClick={() => logout.mutate()}>
+      <Button size="sm" variant="ghost" className="w-full justify-start !border-0 !bg-transparent !text-[#d5deea] hover:!bg-[#263b54] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" disabled={logout.isPending} onClick={() => logout.mutate()}>
         로그아웃
       </Button>
     </div>
