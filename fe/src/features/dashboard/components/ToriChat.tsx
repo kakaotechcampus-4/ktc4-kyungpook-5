@@ -207,7 +207,7 @@ export function ToriChat({
   }
   return (
     <Card
-      className={`flex min-w-0 flex-col overflow-hidden border-0 bg-transparent p-0 ${turns.length ? 'h-[min(65dvh,680px)] min-h-[400px]' : 'min-h-[360px]'}`}
+      className="flex h-[max(460px,calc(100dvh-180px))] min-w-0 flex-col overflow-hidden border-0 bg-transparent p-0 lg:h-full lg:min-h-0"
     >
       <div className="flex shrink-0 items-start gap-4 border-b border-line pb-5">
         <Tori size={48} />

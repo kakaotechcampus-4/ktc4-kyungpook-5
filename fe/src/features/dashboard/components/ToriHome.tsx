@@ -42,7 +42,7 @@ export function ToriHome() {
     return null
   }
   return (
-    <div className="mx-auto max-w-[1200px] space-y-6">
+    <div className="mx-auto flex min-h-[calc(100dvh-108px)] max-w-[1200px] flex-col lg:h-[calc(100dvh-72px)] lg:min-h-[520px]">
       <div
         className={`grid transition-[grid-template-rows] duration-200 ease-out ${
           conversationStarted ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'
@@ -65,14 +65,14 @@ export function ToriHome() {
           </header>
         </div>
       </div>
-      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_220px]">
+      <div className="grid min-h-0 flex-1 gap-7 lg:grid-cols-[minmax(0,1fr)_220px]">
         <ToriChat
           key={`${me?.id}:${clubId}`}
           clubId={clubId}
           onConversationStarted={() => setConversationStarted(true)}
         />
-        <aside className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-          <Card className="space-y-3 rounded-none border-0 border-t border-line bg-transparent px-0 py-5">
+        <aside className="grid content-start gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <Card className="space-y-3 rounded-xl border border-line bg-bg p-4">
             <div className="flex justify-between gap-2">
               <h2 className="text-h3">저장된 일정</h2>
               <Link className="text-caption text-blue-700 underline" to="/meetings">
@@ -96,7 +96,7 @@ export function ToriHome() {
                 <p className="text-caption text-mute">확인된 일정이 없어요.</p>
               ))}
           </Card>
-          <Card className="space-y-3 rounded-none border-0 border-t border-line bg-transparent px-0 py-5">
+          <Card className="space-y-3 rounded-xl border border-line bg-bg p-4">
             <div className="flex justify-between gap-2">
               <h2 className="text-h3">내 할 일</h2>
               <Link className="text-caption text-blue-700 underline" to="/meetings">
@@ -121,7 +121,7 @@ export function ToriHome() {
               담당자가 이름으로만 저장된 항목은 포함되지 않아요.
             </p>
           </Card>
-          <Card className="space-y-3 rounded-none border-0 border-t border-line bg-transparent px-0 py-5">
+          <Card className="space-y-3 rounded-xl border border-line bg-bg p-4">
             <div className="flex justify-between gap-2">
               <h2 className="text-h3">진행 행사</h2>
               <Link className="text-caption text-blue-700 underline" to="/planning">
