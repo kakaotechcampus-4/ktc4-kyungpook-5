@@ -367,3 +367,12 @@ BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(cl
 ## 토리의 자료 질문 근거 판단
 
 `answer_tori_records(ToriRecordAnswerRequest(question, today, chunks))`는 BE가 소속 권한을 확인해 제공한 검색 청크만 판단해 `status`(answered/partial/no_evidence), `facts`(사실과 출처), `conflicts`, `not_found`를 반환한다. 빈 청크는 no_evidence이며 모델 오류는 전파한다. 모델이 지정한 청크 ID를 출처 변환 전까지 유지하고, 그 청크의 숫자나 요청 연도의 직접 근거가 없는 사실은 제외해 미확인으로 표시한다. 같은 위치를 공유하는 다른 청크는 근거를 섞지 않는다. 숫자 비교는 부호를 보존하고 쉼표·원화 기호와 명시적 양수 부호를 정규화하며, 괄호 금액은 양·음이 모호해 근거에서 제외한다. 금액·인원의 한글 수사는 원문과 같은 표기만 인정한다. 계산값·환산 표현과 같은 정당한 사실도 보수적으로 제외될 수 있고, 숫자 검사가 사실 전체의 정확성을 보장하지 않는다. 자료 범위·미색인·검색 실패 및 권한은 BE가 안내한다. 회의·계획의 기존 검색 경로는 바꾸지 않는다.
+
+
+### 토리 범위 질문과 후속 검색
+
+`ToriRecordAnswerRequest`의 `question`은 원질문, `follow_up`은 선택적 후속 답, `clarification_allowed`는 질문 허용 여부다. 직전 `clarification_question`(선택, 500자 이하)과 `clarification_options`(선택, 최대 3개·각 200자 이하)를 별도 데이터로 전달할 수 있다. 후속이 있으면 허용 값과 관계없이 추가 질문을 내지 않는다. 여러 관련 범위 중 확인이 유용하면 `status=clarification`과 `clarification_question`(500자 이하), `clarification_options`(각 200자 이하, 최대 3개)를 반환한다. 구체 선택지는 전달된 자료에 확인된 범위만 허용하며, `전체 요약`은 인용 없이 제공할 수 있다. 공백은 제거한다. 허용되지 않거나 검증되지 않은 질문은 질문 없이 답변을 한 번 재시도하며, 다시 잘못되면 AI 오류다. 자료가 없거나 호출이 실패한 경우는 기존과 구분한다.
+
+후속은 `build_tori_record_query(ToriRecordQueryRequest(question, follow_up, clarification_question, clarification_options))`로 처리한다. 직전 질문과 선택지는 생략 가능하며 순서 지시를 해석하는 데 쓴다. `ToriRecordQueryResult`가 `disposition=follow_up`이면 `query`는 200자 이하 필수이며 BE는 같은 소속 내에서 재검색하고 원질문과 후속을 답변에 전달한다. `new_request`면 query는 null이고 BE가 기존 의도 분기로 보낸다. 모델의 분류나 질의는 권한 부여가 아니다. 결과 사실은 토리 전용 프롬프트로 관련 내용을 최대 5개 의미별 묶음으로 작성하며 각 사실의 인용 청크·숫자 검증을 유지한다. 부족 항목은 사용자의 실제 요청과 관련된 것만 최대 2개 지시한다. 요약의 의미적 정확성이나 실제 자료의 완전성은 숫자 검사로 보장하지 않는다. 회의·계획의 공통 검색 판단은 바꾸지 않는다.
+
+명시된 연도 범위는 양 끝을 포함하며 후속 답에서 연도를 명시하면 해당 연도를 우선한다. 선택지가 있는 후속 답에서 범위를 확인할 수 없으면 특정 연도나 행사를 임의로 정하지 않고 재질문 없이 짧게 안내한다.

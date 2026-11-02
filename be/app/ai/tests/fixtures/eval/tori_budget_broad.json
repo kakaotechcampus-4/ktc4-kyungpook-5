@@ -1,0 +1,18 @@
+{
+  "description": "합성 자료: 두 연도, 여섯 행사와 행사별 세 가지 예산 항목. 사용자 자료가 아니다.",
+  "records": [
+    {"name": "2024_봄MT_예산.csv", "text": "2024년 봄 MT 예산: 숙박비 320,000원, 식비 180,000원, 교통비 140,000원."},
+    {"name": "2024_신입생환영회_예산.csv", "text": "2024년 신입생 환영회 예산: 식비 200,000원, 홍보비 50,000원, 장소비 120,000원."},
+    {"name": "2024_가을MT_예산.csv", "text": "2024년 가을 MT 예산: 숙박비 400,000원, 식비 210,000원, 교통비 160,000원."},
+    {"name": "2025_봄MT_예산.csv", "text": "2025년 봄 MT 예산: 숙박비 450,000원, 식비 240,000원, 교통비 190,000원."},
+    {"name": "2025_축제_예산.csv", "text": "2025년 축제 예산: 재료비 270,000원, 홍보비 80,000원, 장소비 130,000원."},
+    {"name": "2025_워크숍_예산.csv", "text": "2025년 워크숍 예산: 숙박비 300,000원, 식비 150,000원, 자료비 70,000원."}
+  ],
+  "scenarios": [
+    {"question": "행사 예산 관련 자료를 찾아줘", "follow_up": null, "expected": "clarification"},
+    {"question": "행사 예산 관련 자료를 찾아줘", "follow_up": "2025년 봄 MT", "expected": "answer_specific"},
+    {"question": "행사 예산 관련 자료를 찾아줘", "follow_up": "전체를 요약해줘", "expected": "answer_overview"},
+    {"question": "2025년 봄 MT 예산을 알려줘", "follow_up": null, "expected": "answer_specific"},
+    {"question": "행사 예산 관련 자료를 찾아줘", "follow_up": "잘 모르겠어", "expected": "answer_overview"}
+  ]
+}
