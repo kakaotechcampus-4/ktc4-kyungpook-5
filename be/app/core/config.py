@@ -44,7 +44,7 @@ class Settings(BaseSettings):
 
     stt_url: str = ""
     stt_api_key: SecretStr = SecretStr("")
-    stt_model: str = "whisper-large-v3"
+    stt_model: str = "openai/whisper-large-v3"
     stt_timeout_seconds: float = Field(default=60, gt=0)
     audio_vad_rms_threshold: float = Field(default=450, gt=0)
 

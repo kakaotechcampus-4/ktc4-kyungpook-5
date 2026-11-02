@@ -192,9 +192,19 @@ async def test_whisper_posts_wav_and_reads_nested_gateway_response() -> None:
         assert b'filename="utterance.wav"' in request.content
         assert b'RIFF' in request.content
         assert b'\r\nko\r\n' in request.content
+        assert b'\r\nopenai/whisper-large-v3\r\n' in request.content
         return httpx.Response(200, json={"transcript": {"text": " 회의를 시작합니다. "}})
     provider = WhisperStt(url="https://gateway.example/transcriptions", api_key="private-test-key", transport=httpx.MockTransport(respond))
     assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko-KR") == "회의를 시작합니다."
+
+
+async def test_whisper_reads_openai_compatible_response() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"text": " 회의 기록 "})),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == "회의 기록"
 
 
 async def test_whisper_failure_does_not_echo_body_or_key() -> None:
@@ -209,7 +219,7 @@ async def test_whisper_failure_does_not_echo_body_or_key() -> None:
 
 async def test_whisper_rejects_wrong_response() -> None:
     provider = WhisperStt(url="https://gateway.example/transcriptions", api_key="key",
-        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"text": "wrong shape"})))
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"data": {"text": "wrong shape"}})))
     with pytest.raises(SttError) as error:
         await provider.transcribe(pcm_to_wav(pcm(300)), language="ko")
     assert error.value.code == "STT_INVALID_RESPONSE"

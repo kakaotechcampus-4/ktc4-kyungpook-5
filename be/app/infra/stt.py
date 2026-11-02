@@ -1,7 +1,9 @@
-"""Configured Whisper gateway adapter. The gateway returns transcript.text.
+"""Configured Whisper gateway adapter.
 
 STT_URL is the complete transcription endpoint; it is deliberately separate from
-chat/embedding deployments. No fallback transcript is produced on provider errors.
+chat/embedding deployments. The Whisper gateway returns ``transcript.text``;
+some OpenAI-compatible gateways return top-level ``text``. No fallback
+transcript is produced on provider errors.
 """
 
 import io
@@ -33,7 +35,7 @@ class WhisperStt:
         *,
         url: str,
         api_key: str,
-        model: str = "whisper-large-v3",
+        model: str = "openai/whisper-large-v3",
         timeout_seconds: float = 60,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
@@ -58,9 +60,14 @@ class WhisperStt:
                 )
                 response.raise_for_status()
                 payload = response.json()
-                text = payload["transcript"]["text"]
+                if not isinstance(payload, dict):
+                    raise TypeError("response must be an object")
+                if isinstance(payload.get("transcript"), dict):
+                    text = payload["transcript"].get("text")
+                else:
+                    text = payload.get("text")
                 if not isinstance(text, str):
-                    raise TypeError("transcript.text must be a string")
+                    raise TypeError("transcript.text or text must be a string")
                 return text.strip()
         except httpx.TimeoutException as exc:
             raise SttError("STT_TIMEOUT", "음성 인식 응답 시간이 초과됐습니다.") from exc

@@ -60,11 +60,11 @@ and create a new meeting for a new capture. GET restores
 persisted results, not an unacknowledged network frame.
 
 Configure `STT_URL` as the full gateway endpoint and `STT_API_KEY` as its bearer key,
-plus `STT_MODEL` (default whisper-large-v3) and `STT_TIMEOUT_SECONDS` (default 60).
-The adapter posts multipart `file` (16kHz mono WAV), `model`, and `language`. It
-expects the project's documented gateway response `{"transcript":{"text":"..."}}`.
-The actual endpoint request has to be checked against the gateway when credentials
-are provided; committed source includes the response contract but no probe script.
+plus `STT_MODEL` and `STT_TIMEOUT_SECONDS` (default 60). The adapter posts multipart
+`file` (16kHz mono WAV), `model`, and `language`. For MLAPI, use the Whisper
+deployment's model-specific base URL followed by `/v1/audio/transcriptions` and
+model ID `openai/whisper-large-v3`. The adapter accepts both the gateway's
+`{"transcript":{"text":"..."}}` response and top-level `{"text":"..."}`.
 Missing configuration returns STT_NOT_CONFIGURED before recording starts.
 
 The old HTTP `audio-chunks` endpoint only runs its legacy stub under TEST_MODE.
