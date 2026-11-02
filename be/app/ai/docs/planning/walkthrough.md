@@ -462,6 +462,19 @@ model_calls = 대화 Agent 호출 수 / generation_model_calls = 생성 내부 �
 
 `session.json`은 모델·설정의 공개 가능한 항목·코드/입력 해시·예정/완료 수와 요약이다. `attempts.jsonl`은 시작/종료, Tool 인자/처리 결과와 구간 관측을 가진다. 입력을 고정했더라도 두 모델 응답은 달라질 수 있으므로 “버튼 성공·채팅 실패”만으로 해석 실패를 확정하지 않는다. 생성에 진입했는지와 그 뒤 어느 구간에서 실패했는지 먼저 본다. 실제 관찰과 한계는 [평가 기록](evaluation.md)에 별도로 남긴다.
 
+2026-11-03 실제 luna 기본 비교는 18요청 중 16건 생성 성공이었다. 인원 변경 채팅 2건은 다음 흐름이었다.
+
+```text
+현재 워크숍·40명 + 30명일 때의 옛 권유 + “최신 조건으로 초안 만들어줘.”
+  → generate_event_plan(quote=이번 원문, offer_id=null)
+  → 생성 모델: 구조화 초안 작성
+  → validate_plan: invalid_plan으로 거절
+  → generation_result.failed, 현재 조건과 다음 상태 보존
+  → Agent: 실제 실패를 설명
+```
+
+여기서는 새 요청을 올바르게 해석했고 생성에도 진입했다. 코드의 옛 권유 차단 검사 때문에 실패한 것이 아니다. 기본 기록은 어느 세부 규칙에 걸렸는지 남기지 않아 그 두 응답의 상세 원인은 미확인이다. 이 결과와 주입 응답의 재확인 반복을 섞지 않으며, 실제 mini나 제품 화면 오류를 해결했다고 설명하지 않는다.
+
 ## 5-3: 두 API의 실제 응답이 같은 P2에 표시된다
 
 [PlanningPlaygroundPage.tsx](../../tests/ui/planning/src/pages/PlanningPlaygroundPage.tsx)의 `session`은 `draft + history + generation`이다. `messages`는 화면 말풍선 목록이며 SDK Tool 이력인 history와 구분한다.
