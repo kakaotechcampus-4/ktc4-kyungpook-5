@@ -51,6 +51,11 @@ function MeetingMicControls(props: MeetingAudioOptions) {
           </div>
         </div>
       )}
+      {audio.phase === 'recording' && audio.noiseSuppression === false && (
+        <p className="text-[11px] leading-5 text-mute">
+          이 브라우저에서 마이크 잡음 억제가 꺼져 있어요. 조용한 장소에서 사용해 주세요.
+        </p>
+      )}
       {audio.error && (
         <p role="alert" className="text-[12px] leading-[19px] text-failed">
           {audio.error}

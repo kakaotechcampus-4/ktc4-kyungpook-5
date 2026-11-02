@@ -16,6 +16,7 @@ interface AudioState extends AudioProgress {
   phase: AudioPhase
   error: string | null
   inputLevel: number
+  noiseSuppression?: boolean
 }
 const INITIAL: AudioState = {
   phase: 'idle',
@@ -145,7 +146,7 @@ export function useMeetingAudio({
         return
       }
       capture.current = microphone
-      setState((previous) => ({ ...previous, phase: 'recording' }))
+      setState((previous) => ({ ...previous, phase: 'recording', noiseSuppression: microphone.noiseSuppression }))
     } catch (error) {
       fail(error)
     }

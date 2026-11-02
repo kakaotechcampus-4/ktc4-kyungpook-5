@@ -1,6 +1,7 @@
 import { PcmFramer } from './pcm'
 
 export interface PcmCapture {
+  noiseSuppression?: boolean
   stop: () => Promise<void>
   cancel: () => void
 }
@@ -63,6 +64,7 @@ export async function startPcmCapture(
     let levelSum = 0
     let levelSamples = 0
     let lastLevelAt = performance.now()
+    let displayedLevel = 0
     worklet.port.onmessage = (event: MessageEvent) => {
       if (closed) return
       try {
@@ -74,8 +76,10 @@ export async function startPcmCapture(
           levelSamples += samples.length
           const now = performance.now()
           if (now - lastLevelAt >= 100 && levelSamples) {
-            // RMS is scaled for a readable meter; it does not change the captured audio.
-            onLevel(Math.min(1, Math.sqrt(levelSum / levelSamples) * 8))
+            // Smooth only the meter; the PCM below remains unchanged.
+            const targetLevel = Math.min(1, Math.sqrt(levelSum / levelSamples) * 8)
+            displayedLevel += (targetLevel - displayedLevel) * (targetLevel > displayedLevel ? 0.4 : 0.2)
+            onLevel(displayedLevel)
             levelSum = 0
             levelSamples = 0
             lastLevelAt = now
@@ -114,7 +118,9 @@ export async function startPcmCapture(
     if (context.state !== 'running')
       throw new Error('마이크 오디오를 시작하지 못했어요. 다시 시도해 주세요.')
 
+    const trackSettings = stream.getAudioTracks()[0]?.getSettings?.()
     return {
+      noiseSuppression: trackSettings?.noiseSuppression,
       stop: () => {
         if (stopPromise) return stopPromise
         if (closed) return Promise.reject(new Error('마이크 연결이 이미 종료됐어요.'))
