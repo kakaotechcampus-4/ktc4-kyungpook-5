@@ -226,8 +226,13 @@ def _record(client: TestClient, headers: dict, club_id: str, file_name: str = "�
 
 
 async def test_자료를_지우면_청크와_원본이_사라지고_검색에서_빠진다(
-    client: TestClient, app_db: None, tmp_path
+    client: TestClient, app_db: None, tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    async def no_semantic(request, *, records):
+        return ()
+
+    # AI 키가 있으면 검색이 실제 임베딩을 부른다. 파일명 검색만으로 확인한다.
+    monkeypatch.setattr(ai, "search_related_records", no_semantic)
     headers, club_id = owner_with_club(client, "rec-delete")
     record = _record(client, headers, club_id, "삭제할회칙.csv")
     assert record["parseStatus"] == "INDEXED"
@@ -353,3 +358,38 @@ async def test_운영진과_다른_동아리_대표는_동아리_정보를_고�
 
     assert by_manager.status_code == 403
     assert by_outsider.status_code == 403
+
+
+async def test_소속_운영진은_동아리_하나를_조회해_수정_폼을_채운다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client, "club-get")
+    client.patch(
+        f"/api/v1/clubs/{club_id}",
+        headers=headers,
+        json={"category": "HOBBY", "description": "보드게임 동아리"},
+    )
+    manager = await member_of(client, club_id, MemberRole.MANAGER, "club-get-manager")
+
+    res = client.get(f"/api/v1/clubs/{club_id}", headers=manager)
+
+    assert res.status_code == 200, res.text
+    assert res.json() == {
+        "data": {
+            "id": club_id, "name": "club-get 동아리", "category": "HOBBY",
+            "description": "보드게임 동아리",
+        },
+        "meta": None,
+    }
+
+
+async def test_다른_동아리와_일반_동아리원은_동아리를_조회할_수_없다(
+    client: TestClient, app_db: None
+) -> None:
+    _headers, club_id = owner_with_club(client, "club-get-role")
+    member = await member_of(client, club_id, MemberRole.MEMBER, "club-get-member")
+    outsider, _other_club_id = owner_with_club(client, "club-get-outsider")
+
+    assert client.get(f"/api/v1/clubs/{club_id}", headers=member).status_code == 403
+    assert client.get(f"/api/v1/clubs/{club_id}", headers=outsider).status_code == 403
+    assert client.get("/api/v1/clubs/clb_missing", headers=outsider).status_code == 403

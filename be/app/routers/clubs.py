@@ -86,6 +86,17 @@ async def create_club(
     )
 
 
+@router.get("/clubs/{club_id}", response_model=Envelope[ClubOut])
+async def get_club(
+    club_id: str,
+    _member: Member = Depends(require_member),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[ClubOut]:
+    """동아리 하나. 수정 화면이 분야·소개의 현재 값을 채운다 (#223)."""
+    club = await club_service.get_club(session, club_id=club_id)
+    return Envelope(data=ClubOut.model_validate(club))
+
+
 @router.patch("/clubs/{club_id}", response_model=Envelope[ClubOut])
 async def update_club(
     club_id: str,

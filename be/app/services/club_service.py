@@ -53,11 +53,16 @@ async def create_club(
     return club, owner
 
 
+async def get_club(session: AsyncSession, *, club_id: str) -> Club:
+    """소속 확인은 라우터가 먼저 끝낸다. 소속이 있으면 동아리도 있다 (#223)."""
+    return await session.get(Club, club_id)
+
+
 async def update_club(session: AsyncSession, *, club_id: str, changes: dict) -> Club:
     """보낸 필드(changes)만 바꾼다. 대표 권한 확인은 라우터가 먼저 끝낸다 (#213)."""
     if "name" in changes and changes["name"] is None:
         raise ValidationFailed({"name": "동아리 이름을 입력해 주세요."})
-    club = await session.get(Club, club_id)
+    club = await get_club(session, club_id=club_id)
     for key, value in changes.items():
         setattr(club, key, value)
     await session.commit()
