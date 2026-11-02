@@ -53,7 +53,7 @@ export function MeetingToriPanel({
             다른 회의 보기
           </Link>
         ) : (
-          <span className="shrink-0 text-caption text-mute">마이크를 끈 뒤 회의 이동</span>
+          <span className="shrink-0 text-caption text-mute">마이크 종료와 처리 후 회의 이동</span>
         )}
       </div>
       <div
