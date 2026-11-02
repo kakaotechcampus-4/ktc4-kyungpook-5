@@ -207,6 +207,15 @@ asyncio.run(main())
 
 ## 4단계: 과거 기록을 찾고, 사용자가 원하면 올해 계획에 적용한다
 
+제품 연결(#235, #236)은 `services/planning_service.py:chat`에서 `app.ai.chat_planning`
+공개 함수에 동아리 범위의 `PostgresRecordSearch`를 주입한다. 아래 검색 경로는 그대로
+사용하고, `_view_out`이 구조화 사실과 출처까지 제품 DTO로 옮긴다. `_save_turn`은
+조건·답변·Agent 상태와 함께 `Conversation.last_record_lookup`을 저장한다.
+GET 계획 화면의 `lastRecordLookup`은 이 스냅샷을 읽으며 AI를 호출하지 않는다.
+이번 턴 검색이 없으면 기존 스냅샷을 유지하고, 새 검색이 실패하거나 근거를 못 찾으면
+그 새 상태로 바꾼다. AI 이력은 여전히 다음 대화·버튼 생성용이고 화면 카드 복원과
+별개다. 제품 출처 카드의 FE 구현은 아직 후속이며 아래 사진은 독립 테스트 UI다.
+
 현재 참가비 25,000원에서 “2025년 봄 MT 참가비는 얼마였어?”라고 묻는 예시다. 실제 샘플 검색에서는 45,000원이 나왔다.
 
 ```text

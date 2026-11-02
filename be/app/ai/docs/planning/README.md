@@ -1,6 +1,6 @@
 # 행사계획 개발 안내
 
-현재 공개 P1은 `agent/`, `generation/`, `public_workflow.py`, `state_codec.py`를 사용한다. 이전 조건 추출 → 검색 판단 → 규칙 질문 → 답변 조립 구현은 [코드 legacy 안내](../../features/planning/legacy/README.md)로 분리했다. 이전 테스트 API와 평가 스크립트는 보존하지만 현재 공개 P1에서는 호출하지 않는다.
+현재 공개 P1은 `agent/`, `generation/`, `public_workflow.py`, `state_codec.py`를 사용한다. 제품 BE의 실제 검색 port 주입과 검색 상세 응답·마지막 조회 저장/복원은 #235/#236에서 연결한다. 제품 출처 카드의 FE 구현은 별도다. 이전 조건 추출 → 검색 판단 → 규칙 질문 → 답변 조립 구현은 [코드 legacy 안내](../../features/planning/legacy/README.md)로 분리했다. 이전 테스트 API와 평가 스크립트는 보존하지만 현재 공개 P1에서는 호출하지 않는다.
 
 BE/FE 연결은 [P1 전달 안내](p1-handoff.md)를 먼저 읽는다. 공개 함수 호출, 실제 응답, 저장/실패 처리와 UI 사진을 정리했다. 상세 타입과 책임은 [P1 공개 계약](p1-public-contract.md), 공동 합의는 [#179](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/179)에서 확인한다.
 
@@ -18,7 +18,7 @@ LLM이 사용자와 대화하고 필요한 Tool을 선택하는 행사계획 기
 8. [Legacy 안내](legacy/README.md): 기존 구현·평가·UI 실행 방법.
 9. [5단계 생성 권유·P2 전달 명세](step-05-generation.md): 먼저 권유하기·수락/보류·별도 생성 graph, 채팅/버튼 HTTP와 읽기 전용 P2 연결.
 
-작업 순서는 1) 초안 State·조건 변경 Tool → 2) 실제 LLM·LangGraph → 3) UI 연결 → 4) 기록 검색 Tool → 5) 계획 생성이다. [테스트 화면](http://127.0.0.1:5174/)에서 저장 없이 대화·검색·계획 초안 생성을 실행할 수 있다. 공개 Python 함수와 상태 변환은 구현돼 있다. 실제 제품 BE/FE 연결과 저장, 계획 수정 후 검토, 검색 품질 개선은 후속 범위다. 관련 #165~#169 / AI-PLAN-01~04.
+작업 순서는 1) 초안 State·조건 변경 Tool → 2) 실제 LLM·LangGraph → 3) UI 연결 → 4) 기록 검색 Tool → 5) 계획 생성이다. [테스트 화면](http://127.0.0.1:5174/)에서 저장 없이 대화·검색·계획 초안 생성을 실행할 수 있다. 공개 Python 함수와 상태 변환, 제품 BE의 검색·저장·HTTP 복원을 연결했다. 제품 출처 카드, 계획 수정 후 AI 검토, 검색 품질 개선은 후속 범위다. 관련 #165~#169, #235/#236 / AI-PLAN-01~04.
 
 5-1 명세(#171)·5-2 내부 생성 Tool/graph(#172)·5-3 로컬 P2 연결(#173)을 구현했다. 채팅의 생성 Tool과 버튼의 별도 함수가 같은 생성 graph를 쓴다. 생성 가능 조건과 LLM의 권유 타이밍을 구분하며, 사용자 요청·수락·클릭으로 초안을 만든다. 실제 모델과 UI에서 두 경로를 확인했고, 자발적 권유·JSON 출력의 남은 제한은 [평가 기록](evaluation.md)에 있다. 관련 AI-PLAN-02·05.
 

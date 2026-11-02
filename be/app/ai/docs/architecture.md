@@ -21,7 +21,7 @@ AI팀은 동작 예시·성공/실패 상태·협의할 입출력을 문서로 �
 
 ## 행사 Agent
 
-행사계획 내부의 현재 개발 방향은 [행사계획 대화 Agent 설계](planning/design.md)입니다. 사용자 발화·현재 초안·최근 대화를 읽은 LLM이 필요한 Tool과 답변을 선택하는 내부 그래프와 [로컬 테스트 UI](planning/step-03-ui.md)를 연결했습니다. 기존 [단계별 설계](planning/legacy/plan_architecture.md)는 legacy 참고입니다. 현재 P1 공개 함수와 JSON 상태 변환도 구현했습니다. 제품의 DB/HTTP 연결과 아래 전체 행사 Agent의 상시 대기 및 운영 전환은 미구현입니다. 공개 경계는 [P1 계약](planning/p1-public-contract.md)을 따릅니다. Tool의 초안 state 갱신은 BE 데이터 저장·확정과 구분합니다.
+행사계획 내부의 현재 개발 방향은 [행사계획 대화 Agent 설계](planning/design.md)입니다. 사용자 발화·현재 초안·최근 대화를 읽은 LLM이 필요한 Tool과 답변을 선택하는 내부 그래프와 [로컬 테스트 UI](planning/step-03-ui.md)를 연결했습니다. 기존 [단계별 설계](planning/legacy/plan_architecture.md)는 legacy 참고입니다. 현재 P1 공개 함수와 JSON 상태 변환, 제품 BE의 실제 검색 port·DB/HTTP·마지막 조회 복원을 연결했습니다(#235, #236). 제품 출처 카드는 FE 후속이며 아래 전체 행사 Agent의 상시 대기 및 운영 전환은 미구현입니다. 공개 경계는 [P1 계약](planning/p1-public-contract.md)을 따릅니다. Tool의 초안 state 갱신은 BE 데이터 저장·확정과 구분합니다.
 
 행사 하나를 행사 Agent 하나가 담당합니다. 행사 Agent는 계획을 시작할 때 만들어지고, 행사가 끝날 때까지 같은 실행 상태를 이어서 사용합니다. 필요할 때만 불려 한 번 실행하고 끝나는 함수가 아닙니다. 신호를 기다리다 깨어나 스스로 처리하고 다시 기다립니다.
 
