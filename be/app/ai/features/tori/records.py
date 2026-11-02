@@ -25,15 +25,21 @@ class ToriRecordAnswerResult(ContractModel):
 
 
 # shortcut: 원문의 숫자 표기만 비교한다. 환산·계산은 검증 가능한 계산기 도입 시 확장한다.
-_NUMBER = re.compile(r'(?<![\d.])\d[\d,]*(?:\.\d+)?(?![\d.])\s*(?:조|억|만|천|백|십)?\s*(?:원|명|개|건|%|년|월|일)?')
+_NUMBER = re.compile(r'(?<![\d.])(?:[+\-−]|마이너스|음수|플러스)?\s*\d[\d,]*(?:\.\d+)?(?![\d.])\s*(?:조|억|만|천|백|십)?\s*(?:원|명|개|건|%|년|월|일)?')
+_KOREAN_NUMBER = re.compile(r'(?<![\d.])(?:[+\-−]|마이너스|음수|플러스)?\s*(?:[영공일이삼사오육칠팔구십백천만억조]+|(?:스물|서른|마흔|쉰|예순|일흔|여든|아흔)(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉)?|스무|한|두|세|네|다섯|여섯|일곱|여덟|아홉|열)\s*(?:원|명|개|건|%|퍼센트|년|월|일)')
+_AMBIGUOUS_AMOUNT = re.compile(r'\(\s*(?:\d[\d,]*(?:\.\d+)?|[영공일이삼사오육칠팔구십백천만억조]+)\s*(?:조|억|만|천|백|십)?\s*원?\s*\)')
 _YEAR = re.compile(r'(?<!\d)(?:19|20)\d{2}(?!\s*(?:원|명|개|건|%|월|일|만원|억원))(?=년|(?:에서|으로|부터|까지|에는|의|에|은|는|이|가|도|과|와)(?![가-힣])|[_\W]|$)')
 
 
 def _numbers(text: str) -> set[str]:
-    return {re.sub(r'[,\s]', '', value) for value in _NUMBER.findall(text)}
+    text = _AMBIGUOUS_AMOUNT.sub('', text)
+    return {re.sub(r'[,\s]', '', value).replace('−', '-').replace('마이너스', '-').replace('음수', '-').replace('플러스', '+').removeprefix('+')
+            for pattern in (_NUMBER, _KOREAN_NUMBER) for value in pattern.findall(text)}
 
 
 def _supported(item: EvidenceItem, chunks: tuple[RetrievedChunk, ...], years: set[str]) -> bool:
+    if _AMBIGUOUS_AMOUNT.search(item.content):
+        return False
     cited = [chunks[int(key[1:]) - 1] for key in item.chunk_ids]
     evidence = '\n'.join(f'{chunk.text} {chunk.source.file_name} {chunk.source.location.label}' for chunk in cited)
     text_numbers = _numbers('\n'.join(chunk.text for chunk in cited))
@@ -54,7 +60,8 @@ async def answer_tori_records(request: ToriRecordAnswerRequest) -> ToriRecordAns
     def filter_evidence(assessment: EvidenceAssessment) -> EvidenceAssessment:
         facts = [item for item in assessment.facts if _supported(item, request.chunks, years)]
         conflicts = [conflict for conflict in assessment.conflicts
-                     if all(_supported(value, request.chunks, years) for value in conflict.values)
+                     if not _AMBIGUOUS_AMOUNT.search(conflict.description)
+                     and all(_supported(value, request.chunks, years) for value in conflict.values)
                      and _numbers(conflict.description) <= _numbers(' '.join(v.content for v in conflict.values))]
         removed = len(facts) != len(assessment.facts) or len(conflicts) != len(assessment.conflicts)
         not_found = list(assessment.not_found)

@@ -110,3 +110,38 @@ def test_year_with_particle(monkeypatch, question):
 def test_amount_is_not_year(monkeypatch, question):
     mock_assessment(monkeypatch, facts=[item('예산은 2025원', 'c1')])
     assert run((chunk('예산은 2025원'),), question).status == 'answered'
+
+
+@pytest.mark.parametrize(('source', 'claim', 'expected'), [
+    ('잔액 -100,000원', '잔액 100,000원', 'no_evidence'),
+    ('잔액 100,000원', '잔액 -100,000원', 'no_evidence'),
+    ('잔액 -100,000원', '잔액 -100000원', 'answered'),
+    ('잔액 −100,000원', '잔액 -100000원', 'answered'),
+    ('잔액 +100,000원', '잔액 100000원', 'answered'),
+    ('증감 -1.5%', '증감 1.5%', 'no_evidence'),
+    ('잔액 - 100,000원', '잔액 100,000원', 'no_evidence'),
+    ('잔액 마이너스 100,000원', '잔액 100,000원', 'no_evidence'),
+    ('잔액 음수 100,000원', '잔액 -100,000원', 'answered'),
+])
+def test_evidence_amount_sign_is_preserved(monkeypatch, source, claim, expected):
+    mock_assessment(monkeypatch, facts=[item(claim, 'c1')])
+    assert run((chunk(source),)).status == expected
+
+
+@pytest.mark.parametrize(('source', 'claim', 'expected'), [
+    ('잔액 (100,000원)', '잔액 100,000원', 'no_evidence'),
+    ('잔액 (100,000원)', '잔액 -100,000원', 'no_evidence'),
+    ('잔액 100,000원', '잔액 (100,000원)', 'no_evidence'),
+    ('잔액 (-100,000원)', '잔액 -100000원', 'answered'),
+    ('총예산 1,000원', '총예산 백만원', 'no_evidence'),
+    ('총예산 백만원', '총예산 백만원', 'answered'),
+    ('잔액 -백만원', '잔액 백만원', 'no_evidence'),
+    ('잔액 마이너스 백만원', '잔액 백만원', 'no_evidence'),
+    ('잔액 마이너스 백만원', '잔액 -백만원', 'answered'),
+    ('참가자 1명', '참가자 한 명', 'no_evidence'),
+    ('참가자 한 명', '참가자 한명', 'answered'),
+    ('참가자 20명', '참가자 스무 명', 'no_evidence'),
+])
+def test_ambiguous_or_korean_quantities_require_matching_evidence(monkeypatch, source, claim, expected):
+    mock_assessment(monkeypatch, facts=[item(claim, 'c1')])
+    assert run((chunk(source),)).status == expected
