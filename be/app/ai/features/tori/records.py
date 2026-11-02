@@ -25,9 +25,9 @@ class ToriRecordAnswerResult(ContractModel):
 
 
 # shortcut: 원문의 숫자 표기만 비교한다. 환산·계산은 검증 가능한 계산기 도입 시 확장한다.
-_NUMBER = re.compile(r'(?<![\d.])(?:[+\-−]|마이너스|음수|플러스)?\s*\d[\d,]*(?:\.\d+)?(?![\d.])\s*(?:조|억|만|천|백|십)?\s*(?:원|명|개|건|%|년|월|일)?')
+_NUMBER = re.compile(r'(?<![\d.])(?:₩\s*)?(?:[+\-−]|마이너스|음수|플러스)?\s*(?:₩\s*)?\d[\d,]*(?:\.\d+)?(?![\d.])\s*(?:조|억|만|천|백|십)?\s*(?:원|명|개|건|%|년|월|일)?')
 _KOREAN_NUMBER = re.compile(r'(?<![\d.])(?:[+\-−]|마이너스|음수|플러스)?\s*(?:[영공일이삼사오육칠팔구십백천만억조]+|(?:스물|서른|마흔|쉰|예순|일흔|여든|아흔)(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉)?|스무|한|두|세|네|다섯|여섯|일곱|여덟|아홉|열)\s*(?:원|명|개|건|%|퍼센트|년|월|일)')
-_AMBIGUOUS_AMOUNT = re.compile(r'\(\s*(?:\d[\d,]*(?:\.\d+)?|[영공일이삼사오육칠팔구십백천만억조]+)\s*(?:조|억|만|천|백|십)?\s*원?\s*\)')
+_AMBIGUOUS_AMOUNT = re.compile(r'\(\s*(?:₩\s*)?(?:\d[\d,]*(?:\.\d+)?|[영공일이삼사오육칠팔구십백천만억조]+)\s*(?:조|억|만|천|백|십)?\s*원?\s*\)')
 _YEAR = re.compile(r'(?<!\d)(?:19|20)\d{2}(?!\s*(?:원|명|개|건|%|월|일|만원|억원))(?=년|(?:에서|으로|부터|까지|에는|의|에|은|는|이|가|도|과|와)(?![가-힣])|[_\W]|$)')
 
 
@@ -41,8 +41,13 @@ def _numbers(text: str) -> set[str]:
         if before and (before[-1].isdigit() or before[-1] == '.'):
             continue
         values.append(match.group().strip())
-    return {re.sub(r'[,\s]', '', value).replace('−', '-').replace('마이너스', '-').replace('음수', '-').replace('플러스', '+').removeprefix('+')
-            for value in values}
+    normalized = set()
+    for value in values:
+        value = re.sub(r'[,\s]', '', value).replace('−', '-').replace('마이너스', '-').replace('음수', '-').replace('플러스', '+')
+        won = '₩' in value
+        value = value.replace('₩', '').removeprefix('+')
+        normalized.add(value + ('원' if won and not value.endswith('원') else ''))
+    return normalized
 
 
 def _supported(item: EvidenceItem, chunks: tuple[RetrievedChunk, ...], years: set[str]) -> bool:

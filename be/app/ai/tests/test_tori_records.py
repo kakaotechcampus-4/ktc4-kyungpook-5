@@ -119,6 +119,11 @@ def test_amount_is_not_year(monkeypatch, question):
     ('잔액 −100,000원', '잔액 -100000원', 'answered'),
     ('잔액 +100,000원', '잔액 100000원', 'answered'),
     ('증감 -1.5%', '증감 1.5%', 'no_evidence'),
+    ('잔액 -₩100,000', '잔액 ₩100,000', 'no_evidence'),
+    ('잔액 ₩100,000', '잔액 -₩100,000', 'no_evidence'),
+    ('잔액 ₩−100,000', '잔액 -100000원', 'answered'),
+    ('잔액 ₩+100,000', '잔액 100000원', 'answered'),
+    ('잔액 -₩100,000', '잔액 ₩-100000', 'answered'),
     ('잔액 - 100,000원', '잔액 100,000원', 'no_evidence'),
     ('잔액 마이너스 100,000원', '잔액 100,000원', 'no_evidence'),
     ('잔액 음수 100,000원', '잔액 -100,000원', 'answered'),
@@ -130,6 +135,10 @@ def test_evidence_amount_sign_is_preserved(monkeypatch, source, claim, expected)
 
 @pytest.mark.parametrize(('source', 'claim', 'expected'), [
     ('잔액 (100,000원)', '잔액 100,000원', 'no_evidence'),
+    ('잔액 (₩100,000)', '잔액 ₩100,000', 'no_evidence'),
+    ('잔액 ₩(100,000)', '잔액 -100,000원', 'no_evidence'),
+    ('잔액 100,000원', '잔액 (₩100,000)', 'no_evidence'),
+    ('잔액 (₩-100,000)', '잔액 -100,000원', 'answered'),
     ('잔액 (100,000원)', '잔액 -100,000원', 'no_evidence'),
     ('잔액 100,000원', '잔액 (100,000원)', 'no_evidence'),
     ('잔액 (-100,000원)', '잔액 -100000원', 'answered'),
