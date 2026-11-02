@@ -91,7 +91,7 @@ async def test_ws_tail_is_committed_before_context_failure(client: TestClient, a
     assert saved["items"][0]["text"] == transcript["text"]
     async with db_session.get_sessionmaker()() as session:
         chunk = await session.scalar(select(MeetingAudioChunk).where(MeetingAudioChunk.meeting_id == meeting))
-        assert chunk.storage_key is None and chunk.size > 0
+        assert chunk.storage_key and chunk.size > 0
     assert saved["items"][0]["startMs"] == offset
     assert saved["items"][0]["endMs"] == offset + 300
     assert client.get(f"/api/v1/meetings/{meeting}", headers=headers).json()["data"]["status"] == "FAILED"

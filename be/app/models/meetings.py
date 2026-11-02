@@ -49,9 +49,10 @@ class Meeting(IdMixin, TimestampMixin, Base):
 
 
 class MeetingAudioChunk(IdMixin, TimestampMixin, Base):
-    """음성 구간 메타데이터. WS 원본은 메모리만 사용하고 파일을 보관하지 않는다.
+    """음성 구간 메타데이터와 원본 저장소 키.
 
-    기존 HTTP 개발 fixture는 파일 저장소와 seq 중복 검사를 유지한다.
+    WS도 STT 요청 전에 원본 WAV를 구성된 저장소에 기록하므로 실패 구간을
+    재조회하거나 운영 장애를 조사할 수 있다.
     """
 
     __tablename__ = "meeting_audio_chunks"
@@ -67,8 +68,7 @@ class MeetingAudioChunk(IdMixin, TimestampMixin, Base):
     seq: Mapped[int] = mapped_column(Integer, nullable=False)
     start_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     end_ms: Mapped[int] = mapped_column(Integer, nullable=False)
-    # 새 WS는 음성을 STT 요청 중 메모리에만 두고 메타데이터/전사만 보존한다.
-    # 기존 HTTP 개발 fixture의 저장 파일에는 값이 있다.
+    # local 또는 S3 저장소의 원본 WAV 키.
     storage_key: Mapped[str | None] = mapped_column(String(512))
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     mime_type: Mapped[str | None] = mapped_column(String(100))
