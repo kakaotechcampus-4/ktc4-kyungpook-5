@@ -361,3 +361,8 @@ BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(cl
 ## 메인 토리 대화 의도
 
 `classify_tori_intent(ToriIntentRequest(message, reference_date, timezone))`는 `record_search`, `task_list`, `event_planning`, `meeting`, `clarify`, `unsupported` 중 하나와 선택 필드를 반환한다. 검색어는 발화에 근거하며, 일정·할 일은 범위(self/all), 유형(task/schedule/all), 명시적으로 해석 가능한 날짜 범위만 반환한다. 현재 계약에는 회의·행사 식별이나 특정인 지정이 없으므로 해당 대상을 한정한 일정·할 일 요청은 일반 조회로 바꾸지 않고 unsupported 또는 clarify로 분류한다. 날짜만 정한 조회는 계속 허용한다. 이 결과는 추정 분류이지 권한·실행 지시가 아니다. BE는 인증된 소속과 계정으로 실제 조회하고 변경·예약을 실행하지 않는다. 모델 오류는 AI 오류로 전파하며 실제 근거 없이 답을 만들지 않는다.
+
+
+## 토리의 자료 질문 근거 판단
+
+`answer_tori_records(ToriRecordAnswerRequest(question, today, chunks))`는 BE가 소속 권한을 확인해 제공한 검색 청크만 판단해 `status`(answered/partial/no_evidence), `facts`(사실과 출처), `conflicts`, `not_found`를 반환한다. 빈 청크는 no_evidence이며 모델 오류는 전파한다. 숫자나 요청 연도의 직접 근거를 인용 청크에서 찾지 못한 사실은 제외하고 미확인으로 표시한다. 계산값·환산 표현과 같은 정당한 사실도 보수적으로 제외될 수 있고, 숫자 검사가 사실 전체의 정확성을 보장하지 않는다. 자료 범위·미색인·검색 실패 및 권한은 BE가 안내한다. 회의·계획의 기존 검색 경로는 바꾸지 않는다.
