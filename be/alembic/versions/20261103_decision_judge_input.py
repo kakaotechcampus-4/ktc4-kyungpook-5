@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = "20261103_decision_judge_input"
-down_revision = "20261102_event_cancel_tasks"
+down_revision = "20261103_planning_record_lookup"
 branch_labels = None
 depends_on = None
 
