@@ -33,6 +33,7 @@ from app.schemas.events import (
     PlanMessageOut,
     PlanMessageListResponse,
     PlanStepsUpdateIn,
+    PlanStepsSnapshotOut,
     PlannedStepOut,
     PlannedStepListResponse,
     PlanGenerateIn,
@@ -232,6 +233,29 @@ async def list_planned_steps(
     return PlannedStepListResponse(
         data=[PlannedStepOut.model_validate(event_service.planned_step_out(row)) for row in rows]
     )
+
+
+@router.get("/{event_id}/plan/steps/snapshot", response_model=Envelope[PlanStepsSnapshotOut])
+async def get_plan_steps_snapshot(
+    event_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[PlanStepsSnapshotOut]:
+    await _get_event_for_account(session, event_id=event_id, account=account)
+    # All planning writers hold this lock while updating steps and revision.
+    await session.scalar(select(Event).where(Event.id == event_id).with_for_update())
+    conversation = await session.scalar(
+        select(Conversation).where(Conversation.event_id == event_id)
+        .order_by(Conversation.created_at.desc()).limit(1)
+    )
+    rows = await session.scalars(
+        select(Step).where(Step.event_id == event_id)
+        .options(selectinload(Step.actions)).order_by(Step.step_order)
+    )
+    return Envelope(data=PlanStepsSnapshotOut(
+        base_revision=conversation.base_revision if conversation else 0,
+        steps=[PlannedStepOut.model_validate(event_service.planned_step_out(row)) for row in rows],
+    ))
 
 
 @router.patch("/{event_id}/plan/steps", response_model=PlannedStepListResponse)

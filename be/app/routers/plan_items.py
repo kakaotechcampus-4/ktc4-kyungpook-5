@@ -13,6 +13,7 @@ from app.core.deps import WRITER_ROLES, ensure_member, get_current_account
 from app.core.exceptions import ActionNotFound, Forbidden, StepNotFound
 from app.db.session import get_session
 from app.models.auth import Account
+from app.models.clubs import Member
 from app.models.events import Action, Step
 from app.schemas.common import Envelope
 from app.schemas.events import ActionUpdateIn, PlannedStepOut, StepUpdateIn
@@ -22,10 +23,11 @@ steps_router = APIRouter(prefix="/api/v1/steps", tags=["events"])
 actions_router = APIRouter(prefix="/api/v1/actions", tags=["events"])
 
 
-async def _writer_of(session: AsyncSession, *, club_id: str, account: Account) -> None:
+async def _writer_of(session: AsyncSession, *, club_id: str, account: Account) -> Member:
     member = await ensure_member(session, club_id=club_id, account=account)
     if member.role not in WRITER_ROLES:
         raise Forbidden()
+    return member
 
 
 @steps_router.patch("/{step_id}", response_model=Envelope[PlannedStepOut])
@@ -42,7 +44,7 @@ async def update_step(
     )
     if step is None:
         raise StepNotFound()
-    await _writer_of(session, club_id=step.event.club_id, account=account)
+    member = await _writer_of(session, club_id=step.event.club_id, account=account)
     updated = await event_service.update_step(
         session,
         step=step,
@@ -50,6 +52,7 @@ async def update_step(
         deadline=body.deadline,
         fields=set(body.model_fields_set),
         expected_version=body.expected_version,
+        member_id=member.id,
     )
     return Envelope(data=PlannedStepOut.model_validate(event_service.planned_step_out(updated)))
 
@@ -71,7 +74,7 @@ async def update_action(
     )
     if action is None:
         raise ActionNotFound()
-    await _writer_of(session, club_id=action.event.club_id, account=account)
+    member = await _writer_of(session, club_id=action.event.club_id, account=account)
 
     sent = set(body.model_fields_set)
     values = {
@@ -86,6 +89,7 @@ async def update_action(
     updated = await event_service.update_action(
         session, action=action, values=values, payload_values=payload_values,
         expected_version=body.expected_version,
+        member_id=member.id,
     )
     # 고친 Action이 속한 단계를 통째로 돌려준다 — 화면이 그 단위로 다시 그린다.
     if updated.step is None:

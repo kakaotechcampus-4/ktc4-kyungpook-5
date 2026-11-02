@@ -346,6 +346,13 @@ class PlanStepsUpdateIn(CamelModel):
     expected_revision: int = Field(ge=0)
 
 
+class PlanStepsSnapshotOut(CamelModel):
+    """단계 구성과 그 구성을 읽은 시점의 버전."""
+
+    base_revision: int
+    steps: list[PlannedStepOut]
+
+
 class StepUpdateIn(CamelModel):
     """단계 일정 수정 (#106 ④). 보낸 밭만 바뀐다."""
 

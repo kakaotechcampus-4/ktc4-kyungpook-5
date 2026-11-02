@@ -371,7 +371,14 @@ async def _prepare(
 ) -> tuple[_PreparedTurn, Event]:
     sessionmaker = get_sessionmaker()
     async with sessionmaker() as session:
-        event = await get_event(session, club_id=club_id, event_id=event_id)
+        # Serialize conversation creation with planning edits and snapshot reads.
+        event = await session.scalar(
+            select(Event).where(Event.id == event_id, Event.club_id == club_id).with_for_update()
+        )
+        if event is None:
+            raise EventNotFound()
+        if event.status != EventStatus.PLANNING:
+            raise EventNotPlanning()
         conversation = await _get_or_create_conversation(
             session, event_id=event.id, member_id=member_id
         )

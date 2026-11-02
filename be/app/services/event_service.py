@@ -407,18 +407,31 @@ def planned_step_out(step: Step) -> dict:
     }
 
 
+async def _advance_plan_revision(session: AsyncSession, *, event: Event, member_id: str) -> None:
+    if event.status != EventStatus.PLANNING:
+        return
+    conversation = await session.scalar(
+        select(Conversation).where(Conversation.event_id == event.id)
+        .order_by(Conversation.created_at.desc()).limit(1).with_for_update()
+    )
+    if conversation is None:
+        conversation = Conversation(member_id=member_id, event_id=event.id, base_revision=0)
+        session.add(conversation)
+    conversation.base_revision += 1
+
+
 async def update_step(
     session: AsyncSession, *, step: Step, starts_at: datetime | None, deadline: datetime | None,
-    fields: set[str], expected_version: int,
+    fields: set[str], expected_version: int, member_id: str,
 ) -> Step:
     """단계 일정을 고친다 (#106 ④). 보낸 밭만 바꾼다.
 
     fields는 요청에 실제로 실려 온 키다. None을 "비우기"로 받아야 해서
     값만 보고는 생략과 구분할 수 없다.
     """
-    event = await session.scalar(select(Event).where(Event.id == step.event_id).with_for_update())
-    locked = await session.scalar(select(Step).where(Step.id == step.id).with_for_update())
-    if event is None or locked is None:
+    event = await session.scalar(select(Event).where(Event.id == step.event_id).with_for_update().execution_options(populate_existing=True))
+    locked = await session.scalar(select(Step).where(Step.id == step.id).with_for_update().execution_options(populate_existing=True))
+    if event is None or locked is None or event.status in (EventStatus.CANCELLING, EventStatus.CANCELLED):
         raise NotEditable()
     step = locked
     if not event_rules.is_step_editable(step.completed_at):
@@ -431,6 +444,7 @@ async def update_step(
         step.deadline = deadline
     event.modified_at = datetime.now(UTC)
     step.version += 1
+    await _advance_plan_revision(session, event=event, member_id=member_id)
     await session.commit()
     await session.refresh(step, ["actions"])
     return step
@@ -438,7 +452,7 @@ async def update_step(
 
 async def update_action(
     session: AsyncSession, *, action: Action, values: dict, payload_values: dict | None,
-    expected_version: int,
+    expected_version: int, member_id: str,
 ) -> Action:
     """Action 세부를 고친다 (#106 ④).
 
@@ -448,13 +462,15 @@ async def update_action(
     금액을 고치면 행사 쪽 파생값을 다시 맞춘다(#106 ②). 참가비 수금과 지출
     정산만 Event로 올라가고, 예약 계약금·환급액은 그 Action 안에서만 쓴다.
     """
-    event = await session.scalar(select(Event).where(Event.id == action.event_id).with_for_update())
+    event = await session.scalar(select(Event).where(Event.id == action.event_id).with_for_update().execution_options(populate_existing=True))
     locked = await session.scalar(
         select(Action).where(Action.id == action.id)
-        .options(selectinload(Action.step)).with_for_update()
+        .options(selectinload(Action.step)).with_for_update().execution_options(populate_existing=True)
     )
     if event is None or locked is None:
         raise ActionNotFound()
+    if event.status in (EventStatus.CANCELLING, EventStatus.CANCELLED):
+        raise NotEditable()
     action = locked
     if not event_rules.is_editable(action.status):
         raise NotEditable()
@@ -471,6 +487,7 @@ async def update_action(
             event.budget_total = action.amount
     event.modified_at = datetime.now(UTC)
     action.version += 1
+    await _advance_plan_revision(session, event=event, member_id=member_id)
     # 승인된 내용을 고쳤으면 다시 승인을 받는다 (event_rules.is_editable 주석).
     if action.status == ActionStatus.APPROVED:
         action.status = ActionStatus.PENDING
@@ -486,7 +503,7 @@ async def replace_plan_steps(
 ) -> list[Step]:
     """계획 단계와 Action을 한 트랜잭션에서 보낸 구성으로 맞춘다."""
     locked_event = await session.scalar(
-        select(Event).where(Event.id == event.id).with_for_update()
+        select(Event).where(Event.id == event.id).with_for_update().execution_options(populate_existing=True)
     )
     if locked_event is None:
         raise NotEditable()
