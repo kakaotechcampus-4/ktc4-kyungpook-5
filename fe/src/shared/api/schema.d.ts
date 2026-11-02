@@ -151,7 +151,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Get Club
+         * @description 동아리 하나. 수정 화면이 분야·소개의 현재 값을 채운다 (#223).
+         */
+        get: operations["get_club_api_v1_clubs__club_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -325,7 +329,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Club Meetings */
+        get: operations["list_club_meetings_api_v1_clubs__club_id__meetings_get"];
         put?: never;
         /** Create Meeting */
         post: operations["create_meeting_api_v1_clubs__club_id__meetings_post"];
@@ -933,6 +938,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{event_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Event */
+        post: operations["complete_event_api_v1_events__event_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Event */
+        post: operations["cancel_event_api_v1_events__event_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/cancel/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cancel Tasks */
+        get: operations["get_cancel_tasks_api_v1_events__event_id__cancel_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/cancel/tasks/{task_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Cancel Task */
+        post: operations["complete_cancel_task_api_v1_events__event_id__cancel_tasks__task_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/{event_id}/plan/chat": {
         parameters: {
             query?: never;
@@ -983,6 +1056,23 @@ export interface paths {
         head?: never;
         /** Replace Plan Steps */
         patch: operations["replace_plan_steps_api_v1_events__event_id__plan_steps_patch"];
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/plan/steps/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Plan Steps Snapshot */
+        get: operations["get_plan_steps_snapshot_api_v1_events__event_id__plan_steps_snapshot_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/events/{event_id}/plan/generate": {
@@ -1850,6 +1940,12 @@ export interface components {
             /** Meta */
             meta?: null;
         };
+        /** Envelope[EventCancelTaskOut] */
+        Envelope_EventCancelTaskOut_: {
+            data: components["schemas"]["EventCancelTaskOut"];
+            /** Meta */
+            meta?: null;
+        };
         /** Envelope[EventCreateOut] */
         Envelope_EventCreateOut_: {
             data: components["schemas"]["EventCreateOut"];
@@ -1901,6 +1997,12 @@ export interface components {
         /** Envelope[PlanScreenOut] */
         Envelope_PlanScreenOut_: {
             data: components["schemas"]["PlanScreenOut"];
+            /** Meta */
+            meta?: null;
+        };
+        /** Envelope[PlanStepsSnapshotOut] */
+        Envelope_PlanStepsSnapshotOut_: {
+            data: components["schemas"]["PlanStepsSnapshotOut"];
             /** Meta */
             meta?: null;
         };
@@ -2041,6 +2143,31 @@ export interface components {
             data: components["schemas"]["TaskSuggestionOut"][];
             /** Meta */
             meta?: null;
+        };
+        /** EventCancelTaskListResponse */
+        EventCancelTaskListResponse: {
+            /** Data */
+            data: components["schemas"]["EventCancelTaskOut"][];
+        };
+        /** EventCancelTaskOut */
+        EventCancelTaskOut: {
+            /** Id */
+            id: string;
+            /** Taskorder */
+            taskOrder: number;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Message */
+            message: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "DONE" | "CURRENT" | "TODO";
+            /** Completedat */
+            completedAt: string | null;
         };
         /** EventCreateIn */
         EventCreateIn: {
@@ -2313,7 +2440,7 @@ export interface components {
             id: string;
             /** Token */
             token: string;
-            /** Expires At */
+            /** Expiresat */
             expiresAt: string;
         };
         /**
@@ -2382,6 +2509,12 @@ export interface components {
             recordingConsentConfirmed: boolean;
             /** Eventid */
             eventId?: string | null;
+        };
+        /** MeetingListResponse */
+        MeetingListResponse: {
+            /** Data */
+            data: components["schemas"]["MeetingOut"][];
+            meta: components["schemas"]["PageMeta"];
         };
         /** MeetingOut */
         MeetingOut: {
@@ -2546,6 +2679,16 @@ export interface components {
             /** Baserevision */
             baseRevision: number;
             generationReadiness?: components["schemas"]["GenerationReadinessOut"] | null;
+        };
+        /**
+         * PlanStepsSnapshotOut
+         * @description 단계 구성과 그 구성을 읽은 시점의 버전.
+         */
+        PlanStepsSnapshotOut: {
+            /** Baserevision */
+            baseRevision: number;
+            /** Steps */
+            steps: components["schemas"]["PlannedStepOut"][];
         };
         /**
          * PlanStepsUpdateIn
@@ -3235,11 +3378,67 @@ export interface components {
             /** Reply */
             reply: string;
             records?: components["schemas"]["RecordSearchData"] | null;
+            recordAnswer?: components["schemas"]["ToriRecordAnswer"] | null;
             /** Recordtotalcount */
             recordTotalCount?: number | null;
             tasks?: components["schemas"]["ToriTasks"] | null;
             /** Navigation */
             navigation?: ("/planning" | "/meetings") | null;
+        };
+        /** ToriRecordAnswer */
+        ToriRecordAnswer: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "answered" | "partial" | "insufficient" | "failed";
+            /** Facts */
+            facts?: components["schemas"]["ToriRecordFact"][];
+            /** Conflicts */
+            conflicts?: components["schemas"]["ToriRecordConflict"][];
+            /** Notfound */
+            notFound?: string[];
+            /**
+             * Semanticstatus
+             * @enum {string}
+             */
+            semanticStatus: "AVAILABLE" | "UNAVAILABLE" | "NO_INDEXED_RECORDS";
+            /** Unindexedcount */
+            unindexedCount: number;
+            /** Searchedchunkcount */
+            searchedChunkCount: number;
+            /** Candidatelimit */
+            candidateLimit: number;
+            /** Candidatelimitreached */
+            candidateLimitReached: boolean;
+            /** Lexicalchunkcount */
+            lexicalChunkCount: number;
+            /** Lexicalomitted */
+            lexicalOmitted: boolean;
+            /** Filenameonlyunanalyzedcount */
+            filenameOnlyUnanalyzedCount: number;
+        };
+        /** ToriRecordConflict */
+        ToriRecordConflict: {
+            /** Description */
+            description: string;
+            /** Values */
+            values: components["schemas"]["ToriRecordFact"][];
+        };
+        /** ToriRecordFact */
+        ToriRecordFact: {
+            /** Text */
+            text: string;
+            /** Sources */
+            sources: components["schemas"]["ToriRecordSource"][];
+        };
+        /** ToriRecordSource */
+        ToriRecordSource: {
+            /** Recordid */
+            recordId: string;
+            /** Filename */
+            fileName: string;
+            location: components["schemas"]["RecordSearchLocation"];
         };
         /** ToriTasks */
         ToriTasks: {
@@ -3603,6 +3802,39 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ClubOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_club_api_v1_clubs__club_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4110,6 +4342,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_ReceiptImportConfirmOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_club_meetings_api_v1_clubs__club_id__meetings_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["MeetingStatus"] | null;
+                page?: number;
+                size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5580,6 +5849,139 @@ export interface operations {
             };
         };
     };
+    complete_event_api_v1_events__event_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EventStartOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_event_api_v1_events__event_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EventStartOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cancel_tasks_api_v1_events__event_id__cancel_tasks_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventCancelTaskListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_cancel_task_api_v1_events__event_id__cancel_tasks__task_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EventCancelTaskOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     chat_plan_api_v1_events__event_id__plan_chat_post: {
         parameters: {
             query?: never;
@@ -5708,6 +6110,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlannedStepListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plan_steps_snapshot_api_v1_events__event_id__plan_steps_snapshot_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PlanStepsSnapshotOut_"];
                 };
             };
             /** @description Validation Error */
