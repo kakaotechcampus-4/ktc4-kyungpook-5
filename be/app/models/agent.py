@@ -8,7 +8,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import BigInteger, DateTime, Identity, Index, String, Text, func
+from sqlalchemy import BigInteger, DateTime, Identity, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.enums import (
@@ -154,3 +154,10 @@ class ContextDecision(IdMixin, TimestampMixin, Base):
     tool_calls: Mapped[list[dict[str, Any]]] = mapped_column(JsonB, nullable=False)
     model_version: Mapped[str] = mapped_column(String(100), nullable=False)
     policy_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    # 회의 판단에 넘긴 요청 그대로(JudgeUtteranceRequest 모양, 시각은 ISO 문자열).
+    # 전사는 고치면 덮어써지므로 판단 기록만으로 그때 입력을 다시 만들려고 둔다.
+    # 학습 데이터(#117)용이라 화면·API에는 내보내지 않는다. Discord 판단과 예전 기록은 null.
+    judge_input: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
+    # 판단 LLM 호출에 걸린 시간(trace.judge_ms). 기록 검색·답 작성 시간은 들어가지 않는다.
+    # 실패해도 AI가 trace를 돌려주면 남기고, trace가 없는 실패는 null.
+    judge_ms: Mapped[int | None] = mapped_column(Integer)
