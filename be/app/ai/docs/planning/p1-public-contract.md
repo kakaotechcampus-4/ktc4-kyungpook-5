@@ -307,6 +307,12 @@ preview_result = await generate_planning_preview(click)
 
 `records`를 생략하면 검색 Tool 자체를 제공하지 않는다. 제품에서는 BE가 기존 RecordSearchPort 구현을 주입한다. AI는 요청의 club_id로 검색 어댑터를 묶고 현재 행사 ID로 과거 자료를 제한하지 않는다. 실제 조회 권한 검사는 BE 책임이다. 버튼은 새 검색을 수행하지 않고 저장된 최신 검색 근거만 사용한다.
 
+제품 연결 계약(#235, #236)에서는 검색 중첩 결과 타입 `RecordLookupResult`,
+`RecordSearchResult`, `RecordFact`, `RecordConflict`를 `app.ai`에서 재공개한다.
+POST `recordLookup`은 이번 검색, GET `lastRecordLookup`은 BE가 별도로 저장한 마지막
+조회다. 후자는 AI 상태 형식의 일부가 아니므로 저장 JSON의 `schema_version=1`은
+유지한다. 상세 응답·복원·옛 데이터 호환은 [인계 안내 §9](p1-handoff.md#9-검색-기능을-연결하려면)를 따른다.
+
 조건 변경 성공 후 생성만 실패하면 새 조건과 실패 결과를 함께 반환한다. 대화 전체가 예외로 끝나거나 상태 한도를 넘으면 정상 결과를 반환하지 않으며 입력은 보존한다. BE는 실패한 요청의 중간값을 저장하지 않는다.
 
 ### 상태 복원 보완
