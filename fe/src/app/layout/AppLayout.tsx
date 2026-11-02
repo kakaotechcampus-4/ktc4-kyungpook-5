@@ -125,15 +125,15 @@ export function AppLayout() {
               </NavLink>
             )}
           </div>
-          {sidebarOpen && (
-            <div className="flex min-h-0 flex-1 flex-col gap-6 pt-8">
-              <WorkspaceNavigation dark />
+          <div className="flex min-h-0 flex-1 flex-col gap-6 pt-8">
+              <WorkspaceNavigation dark collapsed={!sidebarOpen} />
+              {sidebarOpen && <>
               <Button size="sm" variant="secondary" onClick={() => navigate('/onboarding')}>
                 처음 사용 가이드 (임시)
               </Button>
               {account}
-            </div>
-          )}
+              </>}
+          </div>
         </aside>
         {!desktop && (
           <div className="fixed left-3 top-3 z-30 rounded-lg bg-[#172333] shadow-md lg:hidden">

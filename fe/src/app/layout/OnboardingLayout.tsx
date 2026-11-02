@@ -95,7 +95,7 @@ export function OnboardingLayout({
             {desktop && menuToggle}
             {sidebarOpen && <Link to="/onboarding" className="flex items-center gap-2 text-white"><Tori size={30} /><span className="text-[15px] font-bold">운영해</span></Link>}
           </div>
-          {sidebarOpen && <div className="flex min-h-0 flex-1 flex-col gap-6 pt-8"><WorkspaceNavigation preview dark />{account}</div>}
+          <div className="flex min-h-0 flex-1 flex-col gap-6 pt-8"><WorkspaceNavigation preview dark collapsed={!sidebarOpen} />{sidebarOpen && account}</div>
         </aside>
         {!desktop && <div className="fixed left-3 top-3 z-30 rounded-lg bg-[#172333] shadow-md lg:hidden">{menuToggle}</div>}
         <main

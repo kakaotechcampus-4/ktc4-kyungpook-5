@@ -36,6 +36,7 @@ interface NavigationProps {
   onNavigate?: () => void
   preview?: boolean
   dark?: boolean
+  collapsed?: boolean
 }
 
 function navigationPath(path: string, preview: boolean): string {
@@ -112,13 +113,14 @@ export function WorkspaceNavigation({
   onNavigate,
   preview = false,
   dark = false,
+  collapsed = false,
 }: NavigationProps) {
   return (
-    <nav aria-label="전체 메뉴" className="space-y-7">
+    <nav aria-label="전체 메뉴" className={collapsed ? 'space-y-5' : 'space-y-7'}>
       {GROUPS.map((group) => (
         <section key={group.label}>
           <h2
-            className={cn('mb-2 px-3 text-[12px] font-bold', dark ? 'text-[#aebbd0]' : 'text-mute')}
+            className={cn(collapsed ? 'sr-only' : 'mb-2 px-3 text-[12px] font-bold', dark ? 'text-[#aebbd0]' : 'text-mute')}
           >
             {group.label}
           </h2>
@@ -129,10 +131,13 @@ export function WorkspaceNavigation({
                 to={navigationPath(item.to, preview)}
                 end={item.to === '/'}
                 onClick={onNavigate}
+                aria-label={collapsed ? item.label : undefined}
+                title={collapsed ? item.label : undefined}
                 data-onboarding={preview ? `nav-${item.icon}` : undefined}
                 className={({ isActive }) =>
                   cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] transition-colors focus-visible:outline-2 focus-visible:outline-blue-600',
+                    collapsed && 'h-11 justify-center !px-0 focus-visible:outline-white',
                     dark
                       ? isActive
                         ? 'bg-[#344b6a] font-bold text-white'
@@ -144,7 +149,7 @@ export function WorkspaceNavigation({
                 }
               >
                 <Icon name={item.icon} />
-                <span>{item.label}</span>
+                {!collapsed && <span>{item.label}</span>}
               </NavLink>
             ))}
           </div>
