@@ -1,11 +1,11 @@
-"""토리 답은 전달된 근거의 숫자와 출처를 확인하고 실패를 숨기지 않는다."""
+"""토리 답은 모델이 지정한 청크의 숫자와 출처를 확인한다."""
 import asyncio
 from unittest.mock import AsyncMock
 import pytest
 from app.ai import (AIInvalidResponseError, RecordSource, RetrievedChunk, SourceLocation,
                     ToriRecordAnswerRequest, answer_tori_records)
-from app.ai.contracts import RecordConflict, RecordFact, RecordSearchResult
-from app.ai.features.tori import records
+from app.ai.features.retrieval import nodes
+from app.ai.features.retrieval.schemas import EvidenceAssessment, EvidenceConflict, EvidenceItem
 from app.core.enums import RecordCategory
 
 
@@ -14,83 +14,99 @@ def chunk(text='총 예산 600,000원. 재료비 220,000원', name='예산.csv')
         location=SourceLocation(label='1행')), category=RecordCategory.ETC, score=.8)
 
 
-def request(chunks, question='행사 예산을 정리해줘'):
-    return ToriRecordAnswerRequest(question=question, today='2026-11-03', chunks=chunks)
+def run(chunks, question='행사 예산을 정리해줘'):
+    return asyncio.run(answer_tori_records(ToriRecordAnswerRequest(question=question, today='2026-11-03', chunks=chunks)))
 
 
-def run(req):
-    return asyncio.run(answer_tori_records(req))
+def item(content, *ids):
+    return EvidenceItem(content=content, chunk_ids=list(ids))
 
 
-def test_grounded_facts_and_missing_are_separately_returned(monkeypatch):
+def mock_assessment(monkeypatch, *, facts=(), conflicts=(), not_found=()):
+    assessment = EvidenceAssessment(sufficient=True, retry_queries=[], facts=list(facts),
+                                    conflicts=list(conflicts), not_found=list(not_found))
+    monkeypatch.setattr(nodes, 'assess', AsyncMock(return_value={'assessment': assessment}))
+
+
+def test_grounded_facts_and_missing(monkeypatch):
     c = chunk()
-    monkeypatch.setattr(records, 'assess_chunks', AsyncMock(return_value=RecordSearchResult(
-        facts=(RecordFact(content='총 예산 600,000원', sources=(c.source,)),), not_found=('세부 내역',))))
-    result = run(request((c,)))
+    mock_assessment(monkeypatch, facts=[item('총 예산 600,000원', 'c1')], not_found=['세부 내역'])
+    result = run((c,))
     assert result.status == 'partial' and result.facts[0].sources == (c.source,)
     assert result.not_found == ('세부 내역',)
 
 
-def test_unsupported_number_and_query_year_are_not_reported_as_facts(monkeypatch):
+def test_unsupported_number_and_year(monkeypatch):
     c = chunk()
-    monkeypatch.setattr(records, 'assess_chunks', AsyncMock(return_value=RecordSearchResult(
-        facts=(RecordFact(content='총 예산 700,000원', sources=(c.source,)),))))
-    assert run(request((c,))).status == 'no_evidence'
-    monkeypatch.setattr(records, 'assess_chunks', AsyncMock(return_value=RecordSearchResult(
-        facts=(RecordFact(content='총 예산 600,000원', sources=(c.source,)),))))
-    assert run(request((c,), '2025년 행사 예산')).status == 'no_evidence'
+    mock_assessment(monkeypatch, facts=[item('총 예산 700,000원', 'c1')])
+    assert run((c,)).status == 'no_evidence'
+    mock_assessment(monkeypatch, facts=[item('총 예산 600,000원', 'c1')])
+    assert run((c,), '2025년 행사 예산').status == 'no_evidence'
 
 
-def test_year_in_source_and_numeric_conflicts_keep_per_fact_sources(monkeypatch):
+def test_year_in_source_and_conflicts(monkeypatch):
     a, b = chunk('회비 20,000원', '2025_장부.csv'), chunk('회비 30,000원', '2025_회의록.csv')
-    conflict = RecordConflict(description='회비 차이', values=(
-        RecordFact(content='회비 20,000원', sources=(a.source,)),
-        RecordFact(content='회비 30,000원', sources=(b.source,))))
-    monkeypatch.setattr(records, 'assess_chunks', AsyncMock(return_value=RecordSearchResult(conflicts=(conflict,))))
-    result = run(request((a, b), '2025년 회비'))
-    assert result.status == 'answered' and result.conflicts == (conflict,)
+    conflict = EvidenceConflict(description='회비 차이', values=[item('회비 20,000원', 'c1'), item('회비 30,000원', 'c2')])
+    mock_assessment(monkeypatch, conflicts=[conflict])
+    result = run((a, b), '2025년 회비')
+    assert result.status == 'answered'
+    assert [v.sources for v in result.conflicts[0].values] == [(a.source,), (b.source,)]
 
 
-def test_empty_does_not_call_model_and_failure_propagates(monkeypatch):
+def test_empty_and_failure(monkeypatch):
     mock = AsyncMock(side_effect=AIInvalidResponseError('실패'))
-    monkeypatch.setattr(records, 'assess_chunks', mock)
-    assert run(request(())).status == 'no_evidence'
+    monkeypatch.setattr(nodes, 'assess', mock)
+    assert run(()).status == 'no_evidence'
     mock.assert_not_awaited()
     with pytest.raises(AIInvalidResponseError):
-        run(request((chunk(),)))
+        run((chunk(),))
 
 
-def test_numbers_in_filenames_and_unsupported_units_are_not_proof(monkeypatch):
-    c = chunk('준비 내용은 숙소 예약입니다.', '예산600000원.csv')
-    monkeypatch.setattr(records, 'assess_chunks', AsyncMock(return_value=RecordSearchResult(
-        facts=(RecordFact(content='총 예산 600000원', sources=(c.source,)),))))
-    assert run(request((c,))).status == 'no_evidence'
-    c = chunk('예산 22만원')
-    monkeypatch.setattr(records, 'assess_chunks', AsyncMock(return_value=RecordSearchResult(
-        facts=(RecordFact(content='예산 22억원', sources=(c.source,)),))))
-    assert run(request((c,))).status == 'no_evidence'
+def test_filename_numbers_and_units(monkeypatch):
+    mock_assessment(monkeypatch, facts=[item('총 예산 600000원', 'c1')])
+    assert run((chunk('숙소 예약', '예산600000원.csv'),)).status == 'no_evidence'
+    mock_assessment(monkeypatch, facts=[item('예산 22억원', 'c1')])
+    assert run((chunk('예산 22만원'),)).status == 'no_evidence'
 
 
-def test_facts_with_unprovided_sources_are_not_returned(monkeypatch):
-    c, other = chunk(), chunk(name='다른자료.csv')
-    monkeypatch.setattr(records, 'assess_chunks', AsyncMock(return_value=RecordSearchResult(
-        facts=(RecordFact(content='예산 600,000원', sources=(other.source,)),))))
-    assert run(request((c,))).status == 'no_evidence'
+@pytest.mark.parametrize('ids', [('c99',), ()])
+def test_invalid_citation_is_not_hidden(monkeypatch, ids):
+    mock_assessment(monkeypatch, facts=[item('예산 900원', *ids)])
+    with pytest.raises(AIInvalidResponseError):
+        run((chunk(),))
 
 
-def test_unsupported_calculation_or_decimal_is_partial(monkeypatch):
-    c = chunk('예산 10.5만원과 2.5만원')
-    monkeypatch.setattr(records, 'assess_chunks', AsyncMock(return_value=RecordSearchResult(facts=(
-        RecordFact(content='예산 10.5만원', sources=(c.source,)),
-        RecordFact(content='합계 13만원', sources=(c.source,)),))))
-    result = run(request((c,)))
+def test_calculation_or_decimal_is_partial(monkeypatch):
+    mock_assessment(monkeypatch, facts=[item('예산 10.5만원', 'c1'), item('합계 13만원', 'c1')])
+    result = run((chunk('예산 10.5만원과 2.5만원'),))
     assert result.status == 'partial' and len(result.facts) == 1 and result.not_found
 
 
-def test_conflict_with_unsupported_value_is_excluded(monkeypatch):
+def test_conflict_with_unsupported_value(monkeypatch):
     a, b = chunk('회비 20,000원'), chunk('회비 30,000원', '회의록.csv')
-    conflict = RecordConflict(description='회비 차이', values=(
-        RecordFact(content='회비 20,000원', sources=(a.source,)),
-        RecordFact(content='회비 90,000원', sources=(b.source,))))
-    monkeypatch.setattr(records, 'assess_chunks', AsyncMock(return_value=RecordSearchResult(conflicts=(conflict,))))
-    assert run(request((a, b))).status == 'no_evidence'
+    conflict = EvidenceConflict(description='회비 차이', values=[item('회비 20,000원', 'c1'), item('회비 90,000원', 'c2')])
+    mock_assessment(monkeypatch, conflicts=[conflict])
+    assert run((a, b)).status == 'no_evidence'
+
+
+def test_same_source_does_not_mix_unquoted_chunk_numbers(monkeypatch):
+    a, b = chunk('홍보비 100원'), chunk('숙박비 200원')
+    assert a.source == b.source
+    mock_assessment(monkeypatch, facts=[item('홍보비 200원', 'c1'), item('숙박비 200원', 'c2')])
+    result = run((a, b))
+    assert result.status == 'partial' and [f.content for f in result.facts] == ['숙박비 200원']
+    mock_assessment(monkeypatch, conflicts=[EvidenceConflict(description='차이', values=[
+        item('홍보비 200원', 'c1'), item('숙박비 200원', 'c2')])])
+    assert run((a, b)).status == 'no_evidence'
+
+
+@pytest.mark.parametrize('question', ['2025에 MT 담당자는?', '2025년 MT 담당자는?'])
+def test_year_with_particle(monkeypatch, question):
+    mock_assessment(monkeypatch, facts=[item('담당자는 민수', 'c1')])
+    assert run((chunk('2024년 MT 담당자는 민수'),), question).status == 'no_evidence'
+
+
+@pytest.mark.parametrize('question', ['2025원 예산은?', '2025 원 예산은?', '2025만원 예산은?'])
+def test_amount_is_not_year(monkeypatch, question):
+    mock_assessment(monkeypatch, facts=[item('예산은 2025원', 'c1')])
+    assert run((chunk('예산은 2025원'),), question).status == 'answered'
