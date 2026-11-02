@@ -132,14 +132,14 @@ class ToolCall(ContractModel):
     status: Literal["OK", "FAILED", "TIMEOUT"]
     duration_ms: int
     result_count: int | None = None  # records.search일 때 찾은 조각 수
-    prompt_version: str | None = None  # llm.generate일 때 그 호출의 프롬프트 버전. 예: "records-assess-v1"
+    prompt_version: str | None = None  # llm.generate일 때 그 호출의 프롬프트 버전. 예: "records-assess-v1+meeting-assess-v2"
 
 
 class JudgeTrace(ContractModel):
     """이 판단을 누가, 어떤 지시로 내렸고 무엇을 했는지. BE가 판단 기록으로 저장한다"""
 
     model: str                       # 예: "gpt-5.6-luna". Laya·Jev로 바꾸면 그 이름
-    prompt_version: str              # 예: "meeting-judge-v5"
+    prompt_version: str              # 예: "meeting-judge-v6"
     judge_ms: int                    # 판단(과 검색어) 호출에 걸린 시간
     tool_calls: tuple[ToolCall, ...] = ()   # NONE이면 비어 있다
 
@@ -196,13 +196,14 @@ async def judge_utterance(
 
 답은 기록 검색 `search_records`(#72)와 같은 단계로 만든다. 판단이 만든 검색어로 청크를 찾고(`find_chunks`), 찾은 청크로 근거를 판단한다(`assess_chunks`).
 검색어는 판단이 이미 정리했으므로 다시 정리하지 않고, 다시 찾지도 않는다. 기준일은 회의 날짜다.
+회의 원발화는 검색어와 별도로 근거 판단에 전달한다. 회고 또는 최근 행사 참가 인원 질문은 한 번의 벡터 검색에서 후보 20개를 받아 원래 상위 3개를 보존하고 질문한 항목의 본문 최대 2개를 보충해 모델에는 5개만 보낸다. 명시 연도가 있으면 보충 자료도 그 연도와 일치해야 한다. 그 밖의 질문은 기존 상위 5개다. 검색된 자료만으로 전체 최신을 확정할 수 없어 최근 질문의 답에는 그 한계를 표시한다. 현재 진행 중인 행사의 실제 상태는 기록 검색으로 확정하지 않는다.
 근거 판단 결과(확인한 사실, 확인하지 못한 것, 자료 간 차이)를 코드가 카드 문구로 옮긴다. 모델을 다시 부르지 않는다.
 
 | 근거 판단 결과 | `kind` · `answer` |
 | --- | --- |
 | 확인한 사실 | `ANSWER` · 사실 문구를 한 줄에 하나씩. 예: "2025 봄 MT 숙박비 550,000원" |
 | 자료 간 차이 | `ANSWER` · 하나를 고르지 않고 값마다 문서 이름을 붙인다(AI-RET-03). 예: "2025 봄 MT 참가 인원: 28명 (2025 봄 MT 결과보고.pdf) / 27명 (2025 상반기 장부.xlsx)" |
-| 사실과 확인하지 못한 것이 함께 | `ANSWER` · 사실 뒤에 한 줄을 덧붙인다. 예: "기록에 없음: 숙소비 세부 내역" |
+| 사실과 확인하지 못한 것이 함께 | `ANSWER` · 사실 뒤에 한 줄을 덧붙인다. 예: "검색한 자료에서 확인하지 못함: 숙소비 세부 내역" |
 | 확인하지 못한 것만 | `NOT_FOUND` |
 | 찾은 청크가 없음 | `NOT_FOUND`. 근거 판단을 부르지 않는다 |
 
@@ -215,7 +216,7 @@ async def judge_utterance(
 | "작년 MT 때 숙소비 얼마 나왔지?" | `ANSWER` · "2025 봄 MT 숙박비 550,000원" · 출처 `2025 봄 MT 결과보고 · 2쪽 · 2. 예산` | 질문과 답, 출처 |
 | "그때 인원은?" (앞: "작년 봄 MT 얘기인데") | `ANSWER` · question "2025 봄 MT 참가 인원" | 질문과 답, 출처 |
 | "민수야 예약했어?" | `NO_LOOKUP` | 띄우지 않음 |
-| "재작년 신환회 장소 어디였지?" (관련 기록 없음) | `NOT_FOUND` · question "2024 신환회 장소" | 기록에 없음 |
+| "재작년 신환회 장소 어디였지?" (관련 기록 없음) | `NOT_FOUND` · question "2024 신환회 장소" | 검색한 자료에서 확인하지 못함 |
 | "작년 회비 얼마였지?" 뒤 검색 중에 "점심 뭐 먹지" | `ANSWER` | 늦게 와도 질문과 함께 띄움 |
 | 모델 호출 시간 초과 | `AITimeoutError` (`trace` 포함) | 처리하지 못함 |
 
