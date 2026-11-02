@@ -83,10 +83,11 @@ async def message(club_id: str, body: ToriMessageIn,
     # 외부 호출 중 권한이 바뀔 수 있어 조회 전에 다시 검증한다.
     from app.core.deps import ensure_member
     await ensure_member(session, club_id=club_id, account=account)
-    if (context is not None and follow_up is not None
-            and not _clear_clarification_choice(follow_up, context.options, datetime.now(TZ).date())):
-        return Envelope(data=ToriMessageOut(intent='record_search',
-            reply='선택할 범위를 확인하지 못했어요. 행사나 연도를 넣어 새 질문으로 요청해 주세요.'))
+    ambiguous_follow_up = (context is not None and follow_up is not None
+                           and not _clear_clarification_choice(follow_up, context.options, datetime.now(TZ).date()))
+    if ambiguous_follow_up:
+        # 알 수 없는 선택을 모델이 임의 연도로 좁히지 않도록 원질문 범위를 요약한다.
+        result = ai.ToriIntentResult(intent='record_search', query=question[:200].strip())
     if result.intent == 'record_search':
         if not result.query or not result.query.strip() or len(result.query) > 200:
             if follow_up is not None:
@@ -227,6 +228,8 @@ async def message(club_id: str, body: ToriMessageIn,
         reply = {'answered': '자료에서 확인한 내용이에요.', 'partial': '자료에서 일부 내용을 확인했어요.',
                  'insufficient': '검색한 자료에서 답의 근거를 충분히 찾지 못했어요.',
                  'failed': '자료 답변을 만들지 못했어요. 검색 결과를 확인해 주세요.'}[answer.status]
+        if ambiguous_follow_up:
+            reply = '행사나 연도를 특정하지 않고 원래 질문의 자료 범위를 살펴봤어요. ' + reply
         return Envelope(data=ToriMessageOut(intent=result.intent, reply=reply, record_answer=answer,
                                              records=records, record_total_count=total))
     if result.intent == 'task_list':

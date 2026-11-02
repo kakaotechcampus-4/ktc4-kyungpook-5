@@ -472,6 +472,7 @@ async def test_토리_자료명확화_한번_후속과_새요청(client, app_db,
             return ai.ToriIntentResult(intent='task_list', scope='self', kind='task')
         return ai.ToriIntentResult(intent='record_search', query='예산')
     followups = []
+    answered_followups = []
     monkeypatch.setattr(ai, 'ToriRecordQueryRequest', SimpleNamespace, raising=False)
     monkeypatch.setattr(ai, 'ToriRecordQueryResult', SimpleNamespace, raising=False)
     monkeypatch.setattr(ai, 'ToriRecordAnswerRequest', SimpleNamespace)
@@ -483,6 +484,8 @@ async def test_토리_자료명확화_한번_후속과_새요청(client, app_db,
         followups.append((request.question, request.follow_up))
         if request.follow_up in ('이번 주 내 할 일', '새 행사 예산'):
             return ai.ToriRecordQueryResult(disposition='new_request', query=None)
+        if request.follow_up in ('예전 거', '숙소비만'):
+            return ai.ToriRecordQueryResult(disposition='follow_up', query='2024 예산')
         if request.follow_up == '첫 번째':
             assert request.clarification_question and request.clarification_options == ('2025 환영회', '전체 요약')
         return ai.ToriRecordQueryResult(disposition='follow_up', query='예산')
@@ -496,8 +499,10 @@ async def test_토리_자료명확화_한번_후속과_새요청(client, app_db,
             return ai.ToriRecordAnswerResult(status='clarification',
                 clarification_question='어느 행사의 예산을 볼까요?',
                 clarification_options=('2025 환영회', '전체 요약'))
-        assert request.question in ('행사 예산 관련 자료를 찾아줘', '새 행사 예산')
+        assert request.question in ('행사 예산 관련 자료를 찾아줘', '새 행사 예산', '예산')
         assert request.clarification_allowed is False
+        if request.question == '예산':
+            answered_followups.append(request.follow_up)
         if request.follow_up == '첫 번째':
             assert request.clarification_question and request.clarification_options == ('2025 환영회', '전체 요약')
         if request.follow_up == '다시 물어봐':
@@ -563,7 +568,15 @@ async def test_토리_자료명확화_한번_후속과_새요청(client, app_db,
         json={'message':'전체 요약', 'clarificationContext':new_context})
     assert next_answer.status_code == 200, next_answer.text
     assert next_answer.json()['data']['recordAnswer']['status'] == 'answered'
+    broad_context = {'originalQuestion': '예산', 'question': '어느 연도?', 'options': ['2024년', '2025년']}
+    for choice in ('예전 거', '숙소비만'):
+        response = client.post(url, headers=headers,
+            json={'message': choice, 'clarificationContext': broad_context})
+        assert response.status_code == 200, response.text
+        assert response.json()['data']['clarification'] is None
+        assert response.json()['data']['recordAnswer']['status'] == 'answered'
     assert client.post(url, headers=other,
         json={'message':'2025 환영회', 'clarificationContext':context}).status_code == 403
     assert followups == [(original, value) for value in
-        ('첫 번째', '2025 환영회', '전체 요약', '잘 모르겠어', '다시 물어봐', '이번 주 내 할 일', '새 행사 예산')] + [('새 행사 예산', '전체 요약')]
+        ('첫 번째', '2025 환영회', '전체 요약', '잘 모르겠어', '다시 물어봐', '이번 주 내 할 일', '새 행사 예산')] + [('새 행사 예산', '전체 요약'), ('예산', '예전 거'), ('예산', '숙소비만')]
+    assert answered_followups == ['예전 거', '숙소비만']
