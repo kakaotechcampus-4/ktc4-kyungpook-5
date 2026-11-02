@@ -70,7 +70,7 @@ export function Timeline({
             </div>
             <p className="mt-2 whitespace-pre-wrap leading-6">
               {d.kind === 'NOT_FOUND'
-                ? '기록에 없음 · 등록된 자료에서 답을 찾지 못했어요.'
+                ? '검색한 자료에서 답을 확인하지 못했어요.'
                 : d.output || '답변 내용이 없습니다.'}
             </p>
             {!!d.citations?.length && (

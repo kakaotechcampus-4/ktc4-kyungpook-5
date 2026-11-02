@@ -142,3 +142,17 @@ test('unsupported resume guides the user to a new meeting', async () => {
   assert.match(observed.failures[0], /새 회의/)
   transport.dispose()
 })
+
+test('judgment refreshes saved results and disposed sockets do not', async () => {
+  const { socket, transport, ready, observed } = setup()
+  await ready
+  socket.event({ type: 'judgment', meetingId: 'other-meeting', segmentId: 'segment' })
+  assert.equal(observed.transcripts, 0)
+  socket.event({ type: 'judgment', segmentId: 'segment', seq: 1, jobId: 'job' })
+  assert.equal(observed.transcripts, 1)
+  socket.event({ type: 'stage', segmentId: 'segment', seq: 1, stage: 'JUDGING' })
+  assert.equal(observed.transcripts, 1)
+  transport.dispose()
+  socket.event({ type: 'judgment', segmentId: 'segment', seq: 1, jobId: 'job' })
+  assert.equal(observed.transcripts, 1)
+})

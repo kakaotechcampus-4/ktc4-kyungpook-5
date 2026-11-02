@@ -13,7 +13,7 @@ import pytest
 from app.ai.config import get_settings
 from app.ai.contracts import IndexedChunk, RecordSource, SourceLocation
 from app.ai.errors import AIError, AIInvalidResponseError, AITimeoutError
-from app.ai.features.meeting.lookup import RecordsLookup, get_assess_model, to_meeting_answer
+from app.ai.features.meeting.lookup import MEETING_ASSESS_PROMPT_VERSION, RecordsLookup, get_assess_model, to_meeting_answer
 from app.ai.features.meeting.nodes import judge_utterance
 from app.ai.features.meeting.schemas import (
     JudgeOutput,
@@ -21,13 +21,13 @@ from app.ai.features.meeting.schemas import (
     MeetingUtterance,
 )
 from app.ai.features.retrieval.memory_port import InMemoryRecordSearch, StoredRecord
-from app.ai.features.retrieval.nodes import ASSESS_EVIDENCE_PROMPT_VERSION
 from app.ai.features.retrieval.schemas import (
     EvidenceAssessment,
     EvidenceItem,
     RecordConflict,
     RecordFact,
     RecordSearchResult,
+    RecordSearchRequest,
 )
 from app.ai.llm import EMBEDDING_DIMENSIONS
 from app.core.enums import RecordCategory
@@ -110,7 +110,7 @@ def test_확인한_것과_확인하지_못한_것이_섞이면_뒤에_덧붙인�
     )
 
     assert to_meeting_answer(result).answer == (
-        "2025 봄 MT 숙박비 550,000원\n기록에 없음: 숙소비 세부 내역"
+        "2025 봄 MT 숙박비 550,000원\n검색한 자료에서 확인하지 못함: 숙소비 세부 내역"
     )
 
 
@@ -193,7 +193,7 @@ def test_찾은_청크의_근거로_답하고_출처는_검색된_기록이다()
     assert (search.tool, search.status, search.result_count) == ("records.search", "OK", 2)
     assert (answer.tool, answer.status) == ("llm.generate", "OK")
     # 어떤 근거 판단 지시문으로 답했는지 판단 기록에 남는다
-    assert (search.prompt_version, answer.prompt_version) == (None, ASSESS_EVIDENCE_PROMPT_VERSION)
+    assert (search.prompt_version, answer.prompt_version) == (None, MEETING_ASSESS_PROMPT_VERSION)
 
 
 def test_근거_판단은_다시_찾지_않고_회의_날짜를_기준일로_본다():
@@ -206,6 +206,7 @@ def test_근거_판단은_다시_찾지_않고_회의_날짜를_기준일로_본
     assert "오늘: 2026-03-05" in prompt
     assert f"찾을 내용: {QUESTION}" in prompt
     assert "다시 찾을 수 있는 횟수: 0" in prompt
+    assert "작년 MT 숙소비 얼마였지?" in messages[-1].content
 
 
 def test_올린_기록이_없으면_근거_판단을_부르지_않고_기록에_없음이다():
@@ -236,7 +237,7 @@ def test_받지_않은_자료를_가리키면_근거_판단에서_실패했다�
     search, answer = raised.value.trace.tool_calls
     assert (search.tool, search.status) == ("records.search", "OK")
     assert (answer.tool, answer.status) == ("llm.generate", "FAILED")
-    assert answer.prompt_version == ASSESS_EVIDENCE_PROMPT_VERSION
+    assert answer.prompt_version == MEETING_ASSESS_PROMPT_VERSION
 
 
 def test_임베딩이_늦으면_검색에서_멈추고_시간_초과로_남긴다():
@@ -258,3 +259,79 @@ def test_회의의_근거_판단은_추론을_끈_모델로_부른다(monkeypatc
 
     assert get_assess_model().reasoning == {"effort": "none"}
     get_assess_model.cache_clear()
+
+
+@pytest.mark.parametrize(('query', 'relevant'), [
+    ('2026 봄 MT 회고 내용', '둘째 날 행사 회고를 진행했다.'),
+    ('가장 최근 행사 참가 인원', '실제 참가 인원은 48명이다.'),
+])
+def test_회의_회고와_최근_인원은_넓은_후보에서_관련_본문을_고른다(monkeypatch, query, relevant):
+    from app.ai.features.meeting import lookup as meeting_lookup
+    from app.ai.ports import RetrievedChunk
+    seen = []
+    async def find(request, *, port, embed):
+        seen.append(request.limit)
+        source = RecordSource(record_id='r', file_name='2026 행사.pdf', location=SourceLocation(label='1쪽'))
+        return tuple(RetrievedChunk(text=text, source=source, category=RecordCategory.ETC, score=score)
+                     for text, score in [('제목', .8), ('행사 개요', .79), ('예산', .78),
+                                         ('일정', .77), ('홍보', .76), (relevant, .65)])
+    monkeypatch.setattr(meeting_lookup, 'find_chunks', find)
+    request = RecordSearchRequest(club_id=CLUB, query=query, today='2026-11-03')
+    result = asyncio.run(RecordsLookup(_port()).search(request))
+    assert seen == [20] and len(result) == 5 and any(chunk.text == relevant for chunk in result)
+
+
+def test_일반_검색은_기존_후보_개수를_유지한다(monkeypatch):
+    from app.ai.features.meeting import lookup as meeting_lookup
+    seen = []
+    async def find(request, *, port, embed):
+        seen.append(request.limit)
+        return ()
+    monkeypatch.setattr(meeting_lookup, 'find_chunks', find)
+    request = RecordSearchRequest(club_id=CLUB, query='2025 가을 MT 버스비', today='2026-11-03')
+    assert asyncio.run(RecordsLookup(_port()).search(request)) == ()
+    assert seen == [5]
+
+
+def test_최근_답변은_전체_최신성을_단정하지_않는다(monkeypatch):
+    from app.ai.features.meeting import lookup as meeting_lookup
+    async def assess(request, chunks, *, invoke):
+        return RecordSearchResult(facts=(RecordFact(content='2026 가을 교류회 실제 참가자 48명', sources=(REPORT,)),))
+    monkeypatch.setattr(meeting_lookup, 'assess_chunks', assess)
+    request = RecordSearchRequest(club_id=CLUB, query='가장 최근 행사 참가 인원', today='2026-11-03')
+    answer = asyncio.run(RecordsLookup(_port()).answer(request, ()))
+    assert '검색된 자료 기준' in answer.answer and '전체 자료에서 가장 최근인지 확인하지 못했어요' in answer.answer
+    assert answer.sources == (REPORT,)
+
+
+def test_회고_검색은_다른_연도에_원래_상위_결과를_잃지_않는다(monkeypatch):
+    from app.ai.features.meeting import lookup as meeting_lookup
+    from app.ai.ports import RetrievedChunk
+    def make(year, text, score):
+        return RetrievedChunk(text=text, source=RecordSource(record_id=f'r{year}',
+            file_name=f'{year} 가을MT.pdf', location=SourceLocation(label='1쪽')),
+            category=RecordCategory.EVENT_HISTORY, score=score)
+    candidates = tuple(make('2026', f'2026 가을 MT 후속 평가 {i}', .80 - i * .01) for i in range(5)) + tuple(
+        make('2023', f'2023 여름 MT 회고 {i}', .70 - i * .01) for i in range(5))
+    async def find(request, *, port, embed): return candidates
+    monkeypatch.setattr(meeting_lookup, 'find_chunks', find)
+    request = RecordSearchRequest(club_id=CLUB, query='2026 가을 MT 회고', today='2026-11-03')
+    result = asyncio.run(RecordsLookup(_port()).search(request))
+    assert all('2026' in chunk.source.file_name for chunk in result)
+
+
+def test_최근_인원과_회고를_함께_물으면_두_항목을_유지한다(monkeypatch):
+    from app.ai.features.meeting import lookup as meeting_lookup
+    from app.ai.ports import RetrievedChunk
+    def make(text, i, score):
+        return RetrievedChunk(text=text, source=RecordSource(record_id=f'r{i}',
+            file_name=f'행사{i}.pdf', location=SourceLocation(label='1쪽')),
+            category=RecordCategory.EVENT_HISTORY, score=score)
+    candidates = tuple(make(f'실제 참가 인원 {i}명', i, .80 - i * .01) for i in range(5)) + tuple(
+        make(f'행사 회고 {i}', i + 5, .70 - i * .01) for i in range(5))
+    async def find(request, *, port, embed): return candidates
+    monkeypatch.setattr(meeting_lookup, 'find_chunks', find)
+    request = RecordSearchRequest(club_id=CLUB, query='최근 행사 참가 인원과 회고', today='2026-11-03')
+    result = asyncio.run(RecordsLookup(_port()).search(request))
+    assert any('참가 인원' in chunk.text for chunk in result)
+    assert any('회고' in chunk.text for chunk in result)

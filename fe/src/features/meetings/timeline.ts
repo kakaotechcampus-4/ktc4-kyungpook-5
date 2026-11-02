@@ -81,6 +81,26 @@ export function meetingAnswers(transcripts: Transcript[], decisions: Decision[])
     )
 }
 
+export function latestTranscriptStatus(
+  latest: Transcript | undefined,
+  transcripts: Transcript[],
+  decisions: Decision[],
+  meetingStatus: Meeting['status'],
+  jobStatus: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | undefined,
+  hasError: boolean,
+) {
+  if (!latest?.text.trim() || hasError || jobStatus === 'FAILED') return null
+  const active = meetingStatus === 'RECORDING' || meetingStatus === 'FINALIZING'
+  if (active && (jobStatus === 'QUEUED' || jobStatus === 'RUNNING')) return 'processing'
+  const matching = decisions.filter(
+    (decision) => decision.status !== 'STALE' && sourceOf(decision, transcripts)?.id === latest.id,
+  )
+  if (matching.some((decision) => decision.kind === 'NO_LOOKUP' && decision.status === 'SUCCEEDED'))
+    return 'no-lookup'
+  if (active && !matching.length) return 'waiting'
+  return null
+}
+
 export function meetingMicStatus(status: Meeting['status'], phase: AudioPhase) {
   if (status === 'FINALIZING') return '마지막 전사와 답변을 처리하고 있어요.'
   if (phase === 'recording') return '이 기기의 마이크로 회의를 듣고 있어요.'
