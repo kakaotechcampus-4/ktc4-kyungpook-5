@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { prepareRnnoise, startPcmCapture, type PcmCapture, type PreparedRnnoise } from './capture'
 import { MeetingAudioTransport, type AudioGap, type AudioProgress } from './transport'
+import { pausedAt, recordedTime, resumedAt } from './pause'
 
 export type AudioPhase =
   | 'idle'
   | 'connecting'
   | 'permission'
   | 'recording'
+  | 'paused'
   | 'flushing'
   | 'ending'
   | 'processing'
@@ -17,6 +19,9 @@ interface AudioState extends AudioProgress {
   error: string | null
   inputLevel: number
   noiseSuppression?: boolean
+  // Paused time is still streamed as silence; keep it out of the recorded time.
+  pausedMs: number
+  pausedAtMs: number | null
 }
 const INITIAL: AudioState = {
   phase: 'idle',
@@ -25,6 +30,8 @@ const INITIAL: AudioState = {
   sentFrames: 0,
   acceptedFrames: 0,
   durationMs: 0,
+  pausedMs: 0,
+  pausedAtMs: null,
 }
 
 function microphoneError(error: unknown) {
@@ -161,7 +168,12 @@ export function useMeetingAudio({
   }, [meetingId, cancel])
 
   const stop = useCallback(async () => {
-    if (stopping.current || state.phase !== 'recording' || !capture.current || !transport.current)
+    if (
+      stopping.current ||
+      (state.phase !== 'recording' && state.phase !== 'paused') ||
+      !capture.current ||
+      !transport.current
+    )
       return
     stopping.current = true
     const run = generation.current
@@ -199,5 +211,17 @@ export function useMeetingAudio({
     callbacks.current.onRefresh()
   }, [cancel])
 
-  return { ...state, start, stop, abort }
+  const pause = useCallback(() => {
+    if (state.phase !== 'recording' || !capture.current) return
+    capture.current.setPaused(true)
+    setState((previous) => ({ ...previous, ...pausedAt(previous), phase: 'paused', inputLevel: 0 }))
+  }, [state.phase])
+
+  const resume = useCallback(() => {
+    if (state.phase !== 'paused' || !capture.current) return
+    capture.current.setPaused(false)
+    setState((previous) => ({ ...previous, ...resumedAt(previous), phase: 'recording' }))
+  }, [state.phase])
+
+  return { ...state, recordedMs: recordedTime(state), start, stop, abort, pause, resume }
 }

@@ -5,6 +5,8 @@ export interface PcmCapture {
   noiseSuppression?: boolean
   stop: () => Promise<void>
   cancel: () => void
+  // A disabled track keeps producing silent samples, so frames and their timeline continue.
+  setPaused: (paused: boolean) => void
 }
 
 export interface PreparedRnnoise {
@@ -216,6 +218,11 @@ export async function startPcmCapture(
       cancel: () => {
         rejectFlush?.(new Error('음성 전송을 중단했어요.'))
         cleanup()
+      },
+      setPaused: (paused) => {
+        stream.getAudioTracks().forEach((track) => {
+          track.enabled = !paused
+        })
       },
     }
   } catch (error) {

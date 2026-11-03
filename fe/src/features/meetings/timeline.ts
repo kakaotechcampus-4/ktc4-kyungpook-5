@@ -110,6 +110,7 @@ export function latestTranscriptStatus(
 export function meetingMicStatus(status: Meeting['status'], phase: AudioPhase) {
   if (status === 'FINALIZING') return '마지막 전사와 답변을 처리하고 있어요.'
   if (phase === 'recording') return '이 기기의 마이크로 회의를 듣고 있어요.'
+  if (phase === 'paused') return '일시정지했어요. 이 동안 한 말은 기록되지 않아요.'
   if (phase === 'connecting' || phase === 'permission') return '마이크 연결을 준비하고 있어요.'
   if (phase === 'flushing' || phase === 'ending' || phase === 'processing')
     return '마지막 음성을 처리하고 있어요.'

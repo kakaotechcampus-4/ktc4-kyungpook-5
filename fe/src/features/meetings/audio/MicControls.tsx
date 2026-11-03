@@ -7,6 +7,7 @@ const LABELS: Record<AudioPhase, string> = {
   connecting: '음성 전송을 준비하고 있어요.',
   permission: '브라우저에서 마이크 권한을 허용해 주세요.',
   recording: '마이크가 켜졌어요. 음성을 서버로 보내고 있어요.',
+  paused: '일시정지했어요. 이 동안 한 말은 기록되지 않아요.',
   flushing: '마지막 음성을 보내고 있어요.',
   ending: '서버의 마지막 음성 수신을 확인하고 있어요.',
   processing: '마이크를 껐어요. 마지막 전사와 자료 응답을 기다리고 있어요.',
@@ -76,6 +77,12 @@ function MeetingMicControls(props: MeetingAudioOptions) {
           </Button>
         )}
         {audio.phase === 'recording' && (
+          <Button variant="secondary" onClick={audio.pause}>
+            일시정지
+          </Button>
+        )}
+        {audio.phase === 'paused' && <Button onClick={audio.resume}>다시 녹음</Button>}
+        {(audio.phase === 'recording' || audio.phase === 'paused') && (
           <Button onClick={() => void audio.stop()}>마이크 끄고 마지막 전사 확인</Button>
         )}
         {(preparing || processing) && (
