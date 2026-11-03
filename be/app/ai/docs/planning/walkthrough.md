@@ -435,6 +435,111 @@ model_calls = 대화 Agent 호출 수 / generation_model_calls = 생성 내부 �
 
 신규 39개(요청/권유 5, 생성/버튼 22, 대화 연결 12)와 이번 커밋 대상의 AI 회귀 680개가 통과했다. 테스트는 모델 응답을 대체한 실제 graph 실행이며, 생성 품질·친근함·자율 선택의 정확도 검증은 아니다. 실제 모델과 P2 UI 검증은 아래 5-3 절과 평가 기록을 따른다.
 
+## 생성 전 재확인 반복을 비교하기 (#239)
+
+예를 들어 30명일 때 권유한 뒤 인원만 40명으로 바꾸었다고 하자. 예전 권유는 여전히 30명 기준이고, 현재 draft와 변경 이력은 40명 기준이다. 이 상태에서 “최신 조건으로 초안 만들어줘.”와 버튼을 비교한다.
+
+```text
+같은 저장 JSON을 두 번 독립 복원
+  ├─ 채팅: chat_planning → Agent의 생성 Tool 선택 → 권유/근거 검사 ┐
+  └─ 버튼: generate_planning_preview → 공통 최소 조건 검사         ├→ 생성 Graph
+```
+
+`scripts/check_planning_generation_requests.py`의 `build_fixture()`는 공개 함수와 실제 조건/권유 처리기에 고정 대화 응답을 주입해 세 상태를 만든다. `current_offer`는 정상 권유, `changed_headcount`는 30→40명 뒤 옛 권유, `specified_dates`는 같은 일정의 잠정→명시 변경 뒤 옛 권유다. 최초 작성에 외부 모델을 사용하지 않았고 저장본은 `tests/fixtures/eval/planning_generation_requests.json`이다. 실제 멘토 세션을 복원한 것은 아니다.
+
+`make_request()`는 매번 그 JSON에서 새 객체를 만든다. `attempt()`는 공개 함수를 실제 실행하고 기존 #196 관측기로 대화/생성/검증 구간을 기록한다. `capture_tools()`는 합성 Tool 요청과 처리 상태만 선별해, 최종 답변이 예외로 끝나도 직전 생성 요청을 확인할 수 있게 한다. 모델 응답의 추론 블록이나 공급자 오류 원문을 저장하지 않는다.
+
+고정 응답 검사에서는 오래된 `offer_id`를 넣으면 생성 0회, 같은 새 요청에 ID를 넣지 않으면 생성 1회가 되는 분기를 비교한다. 이는 검사가 지켜지는지 확인하는 방법이고 실제 모델의 잘못된 선택을 관찰한 결과는 아니다. 실제 모델에서는 세 상태·두 경로를 3회씩 번갈아 호출하며, 결과를 기대값으로 고치거나 실패 표본을 대체하지 않는다.
+
+`be/`에서 실행한다.
+
+```sh
+# 설정/모델 없이 입력과 18개 예정 요청 확인
+.venv/bin/python -m app.ai.scripts.check_planning_generation_requests --dry-run
+# 실제 모델. 기존 폴더를 덮어쓰지 않도록 새 경로를 사용한다.
+.venv/bin/python -m app.ai.scripts.check_planning_generation_requests --output-dir /tmp/generation-requests-new
+```
+
+`session.json`은 모델·설정의 공개 가능한 항목·코드/입력 해시·예정/완료 수와 요약이다. `attempts.jsonl`은 시작/종료, Tool 인자/처리 결과와 구간 관측을 가진다. 입력을 고정했더라도 두 모델 응답은 달라질 수 있으므로 “버튼 성공·채팅 실패”만으로 해석 실패를 확정하지 않는다. 생성에 진입했는지와 그 뒤 어느 구간에서 실패했는지 먼저 본다. 실제 관찰과 한계는 [평가 기록](evaluation.md)에 별도로 남긴다.
+
+2026-11-03 실제 luna 기본 비교는 18요청 중 16건 생성 성공이었다. 인원 변경 채팅 2건은 다음 흐름이었다.
+
+```text
+현재 워크숍·40명 + 30명일 때의 옛 권유 + “최신 조건으로 초안 만들어줘.”
+  → generate_event_plan(quote=이번 원문, offer_id=null)
+  → 생성 모델: 구조화 초안 작성
+  → validate_plan: invalid_plan으로 거절
+  → generation_result.failed, 현재 조건과 다음 상태 보존
+  → Agent: 실제 실패를 설명
+```
+
+여기서는 새 요청을 올바르게 해석했고 생성에도 진입했다. 코드의 옛 권유 차단 검사 때문에 실패한 것이 아니다. 기본 기록은 어느 세부 규칙에 걸렸는지 남기지 않아 그 두 응답의 상세 원인은 미확인이다. 이 결과와 주입 응답의 재확인 반복을 섞지 않으며, 실제 mini나 제품 화면 오류를 해결했다고 설명하지 않는다.
+
+### 다음 진단: 불합격한 초안을 그대로 재검사한다 (#239)
+
+현재는 시험 결과에 “불합격”만 적혀 있는 상황과 비슷하다. 다음에는 “3번 항목의 날짜가 조건과 다름, 기대값은 11월 7일, 실제 값은 11월 8일”처럼 어느 부분이 왜 거절됐는지 남긴다. 다음은 설명용 가상 예시이며 앞선 실패 두 건의 원인이 아니다.
+
+```text
+입력 조건: 행사 시작일 2026-11-07
+실패 초안: 세 번째 단계 EVENT_DAY 시작 2026-11-08T09:00:00+09:00
+  → validate_plan: 행사 당일 시작일 불일치
+  → 내부 진단: rule=event_start_mismatch, path=/steps/2/starts_at
+               expected=2026-11-07, actual의 한국 날짜=2026-11-08
+  → 진단 도구: 검증에 필요한 입력 + 실패한 PlanComposition + 위반 정보를 저장
+  → 재검사 도구: 같은 저장본을 validate_plan에 다시 넣음 (모델 호출 0회)
+  → 같은 규칙·위치·값으로 거절되는지 확인
+```
+
+AI에게 다시 써 달라고 해서 새 답이 잘 나오는지 확인하는 일이 아니다. 실패한 **같은 답안**을 다시 검사하는 것이다. 이 자료를 보고 모델이 조건을 어겼는지, 검증 코드가 잘못 막았는지를 요구사항과 대조해 판단한다.
+
+1단계에서 `generation/validation.py`의 `PlanValidationViolation`과 내부 `PlanValidationError`를 구현했다. 실제 검사는 계속 `validate_plan()`의 같은 순서로 실행한다. 행사 당일 분기는 다음과 같다.
+
+```python
+if start and start != conditions.start_date:
+    invalid('event_start_mismatch', path + '/starts_at',
+            date_text(conditions.start_date), moment_details(step.starts_at), **location)
+```
+
+`invalid()`가 위반 객체를 담은 `PlanValidationError`를 올리면 기존 `AIInvalidResponseError` 처리에서 같은 공개 실패 안내로 바꾼다. 위 예시를 실제 검증기에 넣으면 `expected="2026-11-07"`, `actual={"timestamp":"2026-11-08T09:00:00+09:00","local_date":"2026-11-08"}`가 내부 오류에 남는다. UTC 11월 6일 16시는 한국 11월 7일이므로 정상 통과하는 경계도 검사했다.
+
+2단계에서 `scripts/planning_validation_diagnostics.py`의 수집기와 `replay_planning_validation.py`를 구현했다. 흐름은 다음과 같다.
+
+```text
+validate_plan → PlanValidationError
+  → capture_validation_failures: 입력/초안/위반 복사 → 같은 예외를 다시 올림
+  → 기존 생성 Graph: generation_result.failed → Agent의 기존 설명/재시도
+요청 종료 → failure-001.json 저장
+replay_file → 저장 타입/해시 검사 → validate_plan만 실행 → 같은 위반인지 기록
+```
+
+재검사의 핵심은 아래 코드다. 생성 모델을 부르는 경로가 없다.
+
+```python
+graph.validate_plan(dict(
+    request=snapshot.input.model_copy(deep=True),
+    composition=snapshot.composition.model_copy(deep=True),
+))
+```
+
+합성 11월 7일/8일 예시는 실제 저장 후 키·주소·모델을 비운 별도 프로세스에서도 `status=rejected`, `reproduced=true`, `same_validator_source=true`로 재검사됐다. [실패 자료](evaluation-results/planning-validation-details-2026-11-03/offline/example-failure.json)와 [재검사 결과](evaluation-results/planning-validation-details-2026-11-03/offline/example-replay.json)는 연습용이며 실제 모델 실패로 세지 않는다.
+
+공개 결과의 failed/안내 문구와 검증 통과 기준은 유지하며, [11개 규칙·보관 항목·완료 기준](step-05-generation.md#11-실패한-초안과-구체적-검증-위반을-확보하기-239)을 따른다.
+
+3단계에서는 최신 v7에서 같은 인원 변경 채팅 상태를 최대 10요청 실행했다. 수집기의 실제 중단 분기는 다음과 같다(기록 처리는 생략).
+
+```python
+for number in range(1, max_attempts + 1):
+    # check.attempt()로 공개 P1 요청과 그 안의 재시도를 끝까지 실행한다.
+    ...
+    if files:
+        report['status'] = 'captured' if all(replays) else 'replay_mismatch'
+        break
+else:
+    report['status'] = 'limit_reached'
+```
+
+실제 10요청은 모두 성공해 파일을 보관할 검증 실패가 없었고, for의 `else`로 종료됐다. 요청을 다시 보낼 때마다 원래 JSON을 복원하며 앞 요청의 성공 초안을 재사용하지 않는다. 이 실험 상한은 제품의 자동 재시도 횟수를 바꾸지 않는다. [실제 원본과 검산](evaluation-results/planning-validation-details-2026-11-03/real-v7/analysis.json)을 보존했고, 기존 v6 실패를 대체하거나 진단 기능의 개선 효과로 해석하지 않았다. 다음에 실패가 나오면 저장본의 같은 규칙/위치/값을 재검사할 수 있는 상태다.
+
 ## 5-3: 두 API의 실제 응답이 같은 P2에 표시된다
 
 [PlanningPlaygroundPage.tsx](../../tests/ui/planning/src/pages/PlanningPlaygroundPage.tsx)의 `session`은 `draft + history + generation`이다. `messages`는 화면 말풍선 목록이며 SDK Tool 이력인 history와 구분한다.

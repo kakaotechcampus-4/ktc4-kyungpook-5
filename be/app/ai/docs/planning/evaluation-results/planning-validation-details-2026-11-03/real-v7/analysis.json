@@ -1,0 +1,28 @@
+{
+  "status": "limit_reached",
+  "requests": 10,
+  "success": 10,
+  "validation_failures": 0,
+  "model": "gpt-5.6-luna",
+  "commit": "815ac4f1ba61121f541487ed0fecb1f894cae6e0",
+  "clean_start": true,
+  "prompt_versions": {
+    "agent": "planning-agent-v7",
+    "generation": "planning-generation-v1"
+  },
+  "logical_model_calls": {
+    "agent_model": 20,
+    "generation_model": 10
+  },
+  "checks": {
+    "paired_events": 20,
+    "independent_identical_inputs": true,
+    "no_previous_preview_reused": true,
+    "validated_observations": true,
+    "conditions_and_history_preserved": true,
+    "source_and_tool_hashes_match": true,
+    "no_capture_errors": true,
+    "key_and_endpoint_absent": true
+  },
+  "interpretation": "최대 10요청을 정상 종료했으나 실제 실패 자료 미확보. 과거 실패의 원인/수정 효과를 판단하지 않는다."
+}

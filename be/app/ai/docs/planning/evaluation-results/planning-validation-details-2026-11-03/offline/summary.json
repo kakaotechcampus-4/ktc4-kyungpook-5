@@ -1,0 +1,22 @@
+{
+  "mode": "injected_control_flow",
+  "actual_provider_calls": 0,
+  "public_result": {
+    "status": "failed",
+    "preview": null,
+    "reason": "생성된 초안이 단계·날짜·근거 검증을 통과하지 못했어요. 다시 시도해 주세요.",
+    "model_calls": 1
+  },
+  "violation": {
+    "rule": "event_start_mismatch",
+    "path": "/steps/0/starts_at",
+    "step_code": "EVENT_DAY",
+    "action_index": null,
+    "expected": "2026-11-07",
+    "actual": {
+      "timestamp": "2026-11-08T09:00:00+09:00",
+      "local_date": "2026-11-08"
+    },
+    "timezone": "Asia/Seoul"
+  }
+}
