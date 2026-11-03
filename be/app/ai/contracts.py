@@ -328,6 +328,51 @@ Headcount = Annotated[int, Field(strict=True, ge=1)]
 Won = Annotated[int, Field(strict=True, ge=0)]
 
 
+# 영수증 추출 계약 (#112)
+
+class ExtractReceiptRequest(ContractModel):
+    """영수증 이미지 한 장에서 지출 내역을 읽어내는 요청.
+
+    file_name은 오류·로그에서 영수증을 가리키는 용도로만 쓴다.
+    """
+
+    file_name: str = Field(max_length=255)
+    mime_type: NonBlankStr
+    image_bytes: bytes = Field(min_length=1)
+
+
+class ExtractedReceiptRow(ContractModel):
+    """영수증에서 읽은 지출 한 건. 읽지 못한 항목은 null이다 — 임의의
+    기본값으로 채우지 않는다(AI-COMMON-02와 같은 원칙).
+
+    category는 값 집합이 PM과 합의되기 전까지 자유 텍스트다
+    (app.models.accounting.ReceiptImportRow.category와 동일한 전제).
+
+    원문(raw_fields)은 담지 않는다 — 키가 정해지지 않은 dict는 OpenAI
+    structured output의 strict 스키마(properties를 전부 미리 선언해야 함)로
+    표현할 수 없다.
+    """
+
+    spent_at: CalendarDate | None
+    merchant: NonBlankStr | None
+    amount: Won | None
+    category: NonBlankStr | None
+    description: NonBlankStr | None
+
+
+class ExtractReceiptResult(ContractModel):
+    """영수증 추출 결과.
+
+    아무 항목도 읽지 못한 이미지는 예외가 아니라 빈 rows다 — 영수증이 아닌
+    사진과 모델 호출 실패는 서로 다른 원인이라 구분해야 한다(AIError만 예외로
+    올린다). FAILED로 표시할지는 호출부(accounting_service)가 정한다.
+    """
+
+    # 기본값을 두지 않는다 — OpenAI strict 스키마는 모든 필드가 required여야
+    # 한다. 아무것도 못 읽었으면 모델이 빈 배열을 명시적으로 내야 한다.
+    rows: tuple[ExtractedReceiptRow, ...]
+
+
 class PlanningConditions(ContractModel):
     """사용자가 정한 행사 조건의 불변 스냅샷. None은 미정, 0원은 무료다.
 

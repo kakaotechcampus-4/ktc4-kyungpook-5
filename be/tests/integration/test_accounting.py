@@ -1,7 +1,8 @@
 """영수 내역 기록 API의 응답 계약과 실제 동작 테스트 (#133).
 
 accounting.curl.sh A01~A09가 실제 DB로 끝까지 도는지 확인한다. CSV 파싱은
-결정론적 코드, 영수증 이미지는 더미 OCR(services/receipt_ocr_stub.py)이다.
+결정론적 코드, 영수증 이미지는 실제 AI(app.ai.extract_receipt)로 읽는다(#112).
+conftest의 기본 mock을 쓰므로 여기서는 실제 비전 호출이 나가지 않는다.
 """
 
 import uuid
@@ -11,6 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+import app.ai as ai
 from app.core.enums import MemberRole
 from app.db import session as db_session
 from app.db.session import get_sessionmaker
@@ -144,7 +146,7 @@ async def test_잘못된_CSV는_FAILED_상태이고_확정을_거부한다(
     assert confirm.json()["error"]["code"] == "IMPORT_NOT_READY"
 
 
-async def test_영수증_이미지는_더미_OCR_초안을_만들고_수정_후_확정된다(
+async def test_영수증_이미지를_올리면_초안을_만들고_수정_후_확정된다(
     client: TestClient, app_db: None
 ) -> None:
     access_token, club_id = _owner_with_club(client)
@@ -190,6 +192,65 @@ async def test_영수증_이미지는_더미_OCR_초안을_만들고_수정_후_
     assert confirm.status_code == 200, confirm.text
     assert confirm.json()["data"]["status"] == "CONFIRMED"
     assert len(confirm.json()["data"]["expenseIds"]) == 1
+
+
+async def test_영수증에서_아무것도_못_읽으면_FAILED_상태이고_확정을_거부한다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def empty(request: "ai.ExtractReceiptRequest") -> "ai.ExtractReceiptResult":
+        return ai.ExtractReceiptResult(rows=())
+
+    monkeypatch.setattr("app.ai.extract_receipt", empty)
+    access_token, club_id = _owner_with_club(client)
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    upload = client.post(
+        f"/api/v1/clubs/{club_id}/receipt-imports",
+        headers=headers,
+        data={"type": "RECEIPT_IMAGE"},
+        files={"file": ("not-a-receipt.jpg", b"\xff\xd8\xff\xe0fake", "image/jpeg")},
+    )
+    assert upload.status_code == 202, upload.text
+    body = upload.json()["data"]
+    assert body["status"] == "FAILED"
+    assert body["error"]["reason"] == "UNREADABLE_RECEIPT"
+
+    job = client.get(f"/api/v1/agent-jobs/{body['jobId']}", headers=headers)
+    assert job.json()["data"]["status"] == "FAILED"
+
+    confirm = client.post(
+        f"/api/v1/clubs/{club_id}/receipt-imports/{body['id']}/confirm",
+        headers=headers,
+        json={"expectedVersion": 1},
+    )
+    assert confirm.status_code == 409
+    assert confirm.json()["error"]["code"] == "IMPORT_NOT_READY"
+
+
+async def test_영수증_모델_호출이_실패하면_FAILED_상태로_남는다(
+    client: TestClient, app_db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def failing(request: "ai.ExtractReceiptRequest") -> "ai.ExtractReceiptResult":
+        raise ai.AITimeoutError("모델 응답이 제한 시간 안에 오지 않았습니다")
+
+    monkeypatch.setattr("app.ai.extract_receipt", failing)
+    access_token, club_id = _owner_with_club(client)
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    upload = client.post(
+        f"/api/v1/clubs/{club_id}/receipt-imports",
+        headers=headers,
+        data={"type": "RECEIPT_IMAGE"},
+        files={"file": ("receipt.jpg", b"\xff\xd8\xff\xe0fake", "image/jpeg")},
+    )
+    assert upload.status_code == 202, upload.text
+    body = upload.json()["data"]
+    assert body["status"] == "FAILED"
+    assert body["error"]["reason"] == "AITimeoutError"
+
+    job = client.get(f"/api/v1/agent-jobs/{body['jobId']}", headers=headers)
+    assert job.json()["data"]["status"] == "FAILED"
+    assert job.json()["data"]["error"] == {"reason": "AITimeoutError"}
 
 
 async def test_버전이_다르면_409_VERSION_CONFLICT(

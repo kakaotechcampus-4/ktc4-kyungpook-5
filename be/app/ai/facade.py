@@ -5,7 +5,16 @@
 내부 HTTP 라우터를 만들지 않으며 기능 연결은 workflow에 위임한다.
 """
 
-from .contracts import IndexRecordRequest, IndexRecordResult, RecordDiscoveryRequest
+from .contracts import (
+    ExtractReceiptRequest,
+    ExtractReceiptResult,
+    IndexRecordRequest,
+    IndexRecordResult,
+    RecordDiscoveryRequest,
+)
+from .features.accounting.receipt_extraction import (
+    extract_receipt as extract_receipt_image,
+)
 from .features.meeting.lookup import RecordsLookup
 from .features.meeting.nodes import judge_utterance as judge_meeting_utterance
 from .features.meeting.schemas import (
@@ -25,6 +34,15 @@ async def index_record(request: IndexRecordRequest) -> IndexRecordResult:
     읽을 블록이 없으면 AIEmptyRecordError, 임베딩 호출이 실패하면 AI 오류 타입을 올린다.
     """
     return await index_record_chunks(request)
+
+
+async def extract_receipt(request: ExtractReceiptRequest) -> ExtractReceiptResult:
+    """영수증 이미지에서 지출 행을 읽는다.
+
+    영수증이 아니거나 읽을 수 없으면 빈 rows(예외 아님). 모델 호출 실패는
+    AI 오류 타입을 올린다. 읽은 rows를 저장할지·FAILED로 볼지는 BE가 정한다.
+    """
+    return await extract_receipt_image(request)
 
 
 async def search_related_records(

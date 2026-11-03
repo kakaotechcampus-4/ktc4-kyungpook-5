@@ -1,16 +1,18 @@
 """영수 내역 기록 도메인 오케스트레이션 (#133).
 
-CSV는 결정론적으로 파싱하고, 영수증 이미지는 더미 OCR(services/receipt_ocr_stub.py)로
-초안을 만든다. 이미지 OCR은 agent_jobs 작업으로 기록하지만 실제 작업 큐가 없어
+CSV는 결정론적으로 파싱하고, 영수증 이미지는 비전 입력이 되는 AI(app.ai.extract_receipt)로
+초안을 만든다(#112). 이미지 OCR은 agent_jobs 작업으로 기록하지만 실제 작업 큐가 없어
 둘 다 요청 안에서 즉시 처리한다. 나중에 큐로 옮겨도 라우터 계약은 그대로 쓸 수
 있게 서비스 함수 경계를 나눠둔다.
 """
 
+import mimetypes
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import ai
 from app.core.enums import (
     AgentJobKind,
     AgentJobStage,
@@ -36,7 +38,6 @@ from app.models.records import Record
 from app.schemas.accounting import ExpenseRowDraftIn
 from app.services import agent_job_service
 from app.services.expense_csv_parser import CsvFormatError, parse_expense_csv
-from app.services.receipt_ocr_stub import extract_receipt
 
 
 async def create_expense(
@@ -224,24 +225,76 @@ async def create_receipt_import(
         )
         receipt_import.job_id = job.id
         agent_job_service.start(session, job, AgentJobStage.OCR)
-        extracted_rows = extract_receipt(file_bytes)
-        agent_job_service.succeed(session, job, {"receiptImportId": receipt_import.id})
-        for row_no, extracted in enumerate(extracted_rows, start=1):
+        job_id = job.id
+        receipt_import_id = receipt_import.id
+        mime_type = mimetypes.guess_type(file_name)[0] or "image/jpeg"
+        # 모델 호출(비전 입력) 동안 DB 트랜잭션/연결을 점유하지 않는다.
+        await session.commit()
+        try:
+            result = await ai.extract_receipt(
+                ai.ExtractReceiptRequest(
+                    file_name=file_name, mime_type=mime_type, image_bytes=file_bytes,
+                )
+            )
+        except ai.AIError as error:
+            return await _fail_receipt_import(
+                session, club_id=club_id, job_id=job_id, receipt_import_id=receipt_import_id,
+                reason=type(error).__name__,
+                message="영수증을 읽지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            )
+        if not result.rows:
+            return await _fail_receipt_import(
+                session, club_id=club_id, job_id=job_id, receipt_import_id=receipt_import_id,
+                reason="UNREADABLE_RECEIPT",
+                message="영수증에서 지출 내용을 읽지 못했습니다.",
+            )
+
+        job = await agent_job_service.get_job(session, job_id=job_id)
+        agent_job_service.succeed(session, job, {"receiptImportId": receipt_import_id})
+        receipt_import = await session.get(ReceiptImport, receipt_import_id)
+        for row_no, extracted in enumerate(result.rows, start=1):
             session.add(
                 ReceiptImportRow(
-                    receipt_import_id=receipt_import.id,
+                    receipt_import_id=receipt_import_id,
                     row_no=row_no,
-                    spent_at=extracted.spent_at,
+                    spent_at=(
+                        datetime.combine(extracted.spent_at, datetime.min.time(), tzinfo=UTC)
+                        if extracted.spent_at is not None else None
+                    ),
                     merchant=extracted.merchant,
                     amount=extracted.amount,
                     category=extracted.category,
                     description=extracted.description,
-                    raw_fields=extracted.raw_fields,
-                    field_confidence=extracted.field_confidence or None,
+                    raw_fields=None,
+                    field_confidence={
+                        field: (1.0 if value is not None else 0.0)
+                        for field, value in (
+                            ("spent_at", extracted.spent_at),
+                            ("merchant", extracted.merchant),
+                            ("amount", extracted.amount),
+                            ("category", extracted.category),
+                            ("description", extracted.description),
+                        )
+                    },
                 )
             )
 
     receipt_import.status = ReceiptImportStatus.NEEDS_REVIEW
+    await session.commit()
+    await session.refresh(receipt_import, attribute_names=["rows"])
+    return receipt_import
+
+
+async def _fail_receipt_import(
+    session: AsyncSession, *, club_id: str, job_id: str, receipt_import_id: str,
+    reason: str, message: str,
+) -> ReceiptImport:
+    """영수증 추출 실패(모델 오류·읽을 수 없는 이미지)를 작업·가져오기 둘 다에 남긴다."""
+    job = await agent_job_service.get_job(session, job_id=job_id)
+    agent_job_service.fail(session, job, {"reason": reason})
+    receipt_import = await get_receipt_import(session, club_id=club_id, import_id=receipt_import_id)
+    receipt_import.status = ReceiptImportStatus.FAILED
+    receipt_import.error = {"reason": reason, "message": message}
     await session.commit()
     await session.refresh(receipt_import, attribute_names=["rows"])
     return receipt_import

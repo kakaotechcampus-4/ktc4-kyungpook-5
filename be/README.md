@@ -5,7 +5,8 @@
 회의 판단은 최신 AI의 `judge_utterance(request, records=...)`와 결합해야 합니다.
 독립 후보 추출 계약과 실제 공급자 설정이 없으면 해당 기능의 실패를 명시합니다.
 실행·API·상태·검증 범위는 [회의 베타 연결](docs/meeting-beta.md)과 [WS 계약](docs/meeting-audio.md)을 보세요.
-기존 test-support/HTTP STT·Discord 처리의 개발 fixture와 OCR 더미는 실연동이 아닙니다.
+기존 test-support/HTTP STT·Discord 처리의 개발 fixture는 실연동이 아닙니다. 영수증 OCR은
+비전 입력이 되는 AI(`app.ai.extract_receipt`)로 실제 연동됐습니다(#112).
 행사(`/events`) 조회·계획 확정·행동 처리와 P1·P2 계획 API도 실제 DB로 동작합니다 (#41, #187). 단계 수정·재배열은 아직 없습니다.
 모델 확정 내역과 그 근거는 [BE 스키마 검토안](../docs/week6/be/운영해_BE_스키마_검토안.md)에 있습니다.
 
@@ -111,7 +112,7 @@ be/
 │   │   ├── event_rules.py     # 참가비·환불·정산 계산 순수함수 (규칙 엔진, NF1)
 │   │   ├── record_service.py
 │   │   ├── record_parser.py   # 기록 원본(PDF·CSV·XLSX) → parse_result
-│   │   ├── accounting_service.py · expense_csv_parser.py · receipt_ocr_stub.py
+│   │   ├── accounting_service.py · expense_csv_parser.py
 │   │   ├── meeting_service.py · meeting_stt_stub.py · meeting_judge_stub.py
 │   │   ├── context_service.py      # Jev 판단 작업·판단 기록·할 일 후보 생성
 │   │   ├── context_tools_stub.py   # 기록 검색·문장 생성·Discord 할 일 도출 더미
@@ -321,7 +322,8 @@ TEST_MODE=true uv run python scripts/run_dev.py   # macOS/Linux는 TEST_MODE=tru
 - `/test-support/*`(전사 주입, Discord FIXTURE 연결·이벤트 주입, 카카오 우회)는 `TEST_MODE=true`일 때만 등록됩니다.
 - 이메일 인증·초대 토큰은 메일 대신 서버 콘솔에 찍힙니다(#131).
 - curl이 쓰는 fixture는 `be/pm-tests/fixtures/`(`expense-valid.csv` 2행 32000원, `meeting-rules.csv` 회칙)에 있습니다.
-  영수증 이미지·회의 음성 파일은 저장소에 없으니 아무 파일이나 지정하면 됩니다(내용을 읽지 않는 더미 처리).
+  회의 음성 파일은 저장소에 없으니 아무 파일이나 지정하면 됩니다(내용을 읽지 않는 더미 처리). 영수증 이미지는
+  실제 AI가 읽으므로(#112) 진짜 영수증 사진을 올려야 지출 행이 제대로 나옵니다.
 - 업로드 파일은 `STORAGE_DIR`(기본 `./var/storage`)에 저장됩니다.
 
 202로 접수하는 작업(OCR·STT·판단·Discord sync)은 실제 작업 큐가 없어 **요청 안에서 바로 처리**합니다. 응답을 받은
@@ -330,7 +332,6 @@ TEST_MODE=true uv run python scripts/run_dev.py   # macOS/Linux는 TEST_MODE=tru
 
 | 더미 | 동작 |
 | --- | --- |
-| 영수증 OCR (`receipt_ocr_stub.py`) | 파일 해시로 금액을 정한 한 행 초안 |
 | 회의 STT (`meeting_stt_stub.py`) | "(더미 전사) N번 음성 청크 …" 문장. 음성 내용은 읽지 않으므로 Jev 판단은 NONE |
 | Jev 판단 (`meeting_judge_stub.py`) | 물음표 → RAG, "바꿔/써/정리해 주세요" 등 → LLM, 그 외 NONE |
 | 기록 검색 (`context_tools_stub.py`) | 동아리 기록 `parse_result` 블록을 글자 2-gram 겹침으로 찾아 실제 `recordId`·위치를 인용 |

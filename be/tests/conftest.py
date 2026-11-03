@@ -3,6 +3,7 @@
 import asyncio
 import os
 from collections.abc import Iterator
+from datetime import date
 from pathlib import Path
 
 import psycopg
@@ -115,6 +116,30 @@ def _default_index_record(
         )
 
     monkeypatch.setattr("app.ai.index_record", fake)
+
+
+@pytest.fixture(autouse=True)
+def _default_extract_receipt(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """영수증 업로드가 성공하면 app.ai.extract_receipt를 부른다. 실제 비전 호출은
+    비용·시간이 들고 AI_API_KEY가 필요해, 전역 기본값을 고정해둔다. 추출 내용
+    자체를 검증하는 테스트는 각자 monkeypatch.setattr로 이 기본값을 덮어쓴다.
+    `real_ai` 마커가 붙은 테스트는 진짜 비전 호출을 검증해야 해서 이 mock을 끈다."""
+    if request.node.get_closest_marker("real_ai"):
+        return
+
+    async def fake(request: "ai.ExtractReceiptRequest") -> "ai.ExtractReceiptResult":
+        return ai.ExtractReceiptResult(
+            rows=(
+                ai.ExtractedReceiptRow(
+                    spent_at=date(2026, 1, 1), merchant="테스트 가맹점", amount=10_000,
+                    category=None, description=None,
+                ),
+            )
+        )
+
+    monkeypatch.setattr("app.ai.extract_receipt", fake)
 
 
 @pytest.fixture
