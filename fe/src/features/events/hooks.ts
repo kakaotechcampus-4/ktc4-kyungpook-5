@@ -124,7 +124,7 @@ export function useResolvedActions(eventId: string | undefined) {
     queryFn: async (): Promise<ActionPage> =>
       demo
         ? (DEMO_RESOLVED[eventId!] ?? NO_ACTIONS)
-        : getEventActionPage(eventId!, 'status=APPROVED,DONE,DENIED&size=3'),
+        : getEventActionPage(eventId!, 'status=APPROVED,DONE,DENIED&excludeType=CONFIRMATION&size=3'),
     enabled: !!eventId && (demo || Boolean(userId && clubId)),
   })
 }

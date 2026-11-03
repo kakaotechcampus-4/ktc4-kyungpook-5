@@ -6,6 +6,8 @@ import { CancelConfirmModal } from '@/features/events/components/CancelConfirmMo
 import { ConfirmationList } from '@/features/events/components/ConfirmationList'
 import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
+import { OperationCases } from '@/features/events/components/OperationCases'
+import { useOperationCases } from '@/features/events/operationCasesHooks'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
 import { ReviewModal } from '@/features/events/components/ReviewModal'
 import { StepModal } from '@/features/events/components/StepModal'
@@ -27,6 +29,7 @@ import {
 } from '@/features/events/hooks'
 import type { EventAction, EventStep } from '@/features/events/types'
 import { toast } from '@/shared/lib/toast'
+import { ApiError } from '@/shared/api/types'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { ServerErrorScreen } from '@/shared/ui/StateScreen'
@@ -69,7 +72,9 @@ export default function EventDetailPage() {
   // 처리한 확인 요청. 서버 연동 전이라 화면에서만 빼 둔다.
   const [answeredIds, setAnsweredIds] = useState<string[]>([])
   const confirmationsQuery = useConfirmations(shownId)
-  const confirmations = (confirmationsQuery.data ?? []).filter((a) => !answeredIds.includes(a.id))
+  const operationCases = useOperationCases(demo ? undefined : shownId)
+  const caseActionIds = new Set((operationCases.data ?? []).flatMap((item) => item.action ? [item.action.id] : []))
+  const confirmations = (confirmationsQuery.data ?? []).filter((a) => !answeredIds.includes(a.id) && !caseActionIds.has(a.id))
 
   const run = async (operation: () => Promise<unknown>, title: string, desc?: string) => {
     try {
@@ -136,14 +141,21 @@ export default function EventDetailPage() {
     }
   }
 
+  const permissionError = [detailQuery, stepsQuery, resolvedQuery, confirmationsQuery, operationCases].some(
+    (query) => query.isError && query.error instanceof ApiError && ['UNAUTHORIZED', 'FORBIDDEN'].includes(query.error.code),
+  )
+  if (permissionError) {
+    return <ServerErrorScreen onRetry={() => { void detailQuery.refetch(); void stepsQuery.refetch(); void resolvedQuery.refetch(); void confirmationsQuery.refetch(); void operationCases.refetch() }} onHome={() => navigate('/')} />
+  }
+
   if (detailQuery.isPending) return null
-  if (detailQuery.isError) {
+  if (detailQuery.isError && detailQuery.data === undefined) {
     return <ServerErrorScreen onRetry={() => detailQuery.refetch()} onHome={() => navigate('/')} />
   }
 
   if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isPending))
     return null
-  if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isError)) {
+  if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isError && query.data === undefined)) {
     return (
       <ServerErrorScreen
         onRetry={() => {
@@ -175,6 +187,10 @@ export default function EventDetailPage() {
         )}
       </nav>
 
+      {event && (detailQuery.isError || [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isError)) && (
+        <p role="alert" className="text-failed">최신 행사 정보를 불러오지 못해 이전 내용을 표시하고 있어요. <button type="button" className="underline" onClick={() => { void detailQuery.refetch(); void stepsQuery.refetch(); void resolvedQuery.refetch(); void confirmationsQuery.refetch() }}>다시 확인</button></p>
+      )}
+
       {event ? (
         <>
           <EventHeaderCard
@@ -191,16 +207,17 @@ export default function EventDetailPage() {
               }
             }}
           />
+          {!demo && shownId && <OperationCases key={shownId} eventId={shownId} active={event.status === 'ON_GOING'} cases={operationCases.data ?? []} loading={operationCases.isPending} error={operationCases.isError} onReload={() => void operationCases.refetch()} />}
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-              <ConfirmationList
+              {(demo || operationCases.data !== undefined) && <ConfirmationList
                 actions={confirmations}
                 onResolve={(action, choice) => {
                   if (choice === 'MANUAL') setReviewing(action)
                   else void resolveConfirmation(action, choice)
                 }}
                 readOnly={!demo && event.status !== 'ON_GOING'}
-              />
+              />}
               <ResolvedActionList
                 actions={resolved?.items ?? []}
                 totalCount={resolved?.totalCount ?? 0}
