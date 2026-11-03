@@ -216,7 +216,8 @@ def aggregate_sessions(directories) -> dict:
                 coverage=dict(timing='public_function_with_nested_spans' if common['report_version'] == 2 else 'public_function_only',
                               stage_timings=OBSERVATION_SCOPE if common['report_version'] == 2 else None,
                               model_call_attempts='wrapped_invoker_attempts' if common['report_version'] == 2 else None,
-                              http_attempts=None, token_usage=None),
+                              # 세션이 기록한 관측 범위를 그대로 옮긴다. 10-28 이전 기록은 None이다.
+                              http_attempts=None, token_usage=(common['observation_scope'] or {}).get('token_usage')),
                 groups=groups(sessions), sessions=[source(session) for session in sessions])
 
 
@@ -231,6 +232,21 @@ def render_table(summary) -> str:
         times = ['-' if group['success_ms'][key] is None else f"{group['success_ms'][key]:.3f}" for key in ('p50_ms', 'p95_ms')]
         lines.append(' | '.join(map(str, [case_id, counts['started'], counts['success'], counts['failed'],
                                          counts['pending'] + counts['interrupted'], counts['not_started'], rate, *times])))
+    def ratio(value):
+        return '-' if value['ratio'] is None else f"{value['ratio']:.1%}"
+
+    token_lines = []
+    for case_id, group in summary['groups']['measurement'].items():
+        for stage, item in ((group.get('observation') or {}).get('by_stage') or {}).items():
+            usage = item.get('usage')
+            if not usage or not usage['observed_calls']:
+                continue
+            token_lines.append(' | '.join(map(str, [
+                case_id, stage, item['calls'], usage['observed_calls'],
+                *(f"{usage['per_call'][key]['p50']:.0f}" for key in ('input_tokens', 'output_tokens')),
+                ratio(usage['reasoning_share_of_output']), ratio(usage['cached_share_of_input'])])))
+    if token_lines:
+        lines += ['', '사례 | 구간 | 호출 | 토큰 관측 | 입력 p50 | 출력 p50 | 출력 중 추론 | 입력 중 캐시', *token_lines]
     return '\n'.join(lines)
 
 
