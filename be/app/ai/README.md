@@ -89,7 +89,7 @@ be/app/ai/
 사용 기술은 Python 3.12, LangGraph, langchain-openai, Pydantic, pydantic-settings입니다.
 모델 연동은 Elice ML API의 OpenAI 호환 API와 `ChatOpenAI`를 기준으로 합니다.
 채팅 모델은 `gpt-5.6-luna`이며 모델명은 `AI_MODEL`로 전달합니다.
-회의 판단은 판단 전용 API Jev(`typesafe/jev-1.14`)로 바꾸고, luna는 Jev가 조회로 본 발화의 검색어만 만듭니다([판단 모델](docs/architecture.md#판단-모델)). 코드는 #255에서 바꾸며, 그 전까지는 luna가 판단과 검색어를 함께 맡습니다.
+회의 판단은 판단 전용 API Jev(`typesafe/jev-1.14`)로 바꾸고, luna는 Jev가 조회로 본 발화의 검색어만 만듭니다([판단 모델](docs/architecture.md#판단-모델)). Jev는 OpenAI 호환 API가 아니라서 `features/meeting/jev.py`가 httpx로 직접 부릅니다.
 게이트웨이는 모델마다 배포 주소가 달라서, 모델을 바꾸면 `AI_API_BASE_URL`도 그 모델의 주소로 바꿉니다.
 
 임베딩은 `openai/text-embedding-3-small`을 같은 게이트웨이의 별도 배포로 호출합니다.
@@ -125,6 +125,8 @@ Agent·노드에서만 `build_chat_model(reasoning={"effort": "none"})`으로 �
 | `AI_EMBEDDING_BASE_URL` | 임베딩 API 기본 주소. 채팅과 다른 배포입니다 |
 | `AI_EMBEDDING_API_KEY` | 임베딩 API 인증 키. 비우면 `AI_API_KEY`를 씁니다 |
 | `AI_EMBEDDING_MODEL` | 사용할 임베딩 모델 |
+| `JEV_BASE_URL` | 회의 판단 API Jev의 배포 주소. 뒤에 `/v1/decisions`를 붙여 부릅니다 |
+| `JEV_API_KEY` | Jev 인증 키. 모델 버전과 임계값은 코드에 고정돼 있어 환경변수로 받지 않습니다 |
 
 설정은 BE 실행 환경에서 전달하며 AI 모듈 전용 `.env`는 자동 로드하지 않습니다.
 의존성 설치와 실행은 BE에서 통합 관리합니다.

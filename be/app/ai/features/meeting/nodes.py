@@ -1,7 +1,12 @@
 """회의 발화 하나를 판단하고, 필요하면 기록을 찾아 답을 만든다.
 
-모델이 만드는 값은 needs_lookup과 query 두 칸뿐이다.
-route·question·trace는 코드가 규칙과 측정으로 채우므로 판단 지연에 영향이 없다.
+판단은 판단 전용 API Jev가 하고, 조회로 본 발화에만 luna를 불러 검색어를 받는다(#255).
+
+    발화 → Jev: 조회가 필요할 확률 ─┬ 0.35 미만 → NONE (luna를 부르지 않음)
+                                     └ 0.35 이상 → luna: 검색어 → 기록 검색 → 답
+
+모델이 만드는 값은 확률과 검색어뿐이다. route·question·trace는 코드가 채운다.
+luna가 판단과 검색어를 함께 받던 call_judge_model은 측정 스크립트와 회의 뒤 비교에 쓰려고 남긴다.
 """
 
 import asyncio
@@ -12,10 +17,18 @@ from functools import lru_cache
 from langchain_core.messages import BaseMessage
 from langchain_openai import ChatOpenAI
 
-from ...config import get_settings
 from ...errors import AIError, AIInvalidResponseError, AITimeoutError
 from ...llm import ainvoke_structured, build_chat_model
-from .context import PROMPT_VERSION, build_judge_messages, meeting_date
+from .context import (
+    JEV_MODEL,
+    JEV_THRESHOLD,
+    QUERY_PROMPT_VERSION,
+    build_judge_input,
+    build_query_messages,
+    meeting_date,
+)
+from .jev import call_jev
+from .questions import QUESTIONS_VERSION
 from .schemas import (
     JudgeOutput,
     JudgeTrace,
@@ -30,14 +43,18 @@ from .schemas import (
     ToolName,
 )
 
-# 판단 호출의 제한 시간. 빨리 끊으려는 값이 아니라 무한히 기다리지 않으려는 값이다.
+# 판단 단계(Jev 판단 + 조회일 때 검색어)의 제한 시간. 빨리 끊으려는 값이 아니라 무한히 기다리지 않으려는 값이다.
 # 늦은 답도 띄우므로(AI-MEET-06) 드물게 늦는 호출을 버리지 않게 넉넉히 둔다.
-# 측정에서 p95는 2.3초 안팎이었지만 호출 100번 중 1번꼴로 5초를 넘겼다(#114).
+# luna 판단을 잰 측정에서 p95는 2.3초 안팎이었지만 호출 100번 중 1번꼴로 5초를 넘겼다(#114).
+# Jev 경로는 조회할 말에서 p95 3.34초였다(#245).
 # 넘기면 조용히 버리지 않고 AITimeoutError로 "처리하지 못함"을 알린다.
 # 검색·답 작성의 제한 시간은 그 구간을 잰 뒤 정한다.
 JUDGE_TIMEOUT_SECONDS = 10.0
 
-Judge = Callable[[list[BaseMessage]], Awaitable[JudgeOutput]]
+# 입력 글 → 조회가 필요할 확률. 기본은 Jev(call_jev)이고 테스트에서는 가짜로 바꾼다
+Decide = Callable[[str], Awaitable[float]]
+# 검색어 지시문 → 검색어. 기본은 luna(call_query_model)
+Query = Callable[[list[BaseMessage]], Awaitable[QueryOutput]]
 
 
 @lru_cache(maxsize=1)
@@ -47,12 +64,13 @@ def get_judge_model() -> ChatOpenAI:
 
 
 async def call_judge_model(messages: list[BaseMessage]) -> JudgeOutput:
+    """luna가 판단과 검색어를 함께 낸다. 회의 판단에는 쓰지 않고 측정·비교에 쓴다(#255)"""
     return await ainvoke_structured(messages, JudgeOutput, model=get_judge_model())
 
 
 async def call_query_model(messages: list[BaseMessage]) -> QueryOutput:
-    """검색어만 받는다. 판단 전용 모델(Laya)로 바꾸면 조회로 본 발화에만 부른다(#117).
-    판단과 같은 모델·설정(추론 끔)을 써서 판단 + 검색어 호출과 지연을 견줄 수 있게 한다"""
+    """검색어만 받는다. Jev가 조회로 본 발화에만 부른다(#255).
+    luna 판단과 같은 모델·설정(추론 끔)이라 측정(#245)의 지연이 이어진다"""
     return await ainvoke_structured(messages, QueryOutput, model=get_judge_model())
 
 
@@ -61,16 +79,27 @@ async def judge_utterance(
     *,
     lookup: RecordLookup,
     progress: MeetingProgressPort | None = None,
-    judge: Judge = call_judge_model,
+    decide: Decide | None = None,
+    query: Query | None = None,
 ) -> JudgeUtteranceResult:
-    """발화 하나를 판단한다. 테스트에서는 `judge`를 가짜로 바꾼다.
+    """발화 하나를 판단한다. 테스트에서는 `decide`·`query`를 가짜로 바꾼다.
+
+    넘기지 않으면 Jev(call_jev)와 luna(call_query_model)를 부른다. 부를 때 이 모듈에서 찾으므로
+    BE 통합 테스트처럼 공개 경계로 들어오는 경우에도 nodes.call_jev를 바꿔 가짜로 둘 수 있다.
 
     판단·검색·답 작성이 실패하면 NONE이나 빈 결과로 바꾸지 않고 AI 오류 타입을 올린다.
     올리는 오류의 `trace`에는 실패하기 전까지의 판단 기록을 담는다(#117).
     """
     run = _Run()
     try:
-        return await _judge(request, run, lookup=lookup, progress=progress, judge=judge)
+        return await _judge(
+            request,
+            run,
+            lookup=lookup,
+            progress=progress,
+            decide=decide or call_jev,
+            query=query or call_query_model,
+        )
     except AIError as error:
         error.trace = run.trace()
         raise
@@ -85,8 +114,8 @@ class _Run:
 
     def trace(self) -> JudgeTrace:
         return JudgeTrace(
-            model=get_settings().model,
-            prompt_version=PROMPT_VERSION,
+            model=JEV_MODEL,
+            prompt_version=QUESTIONS_VERSION,
             judge_ms=self.judge_ms,
             tool_calls=tuple(self.tool_calls),
         )
@@ -98,6 +127,7 @@ class _Run:
         call: Awaitable[T],
         count: Callable[[T], int] | None = None,
         prompt_version: str | None = None,
+        probability: Callable[[T], float] | None = None,
     ) -> T:
         """도구를 부르고 결과와 걸린 시간을 남긴다. 실패해도 남기고 오류는 그대로 올린다"""
         started = time.perf_counter()
@@ -123,6 +153,7 @@ class _Run:
                 duration_ms=_elapsed_ms(started),
                 result_count=count(value) if count else None,
                 prompt_version=prompt_version,
+                probability=probability(value) if probability else None,
             )
         )
         return value
@@ -134,7 +165,8 @@ async def _judge(
     *,
     lookup: RecordLookup,
     progress: MeetingProgressPort | None,
-    judge: Judge,
+    decide: Decide,
+    query: Query,
 ) -> JudgeUtteranceResult:
     utterance_id = request.utterance.utterance_id
 
@@ -142,19 +174,32 @@ async def _judge(
         if progress is not None:
             await progress.stage_changed(utterance_id, name)
 
+    said = request.utterance.text
     await stage("JUDGING")
     started = time.perf_counter()
     try:
         async with asyncio.timeout(JUDGE_TIMEOUT_SECONDS):
-            output = await judge(build_judge_messages(request))
+            probability = await run.call_tool(
+                "judge.decide", said, decide(build_judge_input(request)), probability=float
+            )
+            needs_lookup = probability >= JEV_THRESHOLD
+            searched_for = ""
+            if needs_lookup:
+                # Jev는 문장을 만들지 못하므로 조회로 본 발화에만 luna에게 검색어를 받는다
+                output = await run.call_tool(
+                    "llm.generate",
+                    said,
+                    query(build_query_messages(request)),
+                    prompt_version=QUERY_PROMPT_VERSION,
+                )
+                searched_for = output.query.strip()
     except TimeoutError as error:
         raise AITimeoutError("회의 판단이 제한 시간 안에 끝나지 않았습니다") from error
     finally:
         # 실패해도 실패할 때까지 걸린 시간을 남긴다
         run.judge_ms = _elapsed_ms(started)
 
-    query = output.query.strip()
-    if output.needs_lookup and not query:
+    if needs_lookup and not searched_for:
         # 조회가 필요하다면서 검색어가 없으면 찾을 수 없다. NONE으로 바꾸면 놓친 질문이 된다
         raise AIInvalidResponseError("조회가 필요하다는 판단에 검색어가 없습니다")
 
@@ -166,29 +211,28 @@ async def _judge(
             **fields,
         )
 
-    if not output.needs_lookup:
-        # needs_lookup이 false면 모델이 검색어를 적어 와도 쓰지 않는다
+    if not needs_lookup:
         return result(route="NONE", kind="NO_LOOKUP")
 
-    # 검색어는 판단이 이미 정리했으므로 그대로 찾는다. 기준일은 회의 날짜다
+    # 검색어는 이미 정리했으므로 그대로 찾는다. 기준일은 회의 날짜다
     search = MeetingSearchRequest(
-        club_id=request.club_id, query=query, today=meeting_date(request),
+        club_id=request.club_id, query=searched_for, today=meeting_date(request),
         original_question=request.utterance.text,
     )
     await stage("SEARCHING")
-    chunks = await run.call_tool("records.search", query, lookup.search(search), count=len)
+    chunks = await run.call_tool("records.search", searched_for, lookup.search(search), count=len)
     if not chunks:
-        return result(route="RAG", kind="NOT_FOUND", question=query)
+        return result(route="RAG", kind="NOT_FOUND", question=searched_for)
 
     await stage("ANSWERING")
     answer = await run.call_tool(
         "llm.generate",
-        query,
+        searched_for,
         lookup.answer(search, chunks),
         prompt_version=lookup.answer_prompt_version,
     )
     if answer is None:
-        return result(route="RAG", kind="NOT_FOUND", question=query)
+        return result(route="RAG", kind="NOT_FOUND", question=searched_for)
 
     found = {chunk.source for chunk in chunks}
     if any(source not in found for source in answer.sources):
@@ -197,7 +241,7 @@ async def _judge(
     return result(
         route="RAG",
         kind="ANSWER",
-        question=query,
+        question=searched_for,
         answer=answer.answer,
         sources=answer.sources,
     )

@@ -18,12 +18,13 @@ luna·Laya와 같은 문항을 같은 입력 글과 같은 판단 질문으로 �
   같은 확률이 나왔는지와 정한 임계값에서 조회·아님이 뒤집힌 문항을 낸다. Jev는 같은 입력에도 확률이 조금씩 다르다.
   지연은 모든 회차의 호출 시간이고, 노트북에서 인터넷을 거쳐 잰 값이다
 - 발화를 하나씩 차례로 부른다. 회의 중처럼 호출 하나의 지연을 보려는 것이다
-- JEV_BASE_URL·JEV_API_KEY는 --env-file(기본 be/.env)에서 읽고 키는 출력하지 않는다
+- JEV_BASE_URL·JEV_API_KEY는 서버와 같은 설정(config.JevSettings)으로 --env-file(기본 be/.env)에서 읽고, 키는 출력하지 않는다.
+  프로세스 환경변수가 있으면 그것을 먼저 쓴다
+- 모델과 기본 임계값은 서버의 회의 판단과 같은 값(context.JEV_MODEL, JEV_THRESHOLD)이다
 """
 
 import argparse
 import json
-import os
 import sys
 import time
 from datetime import datetime
@@ -31,9 +32,15 @@ from pathlib import Path
 from statistics import mean, median, quantiles
 
 import httpx
-from dotenv import dotenv_values
 
-from app.ai.features.meeting.context import MEETING_TIMEZONE, build_judge_input
+from app.ai.config import JevSettings, jev_decisions_url
+from app.ai.errors import AIConfigError
+from app.ai.features.meeting.context import (
+    JEV_MODEL,
+    JEV_THRESHOLD,
+    MEETING_TIMEZONE,
+    build_judge_input,
+)
 from app.ai.features.meeting.questions import (
     QUESTIONS_VERSION,
     RECORD_LOOKUP,
@@ -50,8 +57,8 @@ from app.ai.scripts.check_meeting_judge import (
     threshold_sweep,
 )
 
-MODEL = "typesafe/jev-1.14"
-THRESHOLD = 0.5
+MODEL = JEV_MODEL
+THRESHOLD = JEV_THRESHOLD
 # 확률이 0.01 단위로 오므로 임계값도 0.01 간격으로 본다
 SWEEP = tuple(round(0.01 * i, 2) for i in range(1, 100))
 # 회의 판단의 제한 시간(features/meeting/nodes.py JUDGE_TIMEOUT_SECONDS)과 같다
@@ -64,8 +71,7 @@ class JevClient:
     """POST /v1/decisions 한 번에 판단 하나. OpenAI SDK에는 이 메서드가 없어 HTTP로 직접 부른다"""
 
     def __init__(self, base_url: str, api_key: str, model: str, timeout: float):
-        base = base_url.rstrip("/")
-        self.url = base + ("/decisions" if base.endswith("/v1") else "/v1/decisions")
+        self.url = jev_decisions_url(base_url)
         self.model = model
         self.http = httpx.Client(headers={"Authorization": f"Bearer {api_key}"}, timeout=timeout)
 
@@ -210,11 +216,13 @@ def main() -> int:
         parser.error("임계값은 0과 1 사이다")
     args.sweep = tuple(sorted(set(args.sweep)))
 
-    # 프로세스 환경변수가 있으면 그것을 먼저 쓴다
-    env = {**dotenv_values(args.env_file), **{k: v for k, v in os.environ.items() if k.startswith("JEV_")}}
-    if not env.get("JEV_BASE_URL") or not env.get("JEV_API_KEY"):
-        parser.error(f"JEV_BASE_URL·JEV_API_KEY가 {args.env_file}에 없다")
-    client = JevClient(env["JEV_BASE_URL"], env["JEV_API_KEY"], args.model, args.timeout)
+    # 서버와 같은 설정으로 읽는다. 프로세스 환경변수가 있으면 그것을 먼저 쓴다
+    settings = JevSettings(_env_file=args.env_file)
+    try:
+        settings.require()
+    except AIConfigError as error:
+        parser.error(f"{error} ({args.env_file})")
+    client = JevClient(settings.base_url, settings.api_key.get_secret_value(), args.model, args.timeout)
 
     # eval_retrieval은 불러올 때 be/.env를 덮어 읽는다. 테스트가 이 파일을 불러와도 환경을 바꾸지 않게 여기서 불러온다
     from app.ai.scripts.eval_retrieval import _git

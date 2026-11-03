@@ -20,8 +20,14 @@ MEETING_CONTEXT_UTTERANCES = 4
 # prompts/judge.md를 바꾸면 올린다. 판단 기록(trace)에 남아 바뀌기 전후를 나눠 본다
 PROMPT_VERSION = "meeting-judge-v6"
 
-# prompts/query.md를 바꾸면 올린다. 판단 전용 모델(Laya)이 조회로 본 발화에 검색어만 받는 지시문이다(#117)
+# prompts/query.md를 바꾸면 올린다. 판단 전용 모델(Jev)이 조회로 본 발화에 검색어만 받는 지시문이다(#117, #255)
 QUERY_PROMPT_VERSION = "meeting-query-v1"
+
+# 회의 판단 모델 (#255). 둘 다 #245에서 잰 값이라 환경변수로 받지 않고 코드에 고정한다.
+# 버전을 고정해 부른다. 버전이 바뀌면 같은 입력의 확률도 달라질 수 있어 평가 세트로 다시 잰 뒤 올린다
+JEV_MODEL = "typesafe/jev-1.14"
+# 조회가 필요할 확률이 이 값 이상이면 조회로 본다. 개발용 151건에서 기준에 닿은 구간 0.28~0.42의 가운데다
+JEV_THRESHOLD = 0.35
 
 # "작년"을 연도로 풀 때 쓰는 회의 날짜의 기준. 발화 시각은 UTC로 올 수 있다
 MEETING_TIMEZONE = ZoneInfo("Asia/Seoul")

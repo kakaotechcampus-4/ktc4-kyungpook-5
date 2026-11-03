@@ -136,7 +136,7 @@ BE는 행사 변화를 감지해 해당 행사 Agent에 신호로 전달합니�
 
 ### 판단 모델
 
-판단은 판단 전용 API **Jev**(`typesafe/jev-1.14`, TypeSafe)로 합니다. Jev는 문장을 만들지 않고, 입력 글과 판단 질문을 받아 "조회가 필요할 확률"(0~1)만 돌려줍니다. 확률이 임계값 0.35 이상인 발화에만 `gpt-5.6-luna`를 불러 검색어를 받습니다. 코드는 #255에서 바꾸며, 그 전까지 운영에서는 luna가 판단과 검색어를 한 번에 받습니다.
+판단은 판단 전용 API **Jev**(`typesafe/jev-1.14`, TypeSafe)로 합니다. Jev는 문장을 만들지 않고, 입력 글과 판단 질문을 받아 "조회가 필요할 확률"(0~1)만 돌려줍니다. 확률이 임계값 0.35 이상인 발화에만 `gpt-5.6-luna`를 불러 검색어를 받습니다. 코드는 `features/meeting/nodes.py`(흐름)와 `features/meeting/jev.py`(Jev 호출)에 있습니다.
 
 ```text
 "회칙에 수익금은 동아리 통장으로 넣어야 된다고 돼 있죠?"
@@ -161,7 +161,13 @@ BE는 행사 변화를 감지해 해당 행사 Agent에 신호로 전달합니�
 - **실패하면 지금과 같이 AI 오류로 올립니다.** 판단 호출이 10초를 넘기면 `AITimeoutError`로 "처리하지 못함"을 알립니다. Jev가 실패했을 때 luna로 대신 판단하지 않습니다. Jev와 luna는 같은 게이트웨이(ML API)를 거치므로 게이트웨이가 멈추면 함께 멈추고, 두 갈래를 두면 작업과 테스트가 두 배로 늘기 때문입니다. 되돌려야 하면 바꾼 PR을 되돌립니다.
 - **luna와는 회의 뒤에 견줍니다.** 판단 기록에는 그때 판단에 넘긴 요청(`judge_input`, #241)이 남습니다. 회의가 끝난 뒤 같은 입력을 luna로 다시 판단할 수 있어서, 실시간으로 luna를 함께 부르지 않습니다. 그래서 luna 판단 코드와 프롬프트(`features/meeting/prompts/judge.md`, `meeting-judge-v6`)는 지우지 않습니다. 측정 스크립트도 이 코드를 씁니다.
 - **문구는 버전으로 관리합니다.** 판단 질문(`QUESTIONS_VERSION`), 검색어 프롬프트(`features/meeting/prompts/query.md`, `QUERY_PROMPT_VERSION`), luna 판단 프롬프트(`judge.md`, `PROMPT_VERSION`)는 원문을 고치면 버전을 올려야 테스트가 통과합니다. 버전은 판단 기록에 남아 바뀌기 전후를 나눠 볼 수 있습니다.
-- **판단 기록에는 Jev 모델, 질문 문구와 검색어 프롬프트 버전, Jev가 낸 확률을 남깁니다.** 확률을 BE의 어느 칸에 담을지는 #255에서 BE와 정합니다. 조회 여부(`route`), 무엇을 물었는지(`question`), 판단 기록(`trace`)은 지금처럼 모델이 아니라 코드가 채웁니다.
+- **판단 기록에는 Jev 모델, 질문 문구와 검색어 프롬프트 버전, Jev가 낸 확률을 남깁니다.** 판단 호출은 `tool_calls`의 첫 줄(`judge.decide`)로 남고 확률은 그 줄의 `probability`에 들어갑니다. BE가 `tool_calls`를 JSON 그대로 저장하므로 DB는 바꾸지 않았습니다. 확률을 남겨 두면 임계값을 바꿨을 때 판단이 어떻게 달라지는지 회의 뒤에 다시 셀 수 있습니다. 조회 여부(`route`), 무엇을 물었는지(`question`), 판단 기록(`trace`)은 모델이 아니라 코드가 채웁니다([BE-AI 데이터 계약](contracts.md#판단-기록--route-source_version-trace)).
+
+  ```text
+  "부족한 건 지원금이랑 2월 회비에서 메우자."  → tool_calls: judge.decide (p=0.12)
+  "회칙에 수익금은 … 돼 있죠?"                 → tool_calls: judge.decide (p=0.89) → llm.generate (meeting-query-v1)
+                                                   → records.search → llm.generate (답 작성)
+  ```
 
 #### 어떻게 Jev로 정했나
 

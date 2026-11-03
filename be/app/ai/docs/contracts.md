@@ -125,23 +125,25 @@ class JudgeUtteranceRequest(ContractModel):
 
 
 class ToolCall(ContractModel):
-    """판단 뒤 AI가 실제로 부른 도구 하나"""
+    """발화 하나를 처리하며 AI가 실제로 부른 도구 하나"""
 
-    tool: Literal["records.search", "llm.generate"]
-    input: str                       # 예: 검색어 "2025 봄 MT 숙소비"
+    # judge.decide: 판단(Jev), records.search: 기록 검색, llm.generate: 검색어 만들기·답 작성
+    tool: Literal["judge.decide", "records.search", "llm.generate"]
+    input: str                       # 판단·검색어 만들기는 방금 발화, 검색·답 작성은 검색어 "2025 봄 MT 숙소비"
     status: Literal["OK", "FAILED", "TIMEOUT"]
     duration_ms: int
     result_count: int | None = None  # records.search일 때 찾은 조각 수
-    prompt_version: str | None = None  # llm.generate일 때 그 호출의 프롬프트 버전. 예: "records-assess-v1+meeting-assess-v2"
+    prompt_version: str | None = None  # llm.generate일 때 그 호출의 프롬프트 버전. 예: "meeting-query-v1", "records-assess-v1+meeting-assess-v2"
+    probability: float | None = None   # judge.decide일 때 Jev가 낸 조회가 필요할 확률(0~1)
 
 
 class JudgeTrace(ContractModel):
     """이 판단을 누가, 어떤 지시로 내렸고 무엇을 했는지. BE가 판단 기록으로 저장한다"""
 
-    model: str                       # 예: "gpt-5.6-luna". Laya·Jev로 바꾸면 그 이름
-    prompt_version: str              # 예: "meeting-judge-v6"
-    judge_ms: int                    # 판단(과 검색어) 호출에 걸린 시간
-    tool_calls: tuple[ToolCall, ...] = ()   # NONE이면 비어 있다
+    model: str                       # 판단 모델. "typesafe/jev-1.14" (코드에 고정)
+    prompt_version: str              # 판단 질문 문구의 버전. "meeting-questions-v1"
+    judge_ms: int                    # 판단 단계에 걸린 시간. 조회로 본 발화는 검색어 만들기까지 들어간다
+    tool_calls: tuple[ToolCall, ...] = ()   # 부른 순서대로. 판단(judge.decide)이 늘 처음이고, NONE이면 그것 하나다
 
 
 class JudgeUtteranceResult(ContractModel):
@@ -183,7 +185,7 @@ async def judge_utterance(
 대화가 넘어간 뒤에 떠도, 질문을 고쳐 답이 두 개 떠도 어느 답이 어느 질문에 대한 것인지 구분된다(AI-MEET-06).
 `question`은 검색어 구성 단계가 만든 검색어를 그대로 쓴다.
 앞 발화로 "그때" 같은 지시어를 풀어 만든 값이라, 따로 호출하지 않아도 Whisper 원문보다 무엇을 물었는지 잘 드러난다.
-`question`은 판단이 아니라 검색어에 묶여 있다. 판단을 판단 전용 모델 Jev로 바꿔도 검색어는 LLM(luna)이 만들므로([판단 모델](architecture.md#판단-모델)), 그 단계가 만든 검색어를 그대로 쓰면 된다. Jev로 바꾸기 전(#255)에는 판단과 검색어를 한 호출에서 받는다.
+`question`은 판단이 아니라 검색어에 묶여 있다. 판단은 판단 전용 모델 Jev가 하고 검색어는 Jev가 조회로 본 발화에만 LLM(luna)이 만들므로([판단 모델](architecture.md#판단-모델)), 그 단계가 만든 검색어를 그대로 쓰면 된다.
 검색어에 오인식이 남거나 화면에 띄우기 어색하면, 검색어 출력에 필드를 더하지 않고 답을 만들 때 다시 쓴다. 출력 필드가 늘면 지연이 바로 늘기 때문이다([측정 기록](meeting-evaluation.md)).
 
 ```text
@@ -234,10 +236,12 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
   "answer": "2025 봄 MT 숙박비 550,000원",
   "sources": [{"record_id": "r-12", "file_name": "2025 봄 MT 결과보고", "location": {"label": "2쪽 · 2. 예산"}}],
   "trace": {
-    "model": "gpt-5.6-luna",
-    "prompt_version": "meeting-judge-v5",
-    "judge_ms": 1480,
+    "model": "typesafe/jev-1.14",
+    "prompt_version": "meeting-questions-v1",
+    "judge_ms": 2610,
     "tool_calls": [
+      {"tool": "judge.decide", "input": "그때 숙소비 얼마였지?", "status": "OK", "duration_ms": 520, "probability": 0.83},
+      {"tool": "llm.generate", "input": "그때 숙소비 얼마였지?", "status": "OK", "duration_ms": 2090, "prompt_version": "meeting-query-v1"},
       {"tool": "records.search", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 480, "result_count": 5},
       {"tool": "llm.generate", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 3490, "prompt_version": "records-assess-v1"}
     ]
@@ -249,13 +253,15 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 | --- | --- | --- |
 | `source_version` | 전사가 나중에 고쳐지면, 옛 버전으로 내린 판단을 BE가 가려낸다(STALE) | 1번 버전 "회측"으로 판단 → 2번 버전 "회칙"으로 고쳐짐 → 1번 판단은 지난 것 |
 | `route` | 무슨 종류의 처리였는지 화면과 통계에서 본다 | "이번 회의에서 RAG 7번, NONE 120번" |
-| `trace.tool_calls` | 답이 틀리거나 늦을 때 어느 단계가 원인인지 찾는다 | 6초 걸림 → 검색 0.4초, 답 작성 5.5초 |
-| `trace.model`, `prompt_version` | 모델·프롬프트를 바꾼 전후를 나눠 비교하고, 학습 데이터를 고른다(#117) | v3a와 v4의 오탐률 비교 |
+| `trace.tool_calls` | 답이 틀리거나 늦을 때 어느 단계가 원인인지 찾는다 | 6초 걸림 → 판단 0.5초, 검색어 2.1초, 검색 0.4초, 답 작성 3.0초 |
+| `tool_calls[].probability` | 임계값(0.35)을 바꾸면 판단이 어떻게 달라지는지 회의 뒤에 다시 센다. 0.35 근처에서 떴다 안 떴다 한 말을 찾는다 | "0.30으로 내리면 이 회의에서 카드가 3장 더 뜬다" |
+| `trace.model`, `prompt_version` | 모델·질문 문구를 바꾼 전후를 나눠 비교하고, 학습 데이터를 고른다(#117) | `meeting-questions-v1`과 v2의 놓침 비교 |
 | `tool_calls[].prompt_version` | 답을 쓴 근거 판단 지시문이 바뀐 전후를 나눠 본다 | `records-assess-v1`과 v2의 "기록에 없음" 비율 비교 |
 
 - **BE는 판단에 넘긴 요청도 함께 저장한다(#241).** 판단 기록의 `judge_input`에 `JudgeUtteranceRequest`를 그대로(시각은 ISO 문자열로) 남기고, `trace.judge_ms`를 `judge_ms`에 남긴다. 전사는 고치면 덮어써지므로 발화 id와 version으로는 그때 모델이 본 앞 발화를 다시 만들 수 없다. 실패한 판단은 오류의 `trace`에서 `judge_ms`를 꺼내고, `trace`가 없으면 비운다.
-- **이 값들은 모델이 만들지 않고 AI 코드가 채운다.** 버전은 받은 값을 돌려주고, 시간은 코드가 재고, 모델·프롬프트 버전은 설정값이다. 모델 출력이 늘지 않으므로 판단 지연은 그대로다.
-- **조회하지 않은 이유(`reasonCode`)는 실시간 결과에 넣지 않는다.** 이유를 모델이 출력하게 하면 판단이 느려진다. 이유 문장과 확신도를 빼서 p50이 0.65초 줄었다(#111). 이유는 검수용이므로 회의가 끝난 뒤 별도 호출로 채운다(#114, #117).
+- **이 값들은 모델이 만들지 않고 AI 코드가 채운다.** 버전은 받은 값을 돌려주고, 시간은 코드가 재고, 모델·질문 문구 버전은 코드에 고정한 값이다. 확률은 Jev 응답을 그대로 옮긴다.
+- **BE는 `tool_calls`를 JSON 그대로 저장하므로 확률을 담으려고 DB를 바꾸지 않는다(#255).** 판단 모델은 `model_version`에, 질문 문구 버전은 `policy_version`에 들어간다.
+- **조회하지 않은 이유(`reasonCode`)는 실시간 결과에 넣지 않는다.** 판단 모델은 확률만 내고, luna로 판단할 때도 이유를 출력하게 하면 판단이 느려졌다. 이유 문장과 확신도를 빼서 p50이 0.65초 줄었다(#111). 이유는 검수용이므로 회의가 끝난 뒤 별도 호출로 채운다(#114, #117).
   값은 아래 일곱 중 하나이고 `route`가 `NONE`일 때만 채운다. `RAG`면 검색어가 곧 이유라 비운다. 기준은 `features/meeting/schemas.py`의 `ReasonCode`다.
 
   | 값 | 뜻 | 예 |
@@ -276,7 +282,7 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 화면의 진행 표시에 지금 어느 단계인지 보여줄 수 있도록, AI는 단계가 바뀔 때 `progress.stage_changed`를 부른다. 넘기지 않으면 알리지 않는다.
 
 ```text
-발화 u-31  JUDGING   판단과 검색어 구성
+발화 u-31  JUDGING   판단(Jev)과 검색어 구성(조회일 때 luna)
            SEARCHING 기록 검색          ← 조회가 필요할 때만
            ANSWERING 답 작성            ← 근거를 찾았을 때만
            (결과 반환)
@@ -324,10 +330,13 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 
   | 실패한 곳 | 오류 | `trace` |
   | --- | --- | --- |
-  | 판단 시간 초과 | `AITimeoutError` | `judge_ms` 약 10000, `tool_calls` 없음 |
-  | 판단 응답이 형식에 맞지 않음 | `AIInvalidResponseError` | `tool_calls` 없음 |
-  | 기록 검색 | 검색이 올린 오류 | `records.search`가 `FAILED` 또는 `TIMEOUT` |
-  | 답 작성 | 답 작성이 올린 오류 | `records.search`는 `OK`, `llm.generate`가 `FAILED` 또는 `TIMEOUT` |
+  | 판단 단계 시간 초과 (Jev와 검색어 호출을 합쳐 10초) | `AITimeoutError` | `judge_ms` 약 10000. 끝난 호출만 남는다 |
+  | Jev 호출 | 연결·429·5xx는 `AIRetryableError`, 키·주소는 `AIConfigError`, 확률이 없으면 `AIInvalidResponseError` | `judge.decide`가 `FAILED` 또는 `TIMEOUT` |
+  | 검색어 호출 | 모델 호출 오류. 검색어가 비면 `AIInvalidResponseError` | `judge.decide`는 `OK`, `llm.generate`(`meeting-query-v1`)가 `FAILED` 또는 `TIMEOUT` |
+  | 기록 검색 | 검색이 올린 오류 | 앞의 두 줄 다음 `records.search`가 `FAILED` 또는 `TIMEOUT` |
+  | 답 작성 | 답 작성이 올린 오류 | `records.search`는 `OK`, 마지막 `llm.generate`가 `FAILED` 또는 `TIMEOUT` |
+
+  Jev가 실패해도 luna로 대신 판단하지 않는다. 두 모델이 같은 게이트웨이를 거쳐 함께 멈추기 때문이다([판단 모델](architecture.md#판단-모델)).
 
   예상하지 못한 예외(`AIError`가 아닌 것)는 `trace` 없이 그대로 올라간다. BE는 서버 오류로 처리한다.
 - 운영진이 직접 다시 판단을 요청하면 같은 요청으로 다시 부를 수 있다. 회의를 멈추지 않으므로 자동 재시도와 다르다. 이전 실패 기록은 BE가 남긴다.
@@ -343,7 +352,6 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 
 - port 주입 방식. 초안은 키워드 인자로 받는다. BE의 AI 초기화 방식과 맞춘다.
 - 판단 기록의 보관 기간(#117). 저장하는 값은 위 "판단 기록"과 "비동기와 실패"로 정했다. `judge_input`에 전사 원문이 복사되므로 회의·전사를 지울 때 함께 지울지도 같이 정한다.
-- 판단을 Jev로 바꾼 뒤(#255) Jev가 낸 확률과 질문 문구 버전을 판단 기록의 어느 칸에 담을지. 지금 칸(`model_version`, `policy_version`, `tool_calls`)으로 담을 수 있으면 DB를 바꾸지 않는다.
 - 처리 단계를 화면에 보여줄지(FE), `progress`를 넘기는 방식.
 - 제한 시간 값. 회의 설정(근거 판단 추론 끔)의 기록 검색은 p50 2.52초, p95 3.78초였다([측정 기록](meeting-evaluation.md)). 판단부터 답까지 한 번에 잰 뒤 정한다.
 - 답 카드의 길이. 사실이 여러 개면 한 줄씩 늘어나 4줄 이상인 답이 약 39개 중 7~9개였다. 화면에서 접어 보여줄지(FE)와 함께 정한다.
