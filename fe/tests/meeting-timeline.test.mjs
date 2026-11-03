@@ -13,7 +13,7 @@ const source = await readFile(
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 })
-const { reconcileTimeline, sourceOf, transcriptTime, visibleDecision, meetingAnswers, latestTranscriptStatus, meetingMicStatus, meetingAudioVisible, meetingToriVisible } = await import(
+const { reconcileTimeline, sourceOf, transcriptTime, visibleDecision, meetingAnswers, meetingWhen, clockTime, latestTranscriptStatus, meetingMicStatus, meetingAudioVisible, meetingToriVisible } = await import(
   `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
 )
 
@@ -190,4 +190,14 @@ test('audio and Tori remain mounted until WebSocket processing ends even when DB
     assert.equal(meetingAudioVisible(status, false), false)
     assert.equal(meetingToriVisible(status, false), false)
   }
+})
+
+test('meeting list rows read the Seoul start time and the meeting length', () => {
+  assert.equal(meetingWhen({ startedAt: '2026-10-27T05:12:00Z', endedAt: '2026-10-27T05:34:20Z' }), '10/27(화) 14:12 · 22분')
+  assert.equal(meetingWhen({ startedAt: '2026-10-27T05:12:00Z', endedAt: null }), '10/27(화) 14:12')
+  assert.equal(meetingWhen({ startedAt: null, endedAt: null }), '시각 미정')
+  assert.equal(clockTime('2026-10-26T15:05:00Z'), '00:05')
+  assert.equal(meetingWhen({ startedAt: 'not a date', endedAt: null }), '시각 미정', 'a bad date does not throw')
+  assert.equal(meetingWhen({ startedAt: '2026-10-27T05:12:00Z', endedAt: 'not a date' }), '10/27(화) 14:12')
+  assert.equal(clockTime('not a date'), 'not a date')
 })

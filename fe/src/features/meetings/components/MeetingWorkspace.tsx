@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
-import { Input } from '@/shared/ui/Input'
 import { Chip } from '@/shared/ui/Chip'
-import { useCreateMeeting, useMeetingData } from '../hooks'
+import { useMeetingData } from '../hooks'
 import { MeetingList } from './MeetingList'
+import { MeetingStart, type MeetingEventOption } from './MeetingStart'
 import { MeetingToriPanel } from './MeetingToriPanel'
 import type { AudioPhase } from '../audio/useMeetingAudio'
 import { meetingError } from '../errors'
@@ -24,22 +24,17 @@ export function MeetingWorkspace({
   clubId,
   meetingId,
   highlightTaskId,
-  records,
+  events,
   notifications,
 }: {
   clubId: string
   meetingId?: string
   highlightTaskId?: string
-  records: ReactNode
+  events: MeetingEventOption[]
   notifications: ReactNode
 }) {
   const [audioActive, setAudioActive] = useState(false)
   const [audioPhase, setAudioPhase] = useState<AudioPhase>('idle')
-  const [title, setTitle] = useState('')
-  const [consent, setConsent] = useState(false)
-  const [resumeId, setResumeId] = useState('')
-  const navigate = useNavigate()
-  const create = useCreateMeeting(clubId)
   const data = useMeetingData(clubId, meetingId)
   const meeting = data.meeting.data
   if (meeting && meeting.clubId !== clubId)
@@ -54,6 +49,20 @@ export function MeetingWorkspace({
           이 회의의 소속으로 열기
         </Link>
       </Card>
+    )
+  if (!meetingId)
+    return (
+      <div className="mx-auto max-w-[1040px] space-y-6">
+        <h1 className="text-h1">회의</h1>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] xl:grid-cols-[minmax(0,1fr)_400px]">
+          <MeetingStart clubId={clubId} events={events} />
+          <MeetingList clubId={clubId} />
+        </div>
+        <div className="grid items-start gap-6 border-t border-line pt-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] xl:grid-cols-[minmax(0,1fr)_400px]">
+          <ConfirmedTasks clubId={clubId} highlightTaskId={highlightTaskId} />
+          {notifications}
+        </div>
+      </div>
     )
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -91,64 +100,7 @@ export function MeetingWorkspace({
           error={data.transcripts.isError || data.decisions.isError}
           onRefresh={() => void data.refresh()}
         />
-      ) : !meetingId || meeting ? (
-        <MeetingList clubId={clubId} selectedId={meetingId} />
       ) : null}
-      {!meetingId && (
-        <Card className="p-6">
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (consent)
-                create.mutate(title.trim() || '회의', {
-                  onSuccess: (m) => navigate(`/meetings/${encodeURIComponent(m.id)}`),
-                })
-            }}
-          >
-            <Input
-              label="회의 이름"
-              placeholder="예: 가을 워크숍 준비 회의"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-              />
-              참여자에게 녹음과 전사 저장을 알리고 동의를 확인했습니다.
-            </label>
-            <Button type="submit" disabled={!consent || create.isPending}>
-              {create.isPending ? '회의 만드는 중…' : '회의 만들기'}
-            </Button>
-            {create.error && (
-              <p role="alert" className="text-failed">
-                {meetingError(create.error)}
-              </p>
-            )}
-          </form>
-          <form
-            className="mt-6 flex flex-wrap items-end gap-3 border-t border-line pt-5"
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (resumeId.trim()) navigate(`/meetings/${encodeURIComponent(resumeId.trim())}`)
-            }}
-          >
-            <div className="min-w-0 flex-1">
-              <Input
-                label="이전 회의 ID로 열기"
-                value={resumeId}
-                onChange={(e) => setResumeId(e.target.value)}
-              />
-            </div>
-            <Button type="submit" variant="secondary" disabled={!resumeId.trim()}>
-              회의 열기
-            </Button>
-          </form>
-        </Card>
-      )}
       {data.meeting.isError && (
         <Card className="p-5 text-failed" role="alert">
           {meetingError(data.meeting.error)}
@@ -221,7 +173,6 @@ export function MeetingWorkspace({
               />
             </>
           )}
-          {records}
           <ConfirmedTasks clubId={clubId} highlightTaskId={highlightTaskId} />
         </div>
         <aside id="meeting-suggestions" className="scroll-mt-24 space-y-6">

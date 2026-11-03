@@ -105,7 +105,10 @@ export function useMeetings(clubId: string, status?: Meeting['status']) {
   })
 }
 export function useCreateMeeting(clubId: string) {
-  return useMutation({ mutationFn: (title: string) => meetingsApi.create(clubId, title) })
+  return useMutation({
+    mutationFn: ({ title, eventId }: { title: string; eventId: string | null }) =>
+      meetingsApi.create(clubId, title, eventId),
+  })
 }
 export function useDecisionJobs(transcripts: Transcript[]) {
   return useQueries({

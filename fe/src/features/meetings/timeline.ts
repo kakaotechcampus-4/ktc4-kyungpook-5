@@ -59,6 +59,39 @@ export function transcriptTime(transcript: Transcript, startedAt?: string | null
   }).format(at)
 }
 
+const SEOUL_PARTS = new Intl.DateTimeFormat('ko-KR', {
+  timeZone: 'Asia/Seoul',
+  month: 'numeric',
+  day: 'numeric',
+  weekday: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+// 서버가 날짜를 잘못 주면 Intl이 에러를 던져 화면 전체가 멈춘다. 그때는 null.
+function seoulParts(iso: string) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return Object.fromEntries(SEOUL_PARTS.formatToParts(date).map((part) => [part.type, part.value]))
+}
+
+export function clockTime(iso: string) {
+  const parts = seoulParts(iso)
+  return parts ? `${parts.hour}:${parts.minute}` : iso
+}
+
+// 지난 회의 한 줄: "10/27(월) 14:12 · 22분"
+export function meetingWhen(meeting: Pick<Meeting, 'startedAt' | 'endedAt'>) {
+  const parts = meeting.startedAt ? seoulParts(meeting.startedAt) : null
+  if (!parts) return '시각 미정'
+  const start = `${parts.month}/${parts.day}(${parts.weekday}) ${parts.hour}:${parts.minute}`
+  const minutes = Math.round(
+    (Date.parse(meeting.endedAt ?? '') - Date.parse(meeting.startedAt!)) / 60000,
+  )
+  return Number.isNaN(minutes) ? start : `${start} · ${Math.max(1, minutes)}분`
+}
+
 export function answerDelay(decision: Decision, transcript: Transcript, startedAt?: string | null) {
   const at =
     startedAt && transcript.startMs != null

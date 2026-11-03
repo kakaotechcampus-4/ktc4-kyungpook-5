@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
@@ -438,6 +438,11 @@ export function ConfirmedTasks({
     queryFn: () => confirmedApi.get(clubId, highlightTaskId!),
     enabled: !!highlightTaskId,
   })
+  // A reminder link opens /meetings?taskId=…; the list sits below the start card.
+  useEffect(() => {
+    if (linked.data)
+      document.getElementById(`task-${linked.data.id}`)?.scrollIntoView({ block: 'center' })
+  }, [linked.data])
   const cancel = useMutation({
     mutationFn: (item: ConfirmedTask) => confirmedApi.cancel(clubId, item),
     onSuccess: () => client.invalidateQueries({ queryKey: ['confirmed', clubId] }),
