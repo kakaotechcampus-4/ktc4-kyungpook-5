@@ -12,7 +12,7 @@ from app.ai.features.tori import intent
 def test_public_intent_passes_message_and_returns_typed_result(monkeypatch):
     async def invoke(messages, schema):
         assert '이번 주 내 할 일' in messages[-1].content
-        assert schema is ToriIntentResult
+        assert issubclass(schema, ToriIntentResult)
         return schema(intent='task_list', scope='self', kind='task',
                       date_from='2026-10-26', date_to='2026-11-01')
     monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
@@ -47,3 +47,29 @@ def test_invalid_timezone_is_rejected():
 
 def test_event_list_accepts_status():
     assert ToriIntentResult(intent='event_list', event_status='PLANNING').event_status == 'PLANNING'
+
+
+@pytest.mark.parametrize('kind', ['task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported'])
+def test_model_extra_query_is_ignored_only_for_non_record_intents(monkeypatch, kind):
+    async def invoke(_messages, schema):
+        return schema(intent=kind, query='모델이 불필요하게 추가한 검색어')
+    monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
+    result = asyncio.run(classify_tori_intent(ToriIntentRequest(message='일정 확인', reference_date='2026-10-30')))
+    assert type(result) is ToriIntentResult
+    assert result.intent == kind and result.query is None
+
+
+def test_model_record_search_still_requires_query(monkeypatch):
+    async def invoke(_messages, schema):
+        return schema(intent='record_search')
+    monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
+    with pytest.raises(ValidationError):
+        asyncio.run(classify_tori_intent(ToriIntentRequest(message='자료 정리', reference_date='2026-10-30')))
+
+
+def test_model_other_field_mismatch_still_rejected(monkeypatch):
+    async def invoke(_messages, schema):
+        return schema(intent='meeting', query='회의', scope='self')
+    monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
+    with pytest.raises(ValidationError):
+        asyncio.run(classify_tori_intent(ToriIntentRequest(message='회의', reference_date='2026-10-30')))

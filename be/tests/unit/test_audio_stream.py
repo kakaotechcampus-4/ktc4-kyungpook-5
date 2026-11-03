@@ -156,6 +156,119 @@ async def test_next_stt_and_receive_continue_while_previous_ai_waits() -> None:
     assert socket.sent[-1]["status"] == "COMPLETED"
 
 
+def utterances(count: int) -> list[dict]:
+    """발화 count개: 말 300ms + 침묵 600ms를 한 쌍으로 보내 VAD가 발화 하나로 자른다."""
+    messages = []
+    for index in range(count):
+        base = index * 900
+        messages += frame(2 * index + 1, base, base + 300)
+        messages += frame(2 * index + 2, base + 300, base + 900, 0)
+    return messages
+
+
+def ended(count: int) -> list[dict]:
+    return [start(), *utterances(count), msg({"type": "end", "lastAudioSeq": 2 * count})]
+
+
+def numbered_transcribe():
+    count = 0
+    async def transcribe(_):
+        nonlocal count
+        count += 1
+        return f"segment-{count}"
+    return transcribe
+
+
+async def test_next_decision_starts_without_waiting_for_previous_one() -> None:
+    # #240: 앞 발화의 판단이 끝나지 않아도 다음 발화의 판단이 바로 시작돼야 한다.
+    # segment-1은 segment-2가 끝날 때까지 멈춰 있으므로, 하나씩 처리하면 끝나지 못한다.
+    socket = Socket(ended(2))
+    second_done = asyncio.Event()
+    done = []
+    async def decide(segment_id):
+        if segment_id == "segment-1":
+            await asyncio.wait_for(second_done.wait(), timeout=1)
+        done.append(segment_id)
+        if segment_id == "segment-2":
+            second_done.set()
+    at_finalize = []
+    async def finalize(success):
+        at_finalize.append((list(done), success))
+    await asyncio.wait_for(
+        stream(socket, transcribe=numbered_transcribe(), decide=decide, finalize=finalize).run(),
+        timeout=5,
+    )
+    # 둘째 결과가 먼저 오고, 회의 종료는 진행 중인 판단을 모두 마친 뒤에 한다.
+    assert at_finalize == [(["segment-2", "segment-1"], True)]
+    assert socket.sent[-1]["status"] == "COMPLETED"
+
+
+async def test_ai_backlog_does_not_stop_stt_or_cause_backpressure() -> None:
+    # #240: 판단이 모두 밀려 있어도 전사는 계속되고 AUDIO_BACKPRESSURE로 회의가 끊기지 않는다.
+    # 30개는 기존 큐 두 개(AI 16, 음성 8)를 합친 것보다 많다.
+    total = 30
+    socket = Socket(ended(total))
+    transcribed = 0
+    all_transcribed = asyncio.Event()
+    decided = []
+    async def transcribe(_):
+        nonlocal transcribed
+        transcribed += 1
+        if transcribed == total:
+            all_transcribed.set()
+        return f"segment-{transcribed}"
+    async def decide(segment_id):
+        # 전사가 모두 끝날 때까지 어떤 판단도 끝나지 않는다.
+        # 백프레셔가 나면 바로 풀어서, 하나씩 시간 초과를 기다리지 않고 아래 assert로 실패하게 한다.
+        while not all_transcribed.is_set() and not backpressure():
+            await asyncio.sleep(0.01)
+        decided.append(segment_id)
+    def backpressure():
+        return any(event.get("code") == "AUDIO_BACKPRESSURE" for event in socket.sent)
+    await asyncio.wait_for(stream(socket, transcribe=transcribe, decide=decide).run(), timeout=10)
+    assert not backpressure()
+    assert transcribed == total
+    assert sorted(decided) == sorted(f"segment-{i}" for i in range(1, total + 1))
+    assert socket.sent[-1]["status"] == "COMPLETED"
+
+
+async def test_concurrent_decisions_are_capped() -> None:
+    # #240: 말이 몰려도 게이트웨이 호출이 한꺼번에 나가지 않게 동시에 도는 판단을 4개로 막는다.
+    total = 10
+    socket = Socket(ended(total))
+    transcribed = 0
+    running = 0
+    peak = 0
+    async def transcribe(_):
+        nonlocal transcribed
+        transcribed += 1
+        return f"segment-{transcribed}"
+    async def decide(_):
+        nonlocal running, peak
+        running += 1
+        peak = max(peak, running)
+        # 10개가 모두 전사될 때까지 붙잡아 둬서, 상한이 없다면 10개가 동시에 돌게 한다.
+        while transcribed < total:
+            await asyncio.sleep(0.01)
+        running -= 1
+    await asyncio.wait_for(stream(socket, transcribe=transcribe, decide=decide).run(), timeout=5)
+    assert peak == 4
+    assert socket.sent[-1]["status"] == "COMPLETED"
+
+
+async def test_disconnect_still_finishes_running_decisions() -> None:
+    # #240: 연결이 끊겨도 진행 중인 판단은 끝까지 해서 판단 기록에 저장한다.
+    socket = Socket([start(), *utterances(3)])  # end 없이 끊김
+    done = []
+    async def decide(segment_id):
+        await asyncio.sleep(0.01)
+        done.append(segment_id)
+    await asyncio.wait_for(
+        stream(socket, transcribe=numbered_transcribe(), decide=decide).run(), timeout=5,
+    )
+    assert sorted(done) == ["segment-1", "segment-2", "segment-3"]
+
+
 @pytest.mark.parametrize("invalid, code", [
     ([{"type": "websocket.receive", "bytes": pcm(100)}], "AUDIO_METADATA_REQUIRED"),
     ([msg({"type": "audio", "audioSeq": 2, "startMs": 0, "endMs": 100})], "AUDIO_SEQUENCE_GAP"),

@@ -78,3 +78,9 @@ async def extract_task_suggestions(request: "TaskExtractionRequest") -> "TaskExt
     """회의 발화에서 확인할 후보를 제안한다. 저장과 예약은 BE가 맡는다."""
     from .features.meeting.task_extraction import extract_task_suggestions as extract
     return await extract(request)
+
+
+async def respond_operational_situation(request: "OperationalSituationRequest") -> "OperationalSituationResult":
+    """운영 상황을 확인하거나 후속 제안만 한다. 권한·저장·실행은 BE 책임이다."""
+    from .features.operations.nodes import respond_operational_situation as respond
+    return await respond(request)

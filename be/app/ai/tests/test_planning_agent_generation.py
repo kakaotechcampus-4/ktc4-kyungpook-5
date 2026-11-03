@@ -201,3 +201,19 @@ def test_latest_failed_or_conflicting_lookup_is_not_replaced_by_old_success():
     assert latest_reference_facts([old])[0].content=="과거 비용"
     failed=ToolMessage(name="search_past_events",tool_call_id="s2",content='{"status":"failed","reason":"확인 불가"}')
     assert latest_reference_facts([old,failed])==()
+
+
+def test_generation_reply_receives_actual_steps_and_manual_step_limits():
+    req = request('담당자를 나중에 직접 정할 수 있게 계획을 만들어줘')
+    result, seen, _ = run(req, [
+        AIMessage(content='', tool_calls=[gen_call(req)]),
+        AIMessage(content='계획 초안을 만들었어요. 장소 조사는 운영진이 직접 진행해 주세요.'),
+    ])
+    messages = seen[-1][0]
+    instruction = messages[0].content
+    tool_result = json.loads(messages[-1].content)
+    assert result.generation_result.status == 'generated'
+    assert tool_result['preview']['steps'][0]['actor'] == 'MANUAL'
+    assert tool_result['preview']['steps'][0]['actions'] == []
+    assert '담당자 지정·입력 화면이나 확인 요청이 만들어졌다는 뜻이 아닙니다' in instruction
+    assert '자동으로 질문·수집·발송하거나 후속 처리가 진행된다고 약속하지 마세요' in instruction

@@ -22,6 +22,7 @@ from app.routers import (
     discord,
     events,
     meetings,
+    operation_cases,
     records,
     tasks,
     confirmed_tasks,
@@ -77,6 +78,7 @@ app.include_router(confirmed_tasks.router)
 app.include_router(reminder_recipients.router)
 app.include_router(push.router)
 app.include_router(events.router)
+app.include_router(operation_cases.router)
 app.include_router(actions.router)
 app.include_router(steps.router)
 app.include_router(plan_items.steps_router)

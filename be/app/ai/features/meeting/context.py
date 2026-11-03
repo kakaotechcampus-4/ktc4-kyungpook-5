@@ -18,7 +18,7 @@ from .schemas import JudgeUtteranceRequest
 MEETING_CONTEXT_UTTERANCES = 4
 
 # prompts/judge.md를 바꾸면 올린다. 판단 기록(trace)에 남아 바뀌기 전후를 나눠 본다
-PROMPT_VERSION = "meeting-judge-v5"
+PROMPT_VERSION = "meeting-judge-v6"
 
 # prompts/query.md를 바꾸면 올린다. 판단 전용 모델(Laya)이 조회로 본 발화에 검색어만 받는 지시문이다(#117)
 QUERY_PROMPT_VERSION = "meeting-query-v1"

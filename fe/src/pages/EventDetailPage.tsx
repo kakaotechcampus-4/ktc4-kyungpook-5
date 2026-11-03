@@ -6,6 +6,8 @@ import { CancelConfirmModal } from '@/features/events/components/CancelConfirmMo
 import { ConfirmationList } from '@/features/events/components/ConfirmationList'
 import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
+import { OperationCases } from '@/features/events/components/OperationCases'
+import { useOperationCases } from '@/features/events/operationCasesHooks'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
 import { ReviewModal } from '@/features/events/components/ReviewModal'
 import { StepModal } from '@/features/events/components/StepModal'
@@ -27,6 +29,7 @@ import {
 } from '@/features/events/hooks'
 import type { EventAction, EventStep } from '@/features/events/types'
 import { toast } from '@/shared/lib/toast'
+import { ApiError } from '@/shared/api/types'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { ServerErrorScreen } from '@/shared/ui/StateScreen'
@@ -69,7 +72,9 @@ export default function EventDetailPage() {
   // 처리한 확인 요청. 서버 연동 전이라 화면에서만 빼 둔다.
   const [answeredIds, setAnsweredIds] = useState<string[]>([])
   const confirmationsQuery = useConfirmations(shownId)
-  const confirmations = (confirmationsQuery.data ?? []).filter((a) => !answeredIds.includes(a.id))
+  const operationCases = useOperationCases(demo ? undefined : shownId)
+  const caseActionIds = new Set((operationCases.data ?? []).flatMap((item) => item.action ? [item.action.id] : []))
+  const confirmations = (confirmationsQuery.data ?? []).filter((a) => !answeredIds.includes(a.id) && !caseActionIds.has(a.id))
 
   const run = async (operation: () => Promise<unknown>, title: string, desc?: string) => {
     try {
@@ -83,10 +88,12 @@ export default function EventDetailPage() {
   }
 
   const resolveConfirmation = async (action: EventAction, choice: string, manualValue?: string) => {
-    if (await run(() => resolveMutation.mutateAsync({ action, choice, manualValue }), '처리했어요', action.title)) {
+    const success = await run(() => resolveMutation.mutateAsync({ action, choice, manualValue }), '처리했어요', action.title)
+    if (success) {
       if (demo) setAnsweredIds((ids) => [...ids, action.id])
       setReviewing(undefined)
     }
+    return success
   }
 
   const finishAction = async (action: EventAction) => {
@@ -101,31 +108,54 @@ export default function EventDetailPage() {
   const deciding = reviewing && reviewing.type !== 'CONFIRMATION' ? reviewing : undefined
 
   const approveAction = async (action: EventAction) => {
-    if (await run(() => approveMutation.mutateAsync(action), '승인했어요', action.title)) {
+    const success = await run(() => approveMutation.mutateAsync(action), '승인했어요', action.title)
+    if (success) {
       setReviewing(undefined)
       setOpenStepId(null)
     }
+    return success
   }
 
   const denyAction = async (action: EventAction, reason: string) => {
-    if (await run(() => denyMutation.mutateAsync({ action, reason }), '진행하지 않기로 했어요', action.title)) {
+    const success = await run(() => denyMutation.mutateAsync({ action, reason }), '진행하지 않기로 했어요', action.title)
+    if (success) {
       setReviewing(undefined)
       setOpenStepId(null)
     }
+    return success
   }
 
   const completeStep = async (step: EventStep) => {
-    if (await run(() => completeMutation.mutateAsync(step.id), '단계를 완료로 표시했어요', step.name)) setOpenStepId(null)
+    try {
+      const result = demo ? null : await completeMutation.mutateAsync(step.id)
+      toast.show({
+        kind: 'done',
+        title: '단계를 완료로 표시했어요',
+        desc: result?.pendingActionCount
+          ? `미완료 행동 ${result.pendingActionCount}건이 남아 있어요. 행사 완료 전에 처리해 주세요.`
+          : step.name,
+      })
+      setOpenStepId(null)
+    } catch (error) {
+      toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+    }
+  }
+
+  const permissionError = [detailQuery, stepsQuery, resolvedQuery, confirmationsQuery, operationCases].some(
+    (query) => query.isError && query.error instanceof ApiError && ['UNAUTHORIZED', 'FORBIDDEN'].includes(query.error.code),
+  )
+  if (permissionError) {
+    return <ServerErrorScreen onRetry={() => { void detailQuery.refetch(); void stepsQuery.refetch(); void resolvedQuery.refetch(); void confirmationsQuery.refetch(); void operationCases.refetch() }} onHome={() => navigate('/')} />
   }
 
   if (detailQuery.isPending) return null
-  if (detailQuery.isError) {
+  if (detailQuery.isError && detailQuery.data === undefined) {
     return <ServerErrorScreen onRetry={() => detailQuery.refetch()} onHome={() => navigate('/')} />
   }
 
   if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isPending))
     return null
-  if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isError)) {
+  if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isError && query.data === undefined)) {
     return (
       <ServerErrorScreen
         onRetry={() => {
@@ -157,6 +187,10 @@ export default function EventDetailPage() {
         )}
       </nav>
 
+      {event && (detailQuery.isError || [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isError)) && (
+        <p role="alert" className="text-failed">최신 행사 정보를 불러오지 못해 이전 내용을 표시하고 있어요. <button type="button" className="underline" onClick={() => { void detailQuery.refetch(); void stepsQuery.refetch(); void resolvedQuery.refetch(); void confirmationsQuery.refetch() }}>다시 확인</button></p>
+      )}
+
       {event ? (
         <>
           <EventHeaderCard
@@ -173,16 +207,17 @@ export default function EventDetailPage() {
               }
             }}
           />
+          {!demo && shownId && <OperationCases key={shownId} eventId={shownId} active={event.status === 'ON_GOING'} cases={operationCases.data ?? []} loading={operationCases.isPending} error={operationCases.isError} onReload={() => void operationCases.refetch()} />}
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-              <ConfirmationList
+              {(demo || operationCases.data !== undefined) && <ConfirmationList
                 actions={confirmations}
                 onResolve={(action, choice) => {
                   if (choice === 'MANUAL') setReviewing(action)
                   else void resolveConfirmation(action, choice)
                 }}
                 readOnly={!demo && event.status !== 'ON_GOING'}
-              />
+              />}
               <ResolvedActionList
                 actions={resolved?.items ?? []}
                 totalCount={resolved?.totalCount ?? 0}
@@ -217,6 +252,7 @@ export default function EventDetailPage() {
             onClose={() => setReviewing(undefined)}
             onApprove={approveAction}
             onDeny={denyAction}
+            pending={approveMutation.isPending || denyMutation.isPending}
           />
           <CancelConfirmModal
             open={cancelOpen}
@@ -232,7 +268,8 @@ export default function EventDetailPage() {
           <AnswerModal
             action={answering}
             onClose={() => setReviewing(undefined)}
-            onAnswer={(action, choice, manualValue) => void resolveConfirmation(action, choice, manualValue)}
+            onAnswer={resolveConfirmation}
+            pending={resolveMutation.isPending}
           />
         </>
       ) : (

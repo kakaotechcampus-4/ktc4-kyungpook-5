@@ -115,3 +115,13 @@ __all__ += ("extract_task_suggestions", "TaskExtractionRequest", "TaskExtraction
 # 메인 대화는 분류만 제공하며 조회 권한과 실행은 BE가 담당한다.
 from .features.tori.intent import ToriIntentRequest, ToriIntentResult, classify_tori_intent
 __all__ += ("ToriIntentRequest", "ToriIntentResult", "classify_tori_intent")
+
+from .features.tori.records import ToriRecordAnswerRequest, ToriRecordAnswerResult, answer_tori_records
+__all__ += ("ToriRecordAnswerRequest", "ToriRecordAnswerResult", "answer_tori_records")
+
+from .features.tori.query import ToriRecordQueryRequest, ToriRecordQueryResult, build_tori_record_query
+__all__ += ('ToriRecordQueryRequest', 'ToriRecordQueryResult', 'build_tori_record_query')
+
+from .features.operations.schemas import OperationalEventContext, OperationalSituationRequest, OperationalSituationResult
+from .facade import respond_operational_situation
+__all__ += ('OperationalEventContext', 'OperationalSituationRequest', 'OperationalSituationResult', 'respond_operational_situation')

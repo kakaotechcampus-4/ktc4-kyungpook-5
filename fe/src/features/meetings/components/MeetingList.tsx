@@ -44,24 +44,37 @@ export function MeetingList({ clubId, selectedId }: { clubId: string; selectedId
         <p className="text-mute">저장된 회의가 없어요. 새 회의를 만들어 보세요.</p>
       )}
       {meetings.length > 0 && (
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {meetings.map((meeting) => (
-            <li key={meeting.id}>
-              <Link
-                to={`/meetings/${encodeURIComponent(meeting.id)}`}
-                aria-current={selectedId === meeting.id ? 'page' : undefined}
-                className={`block rounded-lg border p-3 transition-colors hover:bg-bg ${
-                  selectedId === meeting.id ? 'border-blue-600 bg-blue-50' : 'border-line'
-                }`}
-              >
-                <strong className="block truncate">{meeting.title || '제목 없는 회의'}</strong>
-                <span className="mt-1 block text-caption text-mute">
-                  {STATUS_LABEL[meeting.status]} · {formatDate(meeting.startedAt ?? meeting.endedAt)}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div
+          role="region"
+          aria-label="최근 회의 목록"
+          tabIndex={0}
+          className="max-h-[304px] overflow-y-auto rounded-lg focus-visible:outline-2 focus-visible:outline-blue-600"
+        >
+          <ul className="grid auto-rows-[96px] gap-2 sm:grid-cols-2">
+            {meetings.map((meeting) => (
+              <li key={meeting.id}>
+                <Link
+                  to={`/meetings/${encodeURIComponent(meeting.id)}`}
+                  aria-current={selectedId === meeting.id ? 'page' : undefined}
+                  className={`block h-full rounded-lg border p-3 transition-colors hover:bg-bg ${
+                    selectedId === meeting.id ? 'border-blue-600 bg-blue-50' : 'border-line'
+                  }`}
+                >
+                  <strong
+                    className="line-clamp-2 break-words"
+                    title={meeting.title || '제목 없는 회의'}
+                  >
+                    {meeting.title || '제목 없는 회의'}
+                  </strong>
+                  <span className="mt-1 block text-caption text-mute">
+                    {STATUS_LABEL[meeting.status]} ·{' '}
+                    {formatDate(meeting.startedAt ?? meeting.endedAt)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </Card>
   )

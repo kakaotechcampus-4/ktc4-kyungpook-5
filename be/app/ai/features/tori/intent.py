@@ -48,6 +48,16 @@ class ToriIntentResult(ContractModel):
         return self
 
 
+class _ToriIntentModelResult(ToriIntentResult):
+    @model_validator(mode='before')
+    @classmethod
+    def ignore_unused_query(cls, value):
+        # 모델이 비자료 요청에도 검색어를 함께 내는 경우에만 무시한다.
+        if isinstance(value, dict) and value.get('intent') != 'record_search' and value.get('query') is not None:
+            return {**value, 'query': None}
+        return value
+
+
 _PROMPT = Path(__file__).with_suffix('.md').read_text(encoding='utf-8')
 
 
@@ -55,4 +65,5 @@ async def classify_tori_intent(request: ToriIntentRequest) -> ToriIntentResult:
     # 원문은 별도 사용자 메시지로 넘기며 반환 분류는 실행 권한이 아니다.
     messages = [SystemMessage(_PROMPT), HumanMessage(
         f'기준일: {request.reference_date.isoformat()}\n시간대: {request.timezone}\n사용자 발화: {request.message}')]
-    return await ainvoke_structured(messages, ToriIntentResult)
+    model_result = await ainvoke_structured(messages, _ToriIntentModelResult)
+    return ToriIntentResult.model_validate(model_result.model_dump())
