@@ -175,7 +175,7 @@ AI: 날짜는 비워두고, 이 조건으로 준비 순서를 먼저 잡아볼�
 ## 7. 현재 코드·FE와의 연결에서 확인한 차이
 
 - [agent/graph.py](../../features/planning/agent/graph.py): 바깥은 여전히 agent/tools 두 Node이며 생성 Tool 안에서 별도 생성 graph를 호출한다. [chat.md](../../features/planning/agent/prompts/chat.md)에 권유·보류·직접 요청·실패 지침을 추가했다. 로컬 UI 어댑터가 생성 기능과 상태 왕복을 연결한다.
-- [turn_policy.py](../../features/planning/turn_policy.py): legacy 생성 가능 판정. 행사 유형 검사 등은 참고하되 이를 대화 권유 타이밍으로 그대로 사용하지 않는다.
+- [turn_policy.py](../../features/planning/legacy/turn_policy.py): legacy 생성 가능 판정. 행사 유형 검사 등은 참고하되 이를 대화 권유 타이밍으로 그대로 사용하지 않는다.
 - [contracts.py](../../contracts.py)의 공개 `PlanGenerateRequest`/`PlanDraft`: 초안 타입은 존재하지만 새 Agent의 잠정/보류·권유 상태가 없고, PlannedStep에는 code·목적이 없다. 이를 새 내부 계약이 이미 대체했다고 보지 않는다.
 - [단계 카탈로그](legacy/step-catalog.md): legacy 표시가 있지만 AI-PLAN-05와 StepCode가 참조하는 기준 목록이다. 고정 단계의 원칙은 유지하며 새 생성 입력에 사용할 메타정보를 5-2에서 검증한다. 취소 단계는 생성 카탈로그에서 제외한다.
 - [FE catalogue.ts](../../../../../fe/src/features/planning/catalogue.ts): 초기 연결 때 일부 코드가 BE와 달랐다. 예: ASSIGN_STAFF↔ASSIGN_ROLES, SCOUT_VENUE↔RESEARCH_VENUE, SURVEY_DEMAND↔DEMAND_SURVEY, CONFIRM_HEADCOUNT↔CONFIRM_DETAILS, PRE_NOTICE↔PRE_EVENT_NOTICE. 현재 AI 테스트 UI는 포함/제외 단계 모두 응답의 name을 표시하며 이름 조회용 변환은 제거했다(#198). 제품의 코드/저장 매핑은 BE/FE 연결에서 확인한다.
@@ -275,7 +275,7 @@ BE·FE와 합의할 것은 권유/보류·초안 보관 주체, 새 내부 결�
 
 ## 11. 실패한 초안과 구체적 검증 위반을 확보하기 (#239)
 
-상태: **내부 위반 데이터, 실패 자료 수집과 모델 없는 재검사를 구현했다. 최신 v7의 실제 실패 수집은 다음 단계다.** 검증 조건·판정 순서·공개 실패 안내는 유지한다.
+상태: **내부 위반 데이터, 실패 자료 수집과 모델 없는 재검사를 구현했다. 최신 v7에서 최대 10요청을 실행했으나 모두 성공해 실제 실패 자료는 미확보다.** 합성 11개 위반의 저장/재검사와 AI 전체 1,087개 검사를 통과했다. 검증 조건·판정 순서·공개 실패 안내는 유지한다. 상세 결과는 [평가 기록](evaluation.md)을 따른다.
 
 ### 무엇을 알아내려는가
 
@@ -363,3 +363,5 @@ BE·FE와 합의할 것은 권유/보류·초안 보관 주체, 새 내부 결�
 ```
 
 파일은 `failure-001.json`의 버전/출처/입력/구조화 초안/첫 위반, `replay-001.json`의 재검사 결과, `attempts.jsonl`의 요청 흐름과 `session.json`의 모델/코드/도구 해시·상태로 연결한다. 보관한 합성 예시는 [평가 기록](evaluation.md)에 있다.
+
+수집 CLI 종료 코드는 0(온전한 실패 자료 확보), 2(상한까지 실행했으나 미확보), 1(설정/수집/재검사 오류), 130(중단)이다. 2026-11-03 실제 실행은 종료 코드 2, `limit_reached`, 10요청 성공·실패 자료 0건으로 끝났다. 진단 도구의 반복 횟수는 별도 실험 요청 수이고 제품 P1의 자동 재시도 정책이 아니다.

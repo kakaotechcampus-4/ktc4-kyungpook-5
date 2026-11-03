@@ -525,7 +525,20 @@ graph.validate_plan(dict(
 
 공개 결과의 failed/안내 문구와 검증 통과 기준은 유지하며, [11개 규칙·보관 항목·완료 기준](step-05-generation.md#11-실패한-초안과-구체적-검증-위반을-확보하기-239)을 따른다.
 
-최신 develop의 대화 지침은 v7이다. 도구 검증 후 같은 인원 변경 채팅 상태를 최대 10요청 수집하고, 첫 실패 자료가 확보된 요청을 끝까지 처리한 뒤 중단한다. 확보하지 못하면 그대로 보고한다. 기존 v6 실측의 실패를 대체하거나 성공률 개선으로 설명하지 않는다.
+3단계에서는 최신 v7에서 같은 인원 변경 채팅 상태를 최대 10요청 실행했다. 수집기의 실제 중단 분기는 다음과 같다(기록 처리는 생략).
+
+```python
+for number in range(1, max_attempts + 1):
+    # check.attempt()로 공개 P1 요청과 그 안의 재시도를 끝까지 실행한다.
+    ...
+    if files:
+        report['status'] = 'captured' if all(replays) else 'replay_mismatch'
+        break
+else:
+    report['status'] = 'limit_reached'
+```
+
+실제 10요청은 모두 성공해 파일을 보관할 검증 실패가 없었고, for의 `else`로 종료됐다. 요청을 다시 보낼 때마다 원래 JSON을 복원하며 앞 요청의 성공 초안을 재사용하지 않는다. 이 실험 상한은 제품의 자동 재시도 횟수를 바꾸지 않는다. [실제 원본과 검산](evaluation-results/planning-validation-details-2026-11-03/real-v7/analysis.json)을 보존했고, 기존 v6 실패를 대체하거나 진단 기능의 개선 효과로 해석하지 않았다. 다음에 실패가 나오면 저장본의 같은 규칙/위치/값을 재검사할 수 있는 상태다.
 
 ## 5-3: 두 API의 실제 응답이 같은 P2에 표시된다
 
