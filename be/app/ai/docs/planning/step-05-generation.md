@@ -275,7 +275,7 @@ BE·FE와 합의할 것은 권유/보류·초안 보관 주체, 새 내부 결�
 
 ## 11. 실패한 초안과 구체적 검증 위반을 확보하기 (#239)
 
-상태: **1단계 내부 위반 데이터와 11개 거절 지점의 구조화 오류를 구현했다. 실패 자료 수집·오프라인 재검사는 다음 단계다.** 검증 조건·판정 순서·공개 실패 안내는 유지한다.
+상태: **내부 위반 데이터, 실패 자료 수집과 모델 없는 재검사를 구현했다. 최신 v7의 실제 실패 수집은 다음 단계다.** 검증 조건·판정 순서·공개 실패 안내는 유지한다.
 
 ### 무엇을 알아내려는가
 
@@ -343,3 +343,23 @@ BE·FE와 합의할 것은 권유/보류·초안 보관 주체, 새 내부 결�
 - 공개 응답·저장 형식·검증 통과 기준·자동 재시도 정책은 유지하고 구현/실측/설명을 문서·#239에 기록한다.
 
 범위는 AI 내부 검증기, 진단/재검사 도구, 테스트와 문서다. FE·BE API/DB 변경, 검증 완화, 프롬프트 수정, 모델 교체는 이 증거를 검토한 뒤 별도 보완으로 판단한다. 과거 두 실패는 초안이 보관되지 않았으므로 새 도구로 소급 복원할 수 없다.
+
+### 구현한 수집·재검사 도구
+
+`scripts/planning_validation_diagnostics.py`의 `capture_validation_failures()` 안쪽에 기존 `install_observers()`를 설치한다. 실제 검증 구간에서 `PlanValidationError`를 받으면 입력/초안/위반을 복사하고 같은 예외를 다시 올린다. 자료 생성에 오류가 생겨도 원래 P1 실패 안내는 유지하며 진단 세션은 `capture_error`로 구분한다. 대화 본문은 재검사 입력에서 제외하고 입력/초안 해시를 검증한다.
+
+`scripts/replay_planning_validation.py`는 `ValidationSnapshot`을 읽어 `validate_plan()`만 실행한다. 모델·설정을 읽지 않고 기록된 규칙/위치/비교값과 재검사 결과, 검증 소스 해시 일치를 새 파일에 기록한다. 원본이나 기존 출력 파일을 덮어쓰지 않는다.
+
+`scripts/capture_planning_validation.py`는 고정 fixture의 인원 변경 채팅만 최대 10개 공개 요청으로 실행한다. 요청 안의 모든 생성 시도가 끝난 후 실패 자료를 파일로 저장하고 오프라인 재검사까지 일치하면 `captured`로 중단한다. 실패 없이 상한을 소진하면 `limit_reached`다. 최종 요청이 성공이어도 내부 실패 자료가 있으면 보존한다. 설정 오류·수집 오류·중단은 각각 상태와 시작/종료 기록을 남긴다.
+
+```sh
+# be/: 모델/설정 없이 실행 계획 확인
+.venv/bin/python -m app.ai.scripts.capture_planning_validation --dry-run
+# 실제 모델 수집: 새 폴더를 지정한다.
+.venv/bin/python -m app.ai.scripts.capture_planning_validation --output-dir /tmp/validation-capture-new
+# 저장본 재검사: 키/모델/API가 필요 없다.
+.venv/bin/python -m app.ai.scripts.replay_planning_validation \
+  --input /tmp/validation-capture-new/failure-001.json --output /tmp/validation-replay-new.json
+```
+
+파일은 `failure-001.json`의 버전/출처/입력/구조화 초안/첫 위반, `replay-001.json`의 재검사 결과, `attempts.jsonl`의 요청 흐름과 `session.json`의 모델/코드/도구 해시·상태로 연결한다. 보관한 합성 예시는 [평가 기록](evaluation.md)에 있다.

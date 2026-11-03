@@ -502,7 +502,28 @@ if start and start != conditions.start_date:
 
 `invalid()`가 위반 객체를 담은 `PlanValidationError`를 올리면 기존 `AIInvalidResponseError` 처리에서 같은 공개 실패 안내로 바꾼다. 위 예시를 실제 검증기에 넣으면 `expected="2026-11-07"`, `actual={"timestamp":"2026-11-08T09:00:00+09:00","local_date":"2026-11-08"}`가 내부 오류에 남는다. UTC 11월 6일 16시는 한국 11월 7일이므로 정상 통과하는 경계도 검사했다.
 
-실패 자료 수집과 오프라인 재검사는 다음 단계다. 공개 결과의 failed/안내 문구와 검증 통과 기준은 유지하며, [11개 규칙·보관 항목·완료 기준](step-05-generation.md#11-실패한-초안과-구체적-검증-위반을-확보하기-239)을 따른다.
+2단계에서 `scripts/planning_validation_diagnostics.py`의 수집기와 `replay_planning_validation.py`를 구현했다. 흐름은 다음과 같다.
+
+```text
+validate_plan → PlanValidationError
+  → capture_validation_failures: 입력/초안/위반 복사 → 같은 예외를 다시 올림
+  → 기존 생성 Graph: generation_result.failed → Agent의 기존 설명/재시도
+요청 종료 → failure-001.json 저장
+replay_file → 저장 타입/해시 검사 → validate_plan만 실행 → 같은 위반인지 기록
+```
+
+재검사의 핵심은 아래 코드다. 생성 모델을 부르는 경로가 없다.
+
+```python
+graph.validate_plan(dict(
+    request=snapshot.input.model_copy(deep=True),
+    composition=snapshot.composition.model_copy(deep=True),
+))
+```
+
+합성 11월 7일/8일 예시는 실제 저장 후 키·주소·모델을 비운 별도 프로세스에서도 `status=rejected`, `reproduced=true`, `same_validator_source=true`로 재검사됐다. [실패 자료](evaluation-results/planning-validation-details-2026-11-03/offline/example-failure.json)와 [재검사 결과](evaluation-results/planning-validation-details-2026-11-03/offline/example-replay.json)는 연습용이며 실제 모델 실패로 세지 않는다.
+
+공개 결과의 failed/안내 문구와 검증 통과 기준은 유지하며, [11개 규칙·보관 항목·완료 기준](step-05-generation.md#11-실패한-초안과-구체적-검증-위반을-확보하기-239)을 따른다.
 
 최신 develop의 대화 지침은 v7이다. 도구 검증 후 같은 인원 변경 채팅 상태를 최대 10요청 수집하고, 첫 실패 자료가 확보된 요청을 끝까지 처리한 뒤 중단한다. 확보하지 못하면 그대로 보고한다. 기존 v6 실측의 실패를 대체하거나 성공률 개선으로 설명하지 않는다.
 
