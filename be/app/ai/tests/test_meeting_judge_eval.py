@@ -13,9 +13,12 @@ from app.ai.scripts.check_meeting_judge import (
     EVAL_UTTERANCES,
     SETS,
     SPLITS,
+    auroc,
     breakdown,
     confusion,
     load_requests,
+    luna_missed,
+    summarize_probabilities,
     threshold_sweep,
 )
 
@@ -161,6 +164,38 @@ def test_threshold_sweep_counts_probability_equal_to_threshold_as_lookup():
     # 판단과 같은 규칙(P(true) >= 임계값)이어야 표에서 고른 값으로 다시 쟀을 때 같은 수가 나온다
     [row] = threshold_sweep([{"truth": True, "p_true": 0.5}, {"truth": False, "p_true": 0.1}], (0.5,))
     assert row["missed"] == "0 / 1"
+
+
+
+def test_auroc_counts_tied_probabilities_as_half():
+    # Jev는 확률을 0.01 단위로 줘서 같은 값이 흔하다. 같으면 어느 쪽도 위가 아니므로 반으로 센다
+    assert auroc([0.9, 0.3, 0.3], [True, True, False]) == 0.75
+    assert auroc([0.9], [True]) is None
+
+
+def test_summarize_probabilities_leaves_either_out_of_auroc():
+    # 둘 다 허용은 채점하지 않으므로 확률의 순서를 볼 때도 뺀다
+    records = [
+        {"truth": True, "p_true": 0.8, "pred": True},
+        {"truth": False, "p_true": 0.2, "pred": False},
+        {"truth": False, "p_true": 0.95, "pred": True, "either": True},
+    ]
+    summary = summarize_probabilities(records)
+    assert summary["auroc"] == 1.0
+    assert summary["p_true_mean"] == {"lookup": 0.8, "no_lookup": 0.2}
+
+
+def test_luna_missed_counts_only_lookups_luna_caught():
+    # 1단계 기준은 "luna가 잡은 조회를 하나도 놓치지 않음"이다. luna도 놓친 조회와 둘 다 허용은 세지 않는다
+    records = [
+        {"id": "a", "truth": True, "p_true": 0.10, "pred": False},
+        {"id": "b", "truth": True, "p_true": 0.40, "pred": True},
+        {"id": "c", "truth": True, "p_true": 0.05, "pred": False},
+        {"id": "d", "truth": True, "p_true": 0.01, "pred": False, "either": True},
+    ]
+    caught = {"a", "b", "d"}
+    assert luna_missed(records, caught) == {"missed": "1 / 2", "ids": ["a"]}
+    assert luna_missed(records, caught, threshold=0.10) == {"missed": "0 / 2", "ids": []}
 
 
 SET_ROWS = [

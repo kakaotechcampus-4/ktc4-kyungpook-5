@@ -233,6 +233,46 @@ def threshold_sweep(records: list[dict], thresholds: tuple[float, ...]) -> list[
     return rows
 
 
+def auroc(scores: list[float], truths: list[bool]) -> float | None:
+    """조회할 발화 하나와 아닌 발화 하나를 뽑았을 때 조회할 쪽 확률이 더 높을 비율. 같으면 반으로 센다"""
+    pos = [s for s, t in zip(scores, truths) if t]
+    neg = [s for s, t in zip(scores, truths) if not t]
+    if not pos or not neg:
+        return None
+    wins = sum((p > n) + 0.5 * (p == n) for p in pos for n in neg)
+    return round(wins / (len(pos) * len(neg)), 3)
+
+
+def summarize_probabilities(records: list[dict]) -> dict:
+    """조회 확률(`p_true`)을 내는 판단 전용 모델(Laya·Jev)의 요약. 판단 지표에 AUROC와 평균 확률을 더한다"""
+    # 둘 다 허용인 문항은 채점하지 않으므로 확률의 순서를 볼 때도 뺀다
+    scored = [r for r in records if not r.get("either")]
+    pos = [r for r in scored if r["truth"]]
+    neg = [r for r in scored if not r["truth"]]
+    return {
+        "items": len(records),
+        **confusion(records),
+        "auroc": auroc([r["p_true"] for r in scored], [r["truth"] for r in scored]),
+        "p_true_mean": {
+            "lookup": round(sum(r["p_true"] for r in pos) / len(pos), 3) if pos else None,
+            "no_lookup": round(sum(r["p_true"] for r in neg) / len(neg), 3) if neg else None,
+        },
+    }
+
+
+def luna_caught(path: Path) -> set[str]:
+    """luna가 조회로 판단한 문항 id. 정답과 맞았는지는 부르는 쪽이 지금 평가 문항의 정답으로 가린다"""
+    return {r["id"] for r in json.loads(path.read_text())["records"] if r.get("pred")}
+
+
+def luna_missed(records: list[dict], caught: set[str], threshold: float | None = None) -> dict:
+    """조회할 발화 중 luna가 잡았는데 Laya가 놓친 것. 둘 다 허용은 채점하지 않으므로 뺀다.
+    threshold를 주면 그 임계값으로 다시 판단한다(임계값 표)"""
+    target = [r for r in records if r["truth"] and not r.get("either") and r["id"] in caught]
+    missed = [r["id"] for r in target if not (r["p_true"] >= threshold if threshold is not None else r["pred"])]
+    return {"missed": f"{len(missed)} / {len(target)}", "ids": missed}
+
+
 def breakdown(records: list[dict]) -> dict:
     """묶음별·태그별로 문항 수와 틀린 수를 센다. 무엇을 놓치고 어디서 잘못 끼어드는지 본다.
     둘 다 허용인 문항은 문항 수에만 들어가고 틀린 수에는 들어가지 않는다"""
