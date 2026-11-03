@@ -1,12 +1,38 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/shared/ui/Button'
 import { MeetingBanner, MeetingHeader, StatusPill } from './MeetingHeader'
 import { ToriColumn, TranscriptColumn } from './MeetingColumns'
-import { fixtureDecisions, fixtureMeeting, fixtureTranscripts } from '../fixture'
+import { MeetingEnded } from './MeetingEnded'
+import { CandidatesModal } from './Suggestions'
+import { fixtureDecisions, fixtureMeeting, fixtureSuggestion, fixtureTranscripts } from '../fixture'
 
 // 개발용: 서버와 마이크 없이 회의 중 화면 모양만 본다.
 export function FixtureMeeting() {
   const now = Date.parse(fixtureMeeting.startedAt!) + 6 * 60_000
+  const [params] = useSearchParams()
+  const [candidatesOpen, setCandidatesOpen] = useState(false)
+  if (params.get('ended') === '1')
+    return (
+      <>
+        <MeetingEnded
+          summary={`${fixtureMeeting.title} · 14:00 – 14:06 · 들은 말 4개 · 토리 2번`}
+          suggestions={[fixtureSuggestion]}
+          suggestionsError={false}
+          extractionFailed={false}
+          onRetry={() => undefined}
+          onOpenCandidates={() => setCandidatesOpen(true)}
+          onOpenRecord={() => undefined}
+        />
+        <CandidatesModal
+          open={candidatesOpen}
+          onClose={() => setCandidatesOpen(false)}
+          clubId={fixtureMeeting.clubId}
+          suggestions={[fixtureSuggestion]}
+          onSaved={() => undefined}
+        />
+      </>
+    )
   return (
     <div className="mx-auto flex max-w-[1240px] flex-col gap-4 lg:h-[calc(100dvh-72px)]">
       <MeetingBanner tone="pending" title="개발 fixture · 서버와 마이크에 연결하지 않은 예시">

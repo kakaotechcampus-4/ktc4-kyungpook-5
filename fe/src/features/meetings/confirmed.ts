@@ -1,5 +1,6 @@
 import { apiGet, apiPatch, apiPost } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
+import type { Suggestion } from './types'
 type Schemas = components['schemas']
 export type Recipient = Schemas['ReminderRecipientOut']
 export type ConfirmedTask = Schemas['ConfirmedTaskOut']
@@ -39,4 +40,18 @@ export function displayTime(iso: string | null) {
         timeStyle: 'short',
       }).format(new Date(iso))
     : '미정'
+}
+
+function suggestionDue(suggestion: Suggestion) {
+  const at = suggestion.dueAt ?? suggestion.scheduledAt
+  return at ? displayTime(at) : suggestion.dueDate
+}
+
+export function candidateMeta(suggestion: Suggestion) {
+  return [
+    suggestion.suggestedAssignee ? `담당 ${suggestion.suggestedAssignee}` : '담당 확인 필요',
+    suggestionDue(suggestion),
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }

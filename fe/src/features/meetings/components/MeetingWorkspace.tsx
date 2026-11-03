@@ -9,8 +9,15 @@ import { MeetingStart, type MeetingEventOption } from './MeetingStart'
 import { MeetingBanner, MeetingHeader, StatusPill } from './MeetingHeader'
 import { ToriColumn, TranscriptColumn } from './MeetingColumns'
 import { meetingError } from '../errors'
-import { clockTime, meetingAnswers, meetingView, recordedClock } from '../timeline'
-import { Suggestions, ConfirmedTasks } from './Suggestions'
+import {
+  clockTime,
+  extractionFailed,
+  meetingAnswers,
+  meetingView,
+  recordedClock,
+} from '../timeline'
+import { CandidatesModal, ConfirmedTasks } from './Suggestions'
+import { MeetingEnded } from './MeetingEnded'
 const EMPTY: never[] = []
 const SILENCE_MS = 10_000
 // 입력이 사실상 0(음소거·고장)일 때만 알린다. 잡음 억제가 켜진 조용한 방도 0은 아니다.
@@ -45,6 +52,7 @@ export function MeetingWorkspace({
   const meeting = data.meeting.data
   const [justEnded, setJustEnded] = useState(false)
   const [hiddenWarning, setHiddenWarning] = useState<string | null>(null)
+  const [candidatesOpen, setCandidatesOpen] = useState(false)
   const audio = useMeetingAudio({
     meetingId: meetingId ?? '',
     onCompleted: () => setJustEnded(true),
@@ -132,7 +140,35 @@ export function MeetingWorkspace({
       ? `${clockTime(meeting.startedAt)} – ${clockTime(meeting.endedAt)}`
       : `${clockTime(meeting.startedAt)} 시작`
     : '시작 전'
+  const heard = transcripts.filter((t) => t.final).length
   const meta = `${when} · 후보 ${data.suggestions.length}건 · 토리 ${answers.length}번`
+  const candidates = (
+    <CandidatesModal
+      open={candidatesOpen}
+      onClose={() => setCandidatesOpen(false)}
+      clubId={clubId}
+      suggestions={data.suggestions}
+      onSaved={() => void data.refresh()}
+    />
+  )
+  if (view === 'ended')
+    return (
+      <>
+        <MeetingEnded
+          summary={`${meeting.title || '회의'} · ${when} · 들은 말 ${heard}개 · 토리 ${answers.length}번`}
+          suggestions={data.suggestions}
+          suggestionsError={data.suggestionsQuery.isError}
+          extractionFailed={extractionFailed(decisions)}
+          onRetry={() => void data.refresh()}
+          onOpenCandidates={() => setCandidatesOpen(true)}
+          onOpenRecord={() => setJustEnded(false)}
+        />
+        {candidates}
+      </>
+    )
+  const openCandidates = data.suggestions.length > 0 && (
+    <Button onClick={() => setCandidatesOpen(true)}>후보 확인하기</Button>
+  )
   const time = recordedClock(audio.recordedMs)
   const silent = view === 'recording' && now - lastSoundAt > SILENCE_MS
   const finish = () => data.finish.mutate(undefined, { onSuccess: () => setJustEnded(true) })
@@ -212,11 +248,14 @@ export function MeetingWorkspace({
       </Button>
     ),
     ended: null,
-    record: null,
+    record: openCandidates,
     failed: (
-      <Button variant="secondary" onClick={() => void data.refresh()}>
-        다시 확인
-      </Button>
+      <>
+        <Button variant="secondary" onClick={() => void data.refresh()}>
+          다시 확인
+        </Button>
+        {openCandidates}
+      </>
     ),
   }[view]
 
@@ -251,7 +290,12 @@ export function MeetingWorkspace({
             tone="failed"
             title="연결이 끊겨 녹음이 멈췄어요"
             action={
-              <Button variant="secondary" size="sm" disabled={data.finish.isPending} onClick={finish}>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={data.finish.isPending}
+                onClick={finish}
+              >
                 회의 끝내기
               </Button>
             }
@@ -313,45 +357,37 @@ export function MeetingWorkspace({
 
   return (
     <>
-    <div className="mx-auto flex max-w-[1240px] flex-col gap-4 lg:h-[calc(100dvh-72px)]">
-      <MeetingHeader
-        title={meeting.title || '회의'}
-        pills={pills}
-        meta={meta}
-        actions={actions}
-      />
-      {banners}
-      <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
-        <TranscriptColumn
-          className="max-h-[60vh] lg:max-h-none"
-          transcripts={transcripts}
-          decisions={decisions}
-          startedAt={meeting.startedAt}
-          live={live}
-          countLabel={ended ? `들은 말 ${transcripts.filter((t) => t.final).length}개` : undefined}
+      <div className="mx-auto flex max-w-[1240px] flex-col gap-4 lg:h-[calc(100dvh-72px)]">
+        <MeetingHeader
+          title={meeting.title || '회의'}
+          pills={pills}
+          meta={meta}
+          actions={actions}
         />
-        <ToriColumn
-          className="max-h-[70vh] lg:max-h-none"
-          transcripts={transcripts}
-          decisions={decisions}
-          startedAt={meeting.startedAt}
-          ongoing={!ended}
-          now={now}
-          loading={data.transcripts.isPending || data.decisions.isPending}
-          error={data.transcripts.isError || data.decisions.isError}
-          onRefresh={data.refresh}
-        />
-      </div>
-    </div>
-      {ended && (
-        <div className="mx-auto mt-8 max-w-[1240px]">
-          <Suggestions
-            clubId={clubId}
-            suggestions={data.suggestions}
-            onSaved={() => void data.refresh()}
+        {banners}
+        <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
+          <TranscriptColumn
+            className="max-h-[60vh] lg:max-h-none"
+            transcripts={transcripts}
+            decisions={decisions}
+            startedAt={meeting.startedAt}
+            live={live}
+            countLabel={ended ? `들은 말 ${heard}개` : undefined}
+          />
+          <ToriColumn
+            className="max-h-[70vh] lg:max-h-none"
+            transcripts={transcripts}
+            decisions={decisions}
+            startedAt={meeting.startedAt}
+            ongoing={!ended}
+            now={now}
+            loading={data.transcripts.isPending || data.decisions.isPending}
+            error={data.transcripts.isError || data.decisions.isError}
+            onRefresh={data.refresh}
           />
         </div>
-      )}
+      </div>
+      {candidates}
     </>
   )
 }

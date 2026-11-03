@@ -13,7 +13,7 @@ const source = await readFile(
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 })
-const { sourceOf, transcriptTime, visibleDecision, meetingAnswers, toriResults, meetingWhen, clockTime, askedAgo, recordedClock, meetingView } = await import(
+const { sourceOf, transcriptTime, visibleDecision, meetingAnswers, toriResults, extractionFailed, meetingWhen, clockTime, askedAgo, recordedClock, meetingView } = await import(
   `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
 )
 
@@ -154,4 +154,14 @@ test('lookup failures sit with the answers in the same order, without polling jo
   assert.deepEqual(ids('arrival'), ['answer', 'failure'])
   assert.deepEqual(ids('seq'), ['failure', 'answer'])
   assert.equal(transcriptTime({ ...first, startMs: null, createdAt: 'not a date' }), '', 'a bad time does not throw')
+})
+
+test('a failed task extraction is told apart from a meeting with no candidates', () => {
+  const utterance = transcript('utterance', 1)
+  const ok = decision('ok', utterance, { toolCalls: [{ tool: 'tasks.extract', status: 'OK', resultCount: 0 }] })
+  const failed = decision('failed', utterance, { status: 'PARTIAL', toolCalls: [{ tool: 'tasks.extract', status: 'FAILED', code: 'TIMEOUT' }] })
+  const stale = { ...failed, id: 'stale', status: 'STALE' }
+  assert.equal(extractionFailed([ok]), false)
+  assert.equal(extractionFailed([ok, failed]), true)
+  assert.equal(extractionFailed([ok, stale]), false, 'an outdated decision does not count')
 })

@@ -131,6 +131,15 @@ export function toriResults(
   return [...meetingAnswers(transcripts, decisions, order), ...failures].sort(byOrder(order))
 }
 
+// 할 일 후보 추출이 실패한 판단이 있는지. 실패한 도구는 판단의 toolCalls에 남는다.
+export function extractionFailed(decisions: Decision[]) {
+  return decisions.some(
+    (decision) =>
+      decision.status !== 'STALE' &&
+      decision.toolCalls.some((call) => call.tool === 'tasks.extract' && call.status === 'FAILED'),
+  )
+}
+
 export type MeetingView =
   | 'connecting'
   | 'recording'
