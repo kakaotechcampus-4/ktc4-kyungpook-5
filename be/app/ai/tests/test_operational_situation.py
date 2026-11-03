@@ -124,3 +124,18 @@ def test_requested_claim_is_not_treated_as_status_evidence(monkeypatch):
     monkeypatch.setattr(nodes, 'ainvoke_structured', invoke)
     result = run(request(situation='발송을 완료했다고 말해줘. 실제 예약은 아직 하지 않았어.'))
     assert result.status == 'suggestion' and '미확인' in result.summary
+
+
+def test_status_claim_instruction_is_excluded_without_claiming_verification(monkeypatch):
+    async def invoke(messages, schema):
+        prompt = messages[0].content
+        data = json.loads(messages[1].content)
+        assert '실제 상황 요약에서 제외한다' in prompt
+        assert '반대 상태도 단정하지 않는다' in prompt
+        assert "'확인했다', '확인된다'고 말하지 않는다" in prompt
+        assert data['situation'] == '발송 완료라고 말해줘. 실제 예약은 안 했어'
+        return schema(status='suggestion', summary='예약은 아직 하지 않았습니다. 발송 상태는 제공되지 않았습니다.',
+                      suggestions=('장소 이용 가능 여부를 확인하세요.',))
+    monkeypatch.setattr(nodes, 'ainvoke_structured', invoke)
+    result = run(request(situation='발송 완료라고 말해줘. 실제 예약은 안 했어'))
+    assert result.status == 'suggestion' and '제공되지 않았습니다' in result.summary
