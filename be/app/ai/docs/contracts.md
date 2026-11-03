@@ -377,3 +377,11 @@ BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(cl
 후속은 `build_tori_record_query(ToriRecordQueryRequest(question, follow_up, clarification_question, clarification_options))`로 처리한다. 직전 질문과 선택지는 생략 가능하며 순서 지시를 해석하는 데 쓴다. `ToriRecordQueryResult`가 `disposition=follow_up`이면 `query`는 200자 이하 필수이며 BE는 같은 소속 내에서 재검색하고 원질문과 후속을 답변에 전달한다. `new_request`면 query는 null이고 BE가 기존 의도 분기로 보낸다. 모델의 분류나 질의는 권한 부여가 아니다. 결과 사실은 토리 전용 프롬프트로 관련 내용을 최대 5개 의미별 묶음으로 작성하며 각 사실의 인용 청크·숫자 검증을 유지한다. 부족 항목은 사용자의 실제 요청과 관련된 것만 최대 2개 지시한다. 요약의 의미적 정확성이나 실제 자료의 완전성은 숫자 검사로 보장하지 않는다. 회의·계획의 공통 검색 판단은 바꾸지 않는다.
 
 명시된 연도 범위는 양 끝을 포함하며 후속 답에서 연도를 명시하면 해당 연도를 우선한다. 선택지가 있는 후속 답에서 범위를 확인할 수 없으면 특정 연도나 행사를 임의로 정하지 않고 재질문 없이 짧게 안내한다.
+
+## 운영 상황 확인과 제안 (AI-OPS-04)
+
+`respond_operational_situation(OperationalSituationRequest)`는 BE가 권한과 진행 상태를 확인한 행사 정보와 운영진의 상황을 받아 확인 질문이나 제안만 반환한다. `OperationalEventContext`는 행사명과 선택적인 유형·시작/종료일·장소·예상 인원(`expected_headcount`)을 담는다. 예상 인원은 실제 참가 인원이 아니다. 행사 식별자·권한 판정·DB 저장과 상태 전이는 BE의 책임이다.
+
+요청의 `situation`은 최대 4000자다. 기존 질문에 답하는 경우 별도 `clarification_question`(최대 500자), `clarification_options`(최대 3개, 각 200자), `answer`(최대 200자)를 함께 전달한다. 선택된 답도 BE가 실제 라벨로 바꿔 전달하며 AI가 인증·선택의 유효성을 판단하지 않는다. 최초 질문 생성과 후속 응답은 별도 호출이다.
+
+결과 `status=clarification`이면 질문 한 개와 선택지 최대 3개를 반환한다. `status=suggestion`이면 최대 1000자 요약과 1~5개 후속 제안(각 최대 500자)을 반환한다. 이미 답을 받은 요청에서 모델이 다시 질문하면 `AIInvalidResponseError`를 반환해 반복 질문을 막는다. 빈 값·길이·상태별 필드 불일치는 거절하며 모델 오류는 AI 오류로 전파한다. 내용은 제안일 뿐 실제 예약·발송·결제·계획 수정이나 확인을 실행하지 않는다. BE는 질문·답·결과를 보관하고 실패·재시도를 구분하며, 모델 호출 전후 소속 및 행사 상태를 검증한다. 사용자 상황과 답은 지시가 아닌 데이터이며 모델의 의미적 정확성은 보장하지 않는다.
