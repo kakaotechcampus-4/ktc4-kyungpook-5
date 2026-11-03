@@ -16,7 +16,7 @@ from app.ai.errors import AIError, AIInvalidResponseError, AITimeoutError
 from app.ai.features.meeting.lookup import MEETING_ASSESS_PROMPT_VERSION, RecordsLookup, get_assess_model, to_meeting_answer
 from app.ai.features.meeting.nodes import judge_utterance
 from app.ai.features.meeting.schemas import (
-    JudgeOutput,
+    QueryOutput,
     JudgeUtteranceRequest,
     MeetingUtterance,
 )
@@ -162,8 +162,14 @@ def _assessment(**overrides) -> EvidenceAssessment:
     return EvidenceAssessment(**(values | overrides))
 
 
-async def _judge(messages):
-    return JudgeOutput(needs_lookup=True, query=QUESTION)
+async def _decide(state):
+    """Jev 대신 조회로 본다"""
+    return 0.9
+
+
+async def _query(messages):
+    """luna 대신 검색어를 돌려준다"""
+    return QueryOutput(query=QUESTION)
 
 
 def _run(port, invoke, embed=_embed):
@@ -175,7 +181,7 @@ def _run(port, invoke, embed=_embed):
         ),
     )
     lookup = RecordsLookup(port, embed=embed, invoke=invoke)
-    return asyncio.run(judge_utterance(request, lookup=lookup, judge=_judge))
+    return asyncio.run(judge_utterance(request, lookup=lookup, decide=_decide, query=_query))
 
 
 def test_찾은_청크의_근거로_답하고_출처는_검색된_기록이다():
@@ -189,7 +195,8 @@ def test_찾은_청크의_근거로_답하고_출처는_검색된_기록이다()
     assert (result.kind, result.question) == ("ANSWER", QUESTION)
     assert result.answer == "2025 봄 MT 숙박비 550,000원"
     assert [source.record_id for source in result.sources] == ["rec_mt"]
-    search, answer = result.trace.tool_calls
+    # 앞의 두 줄은 판단(Jev)과 검색어(luna)다
+    search, answer = result.trace.tool_calls[2:]
     assert (search.tool, search.status, search.result_count) == ("records.search", "OK", 2)
     assert (answer.tool, answer.status) == ("llm.generate", "OK")
     # 어떤 근거 판단 지시문으로 답했는지 판단 기록에 남는다
@@ -216,14 +223,14 @@ def test_올린_기록이_없으면_근거_판단을_부르지_않고_기록에_
 
     assert result.kind == "NOT_FOUND"
     assert invoke.calls == []
-    assert [call.tool for call in result.trace.tool_calls] == ["records.search"]
+    assert [call.tool for call in result.trace.tool_calls[2:]] == ["records.search"]
 
 
 def test_청크는_찾았지만_근거가_없으면_기록에_없음이다():
     result = _run(_port(), FakeInvoke(_assessment(not_found=[QUESTION])))
 
     assert (result.kind, result.answer, result.sources) == ("NOT_FOUND", None, ())
-    assert [call.status for call in result.trace.tool_calls] == ["OK", "OK"]
+    assert [call.status for call in result.trace.tool_calls[2:]] == ["OK", "OK"]
 
 
 def test_받지_않은_자료를_가리키면_근거_판단에서_실패했다고_남긴다():
@@ -234,7 +241,7 @@ def test_받지_않은_자료를_가리키면_근거_판단에서_실패했다�
     with pytest.raises(AIInvalidResponseError) as raised:
         _run(_port(), invoke)
 
-    search, answer = raised.value.trace.tool_calls
+    search, answer = raised.value.trace.tool_calls[2:]
     assert (search.tool, search.status) == ("records.search", "OK")
     assert (answer.tool, answer.status) == ("llm.generate", "FAILED")
     assert answer.prompt_version == MEETING_ASSESS_PROMPT_VERSION
@@ -247,7 +254,7 @@ def test_임베딩이_늦으면_검색에서_멈추고_시간_초과로_남긴�
     with pytest.raises(AIError) as raised:
         _run(_port(), FakeInvoke(), embed=slow_embed)
 
-    [search] = raised.value.trace.tool_calls
+    [search] = raised.value.trace.tool_calls[2:]
     assert (search.tool, search.status) == ("records.search", "TIMEOUT")
 
 

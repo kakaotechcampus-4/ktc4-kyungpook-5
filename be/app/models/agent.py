@@ -158,6 +158,7 @@ class ContextDecision(IdMixin, TimestampMixin, Base):
     # 전사는 고치면 덮어써지므로 판단 기록만으로 그때 입력을 다시 만들려고 둔다.
     # 학습 데이터(#117)용이라 화면·API에는 내보내지 않는다. Discord 판단과 예전 기록은 null.
     judge_input: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
-    # 판단 LLM 호출에 걸린 시간(trace.judge_ms). 기록 검색·답 작성 시간은 들어가지 않는다.
+    # 판단 단계에 걸린 시간(trace.judge_ms): Jev 판단과, 조회로 본 발화는 검색어 만들기까지.
+    # 기록 검색·답 작성 시간은 들어가지 않는다. 호출별 시간과 Jev 확률은 tool_calls에 있다(#255).
     # 실패해도 AI가 trace를 돌려주면 남기고, trace가 없는 실패는 null.
     judge_ms: Mapped[int | None] = mapped_column(Integer)

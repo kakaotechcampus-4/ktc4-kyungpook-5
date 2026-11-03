@@ -16,7 +16,7 @@ from ...ports import RetrievedChunk
 from ..retrieval.schemas import RecordSearchRequest
 
 
-# 판단 모델이 직접 만드는 값. 나머지 결과는 코드가 채운다.
+# luna가 판단과 검색어를 함께 낼 때의 출력. 회의 판단은 Jev로 바꿨고(#255) 측정·비교에만 쓴다.
 # 이유·확신도를 받으면 판단이 0.65초 느려져 두 칸만 받는다(#111).
 # docstring을 달지 않는다. 출력 스키마의 description으로 모델에 그대로 전달되어
 # 측정 때와 다른 입력이 된다.
@@ -26,7 +26,7 @@ class JudgeOutput(ContractModel):
     query: str
 
 
-# 판단 전용 모델이 조회로 본 발화에 검색어만 받는다(#117). JudgeOutput처럼 docstring을 달지 않는다
+# 판단 전용 모델(Jev)이 조회로 본 발화에 검색어만 받는다(#117, #255). JudgeOutput처럼 docstring을 달지 않는다
 class QueryOutput(ContractModel):
     # 검색어이자 화면의 "무엇을 물었는지" 문구다
     query: str
@@ -92,22 +92,27 @@ class MeetingSearchRequest(RecordSearchRequest):
     original_question: NonBlankStr
 
 
-# 판단 뒤 AI가 부르는 도구. records.search는 기록 검색, llm.generate는 답 작성이다
-ToolName = Literal["records.search", "llm.generate"]
+# 발화 하나를 처리하며 AI가 부르는 도구.
+# judge.decide는 판단 전용 모델(Jev)의 판단, records.search는 기록 검색,
+# llm.generate는 LLM 호출(검색어 만들기, 답 작성. prompt_version으로 나눈다)이다
+ToolName = Literal["judge.decide", "records.search", "llm.generate"]
 
 
 class ToolCall(ContractModel):
-    """판단 뒤 AI가 실제로 부른 도구 하나"""
+    """발화 하나를 처리하며 AI가 실제로 부른 도구 하나"""
 
     tool: ToolName
-    # 예: 검색어 "2025 봄 MT 숙소비"
+    # judge.decide·검색어 만들기는 방금 발화, records.search·답 작성은 검색어. 예: "2025 봄 MT 숙소비"
     input: str
     status: Literal["OK", "FAILED", "TIMEOUT"]
     duration_ms: int = Field(ge=0)
     # records.search일 때 찾은 조각 수
     result_count: int | None = Field(default=None, ge=0)
-    # llm.generate일 때 그 호출의 프롬프트 버전. 예: "records-assess-v1"
+    # llm.generate일 때 그 호출의 프롬프트 버전. 예: "meeting-query-v1", "records-assess-v1"
     prompt_version: str | None = None
+    # judge.decide일 때 판단 모델이 낸 조회가 필요할 확률. 임계값(JEV_THRESHOLD)과 견줘 조회를 정한다.
+    # 남겨 두면 임계값을 바꿨을 때 판단이 어떻게 달라지는지 회의 뒤에 다시 셀 수 있다
+    probability: float | None = Field(default=None, ge=0, le=1)
 
 
 class JudgeTrace(ContractModel):
@@ -116,13 +121,13 @@ class JudgeTrace(ContractModel):
     모두 모델 출력이 아니라 코드가 채운다. 판단 지연에 영향이 없다.
     """
 
-    # 예: "gpt-5.6-luna". AI_MODEL 설정값
+    # 판단 모델. 예: "typesafe/jev-1.14" (context.JEV_MODEL)
     model: str
-    # 예: "meeting-judge-v5". 프롬프트 원문을 바꾸면 올린다
+    # 판단 질문 문구의 버전. 예: "meeting-questions-v1". 문구를 바꾸면 올린다
     prompt_version: str
-    # 판단(과 검색어) 호출에 걸린 시간
+    # 판단 단계에 걸린 시간. 조회로 본 발화는 검색어 만들기까지 들어간다
     judge_ms: int = Field(ge=0)
-    # NONE이면 비어 있다
+    # 부른 순서대로. 판단(judge.decide)이 늘 처음이고, NONE이면 그것 하나다
     tool_calls: tuple[ToolCall, ...] = ()
 
 
@@ -180,8 +185,11 @@ class JudgeUtteranceResult(ContractModel):
         if self.kind == "NO_LOOKUP":
             if self.route != "NONE":
                 raise ValueError("NO_LOOKUP은 route가 NONE이어야 합니다")
-            if self.question or self.answer or self.sources or self.trace.tool_calls:
-                raise ValueError("NO_LOOKUP에는 질문·답·출처·도구 호출이 없어야 합니다")
+            if self.question or self.answer or self.sources:
+                raise ValueError("NO_LOOKUP에는 질문·답·출처가 없어야 합니다")
+            # 조회하지 않았으면 판단 호출(judge.decide) 말고는 부른 도구가 없다
+            if any(call.tool != "judge.decide" for call in self.trace.tool_calls):
+                raise ValueError("NO_LOOKUP에는 판단 말고 부른 도구가 없어야 합니다")
             return self
 
         if self.route != "RAG":

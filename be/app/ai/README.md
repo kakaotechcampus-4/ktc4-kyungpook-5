@@ -89,7 +89,7 @@ be/app/ai/
 사용 기술은 Python 3.12, LangGraph, langchain-openai, Pydantic, pydantic-settings입니다.
 모델 연동은 Elice ML API의 OpenAI 호환 API와 `ChatOpenAI`를 기준으로 합니다.
 채팅 모델은 `gpt-5.6-luna`이며 모델명은 `AI_MODEL`로 전달합니다.
-회의 판단은 판단 전용 API Jev(`typesafe/jev-1.14`)로 바꾸고, luna는 Jev가 조회로 본 발화의 검색어만 만듭니다([판단 모델](docs/architecture.md#판단-모델)). 코드는 #255에서 바꾸며, 그 전까지는 luna가 판단과 검색어를 함께 맡습니다.
+회의 판단은 판단 전용 API Jev(`typesafe/jev-1.14`)로 바꾸고, luna는 Jev가 조회로 본 발화의 검색어만 만듭니다([판단 모델](docs/architecture.md#판단-모델)). Jev는 OpenAI 호환 API가 아니라서 `features/meeting/jev.py`가 httpx로 직접 부릅니다.
 게이트웨이는 모델마다 배포 주소가 달라서, 모델을 바꾸면 `AI_API_BASE_URL`도 그 모델의 주소로 바꿉니다.
 
 임베딩은 `openai/text-embedding-3-small`을 같은 게이트웨이의 별도 배포로 호출합니다.
