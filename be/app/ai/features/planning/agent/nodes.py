@@ -18,7 +18,7 @@ from ..generation.schemas import PlanGenerationResult, PlanGenerator, PlanningGe
 from .generation_tools import GenerateEventPlanInput, condition_generation_state, generate_event_plan
 
 
-PROMPT_VERSION = "planning-agent-v7"
+PROMPT_VERSION = "planning-agent-v8"
 MAX_TOOL_CALLS = 3
 PROMPT = (Path(__file__).parent / "prompts/chat.md").read_text()
 TOOL_NAME = "update_event_conditions"
@@ -76,6 +76,22 @@ async def call_agent_model(messages: list[AnyMessage], *, allow_tools: bool,
                                    allow_tools=allow_tools)
 
 
+TOOL_LIMIT_NOTICE = "이번 턴의 Tool 한도에 도달했습니다. 추가 실행 없이 실제 완료한 결과와 남은 내용을 답하세요."
+
+
+def agent_messages(context: dict, messages: list[AnyMessage], *, allow_tools: bool) -> list[AnyMessage]:
+    """대화 모델에 보낼 메시지 순서를 정한다.
+
+    공급자 입력 캐시는 첫 시스템 메시지가 글자 하나라도 다르면 걸리지 않았다(#269).
+    그래서 맨 앞에는 바뀌지 않는 지시문만 두고, 메시지 ID·초안처럼 매 호출 바뀌는 문맥은 맨 끝에 둔다.
+    예: [지시문] [이력] [이번 발화] [Tool 결과…] [실행 문맥] → 실행 문맥 앞부분은 다음 호출에서 재사용된다.
+    """
+    execution = "현재 실행 문맥(JSON 데이터):\n" + json.dumps(context, ensure_ascii=False)
+    if not allow_tools:
+        execution += "\n" + TOOL_LIMIT_NOTICE
+    return [SystemMessage(content=PROMPT), *messages, SystemMessage(content=execution)]
+
+
 async def agent_node(
     state: PlanningAgentState, *, request: PlanningAgentTurnInput, invoke: AgentInvoker,
     search_available: bool = False,
@@ -90,10 +106,8 @@ async def agent_node(
                        same_basis(state["generation"].preview.basis_draft, state["draft"]) and
                        not state["generation"].condition_change_pending))
     allow_tools = state["tool_calls"] < MAX_TOOL_CALLS
-    instruction = PROMPT + "\n\n현재 실행 문맥(JSON 데이터):\n" + json.dumps(context, ensure_ascii=False)
-    if not allow_tools:
-        instruction += "\n이번 턴의 Tool 한도에 도달했습니다. 추가 실행 없이 실제 완료한 결과와 남은 내용을 답하세요."
-    response = await invoke([SystemMessage(content=instruction), *state["messages"]], allow_tools=allow_tools)
+    response = await invoke(agent_messages(context, state["messages"], allow_tools=allow_tools),
+                            allow_tools=allow_tools)
     if not isinstance(response, AIMessage) or response.invalid_tool_calls:
         raise AIInvalidResponseError("모델의 Tool 요청을 읽을 수 없습니다")
     if not allow_tools and response.tool_calls:
