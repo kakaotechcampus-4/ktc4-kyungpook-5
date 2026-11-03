@@ -125,6 +125,8 @@ Agent·노드에서만 `build_chat_model(reasoning={"effort": "none"})`으로 �
 | `AI_EMBEDDING_BASE_URL` | 임베딩 API 기본 주소. 채팅과 다른 배포입니다 |
 | `AI_EMBEDDING_API_KEY` | 임베딩 API 인증 키. 비우면 `AI_API_KEY`를 씁니다 |
 | `AI_EMBEDDING_MODEL` | 사용할 임베딩 모델 |
+| `JEV_BASE_URL` | 회의 판단 API Jev의 배포 주소. 뒤에 `/v1/decisions`를 붙여 부릅니다 |
+| `JEV_API_KEY` | Jev 인증 키. 모델 버전과 임계값은 코드에 고정돼 있어 환경변수로 받지 않습니다 |
 
 설정은 BE 실행 환경에서 전달하며 AI 모듈 전용 `.env`는 자동 로드하지 않습니다.
 의존성 설치와 실행은 BE에서 통합 관리합니다.
