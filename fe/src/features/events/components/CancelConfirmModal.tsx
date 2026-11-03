@@ -9,8 +9,8 @@ import { Modal } from '@/shared/ui/Modal'
 import { ToriNote } from '@/shared/ui/ToriNote'
 
 const CONSEQUENCES = [
-  '승인 대기 중인 일이 모두 취소돼요',
-  '남은 단계가 더 진행되지 않아요',
+  '행사 진행과 남은 단계 처리가 중단돼요',
+  '참가자 안내와 예약 취소, 환불은 직접 해야 해요',
   '이미 보낸 공지와 이체는 되돌릴 수 없어요',
 ]
 
@@ -19,9 +19,10 @@ interface CancelConfirmModalProps {
   event: EventDetail
   onClose: () => void
   onConfirm: () => void
+  pending?: boolean
 }
 
-export function CancelConfirmModal({ open, event, onClose, onConfirm }: CancelConfirmModalProps) {
+export function CancelConfirmModal({ open, event, onClose, onConfirm, pending = false }: CancelConfirmModalProps) {
   const [agreed, setAgreed] = useState(false)
 
   const close = () => {
@@ -48,8 +49,8 @@ export function CancelConfirmModal({ open, event, onClose, onConfirm }: CancelCo
           <Button variant="secondary" onClick={close}>
             돌아가기
           </Button>
-          <Button variant="danger" disabled={!agreed} onClick={onConfirm}>
-            행사 취소하기
+          <Button variant="danger" disabled={!agreed || pending} onClick={onConfirm}>
+            {pending ? '취소하는 중…' : '행사 취소하기'}
           </Button>
         </>
       }

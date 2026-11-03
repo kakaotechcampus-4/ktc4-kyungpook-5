@@ -1,12 +1,12 @@
 // L2-d 행사 취소 정리. 취소를 누른 뒤 뒷정리를 차례로 안내한다.
 // 앱이 대신 취소해주지 않는다 — 운영진이 직접 하고 완료로 표시한다.
 import { useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { CancelTaskList } from '@/features/events/components/CancelTaskList'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
 import { StepStepper } from '@/features/events/components/StepStepper'
-import { useEventDetail, useResolvedActions } from '@/features/events/hooks'
-import { DEMO_CANCEL_TASKS, EMPTY_CANCEL_TASKS } from '@/features/events/mock'
+import { useEventDetail, useResolvedActions, useCancelTasks, useCompleteCancelTask } from '@/features/events/hooks'
+import { DEMO_CANCEL_TASKS } from '@/features/events/mock'
 import type { CancelTask } from '@/features/events/types'
 import { copyText } from '@/shared/lib/clipboard'
 import { formatDateRange } from '@/shared/lib/format'
@@ -14,24 +14,31 @@ import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
+import { ServerErrorScreen } from '@/shared/ui/StateScreen'
 import { ToriNote } from '@/shared/ui/ToriNote'
 
 export default function EventCancelPage() {
   const { eventId } = useParams()
   const { search } = useLocation()
+  const navigate = useNavigate()
   const demo = new URLSearchParams(search).has('demo')
 
-  const event = useEventDetail(eventId).data
+  const detailQuery = useEventDetail(eventId)
+  const event = detailQuery.data
   const resolved = useResolvedActions(eventId).data
+  const cancelQuery = useCancelTasks(eventId)
+  const completeMutation = useCompleteCancelTask()
 
-  // TODO(연동): 취소 단계·Action은 아직 정의 전이다(#73).
-  const [tasks, setTasks] = useState<CancelTask[]>(demo ? DEMO_CANCEL_TASKS : EMPTY_CANCEL_TASKS)
+  const [demoTasks, setDemoTasks] = useState<CancelTask[]>(DEMO_CANCEL_TASKS)
+  const tasks: CancelTask[] = demo
+    ? demoTasks
+    : (cancelQuery.data ?? []).map((task) => ({ id: task.id, name: task.name, desc: task.description, state: task.state, message: task.message ?? undefined }))
   const current = tasks.find((t) => t.state === 'CURRENT')
   const doneCount = tasks.filter((t) => t.state === 'DONE').length
 
   // 하나를 끝내면 다음 것이 진행 중이 된다.
   const complete = (task: CancelTask) => {
-    setTasks((list) => {
+    setDemoTasks((list) => {
       const index = list.findIndex((t) => t.id === task.id)
       return list.map((t, i) =>
         i === index ? { ...t, state: 'DONE' } : i === index + 1 ? { ...t, state: 'CURRENT' } : t,
@@ -40,10 +47,29 @@ export default function EventCancelPage() {
     toast.show({ kind: 'done', title: '완료로 표시했어요', desc: task.name })
   }
 
-  const showMessage = (task: CancelTask) => {
+  const completeServer = (task: CancelTask) => {
+    if (!eventId) return
+    completeMutation.mutate(
+      { eventId, taskId: task.id },
+      {
+        onSuccess: () => toast.show({ kind: 'done', title: '완료로 표시했어요', desc: task.name }),
+        onError: (error) => toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' }),
+      },
+    )
+  }
+
+  const copyMessage = async (task: CancelTask) => {
     if (!task.message) return
-    copyText(task.message)
-    toast.show({ kind: 'done', title: '연락 문구를 복사했어요', desc: task.name })
+    const ok = await copyText(task.message)
+    toast.show(
+      ok
+        ? { kind: 'done', title: '연락 문구를 복사했어요', desc: task.name }
+        : {
+            kind: 'error',
+            title: '복사하지 못했어요',
+            desc: '오른쪽 연락 문구를 직접 골라서 복사해 주세요.',
+          },
+    )
   }
 
   const meta = [
@@ -51,8 +77,17 @@ export default function EventCancelPage() {
     { label: '장소', value: event?.location ?? '—' },
     { label: '참가', value: event?.headcount ? `${event.headcount}명` : '—' },
     { label: '정리 단계', value: current?.name ?? '정리 완료', highlight: true },
-    { label: '담당', value: '박수겸 · 총무' },
   ]
+
+  // 행사 상세와 같은 방식. 받기 전에는 그리지 않고, 실패하면 자리값 대신 오류 화면을 보인다.
+  if (detailQuery.isPending) return null
+  if (detailQuery.isError) {
+    return <ServerErrorScreen onRetry={() => detailQuery.refetch()} onHome={() => navigate('/')} />
+  }
+  if (!demo && cancelQuery.isPending) return null
+  if (!demo && cancelQuery.isError) {
+    return <ServerErrorScreen onRetry={() => cancelQuery.refetch()} onHome={() => navigate('/')} />
+  }
 
   return (
     <div className="flex flex-col gap-[20px]">
@@ -68,10 +103,8 @@ export default function EventCancelPage() {
         <div className="flex items-center justify-between gap-[12px]">
           <span className="flex items-center gap-[10px]">
             <h1 className="text-h1">{event?.title ?? '행사 이름'}</h1>
-            <Chip tone="failed">취소 정리 중</Chip>
+            <Chip tone={event?.status === 'CANCELLED' ? 'done' : 'failed'}>{event?.status === 'CANCELLED' ? '취소 완료' : '취소 정리 중'}</Chip>
           </span>
-          {/* TODO(연동): 정리 단계를 바꾸는 화면은 취소 Action이 정해진 뒤에 만든다(#73). */}
-          <Button variant="secondary">정리 단계 수정</Button>
         </div>
 
         <div className="flex flex-wrap gap-x-[36px] gap-y-[12px]">
@@ -112,7 +145,7 @@ export default function EventCancelPage() {
 
       <div className="flex items-start gap-[20px]">
         <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-          <CancelTaskList tasks={tasks} onShowMessage={showMessage} onComplete={complete} />
+          <CancelTaskList tasks={tasks} onCopyMessage={copyMessage} onComplete={demo ? complete : completeServer} pending={!demo && completeMutation.isPending} />
           <ResolvedActionList
             actions={resolved?.items ?? []}
             totalCount={resolved?.totalCount ?? 0}
@@ -144,10 +177,17 @@ export default function EventCancelPage() {
               </div>
             )}
 
+            {/* 복사가 막혀도 직접 골라 복사할 수 있게 문구를 그대로 보여준다 */}
             {current.message && (
-              <Button variant="soft" className="w-full" onClick={() => showMessage(current)}>
-                연락 문구 보기
-              </Button>
+              <div className="flex flex-col gap-[7px]">
+                <span className="text-[12px] font-bold text-ink">연락 문구</span>
+                <p className="rounded-[11px] bg-bg px-[14px] py-[12px] text-[12px] leading-[18px] whitespace-pre-line text-ink2">
+                  {current.message}
+                </p>
+                <Button variant="soft" className="w-full" onClick={() => copyMessage(current)}>
+                  연락 문구 복사
+                </Button>
+              </div>
             )}
           </Card>
         )}

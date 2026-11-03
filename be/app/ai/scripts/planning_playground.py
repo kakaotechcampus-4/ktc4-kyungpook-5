@@ -15,7 +15,7 @@ from langchain_core.messages import AnyMessage
 from pydantic import Field, field_validator, model_validator
 
 from app.ai.config import AISettings
-from app.ai.contracts import ContractModel, IndexRecordRequest, NonBlankStr
+from app.ai.contracts import ContractModel, IndexRecordRequest, NonBlankStr, PlanningHistoryUsage
 from app.ai.errors import AIConfigError, AIRetryableError
 from app.ai.features.planning.agent.graph import run_planning_agent_turn
 from app.ai.features.planning.agent.nodes import PROMPT_VERSION
@@ -81,9 +81,10 @@ async def agent_turn(request: PlanningAgentTurnInput):
             # 요청마다 현재 메모리를 주입한다. 샘플 색인으로 저장소가 교체돼도 이전 port에 묶이지 않는다.
             result = await run_planning_agent_turn(request,
                 search=partial(search_past_events, club_id="clb_keunnamu", port=memory), generate=run_plan_generation)
+            usage = PlanningHistoryUsage.from_count(len(result.history))
         except Exception as error:
             raise safe_failure(error) from None
-        return {"result": result.model_dump(mode="json"),
+        return {"result": result.model_dump(mode="json"), "history_usage": usage.model_dump(mode="json"),
                 "elapsed_ms": round((time.perf_counter() - started) * 1000), "fixture_count": fixture_count}
 
 
@@ -98,9 +99,10 @@ async def button_generate(request: PlaygroundButtonRequest):
                 messages=plan_messages(request.history), reference_facts=latest_reference_facts(request.history),
                 reference_date=request.reference_date, timezone=request.timezone,
                 use_current_conditions=request.use_current_conditions), generate=run_plan_generation)
+            usage = PlanningHistoryUsage.from_count(len(request.history))
         except Exception as error:
             raise safe_failure(error) from None
-        return {"result": result.model_dump(mode="json"), "source": "button",
+        return {"result": result.model_dump(mode="json"), "source": "button", "history_usage": usage.model_dump(mode="json"),
                 "elapsed_ms": round((time.perf_counter() - started) * 1000), "fixture_count": fixture_count}
 
 

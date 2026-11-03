@@ -2,10 +2,21 @@ services:
   api:
     image: ${BACKEND_IMAGE:?set BACKEND_IMAGE}
     restart: unless-stopped
+    env_file:
+      - ${API_ENV_FILE:-/opt/unyounghae/api.env}
+    environment:
+      STORAGE_DIR: /app/var/storage
+    volumes:
+      - type: bind
+        source: ${API_STORAGE_DIR:-/opt/unyounghae/api-storage}
+        target: /app/var/storage
+        bind:
+          create_host_path: false
     ports:
       - "127.0.0.1:8000:8000"
     networks:
       - internal
+      - database
 
   web:
     image: ${FRONTEND_IMAGE:?set FRONTEND_IMAGE}
@@ -26,6 +37,9 @@ services:
 
 networks:
   internal:
+  database:
+    external: true
+    name: ${DB_NETWORK:-unyounghae-db}
 
 volumes:
   caddy_data:

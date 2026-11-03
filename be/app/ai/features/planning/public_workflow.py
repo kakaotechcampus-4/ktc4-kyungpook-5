@@ -3,7 +3,8 @@ from functools import partial
 
 from ...contracts import (
     PlanningChatRequest, PlanningPreviewRequest, PlanningPublicResult,
-    PlanningView, PlanningGenerationReadiness, PlanningResumeState, PlanningStatePayload,
+    PlanningView, PlanningGenerationReadiness, PlanningResumeState, PlanningStatePayload, PlanningHistoryUsage,
+    PlanningDraft, PlanningStateError,
 )
 from ...ports import RecordSearchPort
 from .agent.graph import run_planning_agent_turn
@@ -17,19 +18,31 @@ from .generation.schemas import PlanningGenerationState
 from .state_codec import capture_turn_state, restore_history, to_agent_input
 
 
+def planning_generation_readiness(draft: PlanningDraft, *, resume_state: PlanningResumeState | None = None) -> PlanningGenerationReadiness:
+    """복원 조회도 저장된 구 판정이 아닌 현재 정책과 미해결 변경을 사용한다."""
+    if resume_state is not None and draft != resume_state.payload.basis_draft:
+        raise PlanningStateError("draft_mismatch", "조건과 대화 상태의 동기화가 필요합니다")
+    generation = resume_state.payload.generation if resume_state else PlanningGenerationState()
+    blocks = generation_blocks(draft, generation)
+    return PlanningGenerationReadiness(can_generate=not blocks, reasons=blocks)
+
+
 def build_result(request, state, *, reply=None, record_lookup=None, generation_result=None):
     draft = state.payload.basis_draft
     generation = state.payload.generation
-    blocks = generation_blocks(draft, generation)
+    readiness = planning_generation_readiness(draft, resume_state=state)
     return PlanningPublicResult(
         request_id=request.request_id, base_revision=request.base_revision,
         view=PlanningView(
             reply=reply, draft=draft,
+            # 입력 이력이나 말풍선 수가 아닌, 이번 처리 후 보관할 상태를 기준으로 센다.
+            # 채팅과 버튼이 이 함수로 모이므로 버튼 클릭을 발화로 세지 않는다.
+            history_usage=PlanningHistoryUsage.from_count(len(state.payload.history)),
             # 숫자는 답변에서 읽지 않는다. 처리 전후의 실제 값 차이만 알린다.
             changed_fields=tuple(field for field in type(draft.conditions).model_fields
                 if getattr(request.draft.conditions, field) != getattr(draft.conditions, field)),
             record_lookup=record_lookup,
-            generation_readiness=PlanningGenerationReadiness(can_generate=not blocks, reasons=blocks),
+            generation_readiness=readiness,
             generation_result=generation_result,
             preview_is_current=bool(generation.preview and same_basis(generation.preview.basis_draft, draft)
                                     and not generation.condition_change_pending),

@@ -1,0 +1,185 @@
+{
+  "kind": "fixed_model_and_virtual_clock_stage_validation",
+  "actual_provider_calls": 0,
+  "actual_service_latency_measured": false,
+  "mode": "injected_callers",
+  "report_version": 2,
+  "expected_request_ms": {
+    "C1": 5,
+    "C2": 15,
+    "G1": 47,
+    "G2": 32
+  },
+  "observed_request_ms": {
+    "C1": 5.0,
+    "C2": 15.0,
+    "G1": 47.0,
+    "G2": 32.0
+  },
+  "expected_chat_model_attempts": {
+    "agent_model": 2,
+    "generation_model": 1
+  },
+  "observed_chat_model_attempts": {
+    "agent_model": 2,
+    "generation_model": 1
+  },
+  "chat_observation": {
+    "complete": true,
+    "model_call_attempts": {
+      "agent_model": 2,
+      "generation_model": 1
+    },
+    "scope": "planning_function_wrappers_v1",
+    "spans": [
+      {
+        "duration_ms": 10.0,
+        "end_ms": 10.0,
+        "error_type": null,
+        "failure_code": null,
+        "id": 1,
+        "input_message_count": 6,
+        "message_text_chars": 4585,
+        "outcome": "ok",
+        "parent_id": null,
+        "stage": "agent_model",
+        "start_ms": 0.0
+      },
+      {
+        "duration_ms": 32.0,
+        "end_ms": 42.0,
+        "error_type": null,
+        "failure_code": null,
+        "id": 2,
+        "outcome": "ok",
+        "parent_id": null,
+        "stage": "generation",
+        "start_ms": 10.0
+      },
+      {
+        "duration_ms": 30.0,
+        "end_ms": 40.0,
+        "error_type": null,
+        "failure_code": null,
+        "id": 3,
+        "outcome": "ok",
+        "parent_id": 2,
+        "stage": "compose_plan",
+        "start_ms": 10.0
+      },
+      {
+        "duration_ms": 30.0,
+        "end_ms": 40.0,
+        "error_type": null,
+        "failure_code": null,
+        "id": 4,
+        "input_message_count": 2,
+        "message_text_chars": 3200,
+        "outcome": "ok",
+        "parent_id": 3,
+        "stage": "generation_model",
+        "start_ms": 10.0
+      },
+      {
+        "duration_ms": 2.0,
+        "end_ms": 42.0,
+        "error_type": null,
+        "failure_code": null,
+        "id": 5,
+        "outcome": "ok",
+        "parent_id": 2,
+        "stage": "validate_plan",
+        "start_ms": 40.0
+      },
+      {
+        "duration_ms": 5.0,
+        "end_ms": 47.0,
+        "error_type": null,
+        "failure_code": null,
+        "id": 6,
+        "input_message_count": 8,
+        "message_text_chars": 6947,
+        "outcome": "ok",
+        "parent_id": null,
+        "stage": "agent_model",
+        "start_ms": 42.0
+      }
+    ],
+    "version": 1
+  },
+  "button_observation": {
+    "complete": true,
+    "model_call_attempts": {
+      "agent_model": 0,
+      "generation_model": 1
+    },
+    "scope": "planning_function_wrappers_v1",
+    "spans": [
+      {
+        "duration_ms": 32.0,
+        "end_ms": 32.0,
+        "error_type": null,
+        "failure_code": null,
+        "id": 1,
+        "outcome": "ok",
+        "parent_id": null,
+        "stage": "generation",
+        "start_ms": 0.0
+      },
+      {
+        "duration_ms": 30.0,
+        "end_ms": 30.0,
+        "error_type": null,
+        "failure_code": null,
+        "id": 2,
+        "outcome": "ok",
+        "parent_id": 1,
+        "stage": "compose_plan",
+        "start_ms": 0.0
+      },
+      {
+        "duration_ms": 30.0,
+        "end_ms": 30.0,
+        "error_type": null,
+        "failure_code": null,
+        "id": 3,
+        "input_message_count": 2,
+        "message_text_chars": 3159,
+        "outcome": "ok",
+        "parent_id": 2,
+        "stage": "generation_model",
+        "start_ms": 0.0
+      },
+      {
+        "duration_ms": 2.0,
+        "end_ms": 32.0,
+        "error_type": null,
+        "failure_code": null,
+        "id": 4,
+        "outcome": "ok",
+        "parent_id": 1,
+        "stage": "validate_plan",
+        "start_ms": 30.0
+      }
+    ],
+    "version": 1
+  },
+  "source_sha256": {
+    "features/planning/agent/graph.py": "83292a96948abb8a37edb94948c855e503a0b054ea9c02ecbc3f19d04b879b88",
+    "features/planning/generation/graph.py": "eda198366d633da09d75ad0f30fb63dc6540a166031a7ff28e94618f36652a76",
+    "scripts/measure_planning_latency.py": "af32bc0ca437423bb585ad86a3e0cbf2bf03fc2e9ec626ae9a69ef2d66045e58",
+    "scripts/planning_latency_observation.py": "4f15f06133239ae66b534ca08205f4d8a468c919240211bc987dfb67fa278404"
+  },
+  "aggregation_source_sha256": {
+    "summarize_planning_latency.py": "78d61d6734e499e1debd7a4348156757a6253715ba0fa27d31b6fe0a314b6e1b",
+    "planning_latency_summary.py": "1a9d1e8996ab702548c94100fe9854a11aa2454c9b580193e782d3425f2fca4f",
+    "planning_latency_observation.py": "4f15f06133239ae66b534ca08205f4d8a468c919240211bc987dfb67fa278404",
+    "planning_latency_inputs.py": "e9ffc6fd6983a81fd65d05d03d30a9cc7173f79e13f0178c24eb396da3a2c2a2"
+  },
+  "input_file_sha256": {
+    "session.json": "f56a6053caa319e08ce2b491778b181b1bb0e72ae5032762da7dacf3f7233446",
+    "fixture.json": "13e868674c1cf5f20eef93b0c3c5a199a181caf1b5167178d467ba30869e391b",
+    "attempts.jsonl": "c8017031bb573a63f291f3b685ab9a0bdc4a2bd561bf8e6cf57f620049f805a1"
+  },
+  "all_checks_passed": true
+}

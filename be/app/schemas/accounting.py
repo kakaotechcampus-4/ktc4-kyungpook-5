@@ -1,5 +1,9 @@
 """영수 내역 기록 도메인 요청·응답 스키마 (#133)."""
 
+from typing import Annotated
+
+from pydantic import Field, StringConstraints
+
 from app.core.enums import (
     CurrencyCode,
     ExpenseSource,
@@ -8,13 +12,33 @@ from app.core.enums import (
 )
 from app.schemas.common import CamelModel, PageMeta, UtcDateTime
 
+# expenses 컬럼 길이와 같다. 넘치면 DB 오류(500) 대신 422로 돌려준다.
+Merchant = Annotated[str, StringConstraints(max_length=200)]
+ExpenseCategory = Annotated[str, StringConstraints(max_length=50)]
+
 
 class ExpenseCreateIn(CamelModel):
     spent_at: UtcDateTime
-    merchant: str | None = None
+    merchant: Merchant | None = None
     amount: int
     currency: CurrencyCode = CurrencyCode.KRW
-    category: str | None = None
+    category: ExpenseCategory | None = None
+    description: str | None = None
+    event_id: str | None = None
+
+
+class ExpenseUpdateIn(CamelModel):
+    """지출 수정 (#213). 보낸 필드만 바꾸고, null을 보내면 그 값을 비운다.
+
+    지출일·금액·통화는 비울 수 없다. 클라이언트가 본 지출의 version을 함께 보낸다.
+    """
+
+    expected_version: int = Field(ge=1)
+    spent_at: UtcDateTime | None = None
+    merchant: Merchant | None = None
+    amount: int | None = None
+    currency: CurrencyCode | None = None
+    category: ExpenseCategory | None = None
     description: str | None = None
     event_id: str | None = None
 
@@ -29,6 +53,8 @@ class ExpenseOut(CamelModel):
     description: str | None
     source: ExpenseSource
     receipt_record_id: str | None
+    # 행사 정산에 묶인 지출이면 그 행사. 수정으로 바꿀 수 있어 결과를 확인하게 내려준다.
+    event_id: str | None
     version: int
 
 

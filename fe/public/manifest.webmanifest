@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "운영해",
+  "short_name": "운영해",
+  "description": "회의 자료와 다음 할 일을 함께 챙기는 운영해",
+  "lang": "ko",
+  "start_url": "/meetings",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf9f6",
+  "theme_color": "#2563eb",
+  "icons": [
+    { "src": "/icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    { "src": "/icons/app.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

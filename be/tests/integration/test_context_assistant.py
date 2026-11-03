@@ -77,6 +77,7 @@ def _decision_of_job(client: TestClient, headers: dict, club_id: str, job_id: st
     ).json()["data"]
 
 
+@pytest.mark.real_ai
 async def test_회칙을_올리면_RAG_판단이_그_기록을_출처로_인용한다(
     client: TestClient, app_db: None
 ) -> None:
@@ -90,7 +91,7 @@ async def test_회칙을_올리면_RAG_판단이_그_기록을_출처로_인용�
     assert upload.status_code == 201, upload.text
     record_id = upload.json()["data"]["id"]
     detail = client.get(f"/api/v1/records/{record_id}", headers=headers).json()["data"]
-    assert detail["parseStatus"] == "COMPLETED"
+    assert detail["parseStatus"] == "INDEXED"
     assert detail["parseResult"]["blocks"]
 
     meeting_id = _start_meeting(client, headers, club_id)

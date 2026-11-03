@@ -8,11 +8,12 @@ import { Chip } from '@/shared/ui/Chip'
 
 interface CancelTaskListProps {
   tasks: CancelTask[]
-  onShowMessage: (task: CancelTask) => void
+  onCopyMessage: (task: CancelTask) => void
   onComplete: (task: CancelTask) => void
+  pending?: boolean
 }
 
-export function CancelTaskList({ tasks, onShowMessage, onComplete }: CancelTaskListProps) {
+export function CancelTaskList({ tasks, onCopyMessage, onComplete, pending = false }: CancelTaskListProps) {
   return (
     <Card className="flex flex-col">
       <div className="flex items-center gap-[9px] px-[26px] pt-[22px] pb-[16px]">
@@ -50,12 +51,11 @@ export function CancelTaskList({ tasks, onShowMessage, onComplete }: CancelTaskL
           {task.state === 'CURRENT' && (
             <span className="flex shrink-0 gap-[8px]">
               {task.message && (
-                <Button variant="secondary" onClick={() => onShowMessage(task)}>
-                  연락 문구 보기
+                <Button variant="secondary" onClick={() => onCopyMessage(task)}>
+                  연락 문구 복사
                 </Button>
               )}
-              {/* TODO(연동): 취소 단계 완료 API는 아직 정의 전이다(#73). */}
-              <Button onClick={() => onComplete(task)}>완료로 표시</Button>
+              <Button disabled={pending} onClick={() => onComplete(task)}>{pending ? '처리 중…' : '완료로 표시'}</Button>
             </span>
           )}
         </div>

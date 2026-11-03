@@ -30,6 +30,7 @@ interface StepModalProps {
   // 승인 대기 Action의 [검토하기]. 결정 검토 모달은 화면 쪽에서 띄운다.
   onReviewAction: (action: EventAction) => void
   onCompleteStep: (step: EventStep) => void
+  readOnly?: boolean
 }
 
 export function StepModal({
@@ -42,6 +43,7 @@ export function StepModal({
   onCompleteAction,
   onReviewAction,
   onCompleteStep,
+  readOnly = false,
 }: StepModalProps) {
   const chip = STATE_CHIP[step.state]
   const manual = step.actor === 'MANUAL'
@@ -85,7 +87,9 @@ export function StepModal({
           </Button>
           {/* 끝난 단계는 다시 완료할 수 없고, 아직 시작 안 한 단계는 건너뛰지 않는다 */}
           {step.state === 'CURRENT' && (
-            <Button onClick={() => onCompleteStep(step)}>단계 완료로 표시</Button>
+            <Button disabled={readOnly} onClick={() => onCompleteStep(step)}>
+              단계 완료로 표시
+            </Button>
           )}
         </>
       }
@@ -133,6 +137,7 @@ export function StepModal({
               action={action}
               onComplete={onCompleteAction}
               onReview={onReviewAction}
+              readOnly={readOnly}
             />
           ))}
         </>

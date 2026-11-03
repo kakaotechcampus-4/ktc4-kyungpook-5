@@ -7,11 +7,14 @@ meeting.curl.sh의 M02, M05~M09(실제 음성 대신 test-support 경로)가 실
 
 import uuid
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.db import session as db_session
+from app.models.meetings import Meeting
+from app.core.enums import MeetingStatus
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
 
@@ -86,6 +89,81 @@ async def test_회의를_시작하면_RECORDING_상태다(client: TestClient, ap
     res = client.get(f"/api/v1/meetings/{meeting_id}", headers=headers)
     assert res.status_code == 200
     assert res.json()["data"]["status"] == "RECORDING"
+
+
+async def test_소속_회의_목록은_빈_목록과_페이지_meta를_반환한다(
+    client: TestClient, app_db: None
+) -> None:
+    access_token, club_id = _owner_with_club(client)
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    res = client.get(
+        f"/api/v1/clubs/{club_id}/meetings",
+        headers=headers,
+        params={"page": 1, "size": 10},
+    )
+
+    assert res.status_code == 200, res.text
+    assert res.json() == {"data": [], "meta": {"page": 1, "size": 10, "totalCount": 0}}
+
+
+async def test_소속_회의_목록은_created_at_desc와_status_페이지를_적용한다(
+    client: TestClient, app_db: None
+) -> None:
+    access_token, club_id = _owner_with_club(client)
+    headers = {"Authorization": f"Bearer {access_token}"}
+    first = _start_meeting(client, headers, club_id)
+    second = _start_meeting(client, headers, club_id)
+    third = _start_meeting(client, headers, club_id)
+    client.post(f"/api/v1/meetings/{first}/finish", headers=headers)
+
+    async with db_session.get_sessionmaker()() as session:
+        for meeting_id, offset in ((first, 3), (second, 2), (third, 1)):
+            meeting = await session.get(Meeting, meeting_id)
+            assert meeting is not None
+            meeting.created_at = datetime(2026, 11, 2, 12, offset, tzinfo=UTC)
+        await session.commit()
+
+    page = client.get(
+        f"/api/v1/clubs/{club_id}/meetings",
+        headers=headers,
+        params={"page": 1, "size": 2},
+    )
+    completed = client.get(
+        f"/api/v1/clubs/{club_id}/meetings",
+        headers=headers,
+        params={"status": "COMPLETED", "page": 1, "size": 20},
+    )
+
+    assert page.status_code == completed.status_code == 200
+    assert [row["id"] for row in page.json()["data"]] == [first, second]
+    assert page.json()["meta"] == {"page": 1, "size": 2, "totalCount": 3}
+    assert [row["id"] for row in completed.json()["data"]] == [first]
+    assert completed.json()["meta"]["totalCount"] == 1
+
+
+async def test_다른_소속은_회의_목록을_볼_수_없다(
+    client: TestClient, app_db: None
+) -> None:
+    owner_token, club_id = _owner_with_club(client)
+    owner_headers = {"Authorization": f"Bearer {owner_token}"}
+    _start_meeting(client, owner_headers, club_id)
+    outsider_email = _unique_email("meeting-list-outsider")
+    client.post(
+        "/api/v1/auth/signup",
+        json={"email": outsider_email, "password": PASSWORD, "name": "외부인"},
+    )
+    login = client.post(
+        "/api/v1/auth/login", json={"email": outsider_email, "password": PASSWORD}
+    )
+    outsider_headers = {"Authorization": f"Bearer {login.json()['data']['accessToken']}"}
+
+    res = client.get(
+        f"/api/v1/clubs/{club_id}/meetings", headers=outsider_headers
+    )
+
+    assert res.status_code == 403
+    assert res.json()["error"]["code"] == "FORBIDDEN"
 
 
 async def test_물음표_없는_발화는_NONE으로_판단된다(

@@ -1,21 +1,27 @@
 """동아리·멤버십 엔드포인트."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_account, require_club_role
+from app.core.deps import get_current_account, require_club_role, require_member
 from app.core.enums import MemberRole
+from app.core.exceptions import InvitationUnavailable
 from app.db.session import get_session
 from app.models.auth import Account
 from app.models.clubs import Member
 from app.schemas.clubs import (
     ClubCreateIn,
     ClubOut,
+    ClubSearchListResponse,
+    ClubSearchOut,
+    ClubUpdateIn,
     InvitationAcceptIn,
     InvitationAcceptOut,
     InvitationCreateIn,
     InvitationCreateOut,
     MeOut,
+    MemberListResponse,
+    MemberOut,
     MyClubOut,
 )
 from app.schemas.common import Envelope
@@ -42,6 +48,16 @@ async def get_me(
             clubs=clubs,
         )
     )
+
+
+@router.get("/clubs", response_model=ClubSearchListResponse)
+async def search_clubs(
+    query: str = Query(..., min_length=1),
+    session: AsyncSession = Depends(get_session),
+) -> ClubSearchListResponse:
+    """이름 일부로 동아리를 찾는다. 회원가입 중(로그인 전)에도 호출된다."""
+    rows = await club_service.search_clubs(session, query=query)
+    return ClubSearchListResponse(data=[ClubSearchOut.model_validate(row) for row in rows])
 
 
 @router.post("/clubs", response_model=Envelope[ClubOut], status_code=201)
@@ -71,6 +87,31 @@ async def create_club(
     )
 
 
+@router.get("/clubs/{club_id}", response_model=Envelope[ClubOut])
+async def get_club(
+    club_id: str,
+    _member: Member = Depends(require_member),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[ClubOut]:
+    """동아리 하나. 수정 화면이 분야·소개의 현재 값을 채운다 (#223)."""
+    club = await club_service.get_club(session, club_id=club_id)
+    return Envelope(data=ClubOut.model_validate(club))
+
+
+@router.patch("/clubs/{club_id}", response_model=Envelope[ClubOut])
+async def update_club(
+    club_id: str,
+    body: ClubUpdateIn,
+    # 이름·분야는 동아리를 대표하는 정보라 대표만 바꾼다.
+    _owner: Member = Depends(require_club_role(MemberRole.OWNER)),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[ClubOut]:
+    club = await club_service.update_club(
+        session, club_id=club_id, changes=body.model_dump(exclude_unset=True)
+    )
+    return Envelope(data=ClubOut.model_validate(club))
+
+
 @router.post(
     "/clubs/{club_id}/invitations",
     response_model=Envelope[InvitationCreateOut],
@@ -82,14 +123,7 @@ async def create_invitation(
     inviter: Member = Depends(require_club_role(MemberRole.OWNER, MemberRole.MANAGER)),
     session: AsyncSession = Depends(get_session),
 ) -> Envelope[InvitationCreateOut]:
-    invitation = await club_service.create_invitation(
-        session,
-        club_id=club_id,
-        email=body.email,
-        role=body.role,
-        invited_by=inviter,
-    )
-    return Envelope(data=InvitationCreateOut(id=invitation.id))
+    raise InvitationUnavailable()
 
 
 @router.post("/invitations/accept", response_model=Envelope[InvitationAcceptOut])
@@ -98,9 +132,14 @@ async def accept_invitation(
     account: Account = Depends(get_current_account),
     session: AsyncSession = Depends(get_session),
 ) -> Envelope[InvitationAcceptOut]:
-    member = await club_service.accept_invitation(
-        session, token=body.token, account=account
-    )
-    return Envelope(
-        data=InvitationAcceptOut(club_id=member.club_id, role=member.role)
-    )
+    raise InvitationUnavailable()
+
+
+@router.get("/clubs/{club_id}/members", response_model=MemberListResponse)
+async def list_members(
+    club_id: str,
+    _member: Member = Depends(require_member),
+    session: AsyncSession = Depends(get_session),
+) -> MemberListResponse:
+    rows = await club_service.list_members(session, club_id=club_id)
+    return MemberListResponse(data=[MemberOut.model_validate(row) for row in rows])

@@ -10,6 +10,8 @@ import { Chip } from '@/shared/ui/Chip'
 // 상태 칸 문구: 진행 중이면 승인 대기 건수, 계획 중이면 몇 단계째인지, 끝났으면 정산 완료
 function statusText(event: EventSummary, current: number): string {
   if (event.status === 'COMPLETE') return '정산 완료'
+  if (event.status === 'CANCELLED') return '취소 정리 완료'
+  if (event.status === 'CANCELLING') return '취소 정리 중'
   if (event.status === 'PLANNING') return `계획 ${current}단계 진행 중`
   if (event.pendingApprovalCount > 0) return `승인 대기 ${event.pendingApprovalCount}건`
   return event.currentStepName ?? '진행 중'

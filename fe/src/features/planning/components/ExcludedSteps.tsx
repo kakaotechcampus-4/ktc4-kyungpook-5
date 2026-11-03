@@ -12,7 +12,7 @@ interface ExcludedStepsProps {
 
 export function ExcludedSteps({ excluded, onInclude }: ExcludedStepsProps) {
   return (
-    <div className="flex w-[380px] shrink-0 flex-col gap-[16px]">
+    <div className="flex w-full shrink-0 flex-col gap-[16px] lg:w-[380px]">
       <Card className="flex flex-col">
         <div className="flex flex-col gap-[9px] px-[22px] pt-[22px] pb-[16px]">
           <span className="flex items-center gap-[9px]">

@@ -13,9 +13,13 @@ from app.models.clubs import Club, Invitation, Member
 from app.models.common import IdempotencyKey
 from app.models.discord import DiscordConnection, DiscordMessage
 from app.models.events import Action, Event, Participant, Step
+from app.models.operation_cases import OperationCase
 from app.models.meetings import Meeting, MeetingAudioChunk, TranscriptSegment
 from app.models.records import Record
+from app.models.record_chunks import RecordChunk
 from app.models.tasks import TaskSuggestion
+from app.models.reminders import ConfirmedTask, TaskReminder
+from app.models.push import PushSubscription
 
 __all__ = [
     "Account",
@@ -38,8 +42,13 @@ __all__ = [
     "MeetingAudioChunk",
     "Member",
     "Message",
+    "OperationCase",
     "Participant",
     "Record",
+    "RecordChunk",
+    "ConfirmedTask",
+    "TaskReminder",
+    "PushSubscription",
     "ReceiptImport",
     "ReceiptImportRow",
     "Step",

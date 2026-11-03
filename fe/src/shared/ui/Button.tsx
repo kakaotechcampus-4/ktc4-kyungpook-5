@@ -21,9 +21,9 @@ const VARIANT_CLASS: Record<Variant, string> = {
 }
 
 const SIZE_CLASS: Record<Size, string> = {
-  lg: 'px-[17px] py-[11px] text-[12.5px] rounded-[10px]',
-  md: 'px-[16px] py-[10px] text-[12.5px] rounded-[10px]',
-  sm: 'px-[12px] py-[7px] text-[12px] rounded-[8px]',
+  lg: 'px-[17px] py-[11px] text-[14px] rounded-[8px]',
+  md: 'px-[16px] py-[10px] text-[14px] rounded-[8px]',
+  sm: 'px-[12px] py-[7px] text-[13px] rounded-[8px]',
 }
 
 export function Button({
@@ -37,7 +37,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center gap-[6px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex items-center justify-center gap-[6px] whitespace-nowrap transition-colors duration-150 motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50',
         VARIANT_CLASS[variant],
         SIZE_CLASS[size],
         className,

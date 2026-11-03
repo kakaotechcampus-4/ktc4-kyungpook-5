@@ -107,6 +107,7 @@ async def assess_chunks(
     chunks: tuple[RetrievedChunk, ...],
     *,
     invoke: Invoke = ainvoke_structured,
+    filter_assessment: Callable[[EvidenceAssessment], EvidenceAssessment] | None = None,
 ) -> RecordSearchResult:
     """find_chunks로 찾은 청크의 근거를 판단해 결과를 만든다. 다시 찾지 않는다
 
@@ -120,6 +121,10 @@ async def assess_chunks(
             {"chunks": list(chunks), "searched": [request.query], "rounds": 1}
         )
         state.update(await assess(state, invoke=invoke, max_rounds=1))
+        if filter_assessment is not None:
+            # 원본 ID의 유효성을 먼저 검사하고, 변환 전에 호출자별 검증을 적용한다.
+            build_result(state)
+            state["assessment"] = filter_assessment(state["assessment"])
     state.update(build_result(state))
     return state["result"]
 

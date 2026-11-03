@@ -1,5 +1,5 @@
 // ④ 새 동아리 입력. 생성 모드에서만 보인다. 소개는 나중에 채워도 되는 값이라 선택이다.
-import { Field } from '@/features/auth/components/AuthShell'
+import { Field } from '@/shared/ui/AuthShell'
 import type { ClubField } from '@/features/auth/types'
 import { CLUB_FIELDS } from '@/features/auth/types'
 import { cn } from '@/shared/lib/cn'

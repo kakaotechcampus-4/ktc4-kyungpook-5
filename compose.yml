@@ -23,6 +23,11 @@ services:
     build: ./be
     ports:
       - "8000:8000"
+    # be/.env 는 컨테이너에 마운트되지 않으므로 여기서 읽어 환경변수로 넣는다.
+    # 운영(deploy/compose.yml)도 api.env 를 같은 방식으로 읽는다.
+    env_file:
+      - path: ./be/.env
+        required: false
     volumes:
       - ./be/app:/app/app
       - ./be/alembic:/app/alembic

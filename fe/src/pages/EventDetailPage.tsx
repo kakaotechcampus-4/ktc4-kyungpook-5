@@ -6,18 +6,30 @@ import { CancelConfirmModal } from '@/features/events/components/CancelConfirmMo
 import { ConfirmationList } from '@/features/events/components/ConfirmationList'
 import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
+import { OperationCases } from '@/features/events/components/OperationCases'
+import { useOperationCases } from '@/features/events/operationCasesHooks'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
 import { ReviewModal } from '@/features/events/components/ReviewModal'
 import { StepModal } from '@/features/events/components/StepModal'
 import {
   useConfirmations,
+  useDemo,
   useEventDetail,
   useEventSteps,
   useResolvedActions,
   useStepActions,
+  useApproveAction,
+  useCompleteStep,
+  useCompleteEvent,
+  useBeginCancellation,
+  useDenyAction,
+  useMarkActionDone,
+  useResolveAction,
+  useStartEvent,
 } from '@/features/events/hooks'
 import type { EventAction, EventStep } from '@/features/events/types'
 import { toast } from '@/shared/lib/toast'
+import { ApiError } from '@/shared/api/types'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { ServerErrorScreen } from '@/shared/ui/StateScreen'
@@ -29,13 +41,24 @@ export default function EventDetailPage() {
   const navigate = useNavigate()
   const toList = `/events${search}`
 
+  const demo = useDemo()
+  const startMutation = useStartEvent()
+  const completeMutation = useCompleteStep()
+  const completeEventMutation = useCompleteEvent()
+  const cancelMutation = useBeginCancellation()
+  const resolveMutation = useResolveAction()
+  const approveMutation = useApproveAction()
+  const denyMutation = useDenyAction()
+  const doneMutation = useMarkActionDone()
   const detailQuery = useEventDetail(eventId)
   const event = detailQuery.data
   // 행사가 없으면(초기 화면) 나머지는 부르지 않는다
   const shownId = event ? eventId : undefined
-  const steps = useEventSteps(shownId).data ?? []
+  const stepsQuery = useEventSteps(shownId)
+  const steps = stepsQuery.data ?? []
   const currentIndex = steps.findIndex((s) => s.state === 'CURRENT')
-  const resolved = useResolvedActions(shownId).data
+  const resolvedQuery = useResolvedActions(shownId)
+  const resolved = resolvedQuery.data
 
   // 열린 Step 모달의 단계. 단계를 다시 불러오면 순서가 바뀔 수 있어 id로 기억한다. null이면 닫혀 있다.
   const [openStepId, setOpenStepId] = useState<string | null>(null)
@@ -48,61 +71,101 @@ export default function EventDetailPage() {
 
   // 처리한 확인 요청. 서버 연동 전이라 화면에서만 빼 둔다.
   const [answeredIds, setAnsweredIds] = useState<string[]>([])
-  const confirmations = (useConfirmations(shownId).data ?? []).filter(
-    (a) => !answeredIds.includes(a.id),
-  )
+  const confirmationsQuery = useConfirmations(shownId)
+  const operationCases = useOperationCases(demo ? undefined : shownId)
+  const caseActionIds = new Set((operationCases.data ?? []).flatMap((item) => item.action ? [item.action.id] : []))
+  const confirmations = (confirmationsQuery.data ?? []).filter((a) => !answeredIds.includes(a.id) && !caseActionIds.has(a.id))
 
-  // TODO(연동): POST /actions/{id}/resolve 에 { choice } 로 보낸다
-  const resolveConfirmation = (action: EventAction, choice: string) => {
-    setAnsweredIds((ids) => [...ids, action.id])
-    toast.show({
-      kind: 'done',
-      title: choice === 'MANUAL' ? '직접 처리로 넘겼어요' : '처리했어요',
-      desc: action.title,
-    })
+  const run = async (operation: () => Promise<unknown>, title: string, desc?: string) => {
+    try {
+      if (!demo) await operation()
+      toast.show({ kind: 'done', title, desc })
+      return true
+    } catch (error) {
+      toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+      return false
+    }
   }
 
-  // TODO(연동): 실행을 마쳤다는 기록 API가 명세에 없다
-  const finishAction = (action: EventAction) => {
-    setFinishedIds((ids) => [...ids, action.id])
-    toast.show({ kind: 'done', title: '완료로 표시했어요', desc: action.title })
+  const resolveConfirmation = async (action: EventAction, choice: string, manualValue?: string) => {
+    const success = await run(() => resolveMutation.mutateAsync({ action, choice, manualValue }), '처리했어요', action.title)
+    if (success) {
+      if (demo) setAnsweredIds((ids) => [...ids, action.id])
+      setReviewing(undefined)
+    }
+    return success
   }
 
-  // 행사 취소 확인 모달. 확인하면 취소 정리 화면으로 간다.
+  const finishAction = async (action: EventAction) => {
+    if (await run(() => doneMutation.mutateAsync(action), '완료로 표시했어요', action.title) && demo) {
+      setFinishedIds((ids) => [...ids, action.id])
+    }
+  }
+
   const [cancelOpen, setCancelOpen] = useState(false)
-
-  // 검토·답변 모달에 띄울 Action. 유형에 따라 둘 중 하나가 열린다.
   const [reviewing, setReviewing] = useState<EventAction>()
   const answering = reviewing?.type === 'CONFIRMATION' ? reviewing : undefined
   const deciding = reviewing && reviewing.type !== 'CONFIRMATION' ? reviewing : undefined
 
-  // TODO(연동): POST /actions/{id}/approve
-  const approveAction = (action: EventAction) => {
-    setReviewing(undefined)
-    setOpenStepId(null)
-    toast.show({ kind: 'done', title: '승인했어요', desc: action.title })
+  const approveAction = async (action: EventAction) => {
+    const success = await run(() => approveMutation.mutateAsync(action), '승인했어요', action.title)
+    if (success) {
+      setReviewing(undefined)
+      setOpenStepId(null)
+    }
+    return success
   }
 
-  // TODO(연동): POST /actions/{id}/deny 에 { reason } 으로 보낸다
-  const denyAction = (action: EventAction, reason: string) => {
-    setReviewing(undefined)
-    setOpenStepId(null)
-    toast.show({
-      kind: 'done',
-      title: '진행하지 않기로 했어요',
-      desc: `${action.title} · ${reason}`,
-    })
+  const denyAction = async (action: EventAction, reason: string) => {
+    const success = await run(() => denyMutation.mutateAsync({ action, reason }), '진행하지 않기로 했어요', action.title)
+    if (success) {
+      setReviewing(undefined)
+      setOpenStepId(null)
+    }
+    return success
   }
 
-  // TODO(연동): POST /steps/{stepId}/complete. 미처리 Action이 남아 있으면 먼저 확인을 받는다(명세).
-  const completeStep = (step: EventStep) => {
-    setOpenStepId(null)
-    toast.show({ kind: 'done', title: '단계를 완료로 표시했어요', desc: step.name })
+  const completeStep = async (step: EventStep) => {
+    try {
+      const result = demo ? null : await completeMutation.mutateAsync(step.id)
+      toast.show({
+        kind: 'done',
+        title: '단계를 완료로 표시했어요',
+        desc: result?.pendingActionCount
+          ? `미완료 행동 ${result.pendingActionCount}건이 남아 있어요. 행사 완료 전에 처리해 주세요.`
+          : step.name,
+      })
+      setOpenStepId(null)
+    } catch (error) {
+      toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+    }
+  }
+
+  const permissionError = [detailQuery, stepsQuery, resolvedQuery, confirmationsQuery, operationCases].some(
+    (query) => query.isError && query.error instanceof ApiError && ['UNAUTHORIZED', 'FORBIDDEN'].includes(query.error.code),
+  )
+  if (permissionError) {
+    return <ServerErrorScreen onRetry={() => { void detailQuery.refetch(); void stepsQuery.refetch(); void resolvedQuery.refetch(); void confirmationsQuery.refetch(); void operationCases.refetch() }} onHome={() => navigate('/')} />
   }
 
   if (detailQuery.isPending) return null
-  if (detailQuery.isError) {
+  if (detailQuery.isError && detailQuery.data === undefined) {
     return <ServerErrorScreen onRetry={() => detailQuery.refetch()} onHome={() => navigate('/')} />
+  }
+
+  if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isPending))
+    return null
+  if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isError && query.data === undefined)) {
+    return (
+      <ServerErrorScreen
+        onRetry={() => {
+          stepsQuery.refetch()
+          resolvedQuery.refetch()
+          confirmationsQuery.refetch()
+        }}
+        onHome={() => navigate('/')}
+      />
+    )
   }
 
   return (
@@ -124,6 +187,10 @@ export default function EventDetailPage() {
         )}
       </nav>
 
+      {event && (detailQuery.isError || [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isError)) && (
+        <p role="alert" className="text-failed">최신 행사 정보를 불러오지 못해 이전 내용을 표시하고 있어요. <button type="button" className="underline" onClick={() => { void detailQuery.refetch(); void stepsQuery.refetch(); void resolvedQuery.refetch(); void confirmationsQuery.refetch() }}>다시 확인</button></p>
+      )}
+
       {event ? (
         <>
           <EventHeaderCard
@@ -131,10 +198,26 @@ export default function EventDetailPage() {
             steps={steps}
             onSelectStep={(step) => setOpenStepId(step.id)}
             onCancelEvent={() => setCancelOpen(true)}
+            onViewCancellation={() => navigate(`/events/${event.id}/cancel${search}`)}
+            onEditPlan={() => navigate(demo ? '/planning/steps?demo' : `/planning/steps?eventId=${encodeURIComponent(event.id)}&from=event`)}
+            onStartEvent={demo ? undefined : () => void run(() => startMutation.mutateAsync(event.id), '행사를 시작했어요')}
+            onCompleteEvent={demo ? undefined : () => {
+              if (window.confirm('행사를 완료하시겠어요? 완료 후에는 할 일을 처리할 수 없습니다.')) {
+                void run(() => completeEventMutation.mutateAsync(event.id), '행사를 완료했어요')
+              }
+            }}
           />
+          {!demo && shownId && <OperationCases key={shownId} eventId={shownId} active={event.status === 'ON_GOING'} cases={operationCases.data ?? []} loading={operationCases.isPending} error={operationCases.isError} onReload={() => void operationCases.refetch()} />}
           <div className="flex items-start gap-[20px]">
             <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-              <ConfirmationList actions={confirmations} onResolve={resolveConfirmation} />
+              {(demo || operationCases.data !== undefined) && <ConfirmationList
+                actions={confirmations}
+                onResolve={(action, choice) => {
+                  if (choice === 'MANUAL') setReviewing(action)
+                  else void resolveConfirmation(action, choice)
+                }}
+                readOnly={!demo && event.status !== 'ON_GOING'}
+              />}
               <ResolvedActionList
                 actions={resolved?.items ?? []}
                 totalCount={resolved?.totalCount ?? 0}
@@ -161,6 +244,7 @@ export default function EventDetailPage() {
               onCompleteAction={finishAction}
               onReviewAction={setReviewing}
               onCompleteStep={completeStep}
+              readOnly={!demo && event.status !== 'ON_GOING'}
             />
           )}
           <ReviewModal
@@ -168,21 +252,24 @@ export default function EventDetailPage() {
             onClose={() => setReviewing(undefined)}
             onApprove={approveAction}
             onDeny={denyAction}
+            pending={approveMutation.isPending || denyMutation.isPending}
           />
           <CancelConfirmModal
             open={cancelOpen}
             event={event}
             onClose={() => setCancelOpen(false)}
-            // TODO(연동): POST /events/{id}/cancel. 취소 Action은 아직 정의 전이다(#73).
-            onConfirm={() => navigate(`/events/${eventId}/cancel${search}`)}
+            pending={cancelMutation.isPending}
+            onConfirm={() => {
+              if (demo) navigate(`/events/${eventId}/cancel${search}`)
+              else if (eventId) void run(() => cancelMutation.mutateAsync(eventId), '취소 정리를 시작했어요')
+                .then((success) => { if (success) navigate(`/events/${eventId}/cancel${search}`) })
+            }}
           />
           <AnswerModal
             action={answering}
             onClose={() => setReviewing(undefined)}
-            onAnswer={(action, answer) => {
-              setReviewing(undefined)
-              resolveConfirmation(action, answer)
-            }}
+            onAnswer={resolveConfirmation}
+            pending={resolveMutation.isPending}
           />
         </>
       ) : (

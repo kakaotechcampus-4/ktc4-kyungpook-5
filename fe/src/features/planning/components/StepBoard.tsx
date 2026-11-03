@@ -6,6 +6,7 @@ import type { CatalogueStep } from '@/features/planning/catalogue'
 import { PHASES, PHASE_HINT } from '@/features/planning/catalogue'
 import type { StepPhase } from '@/features/planning/types'
 import { cn } from '@/shared/lib/cn'
+import { formatMonthDay } from '@/shared/lib/format'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 
@@ -15,9 +16,30 @@ interface StepBoardProps {
   schedule: Record<string, string>
   onReorder: (phase: StepPhase, from: number, to: number) => void
   onRemove: (code: string) => void
+  // 세부 수정을 열 수 있을 때만 준다. 없으면 schedule 문구를 읽기 전용으로 보인다.
+  dates?: Record<string, { startsAt: string | null; deadline: string | null }>
+  onEditDetail?: (code: string) => void
+  detailsDisabled?: boolean
 }
 
-export function StepBoard({ included, schedule, onReorder, onRemove }: StepBoardProps) {
+// 일정 두 값을 "11/5 – 11/8" 한 줄로 줄인다. 한쪽만 있으면 그쪽만 보인다.
+function dateRange(range?: { startsAt: string | null; deadline: string | null }): string {
+  const day = (iso: string | null) => (iso ? formatMonthDay(iso) : '')
+  const from = day(range?.startsAt ?? null)
+  const to = day(range?.deadline ?? null)
+  if (from && to) return `${from} – ${to}`
+  return from || to || '일정 미정'
+}
+
+export function StepBoard({
+  included,
+  schedule,
+  onReorder,
+  onRemove,
+  dates,
+  onEditDetail,
+  detailsDisabled = false,
+}: StepBoardProps) {
   // 끌고 있는 카드. 묶음이 다르면 받지 않는다.
   const [dragging, setDragging] = useState<{ phase: StepPhase; index: number }>()
 
@@ -28,9 +50,7 @@ export function StepBoard({ included, schedule, onReorder, onRemove }: StepBoard
           <h2 className="text-h2 text-ink">포함된 단계</h2>
           <Chip tone="approved">{included.length}개</Chip>
         </span>
-        <span className="text-[11.5px] text-mute">
-          카드를 끌어 순서를 바꿉니다 · 묶음은 못 옮겨요
-        </span>
+        <span className="text-[11.5px] text-mute">같은 묶음 안에서 순서를 바꿀 수 있어요</span>
       </div>
 
       <div className="flex flex-col gap-[14px] px-[26px] pb-[20px]">
@@ -51,9 +71,9 @@ export function StepBoard({ included, schedule, onReorder, onRemove }: StepBoard
 
               {rows.length === 0 ? (
                 <div className="flex flex-col items-center gap-[5px] rounded-[12px] border-[1.5px] border-dashed border-soft bg-card px-[18px] py-[22px]">
-                  <span className="text-[12.5px] font-bold text-mute">여기로 끌어다 놓기</span>
+                  <span className="text-[12.5px] font-bold text-mute">포함된 단계가 없어요</span>
                   <span className="text-[11px] text-mute">
-                    오른쪽 목록에서 + 를 눌러도 들어옵니다
+                    뺀 단계에서 + 버튼을 눌러 추가할 수 있어요
                   </span>
                 </div>
               ) : (
@@ -73,7 +93,7 @@ export function StepBoard({ included, schedule, onReorder, onRemove }: StepBoard
                       setDragging(undefined)
                     }}
                     className={cn(
-                      'flex items-center gap-[13px] rounded-[12px] border bg-card px-[14px] py-[13px]',
+                      'flex flex-wrap items-center gap-[13px] rounded-[12px] border bg-card px-[14px] py-[13px]',
                       dragging?.phase === phase && dragging.index === index
                         ? 'border-blue-400 opacity-60'
                         : 'border-line',
@@ -82,20 +102,42 @@ export function StepBoard({ included, schedule, onReorder, onRemove }: StepBoard
                     <span className="cursor-grab text-[15px] text-soft" aria-hidden>
                       ⠿
                     </span>
+                    <div className="flex shrink-0 flex-col gap-1">
+                      <button type="button" aria-label={`${step.name} 위로 이동`} disabled={index === 0}
+                        onClick={() => onReorder(phase, index, index - 1)}
+                        className="rounded border border-line px-2 text-ink2 disabled:opacity-30">↑</button>
+                      <button type="button" aria-label={`${step.name} 아래로 이동`} disabled={index === rows.length - 1}
+                        onClick={() => onReorder(phase, index, index + 1)}
+                        className="rounded border border-line px-2 text-ink2 disabled:opacity-30">↓</button>
+                    </div>
                     <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
                       <span className="truncate text-[13.5px] font-bold text-ink">{step.name}</span>
                       <span className="text-[11px] text-mute">
                         {step.actor} · {step.actions}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[12px] text-ink2">{schedule[step.code]}</span>
+                    {onEditDetail ? (
+                      <span className="flex shrink-0 items-center gap-[8px]">
+                        <span className="text-[12px] text-ink2">{dateRange(dates?.[step.code])}</span>
+                        <button
+                          type="button"
+                          onClick={() => onEditDetail(step.code)}
+                          disabled={detailsDisabled || !dates?.[step.code]}
+                          className="rounded-[7px] border border-line px-[8px] py-[6px] text-[11.5px] font-bold text-ink2 hover:bg-bg disabled:opacity-50"
+                        >
+                          {dates?.[step.code] ? '세부 수정' : '저장 후 수정'}
+                        </button>
+                      </span>
+                    ) : (
+                      <span className="shrink-0 text-[12px] text-ink2">{schedule[step.code]}</span>
+                    )}
                     <button
                       type="button"
                       aria-label={`${step.name} 빼기`}
                       onClick={() => onRemove(step.code)}
-                      className="shrink-0 text-[13px] text-mute hover:text-ink2"
+                      className="shrink-0 rounded-[7px] bg-failed-bg px-[8px] py-[7px] text-[12px] font-bold text-failed hover:brightness-95"
                     >
-                      ⋯
+                      −
                     </button>
                   </div>
                 ))

@@ -1,0 +1,7 @@
+RNNoise WASM wrapper: @shiguredo/rnnoise-wasm 2022.2.0
+Copyright 2021-2021, Takeru Ohta (Original Author)
+Copyright 2021-2021, Shiguredo Inc.
+Licensed under the Apache License, Version 2.0; see LICENSE.wrapper.
+
+RNNoise and its included components are distributed under the terms and
+copyright notices in LICENSE.rnnoise.

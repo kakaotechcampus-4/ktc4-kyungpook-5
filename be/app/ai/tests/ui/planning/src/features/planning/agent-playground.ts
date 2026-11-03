@@ -30,6 +30,11 @@ export interface RecordLookup {
     conflicts: { description: string; values: Fact[] }[]
   } | null
 }
+export interface HistoryUsage {
+  message_count: number
+  max_messages: number
+  near_limit: boolean
+}
 export interface AgentResult {
   reply: string
   draft: AgentDraft

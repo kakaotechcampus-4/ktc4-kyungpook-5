@@ -15,7 +15,6 @@ from langchain_openai import ChatOpenAI
 from ...config import get_settings
 from ...errors import AIError, AIInvalidResponseError, AITimeoutError
 from ...llm import ainvoke_structured, build_chat_model
-from ..retrieval.schemas import RecordSearchRequest
 from .context import PROMPT_VERSION, build_judge_messages, meeting_date
 from .schemas import (
     JudgeOutput,
@@ -25,6 +24,7 @@ from .schemas import (
     MeetingProgressPort,
     QueryOutput,
     MeetingStage,
+    MeetingSearchRequest,
     RecordLookup,
     ToolCall,
     ToolName,
@@ -171,8 +171,9 @@ async def _judge(
         return result(route="NONE", kind="NO_LOOKUP")
 
     # 검색어는 판단이 이미 정리했으므로 그대로 찾는다. 기준일은 회의 날짜다
-    search = RecordSearchRequest(
-        club_id=request.club_id, query=query, today=meeting_date(request)
+    search = MeetingSearchRequest(
+        club_id=request.club_id, query=query, today=meeting_date(request),
+        original_question=request.utterance.text,
     )
     await stage("SEARCHING")
     chunks = await run.call_tool("records.search", query, lookup.search(search), count=len)

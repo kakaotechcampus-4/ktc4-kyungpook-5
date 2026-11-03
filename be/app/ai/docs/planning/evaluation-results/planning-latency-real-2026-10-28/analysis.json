@@ -1,0 +1,535 @@
+{
+  "kind": "real_model_baseline_analysis",
+  "model": "gpt-5.6-luna",
+  "case_results": {
+    "C1": {
+      "counts": {
+        "planned": 30,
+        "started": 30,
+        "finished": 30,
+        "completed": 30,
+        "success": 30,
+        "failed": 0,
+        "interrupted": 0,
+        "pending": 0,
+        "not_started": 0
+      },
+      "success_rate": 1.0,
+      "success_ms": {
+        "n": 30,
+        "p50_ms": 2367.211104,
+        "p95_ms": 3261.6095001499984,
+        "mean_ms": 2483.613991633333,
+        "max_ms": 4505.4595
+      },
+      "completed_ms": {
+        "n": 30,
+        "p50_ms": 2367.211104,
+        "p95_ms": 3261.6095001499984,
+        "mean_ms": 2483.613991633333,
+        "max_ms": 4505.4595
+      },
+      "failure_ms": {
+        "n": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "mean_ms": null,
+        "max_ms": null
+      },
+      "failures": {},
+      "failed_checks": {},
+      "tool_counts": {},
+      "model_attempts": {
+        "agent_model": 30,
+        "generation_model": 0
+      },
+      "mean_request_breakdown_ms": {
+        "total": 2483.613991633333,
+        "agent": 2478.5403943333336,
+        "generation": 0.0,
+        "other": 5.073597299999619
+      },
+      "generation_errors": 0,
+      "validate_plan_ms": {
+        "n": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "mean_ms": null,
+        "max_ms": null
+      },
+      "step_counts": {
+        "0": 30
+      }
+    },
+    "C2": {
+      "counts": {
+        "planned": 30,
+        "started": 30,
+        "finished": 30,
+        "completed": 30,
+        "success": 8,
+        "failed": 22,
+        "interrupted": 0,
+        "pending": 0,
+        "not_started": 0
+      },
+      "success_rate": 0.26666666666666666,
+      "success_ms": {
+        "n": 8,
+        "p50_ms": 6613.1685,
+        "p95_ms": 9067.54848575,
+        "mean_ms": 7140.2119999999995,
+        "max_ms": 9197.352417
+      },
+      "completed_ms": {
+        "n": 30,
+        "p50_ms": 6909.924354,
+        "p95_ms": 8318.792260449996,
+        "mean_ms": 6954.4851333,
+        "max_ms": 9197.352417
+      },
+      "failure_ms": {
+        "n": 22,
+        "p50_ms": 6962.3592915,
+        "p95_ms": 7580.1903327,
+        "mean_ms": 6886.948090863636,
+        "max_ms": 7698.280083
+      },
+      "failures": {
+        "expectation_failed": 22
+      },
+      "failed_checks": {
+        "deferred_topics_preserved": 19,
+        "headcount_metadata": 4
+      },
+      "tool_counts": {
+        "update_event_conditions": 31,
+        "update_generation_offer": 30
+      },
+      "model_attempts": {
+        "agent_model": 91,
+        "generation_model": 0
+      },
+      "mean_request_breakdown_ms": {
+        "total": 6954.4851333,
+        "agent": 6944.8162932000005,
+        "generation": 0.0,
+        "other": 9.668840099999215
+      },
+      "generation_errors": 0,
+      "validate_plan_ms": {
+        "n": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "mean_ms": null,
+        "max_ms": null
+      },
+      "step_counts": {
+        "0": 8
+      }
+    },
+    "G1": {
+      "counts": {
+        "planned": 30,
+        "started": 30,
+        "finished": 30,
+        "completed": 30,
+        "success": 28,
+        "failed": 2,
+        "interrupted": 0,
+        "pending": 0,
+        "not_started": 0
+      },
+      "success_rate": 0.9333333333333333,
+      "success_ms": {
+        "n": 28,
+        "p50_ms": 17066.305667,
+        "p95_ms": 19753.5998897,
+        "mean_ms": 17410.947383892857,
+        "max_ms": 19914.643792
+      },
+      "completed_ms": {
+        "n": 30,
+        "p50_ms": 17315.291417,
+        "p95_ms": 19871.2985356,
+        "mean_ms": 17874.548240266668,
+        "max_ms": 31244.337292
+      },
+      "failure_ms": {
+        "n": 2,
+        "p50_ms": 24364.9602295,
+        "p95_ms": 30556.399585749998,
+        "mean_ms": 24364.9602295,
+        "max_ms": 31244.337292
+      },
+      "failures": {
+        "invalid_plan": 2
+      },
+      "failed_checks": {
+        "generated": 2
+      },
+      "tool_counts": {
+        "generate_event_plan": 31
+      },
+      "model_attempts": {
+        "agent_model": 61,
+        "generation_model": 31
+      },
+      "mean_request_breakdown_ms": {
+        "total": 17874.548240266668,
+        "agent": 5180.6602585,
+        "generation": 12685.710967966666,
+        "other": 8.177013800001077
+      },
+      "generation_errors": 3,
+      "validate_plan_ms": {
+        "n": 31,
+        "p50_ms": 0.226375,
+        "p95_ms": 0.27699949999999995,
+        "mean_ms": 0.21580651612903226,
+        "max_ms": 0.297292
+      },
+      "step_counts": {
+        "13": 22,
+        "12": 6
+      }
+    },
+    "G2": {
+      "counts": {
+        "planned": 30,
+        "started": 30,
+        "finished": 30,
+        "completed": 30,
+        "success": 27,
+        "failed": 3,
+        "interrupted": 0,
+        "pending": 0,
+        "not_started": 0
+      },
+      "success_rate": 0.9,
+      "success_ms": {
+        "n": 27,
+        "p50_ms": 11827.586708,
+        "p95_ms": 13293.2919248,
+        "mean_ms": 11627.410169666666,
+        "max_ms": 14740.95625
+      },
+      "completed_ms": {
+        "n": 30,
+        "p50_ms": 11865.962041499999,
+        "p95_ms": 13337.01830245,
+        "mean_ms": 11673.5594041,
+        "max_ms": 14740.95625
+      },
+      "failure_ms": {
+        "n": 3,
+        "p50_ms": 12428.422083,
+        "p95_ms": 13265.876696399999,
+        "mean_ms": 12088.902514,
+        "max_ms": 13358.927209
+      },
+      "failures": {
+        "invalid_plan": 3
+      },
+      "failed_checks": {
+        "generated": 3
+      },
+      "tool_counts": {},
+      "model_attempts": {
+        "agent_model": 0,
+        "generation_model": 30
+      },
+      "mean_request_breakdown_ms": {
+        "total": 11673.5594041,
+        "agent": 0.0,
+        "generation": 11672.490527766666,
+        "other": 1.0688763333346287
+      },
+      "generation_errors": 3,
+      "validate_plan_ms": {
+        "n": 30,
+        "p50_ms": 0.23325050000000003,
+        "p95_ms": 0.27811874999999997,
+        "mean_ms": 0.21578886666666666,
+        "max_ms": 0.288584
+      },
+      "step_counts": {
+        "12": 9,
+        "13": 18
+      }
+    }
+  },
+  "c2_diagnostics": {
+    "headcount_60": 30,
+    "conditions_match": 30,
+    "no_generation": 30,
+    "metadata_status_counts": {
+      "specified": 26,
+      "tentative": 4
+    },
+    "deferred_topics_counts": {
+      "dates": 19,
+      "(none)": 11
+    },
+    "failed_check_combinations": {
+      "deferred_topics_preserved": 18,
+      "headcount_metadata": 3,
+      "(none)": 8,
+      "deferred_topics_preserved,headcount_metadata": 1
+    }
+  },
+  "retries": [
+    {
+      "request_id": "real-20261028-02-measurement-0003-G1",
+      "case": "G1",
+      "outcome": "failed",
+      "request_ms": 31244.337292,
+      "roots": [
+        {
+          "duration_ms": 12080.426709,
+          "outcome": "error",
+          "code": "invalid_plan"
+        },
+        {
+          "duration_ms": 12175.067,
+          "outcome": "error",
+          "code": "invalid_plan"
+        }
+      ],
+      "model_attempts": {
+        "agent_model": 3,
+        "generation_model": 2
+      }
+    }
+  ],
+  "examples": {
+    "C1": {
+      "request_id": "real-20261028-01-measurement-0007-C1",
+      "ai_request_ms": 2371.42375,
+      "model_attempts": {
+        "agent_model": 1,
+        "generation_model": 0
+      },
+      "spans": [
+        {
+          "duration_ms": 2367.109458,
+          "end_ms": 2369.617958,
+          "error_type": null,
+          "failure_code": null,
+          "id": 1,
+          "input_message_count": 6,
+          "message_text_chars": 4630,
+          "outcome": "ok",
+          "parent_id": null,
+          "stage": "agent_model",
+          "start_ms": 2.5085
+        }
+      ]
+    },
+    "C2": {
+      "request_id": "real-20261028-03-measurement-0005-C2",
+      "ai_request_ms": 6512.955791,
+      "model_attempts": {
+        "agent_model": 3,
+        "generation_model": 0
+      },
+      "spans": [
+        {
+          "duration_ms": 2609.400667,
+          "end_ms": 2613.256625,
+          "error_type": null,
+          "failure_code": null,
+          "id": 1,
+          "input_message_count": 6,
+          "message_text_chars": 4612,
+          "outcome": "ok",
+          "parent_id": null,
+          "stage": "agent_model",
+          "start_ms": 3.855958
+        },
+        {
+          "duration_ms": 2129.024084,
+          "end_ms": 4744.461875,
+          "error_type": null,
+          "failure_code": null,
+          "id": 2,
+          "input_message_count": 8,
+          "message_text_chars": 5159,
+          "outcome": "ok",
+          "parent_id": null,
+          "stage": "agent_model",
+          "start_ms": 2615.437791
+        },
+        {
+          "duration_ms": 1764.308834,
+          "end_ms": 6510.69025,
+          "error_type": null,
+          "failure_code": null,
+          "id": 3,
+          "input_message_count": 10,
+          "message_text_chars": 5782,
+          "outcome": "ok",
+          "parent_id": null,
+          "stage": "agent_model",
+          "start_ms": 4746.381416
+        }
+      ]
+    },
+    "G1": {
+      "request_id": "real-20261028-01-measurement-0004-G1",
+      "ai_request_ms": 16987.611667,
+      "model_attempts": {
+        "agent_model": 2,
+        "generation_model": 1
+      },
+      "spans": [
+        {
+          "duration_ms": 1928.72,
+          "end_ms": 1931.762792,
+          "error_type": null,
+          "failure_code": null,
+          "id": 1,
+          "input_message_count": 6,
+          "message_text_chars": 4586,
+          "outcome": "ok",
+          "parent_id": null,
+          "stage": "agent_model",
+          "start_ms": 3.042792
+        },
+        {
+          "duration_ms": 12077.539041,
+          "end_ms": 14011.040375,
+          "error_type": null,
+          "failure_code": null,
+          "id": 2,
+          "outcome": "ok",
+          "parent_id": null,
+          "stage": "generation",
+          "start_ms": 1933.501334
+        },
+        {
+          "duration_ms": 12074.7395,
+          "end_ms": 14009.74975,
+          "error_type": null,
+          "failure_code": null,
+          "id": 3,
+          "outcome": "ok",
+          "parent_id": 2,
+          "stage": "compose_plan",
+          "start_ms": 1935.01025
+        },
+        {
+          "duration_ms": 12074.49925,
+          "end_ms": 14009.721459,
+          "error_type": null,
+          "failure_code": null,
+          "id": 4,
+          "input_message_count": 2,
+          "message_text_chars": 3200,
+          "outcome": "ok",
+          "parent_id": 3,
+          "stage": "generation_model",
+          "start_ms": 1935.222209
+        },
+        {
+          "duration_ms": 0.239084,
+          "end_ms": 14010.606334,
+          "error_type": null,
+          "failure_code": null,
+          "id": 5,
+          "outcome": "ok",
+          "parent_id": 2,
+          "stage": "validate_plan",
+          "start_ms": 14010.36725
+        },
+        {
+          "duration_ms": 2973.474542,
+          "end_ms": 16985.279209,
+          "error_type": null,
+          "failure_code": null,
+          "id": 6,
+          "input_message_count": 8,
+          "message_text_chars": 12348,
+          "outcome": "ok",
+          "parent_id": null,
+          "stage": "agent_model",
+          "start_ms": 14011.804667
+        }
+      ]
+    },
+    "G2": {
+      "request_id": "real-20261028-02-measurement-0002-G2",
+      "ai_request_ms": 11827.586708,
+      "model_attempts": {
+        "agent_model": 0,
+        "generation_model": 1
+      },
+      "spans": [
+        {
+          "duration_ms": 11826.505625,
+          "end_ms": 11827.198,
+          "error_type": null,
+          "failure_code": null,
+          "id": 1,
+          "outcome": "ok",
+          "parent_id": null,
+          "stage": "generation",
+          "start_ms": 0.692375
+        },
+        {
+          "duration_ms": 11822.415542,
+          "end_ms": 11825.887083,
+          "error_type": null,
+          "failure_code": null,
+          "id": 2,
+          "outcome": "ok",
+          "parent_id": 1,
+          "stage": "compose_plan",
+          "start_ms": 3.471541
+        },
+        {
+          "duration_ms": 11822.183541,
+          "end_ms": 11825.854041,
+          "error_type": null,
+          "failure_code": null,
+          "id": 3,
+          "input_message_count": 2,
+          "message_text_chars": 3159,
+          "outcome": "ok",
+          "parent_id": 2,
+          "stage": "generation_model",
+          "start_ms": 3.6705
+        },
+        {
+          "duration_ms": 0.248667,
+          "end_ms": 11826.781958,
+          "error_type": null,
+          "failure_code": null,
+          "id": 4,
+          "outcome": "ok",
+          "parent_id": 1,
+          "stage": "validate_plan",
+          "start_ms": 11826.533291
+        }
+      ]
+    }
+  },
+  "measurement_requests": 120,
+  "warmup_requests": 12,
+  "successful": 93,
+  "failed": 27,
+  "normal_returns": 120,
+  "observed_model_attempts": {
+    "measurement": {
+      "agent_model": 182,
+      "generation_model": 61
+    },
+    "warmup": {
+      "agent_model": 18,
+      "generation_model": 6
+    }
+  },
+  "observed_span_error_codes": {
+    "invalid_plan": 12
+  }
+}

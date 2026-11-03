@@ -16,14 +16,14 @@
   --color-blue-900: #2b3e63;
 
   /* 크림 중립 — 배경 · 카드 · 글자 */
-  --color-bg: #f8f7f4;
+  --color-bg: #f5f6f8;
   --color-cream: #faf8f4;
   --color-card: #ffffff;
-  --color-line: #edebe6;
-  --color-soft: #dfddd7;
-  --color-mute: #98958f;
-  --color-ink2: #57544f;
-  --color-ink: #2a2824;
+  --color-line: #e2e5e9;
+  --color-soft: #cfd4dc;
+  --color-mute: #626b77;
+  --color-ink2: #48515d;
+  --color-ink: #202b38;
 
   /* 상태 — 칩 배경(-bg) + 글자색 한 쌍 */
   --color-done-bg: #e6f0e9;
@@ -55,14 +55,56 @@
   --text-h2--font-weight: 700;
   --text-h3: 15px;
   --text-h3--font-weight: 700;
-  --text-body: 13px;
-  --text-body-strong: 13px;
+  --text-body: 14px;
+  --text-body-strong: 14px;
   --text-body-strong--font-weight: 600;
-  --text-caption: 11.5px;
-  --text-label: 10.5px;
+  --text-caption: 13px;
+  --text-label: 12px;
   --text-label--font-weight: 500;
 }
 
 body {
   @apply bg-bg font-sans text-body text-ink;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-blue-600);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Desktop workspace navigation; the mobile drawer keeps the light surface. */
+.workspace-sidebar > button {
+  border-color: #52647c;
+  background: transparent;
+  color: #e5ebf4;
+}
+.workspace-sidebar > button:hover {
+  background: #263b54;
+}
+.workspace-sidebar > div:last-child {
+  border-color: #41516a;
+}
+.workspace-sidebar > div:last-child p {
+  color: #d5deea;
+}
+.workspace-sidebar > div:last-child button {
+  color: #d5deea;
+}
+.workspace-sidebar > div:last-child button:hover {
+  background: #263b54;
+}
+.workspace-sidebar > a {
+  background: #344b6a;
+  color: #fff;
 }

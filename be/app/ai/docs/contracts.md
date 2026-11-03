@@ -1,6 +1,6 @@
 # BE-AI 데이터 계약 (contracts.py)
 
-새 P1의 구체적인 공개 입출력 제안은 [P1 공개 계약 초안](planning/p1-public-contract.md)을 따른다. 화면용 결과와 BE 보관 상태를 구분하며, #180/#181에서 타입과 실행 함수를 구현했다. 제품 BE/FE 팀 합의는 아직 남아 있다.
+새 P1의 공개 입출력은 [P1 공개 계약](planning/p1-public-contract.md)을 따른다. 화면용 결과와 BE 보관 상태를 구분하며, #180/#181에서 타입과 실행 함수를 구현했다. #235/#236에서 제품 BE의 실제 검색·상세 응답·마지막 조회 복원을 연결했다. 제품 출처 카드의 FE 연결은 후속이다.
 
 새 P1 Agent의 제품 연결은 [P1 인계 안내](planning/p1-handoff.md)와 [협업 이슈 #179](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/179)에서 계약을 맞춘다. 실행 사용처가 없던 이전 계획 대화 요청/응답은 제거했다(#182). 현재는 `PlanningChatRequest`와 `PlanningPublicResult`를 사용한다.
 
@@ -11,7 +11,7 @@
 `app.ai` 경계를 위한 내부 계약이다.
 
 행사 계획(조건 수집·계획안 생성)과 기록 색인에 필요한 타입을 정의한다.
-기록 색인은 `app.ai.index_record`, P1은 `app.ai.chat_planning`과 `app.ai.generate_planning_preview`로 호출한다. P1의 제품 연동 계약은 BE/FE 협의 전이다.
+기록 색인은 `app.ai.index_record`, P1은 `app.ai.chat_planning`과 `app.ai.generate_planning_preview`로 호출한다. P1 검색 port와 제품 응답·복원 필드는 [인계 안내 §9](planning/p1-handoff.md#9-검색-기능을-연결하려면)를 따른다.
 회의 발화 처리는 #113에서 합의할 AI 초안을 [아래](#회의-발화-처리-초안)에 둔다.
 
 ## 왜 필요한가
@@ -132,14 +132,14 @@ class ToolCall(ContractModel):
     status: Literal["OK", "FAILED", "TIMEOUT"]
     duration_ms: int
     result_count: int | None = None  # records.search일 때 찾은 조각 수
-    prompt_version: str | None = None  # llm.generate일 때 그 호출의 프롬프트 버전. 예: "records-assess-v1"
+    prompt_version: str | None = None  # llm.generate일 때 그 호출의 프롬프트 버전. 예: "records-assess-v1+meeting-assess-v2"
 
 
 class JudgeTrace(ContractModel):
     """이 판단을 누가, 어떤 지시로 내렸고 무엇을 했는지. BE가 판단 기록으로 저장한다"""
 
     model: str                       # 예: "gpt-5.6-luna". Laya·Jev로 바꾸면 그 이름
-    prompt_version: str              # 예: "meeting-judge-v5"
+    prompt_version: str              # 예: "meeting-judge-v6"
     judge_ms: int                    # 판단(과 검색어) 호출에 걸린 시간
     tool_calls: tuple[ToolCall, ...] = ()   # NONE이면 비어 있다
 
@@ -196,13 +196,14 @@ async def judge_utterance(
 
 답은 기록 검색 `search_records`(#72)와 같은 단계로 만든다. 판단이 만든 검색어로 청크를 찾고(`find_chunks`), 찾은 청크로 근거를 판단한다(`assess_chunks`).
 검색어는 판단이 이미 정리했으므로 다시 정리하지 않고, 다시 찾지도 않는다. 기준일은 회의 날짜다.
+회의 원발화는 검색어와 별도로 근거 판단에 전달한다. 회고 또는 최근 행사 참가 인원 질문은 한 번의 벡터 검색에서 후보 20개를 받아 원래 상위 3개를 보존하고 질문한 항목의 본문 최대 2개를 보충해 모델에는 5개만 보낸다. 명시 연도가 있으면 보충 자료도 그 연도와 일치해야 한다. 그 밖의 질문은 기존 상위 5개다. 검색된 자료만으로 전체 최신을 확정할 수 없어 최근 질문의 답에는 그 한계를 표시한다. 현재 진행 중인 행사의 실제 상태는 기록 검색으로 확정하지 않는다.
 근거 판단 결과(확인한 사실, 확인하지 못한 것, 자료 간 차이)를 코드가 카드 문구로 옮긴다. 모델을 다시 부르지 않는다.
 
 | 근거 판단 결과 | `kind` · `answer` |
 | --- | --- |
 | 확인한 사실 | `ANSWER` · 사실 문구를 한 줄에 하나씩. 예: "2025 봄 MT 숙박비 550,000원" |
 | 자료 간 차이 | `ANSWER` · 하나를 고르지 않고 값마다 문서 이름을 붙인다(AI-RET-03). 예: "2025 봄 MT 참가 인원: 28명 (2025 봄 MT 결과보고.pdf) / 27명 (2025 상반기 장부.xlsx)" |
-| 사실과 확인하지 못한 것이 함께 | `ANSWER` · 사실 뒤에 한 줄을 덧붙인다. 예: "기록에 없음: 숙소비 세부 내역" |
+| 사실과 확인하지 못한 것이 함께 | `ANSWER` · 사실 뒤에 한 줄을 덧붙인다. 예: "검색한 자료에서 확인하지 못함: 숙소비 세부 내역" |
 | 확인하지 못한 것만 | `NOT_FOUND` |
 | 찾은 청크가 없음 | `NOT_FOUND`. 근거 판단을 부르지 않는다 |
 
@@ -215,7 +216,7 @@ async def judge_utterance(
 | "작년 MT 때 숙소비 얼마 나왔지?" | `ANSWER` · "2025 봄 MT 숙박비 550,000원" · 출처 `2025 봄 MT 결과보고 · 2쪽 · 2. 예산` | 질문과 답, 출처 |
 | "그때 인원은?" (앞: "작년 봄 MT 얘기인데") | `ANSWER` · question "2025 봄 MT 참가 인원" | 질문과 답, 출처 |
 | "민수야 예약했어?" | `NO_LOOKUP` | 띄우지 않음 |
-| "재작년 신환회 장소 어디였지?" (관련 기록 없음) | `NOT_FOUND` · question "2024 신환회 장소" | 기록에 없음 |
+| "재작년 신환회 장소 어디였지?" (관련 기록 없음) | `NOT_FOUND` · question "2024 신환회 장소" | 검색한 자료에서 확인하지 못함 |
 | "작년 회비 얼마였지?" 뒤 검색 중에 "점심 뭐 먹지" | `ANSWER` | 늦게 와도 질문과 함께 띄움 |
 | 모델 호출 시간 초과 | `AITimeoutError` (`trace` 포함) | 처리하지 못함 |
 
@@ -252,6 +253,7 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 | `trace.model`, `prompt_version` | 모델·프롬프트를 바꾼 전후를 나눠 비교하고, 학습 데이터를 고른다(#117) | v3a와 v4의 오탐률 비교 |
 | `tool_calls[].prompt_version` | 답을 쓴 근거 판단 지시문이 바뀐 전후를 나눠 본다 | `records-assess-v1`과 v2의 "기록에 없음" 비율 비교 |
 
+- **BE는 판단에 넘긴 요청도 함께 저장한다(#241).** 판단 기록의 `judge_input`에 `JudgeUtteranceRequest`를 그대로(시각은 ISO 문자열로) 남기고, `trace.judge_ms`를 `judge_ms`에 남긴다. 전사는 고치면 덮어써지므로 발화 id와 version으로는 그때 모델이 본 앞 발화를 다시 만들 수 없다. 실패한 판단은 오류의 `trace`에서 `judge_ms`를 꺼내고, `trace`가 없으면 비운다.
 - **이 값들은 모델이 만들지 않고 AI 코드가 채운다.** 버전은 받은 값을 돌려주고, 시간은 코드가 재고, 모델·프롬프트 버전은 설정값이다. 모델 출력이 늘지 않으므로 판단 지연은 그대로다.
 - **조회하지 않은 이유(`reasonCode`)는 실시간 결과에 넣지 않는다.** 이유를 모델이 출력하게 하면 판단이 느려진다. 이유 문장과 확신도를 빼서 p50이 0.65초 줄었다(#111). 이유는 검수용이므로 회의가 끝난 뒤 별도 호출로 채운다(#114, #117).
   값은 아래 일곱 중 하나이고 `route`가 `NONE`일 때만 채운다. `RAG`면 검색어가 곧 이유라 비운다. 기준은 `features/meeting/schemas.py`의 `ReasonCode`다.
@@ -340,8 +342,46 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 ### 아직 정하지 않은 것
 
 - port 주입 방식. 초안은 키워드 인자로 받는다. BE의 AI 초기화 방식과 맞춘다.
-- 판단 기록의 저장 형식과 보관 기간(#117). 결과와 오류에 담을 값은 위 "판단 기록"과 "비동기와 실패"로 정했다.
+- 판단 기록의 보관 기간(#117). 저장하는 값은 위 "판단 기록"과 "비동기와 실패"로 정했다. `judge_input`에 전사 원문이 복사되므로 회의·전사를 지울 때 함께 지울지도 같이 정한다.
 - 처리 단계를 화면에 보여줄지(FE), `progress`를 넘기는 방식.
 - 제한 시간 값. 회의 설정(근거 판단 추론 끔)의 기록 검색은 p50 2.52초, p95 3.78초였다([측정 기록](meeting-evaluation.md)). 판단부터 답까지 한 번에 잰 뒤 정한다.
 - 답 카드의 길이. 사실이 여러 개면 한 줄씩 늘어나 4줄 이상인 답이 약 39개 중 7~9개였다. 화면에서 접어 보여줄지(FE)와 함께 정한다.
 - 카드에 근거 원문 조각을 보여줄지(FE·PM). 보여준다면 결과의 출처에 청크 원문을 더한다.
+
+## 회의 일정·할 일 후보 추출 초안
+
+BE는 기존 회의 payload에 IANA `timezone`과 offset이 있는 `occurred_at`을 더해 `TaskExtractionRequest`를 만들고 `await app.ai.extract_task_suggestions(request)`를 호출한다. 최근 문맥은 지시 대상 해석에만 사용하며 현재 발화에서 새로 명시된 항목을 추출한다. 검색 판단과 독립 호출하므로 NONE이나 조회 실패에도 추출할 수 있다.
+
+결과 `suggestions`는 `TaskSuggestion` 모델 목록이다. 각 모델은 `kind`(TASK/SCHEDULE), `title`, `description`, `suggested_assignee`, `due_date`, `due_at`, `scheduled_at`, `unresolved_fields`만 갖는다. 시각은 offset을 포함하고 불명확한 값은 null과 확인 필드로 남긴다. 모델이 빠뜨려도 TASK의 `due_at`, SCHEDULE의 `scheduled_at`, 미정 `suggested_assignee`는 확인 필드에 추가한다. 담당 이름은 계정이나 알림 수신자가 아니다. 빈 목록은 추출할 항목이 없다는 성공이고 모델 실패는 AI 오류로 전달한다. 후보를 확인·저장·예약하는 것은 BE와 운영진의 책임이다.
+
+
+## 자료함의 관련 자료 검색
+
+BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(club_id=..., query=..., limit=...), records=port)`를 호출한다. 기존 임베딩과 청크 검색을 사용해 `RetrievedChunk` 목록을 반환하며 각 청크에는 원문 텍스트, 문서 ID·이름·위치, 분류, 유사도가 있다. 유사도는 추천 순위이지 정답 확률이나 적합성 보장이 아니다. 검색 결과가 없으면 빈 튜플, 임베딩 실패는 AI 오류가 전파된다. 검색 port의 DB 오류도 숨기지 않는다. 색인 중/실패 등 상태, 권한, 파일명·본문 검색과 문서별 병합은 BE가 담당한다.
+
+
+## 메인 토리 대화 의도
+
+`classify_tori_intent(ToriIntentRequest(message, reference_date, timezone))`는 `record_search`, `task_list`, `event_planning`, `meeting`, `clarify`, `unsupported` 중 하나와 선택 필드를 반환한다. 검색어는 발화에 근거하며, 일정·할 일은 범위(self/all), 유형(task/schedule/all), 명시적으로 해석 가능한 날짜 범위만 반환한다. 현재 계약에는 회의·행사 식별이나 특정인 지정이 없으므로 해당 대상을 한정한 일정·할 일 요청은 일반 조회로 바꾸지 않고 unsupported 또는 clarify로 분류한다. 날짜만 정한 조회는 계속 허용한다. 모델이 자료 검색 외의 의도에 불필요한 query를 함께 반환하면 모델 출력 경계에서만 해당 query를 비운 뒤 엄격한 공개 계약으로 재검증한다. 자료 검색의 query 필수 및 다른 필드의 검증은 유지한다. 이 결과는 추정 분류이지 권한·실행 지시가 아니다. BE는 인증된 소속과 계정으로 실제 조회하고 변경·예약을 실행하지 않는다. 모델 오류는 AI 오류로 전파하며 실제 근거 없이 답을 만들지 않는다.
+
+
+## 토리의 자료 질문 근거 판단
+
+`answer_tori_records(ToriRecordAnswerRequest(question, today, chunks))`는 BE가 소속 권한을 확인해 제공한 검색 청크만 판단해 `status`(answered/partial/no_evidence), `facts`(사실과 출처), `conflicts`, `not_found`를 반환한다. 빈 청크는 no_evidence이며 모델 오류는 전파한다. 모델이 지정한 청크 ID를 출처 변환 전까지 유지하고, 그 청크의 숫자나 요청 연도의 직접 근거가 없는 사실은 제외해 미확인으로 표시한다. 같은 위치를 공유하는 다른 청크는 근거를 섞지 않는다. 숫자 비교는 부호를 보존하고 쉼표·원화 기호와 명시적 양수 부호를 정규화하며, 괄호 금액은 양·음이 모호해 근거에서 제외한다. 금액·인원의 한글 수사는 원문과 같은 표기만 인정한다. 계산값·환산 표현과 같은 정당한 사실도 보수적으로 제외될 수 있고, 숫자 검사가 사실 전체의 정확성을 보장하지 않는다. 자료 범위·미색인·검색 실패 및 권한은 BE가 안내한다. 회의·계획의 기존 검색 경로는 바꾸지 않는다.
+
+
+### 토리 범위 질문과 후속 검색
+
+`ToriRecordAnswerRequest`의 `question`은 원질문, `follow_up`은 선택적 후속 답, `clarification_allowed`는 질문 허용 여부다. 직전 `clarification_question`(선택, 500자 이하)과 `clarification_options`(선택, 최대 3개·각 200자 이하)를 별도 데이터로 전달할 수 있다. 후속이 있으면 허용 값과 관계없이 추가 질문을 내지 않는다. 여러 관련 범위 중 확인이 유용하면 `status=clarification`과 `clarification_question`(500자 이하), `clarification_options`(각 200자 이하, 최대 3개)를 반환한다. 구체 선택지는 전달된 자료에 확인된 범위만 허용하며, `전체 요약`은 인용 없이 제공할 수 있다. 공백은 제거한다. 허용되지 않거나 검증되지 않은 질문은 질문 없이 답변을 한 번 재시도하며, 다시 잘못되면 AI 오류다. 자료가 없거나 호출이 실패한 경우는 기존과 구분한다.
+
+후속은 `build_tori_record_query(ToriRecordQueryRequest(question, follow_up, clarification_question, clarification_options))`로 처리한다. 직전 질문과 선택지는 생략 가능하며 순서 지시를 해석하는 데 쓴다. `ToriRecordQueryResult`가 `disposition=follow_up`이면 `query`는 200자 이하 필수이며 BE는 같은 소속 내에서 재검색하고 원질문과 후속을 답변에 전달한다. `new_request`면 query는 null이고 BE가 기존 의도 분기로 보낸다. 모델의 분류나 질의는 권한 부여가 아니다. 결과 사실은 토리 전용 프롬프트로 관련 내용을 최대 5개 의미별 묶음으로 작성하며 각 사실의 인용 청크·숫자 검증을 유지한다. 부족 항목은 사용자의 실제 요청과 관련된 것만 최대 2개 지시한다. 요약의 의미적 정확성이나 실제 자료의 완전성은 숫자 검사로 보장하지 않는다. 회의·계획의 공통 검색 판단은 바꾸지 않는다.
+
+명시된 연도 범위는 양 끝을 포함하며 후속 답에서 연도를 명시하면 해당 연도를 우선한다. 선택지가 있는 후속 답에서 범위를 확인할 수 없으면 특정 연도나 행사를 임의로 정하지 않고 재질문 없이 짧게 안내한다.
+
+## 운영 상황 확인과 제안 (AI-OPS-04)
+
+`respond_operational_situation(OperationalSituationRequest)`는 BE가 권한과 진행 상태를 확인한 행사 정보와 운영진의 상황을 받아 확인 질문이나 제안만 반환한다. `OperationalEventContext`는 행사명과 선택적인 유형·시작/종료일·장소·예상 인원(`expected_headcount`)을 담는다. 예상 인원은 실제 참가 인원이 아니다. 행사 식별자·권한 판정·DB 저장과 상태 전이는 BE의 책임이다.
+
+요청의 `situation`은 최대 4000자다. 기존 질문에 답하는 경우 별도 `clarification_question`(최대 500자), `clarification_options`(최대 3개, 각 200자), `answer`(최대 200자)를 함께 전달한다. 선택된 답도 BE가 실제 라벨로 바꿔 전달하며 AI가 인증·선택의 유효성을 판단하지 않는다. 최초 질문 생성과 후속 응답은 별도 호출이다.
+
+결과 `status=clarification`이면 질문 한 개와 선택지 최대 3개를 반환한다. `status=suggestion`이면 최대 1000자 요약과 1~5개 후속 제안(각 최대 500자)을 반환한다. 이미 답을 받은 요청에서 모델이 다시 질문하면 `AIInvalidResponseError`를 반환해 반복 질문을 막는다. 빈 값·길이·상태별 필드 불일치는 거절하며 모델 오류는 AI 오류로 전파한다. 내용은 제안일 뿐 실제 예약·발송·결제·계획 수정이나 확인을 실행하지 않는다. BE는 질문·답·결과를 보관하고 실패·재시도를 구분하며, 모델 호출 전후 소속 및 행사 상태를 검증한다. 사용자 상황과 답은 지시가 아닌 데이터이며 모델의 의미적 정확성은 보장하지 않는다.

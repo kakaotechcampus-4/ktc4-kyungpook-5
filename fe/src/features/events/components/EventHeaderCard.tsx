@@ -14,6 +14,10 @@ interface EventHeaderCardProps {
   // 스테퍼에서 단계를 누르면(Step 모달)
   onSelectStep: (step: EventStep) => void
   onCancelEvent: () => void
+  onViewCancellation: () => void
+  onEditPlan: () => void
+  onStartEvent?: () => void
+  onCompleteEvent?: () => void
 }
 
 export function EventHeaderCard({
@@ -21,6 +25,10 @@ export function EventHeaderCard({
   steps,
   onSelectStep,
   onCancelEvent,
+  onViewCancellation,
+  onEditPlan,
+  onStartEvent,
+  onCompleteEvent,
 }: EventHeaderCardProps) {
   // 진행 중인 단계까지 센다(완료 + 진행 중)
   const reached = steps.filter((s) => s.state !== 'TODO').length
@@ -30,26 +38,31 @@ export function EventHeaderCard({
     { label: '장소', value: event.location ?? '—' },
     { label: '참가', value: event.headcount ? `${event.headcount}명` : '—' },
     { label: '현재 단계', value: event.currentStep?.name ?? '—', accent: true },
-    { label: '담당', value: event.manager ?? '—' },
   ]
 
   return (
     <Card className="flex flex-col gap-[18px] px-[26px] pt-[24px] pb-[26px]">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-[11px]">
           <h1 className="text-[26px] font-bold">{event.title}</h1>
           <Chip tone={EVENT_STATUS_TONE[event.status]}>{EVENT_STATUS_LABEL[event.status]}</Chip>
         </div>
-        <div className="flex gap-[8px]">
-          {/* 운영 중인 행사는 세부 사항만, 끝나지 않은 것만 고칠 수 있다. 아직 못 켜는 건
-              세부 수정 모달이 Action 스키마를 기다리고 있어서다(#106).
-              계획 중(PLANNING)의 단계 수정은 P2-b에 있다. */}
-          <Button variant="secondary" disabled>
-            계획 수정
-          </Button>
-          <Button variant="secondary" onClick={onCancelEvent}>
-            행사 취소
-          </Button>
+        <div className="flex flex-wrap gap-[8px]">
+          {event.status === 'PLANNING' && onStartEvent && (
+            <Button onClick={onStartEvent}>행사 시작</Button>
+          )}
+          {event.status === 'ON_GOING' && onCompleteEvent && (
+            <Button onClick={onCompleteEvent}>행사 완료</Button>
+          )}
+          {event.status === 'PLANNING' && (
+            <Button variant="secondary" onClick={onEditPlan}>단계 수정</Button>
+          )}
+          {(event.status === 'PLANNING' || event.status === 'ON_GOING') && (
+            <Button variant="secondary" onClick={onCancelEvent}>행사 취소</Button>
+          )}
+          {(event.status === 'CANCELLING' || event.status === 'CANCELLED') && (
+            <Button variant="secondary" onClick={onViewCancellation}>취소 정리 보기</Button>
+          )}
         </div>
       </div>
 

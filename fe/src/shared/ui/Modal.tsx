@@ -6,6 +6,7 @@ import { cn } from '@/shared/lib/cn'
 interface ModalProps {
   open: boolean
   onClose: () => void
+  dismissible?: boolean
   title: string
   chip?: ReactNode
   subtitle?: string
@@ -17,11 +18,13 @@ interface ModalProps {
   // 시안 기준 600~660px
   width?: number
   className?: string
+  placement?: 'center' | 'left'
 }
 
 export function Modal({
   open,
   onClose,
+  dismissible = true,
   title,
   chip,
   subtitle,
@@ -29,6 +32,7 @@ export function Modal({
   footerNote,
   footer,
   width = 640,
+  placement = 'center',
   className,
 }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -51,13 +55,17 @@ export function Modal({
     <dialog
       ref={ref}
       aria-labelledby={titleId}
+      onCancel={(event) => { if (!dismissible) event.preventDefault() }}
       // Esc처럼 브라우저가 직접 닫았을 때만 onClose를 부름
       onClose={() => open && !ref.current?.open && onClose()}
       // 배경(= dialog 자신)을 누르면 닫는다. 안쪽 클릭은 target이 자식이라 걸리지 않는다.
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => dismissible && e.target === e.currentTarget && onClose()}
       style={{ width }}
       className={cn(
-        'm-auto max-h-[calc(100vh-64px)] max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-[20px] bg-card p-0 text-ink shadow-[0_12px_36px_rgba(0,0,0,0.18)] backdrop:bg-backdrop open:flex',
+        'flex-col overflow-hidden bg-card p-0 text-ink shadow-[0_12px_36px_rgba(0,0,0,0.18)] backdrop:bg-backdrop open:flex',
+        placement === 'left'
+          ? 'm-0 h-dvh max-h-dvh max-w-[calc(100vw-48px)] rounded-none'
+          : 'm-auto max-h-[calc(100vh-64px)] max-w-[calc(100vw-32px)] rounded-[20px]',
         className,
       )}
     >
@@ -72,6 +80,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
+            disabled={!dismissible}
             aria-label="닫기"
             className="shrink-0 rounded-[9px] bg-bg px-[9px] py-[6px] text-[12px] font-medium text-ink2 hover:bg-line"
           >

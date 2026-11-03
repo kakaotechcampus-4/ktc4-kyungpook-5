@@ -12,6 +12,11 @@ from .contracts import (
     IndexRecordResult,
     RecordBlock,
     RecordSource,
+    RecordDiscoveryRequest,
+    RecordLookupResult,
+    RecordSearchResult,
+    RecordFact,
+    RecordConflict,
     SourceLocation,
 )
 from .errors import (
@@ -24,7 +29,7 @@ from .errors import (
     AIRetryableError,
     AITimeoutError,
 )
-from .facade import index_record, judge_utterance
+from .facade import index_record, judge_utterance, search_related_records
 from .features.meeting.context import MEETING_CONTEXT_UTTERANCES
 from .features.meeting.schemas import (
     JudgeTrace,
@@ -42,6 +47,8 @@ from .ports import ChunkSearchQuery, RecordSearchPort, RetrievedChunk
 __all__ = (
     # 기록 색인
     "index_record",
+    "search_related_records",
+    "RecordDiscoveryRequest",
     "IndexRecordRequest",
     "IndexRecordResult",
     "IndexedChunk",
@@ -64,6 +71,10 @@ __all__ = (
     "ChunkSearchQuery",
     "RetrievedChunk",
     "RecordSource",
+    "RecordLookupResult",
+    "RecordSearchResult",
+    "RecordFact",
+    "RecordConflict",
     # 청크 벡터 컬럼 차원
     "EMBEDDING_DIMENSIONS",
     # 오류. BE가 타입으로 재시도 안내·FAILED 처리를 정한다 (docs/errors.md)
@@ -80,7 +91,7 @@ __all__ = (
 from .contracts import (
     PlanningChatRequest, PlanningPreviewRequest, PlanningUserMessage,
     PlanningResumeState, PlanningPublicResult, PlanningView,
-    PlanningGenerationReadiness, PlanningDraft, PlanningConditions,
+    PlanningGenerationReadiness, PlanningDraft, PlanningConditions, PlanningHistoryUsage,
 )
 from .features.planning.state_codec import parse_resume_state
 
@@ -88,9 +99,29 @@ __all__ += (
     "PlanningChatRequest", "PlanningPreviewRequest", "PlanningUserMessage",
     "PlanningResumeState", "PlanningPublicResult", "PlanningView",
     "PlanningGenerationReadiness", "PlanningStateError", "PlanningDraft",
-    "PlanningConditions", "parse_resume_state",
+    "PlanningConditions", "parse_resume_state", "PlanningHistoryUsage",
 )
 
 # P1 실행 계약 초안 (#181). 제품 저장/HTTP는 BE가 연결한다.
 from .facade import chat_planning, generate_planning_preview
-__all__ += ('chat_planning', 'generate_planning_preview')
+from .features.planning.public_workflow import planning_generation_readiness
+__all__ += ('chat_planning', 'generate_planning_preview', 'planning_generation_readiness')
+
+# 회의 일정·할 일 후보 (자료 조회와 독립)
+from .facade import extract_task_suggestions
+from .features.meeting.task_extraction import TaskExtractionRequest, TaskExtractionResult, TaskSuggestion
+__all__ += ("extract_task_suggestions", "TaskExtractionRequest", "TaskExtractionResult", "TaskSuggestion")
+
+# 메인 대화는 분류만 제공하며 조회 권한과 실행은 BE가 담당한다.
+from .features.tori.intent import ToriIntentRequest, ToriIntentResult, classify_tori_intent
+__all__ += ("ToriIntentRequest", "ToriIntentResult", "classify_tori_intent")
+
+from .features.tori.records import ToriRecordAnswerRequest, ToriRecordAnswerResult, answer_tori_records
+__all__ += ("ToriRecordAnswerRequest", "ToriRecordAnswerResult", "answer_tori_records")
+
+from .features.tori.query import ToriRecordQueryRequest, ToriRecordQueryResult, build_tori_record_query
+__all__ += ('ToriRecordQueryRequest', 'ToriRecordQueryResult', 'build_tori_record_query')
+
+from .features.operations.schemas import OperationalEventContext, OperationalSituationRequest, OperationalSituationResult
+from .facade import respond_operational_situation
+__all__ += ('OperationalEventContext', 'OperationalSituationRequest', 'OperationalSituationResult', 'respond_operational_situation')

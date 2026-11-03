@@ -22,34 +22,39 @@ const MANUAL_WARNING: Partial<Record<EventAction['type'], string>> = {
 interface ReviewModalProps {
   action?: EventAction
   onClose: () => void
-  onApprove: (action: EventAction, content: string | null) => void
-  onDeny: (action: EventAction, reason: string) => void
+  onApprove: (action: EventAction) => Promise<boolean>
+  onDeny: (action: EventAction, reason: string) => Promise<boolean>
+  pending: boolean
 }
 
-export function ReviewModal({ action, onClose, onApprove, onDeny }: ReviewModalProps) {
-  // 문구는 승인 전에 고칠 수 있다. 모달을 하나 더 띄우는 대신 이 자리에서 바로 고친다.
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState('')
+export function ReviewModal({ action, onClose, onApprove, onDeny, pending }: ReviewModalProps) {
   // 진행하지 않기를 누르면 사유를 받는다. 사유 없이는 넘어가지 않는다.
   const [denying, setDenying] = useState(false)
   const [reason, setReason] = useState('')
+  const [error, setError] = useState(false)
 
-  const close = () => {
-    setEditing(false)
+  // 승인·거절·닫기 어느 쪽으로 끝나든 비운다. 모달은 화면에 남아 있어 다음 Action으로 넘어가기 때문이다.
+  const reset = () => {
     setDenying(false)
     setReason('')
+    setError(false)
+  }
+
+  const close = () => {
+    reset()
     onClose()
   }
 
   if (!action) return null
 
-  const content = editing ? draft : (action.content ?? '')
+  const content = action.content ?? ''
   const warning = MANUAL_WARNING[action.type]
 
   return (
     <Modal
       open
       onClose={close}
+      dismissible={!pending}
       title={action.title}
       chip={<Chip tone="pending">승인 대기</Chip>}
       subtitle={[ACTION_TYPE_LABEL[action.type], action.subtitle].filter(Boolean).join(' · ')}
@@ -57,32 +62,33 @@ export function ReviewModal({ action, onClose, onApprove, onDeny }: ReviewModalP
       footer={
         denying ? (
           <>
-            <Button variant="secondary" onClick={() => setDenying(false)}>
+            <Button variant="secondary" disabled={pending} onClick={() => setDenying(false)}>
               취소
             </Button>
             <Button
               variant="danger"
-              disabled={!reason.trim()}
-              onClick={() => onDeny(action, reason.trim())}
+              disabled={pending || !reason.trim()}
+              onClick={() => { setError(false); void onDeny(action, reason.trim()).then((success) => { if (success) reset(); else setError(true) }) }}
             >
               진행하지 않기
             </Button>
           </>
         ) : (
           <>
-            <Button variant="danger" onClick={() => setDenying(true)}>
+            <Button variant="danger" disabled={pending} onClick={() => setDenying(true)}>
               진행하지 않기
             </Button>
-            <Button variant="secondary" onClick={close}>
+            <Button variant="secondary" disabled={pending} onClick={close}>
               나중에 결정
             </Button>
-            <Button onClick={() => onApprove(action, action.content ? content : null)}>
+            <Button disabled={pending} onClick={() => { setError(false); void onApprove(action).then((success) => { if (success) reset(); else setError(true) }) }}>
               이 내용 승인하기
             </Button>
           </>
         )
       }
     >
+      {error && <p role="alert" className="text-failed">처리하지 못했어요. 연결과 행동 상태를 확인한 뒤 다시 시도해 주세요.</p>}
       {action.dueDate && (
         <div className="flex items-center gap-[9px]">
           <span className="text-[11.5px] text-mute">마감 {formatMonthDay(action.dueDate)}</span>
@@ -95,6 +101,7 @@ export function ReviewModal({ action, onClose, onApprove, onDeny }: ReviewModalP
       {denying ? (
         <Textarea
           label="진행하지 않는 이유"
+          disabled={pending}
           placeholder="왜 하지 않기로 했는지 적어 주세요"
           maxLength={200}
           value={reason}
@@ -104,32 +111,8 @@ export function ReviewModal({ action, onClose, onApprove, onDeny }: ReviewModalP
         <>
           {action.content !== null && action.content !== undefined && (
             <div className="flex flex-col gap-[8px]">
-              <div className="flex items-center justify-between">
-                <span className="text-[11.5px] font-bold text-ink2">
-                  {editing ? '문구 고치기' : '보낼 내용'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDraft(action.content ?? '')
-                    setEditing(!editing)
-                  }}
-                  className="text-[11.5px] font-bold text-blue-700 hover:underline"
-                >
-                  {editing ? '되돌리기' : '문구 수정'}
-                </button>
-              </div>
-              {editing ? (
-                <Textarea
-                  maxLength={500}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                />
-              ) : (
-                <p className="rounded-[11px] border border-line bg-bg px-[14px] py-[12px] text-[12px] leading-[18px] text-ink2">
-                  {content}
-                </p>
-              )}
+              <span className="text-[11.5px] font-bold text-ink2">보낼 내용</span>
+              <p className="rounded-[11px] border border-line bg-bg px-[14px] py-[12px] text-[12px] leading-[18px] text-ink2">{content}</p>
             </div>
           )}
 

@@ -1,7 +1,7 @@
 """대화 맥락에서 도출한 할 일 후보.
 
 기존 행사 actions와 분리한다. 수락은 "할 일로 받아들였다"는 기록이고 외부 게시·예약·
-송금·업무 완료를 뜻하지 않는다. 실행 경로는 아직 정하지 않았다.
+송금·업무 완료를 뜻하지 않는다. 명시적인 확인 후 확정 항목·알림 예약은 별도 모델에 둔다.
 """
 
 from datetime import date, datetime
@@ -33,6 +33,11 @@ class TaskSuggestion(IdMixin, TimestampMixin, Base):
     # 담당·마감을 대화에서 알 수 없으면 null. 사람이 수락하기 전까지 확정 배정이 아니다.
     suggested_assignee: Mapped[str | None] = mapped_column(String(100))
     due_date: Mapped[date | None] = mapped_column(Date)
+    # AI가 해석한 시간도 확인 전의 후보 값이다. 날짜만 있는 기존 후보와 함께 유지한다.
+    kind: Mapped[str | None] = mapped_column(String(16))
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    unresolved_fields: Mapped[list[str]] = mapped_column(JsonB, nullable=False, default=list)
     # 이 후보가 나온 원문과 그 버전 [{"sourceId", "sourceVersion", ...}]
     evidence: Mapped[list[dict[str, Any]]] = mapped_column(JsonB, nullable=False)
     status: Mapped[TaskSuggestionStatus] = mapped_column(

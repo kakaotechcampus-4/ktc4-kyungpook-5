@@ -29,7 +29,7 @@ def composition(steps=None, **changes):
 
 
 def request(**changes):
-    data=dict(basis_draft=PlanningDraft(conditions=PlanningConditions(event_type="MT",headcount=50,fee_per_person=25000)),
+    data=dict(basis_draft=PlanningDraft(conditions=PlanningConditions(event_type="MT",headcount=50,fee_per_person=25000), deferred_topics=("dates", "location")),
               trigger=ButtonGenerationTrigger(request_id="click-1"),reference_date="2026-10-24")
     data.update(changes)
     return PlanGenerationInput(**data)

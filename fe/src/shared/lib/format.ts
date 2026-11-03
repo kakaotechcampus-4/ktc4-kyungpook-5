@@ -8,16 +8,26 @@ export function formatSignedCurrency(amount: number): string {
   return `${sign}${Math.abs(amount).toLocaleString('ko-KR')}`
 }
 
+// "2026-03-21" → "3/21". 시각이 아니라 날짜라 시간대 변환을 하지 않는다.
+function shortDate(iso: string): string {
+  const [, month, day] = iso.split('-')
+  return `${Number(month)}/${Number(day)}`
+}
+
 // "3/21 – 3/22" 처럼 짧게 표기한다. 종료일이 없거나 시작일과 같으면 "3/27".
 export function formatDateRange(startDate: string | null, endDate: string | null): string {
   if (!startDate) return '일정 미정'
-  const short = (iso: string) => {
-    const [, month, day] = iso.split('-')
-    return `${Number(month)}/${Number(day)}`
-  }
   return endDate && endDate !== startDate
-    ? `${short(startDate)} – ${short(endDate)}`
-    : short(startDate)
+    ? `${shortDate(startDate)} – ${shortDate(endDate)}`
+    : shortDate(startDate)
+}
+
+// 계획 준비 기간 "3/2 → 3/25". 끝을 향해 간다는 뜻이라 행사 기간과 다른 화살표를 쓴다.
+export function formatPlanPeriod(start: string | null, end: string | null): string {
+  if (!start && !end) return '미정'
+  if (!start) return `~ ${shortDate(end!)}`
+  if (!end) return `${shortDate(start)} ~`
+  return `${shortDate(start)} → ${shortDate(end)}`
 }
 
 // 서버는 시각을 ISO UTC로 주는데 화면 문구는 한국 기준이다. 표시 시점에만 KST로 바꾼다.
@@ -68,6 +78,16 @@ export function formatDotDate(iso: string): string {
 
 // 한국 날짜 기준 남은 날수. 오늘 마감이면 0, 지났으면 음수. 날짜를 못 읽으면 NaN.
 const KST_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' })
+
+// 날짜 입력에는 한국 시간의 달력 날짜를 전달한다.
+export function formatKstDateInput(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const parts = KST_DATE.formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? ''
+  return `${part('year')}-${part('month').padStart(2, '0')}-${part('day').padStart(2, '0')}`
+}
 
 export function daysUntil(iso: string, now = new Date()): number {
   const target = new Date(iso)

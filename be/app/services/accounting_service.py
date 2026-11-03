@@ -29,7 +29,9 @@ from app.core.exceptions import (
     VersionConflict,
 )
 from app.infra.storage import save_file
+from starlette.concurrency import run_in_threadpool
 from app.models.accounting import Expense, ReceiptImport, ReceiptImportRow
+from app.models.events import Event
 from app.models.records import Record
 from app.schemas.accounting import ExpenseRowDraftIn
 from app.services import agent_job_service
@@ -50,6 +52,8 @@ async def create_expense(
     description: str | None,
     created_by: str,
 ) -> Expense:
+    if event_id is not None:
+        await _ensure_club_event(session, club_id=club_id, event_id=event_id)
     expense = Expense(
         club_id=club_id,
         event_id=event_id,
@@ -67,11 +71,70 @@ async def create_expense(
     return expense
 
 
+async def _ensure_club_event(session: AsyncSession, *, club_id: str, event_id: str) -> None:
+    """다른 동아리 행사에 지출을 붙이면 그 행사 정산에 남의 지출이 섞인다."""
+    event = await session.get(Event, event_id)
+    if event is None or event.club_id != club_id:
+        raise ValidationFailed({"eventId": "같은 조직의 행사만 연결할 수 있습니다."})
+
+
 async def get_expense(session: AsyncSession, *, club_id: str, expense_id: str) -> Expense:
     expense = await session.get(Expense, expense_id)
     if expense is None or expense.club_id != club_id:
         raise ExpenseNotFound()
     return expense
+
+
+# 지출 내역에 꼭 있어야 하는 값. 수정에서 null로 비우는 것을 막는다.
+_REQUIRED_EXPENSE_FIELDS = {
+    "spent_at": ("spentAt", "지출일을 입력해 주세요."),
+    "amount": ("amount", "금액을 입력해 주세요."),
+    "currency": ("currency", "통화를 선택해 주세요."),
+}
+
+
+async def update_expense(
+    session: AsyncSession,
+    *,
+    club_id: str,
+    expense_id: str,
+    expected_version: int,
+    changes: dict,
+) -> Expense:
+    """보낸 필드(changes)만 바꾼다. 행을 잠그고 버전을 확인해 동시 수정을 막는다 (#213)."""
+    missing = {
+        field: message
+        for key, (field, message) in _REQUIRED_EXPENSE_FIELDS.items()
+        if key in changes and changes[key] is None
+    }
+    if missing:
+        raise ValidationFailed(missing)
+    if not changes:
+        # 바뀐 게 없으면 version을 올리지 않는다. 올리면 다른 사람이 이유 없이 409를 받는다.
+        return await get_expense(session, club_id=club_id, expense_id=expense_id)
+
+    expense = await session.scalar(
+        select(Expense).where(Expense.id == expense_id).with_for_update()
+    )
+    if expense is None or expense.club_id != club_id:
+        raise ExpenseNotFound()
+    if expense.version != expected_version:
+        raise VersionConflict()
+    if changes.get("event_id") is not None:
+        await _ensure_club_event(session, club_id=club_id, event_id=changes["event_id"])
+
+    for key, value in changes.items():
+        setattr(expense, key, value)
+    expense.version += 1
+    await session.commit()
+    return expense
+
+
+async def delete_expense(session: AsyncSession, *, club_id: str, expense_id: str) -> None:
+    """지출을 지운다. 영수증 가져오기 행의 확정 연결은 FK(SET NULL)로 비워진다."""
+    expense = await get_expense(session, club_id=club_id, expense_id=expense_id)
+    await session.delete(expense)
+    await session.commit()
 
 
 async def list_expenses(
@@ -100,7 +163,7 @@ async def create_receipt_import(
     file_bytes: bytes,
     created_by: str,
 ) -> ReceiptImport:
-    storage_key = save_file(club_id, file_name, file_bytes)
+    storage_key = await run_in_threadpool(save_file, club_id, file_name, file_bytes)
     record = Record(
         club_id=club_id,
         event_id=event_id,

@@ -1,0 +1,119 @@
+{
+  "fixture_version": 1,
+  "provenance": "합성 MT 조건과 고정 모델 응답 2개로 실제 공개 함수와 권유 Tool을 실행해 만든 상태. 외부 모델 호출 없음. 실제 사용자 정답 세트가 아님.",
+  "actual_provider_calls": 0,
+  "reference_date": "2026-10-28",
+  "timezone": "Asia/Seoul",
+  "base_revision": 1,
+  "resume_state": {
+    "schema_version": 1,
+    "club_id": "synthetic-latency-club",
+    "event_id": "synthetic-latency-event",
+    "conversation_id": "synthetic-latency-conversation",
+    "payload": {
+      "basis_draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 50,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "history": [
+        {
+          "role": "user",
+          "id": "fixture-user",
+          "content": "현재 조건으로 준비 순서 초안을 만들지 물어봐 줘. 아직 생성하지는 마.",
+          "tool_calls": [],
+          "name": null,
+          "tool_call_id": null,
+          "tool_status": null
+        },
+        {
+          "role": "assistant",
+          "id": "fixture-offer-call",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "fixture-offer-tool",
+              "name": "update_generation_offer",
+              "args": {
+                "action": "offer",
+                "reason": "날짜는 미정으로 두고 MT 준비 순서의 초안을 만들 수 있어요."
+              }
+            }
+          ],
+          "name": null,
+          "tool_call_id": null,
+          "tool_status": null
+        },
+        {
+          "role": "tool",
+          "id": "bb5953e5-4863-46a8-bb0a-de1cedcfca8e",
+          "content": "{\"status\":\"applied\",\"offer\":{\"id\":\"19600000-0000-4000-8000-000000000001\",\"status\":\"pending\",\"summary\":\"날짜는 미정으로 두고 MT 준비 순서의 초안을 만들 수 있어요.\",\"basis_draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":50,\"fee_per_person\":25000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{},\"deferred_topics\":[]}},\"reason\":null}",
+          "tool_calls": [],
+          "name": "update_generation_offer",
+          "tool_call_id": "fixture-offer-tool",
+          "tool_status": "success"
+        },
+        {
+          "role": "assistant",
+          "id": "fixture-offer-reply",
+          "content": "MT, 50명, 참가비 25,000원으로 정리돼 있어요. 날짜는 미정으로 두고 준비 순서 초안을 만들까요?",
+          "tool_calls": [],
+          "name": null,
+          "tool_call_id": null,
+          "tool_status": null
+        }
+      ],
+      "generation": {
+        "offer": {
+          "id": "19600000-0000-4000-8000-000000000001",
+          "status": "pending",
+          "summary": "날짜는 미정으로 두고 MT 준비 순서의 초안을 만들 수 있어요.",
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "MT",
+              "headcount": 50,
+              "fee_per_person": 25000,
+              "start_date": null,
+              "end_date": null,
+              "location": null,
+              "budget_total": null
+            },
+            "condition_meta": {},
+            "deferred_topics": []
+          }
+        },
+        "preview": null,
+        "condition_change_pending": false,
+        "pending_condition_fields": []
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "C1",
+      "message": "현재 정한 행사 조건만 간단히 설명해 줘. 값을 바꾸거나 생성 권유나 초안 생성을 하지는 마."
+    },
+    {
+      "id": "C2",
+      "message": "예상 참가 인원을 60명으로 바꿔줘. 계획 초안은 만들지 마.",
+      "expected_headcount": 60
+    },
+    {
+      "id": "G1",
+      "message": "응, 만들어줘."
+    },
+    {
+      "id": "G2"
+    }
+  ]
+}

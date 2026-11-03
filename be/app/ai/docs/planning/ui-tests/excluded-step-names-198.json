@@ -1,0 +1,35 @@
+{
+  "issue": 198,
+  "mode": "fixed-model-responses",
+  "actual_provider_calls": 0,
+  "scope": "AI standalone UI and actual generation graph; product FE/BE integration not tested",
+  "flow": [
+    "조건 대화",
+    "다음: 흐름 만들기 버튼",
+    "compose_plan 고정 응답",
+    "validate_plan 이름 보완",
+    "제외 단계 카드 표시"
+  ],
+  "input": "MT, 50명, 참가비 25,000원이야. 날짜는 미정이고 참여 의사 확인과 장소 예약은 이미 마쳤어.",
+  "status": "generated",
+  "excluded_steps": [
+    {
+      "code": "DEMAND_SURVEY",
+      "reason": "이미 참여 의사를 확인한 행사라는 테스트 조건을 참고했어요.",
+      "name": "사전 수요 조사"
+    },
+    {
+      "code": "BOOK_VENUE",
+      "reason": "장소 예약을 마친 행사라는 테스트 조건을 참고했어요.",
+      "name": "예약"
+    }
+  ],
+  "checks": {
+    "response_names_and_reasons_visible": true,
+    "canonical_names": true,
+    "original_codes_preserved": true,
+    "browser_errors": 0,
+    "external_browser_requests": 0
+  },
+  "screenshot": "excluded-step-names-198.png"
+}

@@ -74,6 +74,22 @@ class Event(IdMixin, TimestampMixin, Base):
     actions: Mapped[list["Action"]] = relationship(back_populates="event")
     conversations: Mapped[list["Conversation"]] = relationship(back_populates="event")
     participants: Mapped[list["Participant"]] = relationship(back_populates="event")
+    cancel_tasks: Mapped[list["EventCancelTask"]] = relationship(back_populates="event", cascade="all, delete-orphan", order_by="EventCancelTask.task_order")
+
+
+class EventCancelTask(IdMixin, TimestampMixin, Base):
+    __tablename__ = "event_cancel_tasks"
+    __id_prefix__ = "ect"
+    # 기존 20261102 migration의 인덱스와 맞춰 Alembic이 삭제로 판단하지 않게 한다.
+    __table_args__ = (Index("ix_event_cancel_tasks_event_order", "event_id", "task_order", unique=True),)
+    event_id: Mapped[str] = mapped_column(String(ID_LENGTH), fk("events.id", ondelete="CASCADE"), nullable=False)
+    task_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(String(300), nullable=False)
+    message: Mapped[str | None] = mapped_column(Text)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_by: Mapped[str | None] = mapped_column(String(ID_LENGTH), fk("members.id", ondelete="SET NULL"))
+    event: Mapped["Event"] = relationship(back_populates="cancel_tasks")
 
 
 class Step(IdMixin, TimestampMixin, Base):
@@ -115,6 +131,10 @@ class Step(IdMixin, TimestampMixin, Base):
     completed_by: Mapped[str | None] = mapped_column(
         String(ID_LENGTH), fk("members.id", ondelete="SET NULL")
     )
+    # 일정 수정의 낙관적 잠금. 기존 행은 migration에서 1로 시작한다.
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
 
     event: Mapped["Event"] = relationship(back_populates="steps")
     actions: Mapped[list["Action"]] = relationship(back_populates="step")
@@ -155,6 +175,11 @@ class Action(IdMixin, TimestampMixin, Base):
     approve_needed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     status: Mapped[ActionStatus] = mapped_column(
         enum_column(ActionStatus), nullable=False, default=ActionStatus.PENDING
+    )
+    # 낙관적 잠금. 승인·거절·응답·내용 수정이 성공할 때마다 +1 (#41, #106).
+    # 클라이언트가 본 버전과 다르면 본 적 없는 내용을 승인하지 않도록 409로 막는다.
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
     )
     amount: Mapped[int | None] = mapped_column(Integer)
     due_date: Mapped[date | None] = mapped_column(Date)

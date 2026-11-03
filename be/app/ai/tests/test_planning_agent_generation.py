@@ -19,7 +19,7 @@ from app.ai.tests.test_plan_generation_graph import Model
 
 
 def request(text="날짜는 나중에 정하자", id="u1", **changes):
-    data=dict(draft=PlanningDraft(conditions=PlanningConditions(event_type="MT",headcount=50,fee_per_person=25000)),
+    data=dict(draft=PlanningDraft(conditions=PlanningConditions(event_type="MT",headcount=50,fee_per_person=25000), deferred_topics=("dates", "location")),
               current_message=PlanningMessage(id=id,role="user",text=text),reference_date="2026-10-24")
     data.update(changes)
     return PlanningAgentTurnInput(**data)
@@ -116,7 +116,7 @@ def test_direct_mixed_request_changes_conditions_then_generates_without_new_conf
 
 def test_failed_date_change_blocks_generation_and_other_field_does_not_clear_it():
     req=request("시작을 4월로 바꾸고 만들어줘",draft=PlanningDraft(conditions=PlanningConditions(
-        event_type="MT",start_date="2027-03-20",end_date="2027-03-21")))
+        event_type="MT",start_date="2027-03-20",end_date="2027-03-21"), deferred_topics=("headcount", "location")))
     first,_,model=run(req,[AIMessage(content="",tool_calls=[change_call(req,"start_date","2027-04-20"),gen_call(req)]),
                          AIMessage(content="날짜 변경을 반영하지 못했어요.")])
     assert first.generation.condition_change_pending and not model.calls
@@ -201,3 +201,19 @@ def test_latest_failed_or_conflicting_lookup_is_not_replaced_by_old_success():
     assert latest_reference_facts([old])[0].content=="과거 비용"
     failed=ToolMessage(name="search_past_events",tool_call_id="s2",content='{"status":"failed","reason":"확인 불가"}')
     assert latest_reference_facts([old,failed])==()
+
+
+def test_generation_reply_receives_actual_steps_and_manual_step_limits():
+    req = request('담당자를 나중에 직접 정할 수 있게 계획을 만들어줘')
+    result, seen, _ = run(req, [
+        AIMessage(content='', tool_calls=[gen_call(req)]),
+        AIMessage(content='계획 초안을 만들었어요. 장소 조사는 운영진이 직접 진행해 주세요.'),
+    ])
+    messages = seen[-1][0]
+    instruction = messages[0].content
+    tool_result = json.loads(messages[-1].content)
+    assert result.generation_result.status == 'generated'
+    assert tool_result['preview']['steps'][0]['actor'] == 'MANUAL'
+    assert tool_result['preview']['steps'][0]['actions'] == []
+    assert '담당자 지정·입력 화면이나 확인 요청이 만들어졌다는 뜻이 아닙니다' in instruction
+    assert '자동으로 질문·수집·발송하거나 후속 처리가 진행된다고 약속하지 마세요' in instruction

@@ -16,6 +16,9 @@ import {
 } from '@/features/mypage/mock'
 import type { JoinRequest, Member } from '@/features/mypage/types'
 import { cn } from '@/shared/lib/cn'
+import { useAuthStore } from '@/shared/auth/store'
+import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
+import { useClubMembers } from '@/features/clubs/hooks'
 
 const TABS = ['내 정보', '동아리원', '동아리 자료'] as const
 type Tab = (typeof TABS)[number]
@@ -23,16 +26,29 @@ type Tab = (typeof TABS)[number]
 export default function MyPage() {
   // 다른 화면과 같은 방식. ?demo면 예시가 채워진 상태를, 없으면 가입 직후 상태를 보인다.
   const demo = useSearchParams()[0].has('demo')
+  const { user, me, clubId } = useAuthStore()
   const [tab, setTab] = useState<Tab>('내 정보')
   const [addOpen, setAddOpen] = useState(false)
+  const membersQuery = useClubMembers(demo ? null : clubId)
 
-  // TODO(연동): GET /clubs/{clubId}/members. 추가·허가도 지금은 화면에서만 바뀐다.
   const [members, setMembers] = useState<Member[]>(demo ? DEMO_MEMBERS : [])
   const [requests, setRequests] = useState<JoinRequest[]>(demo ? DEMO_JOIN_REQUESTS : [])
 
-  // TODO(연동): GET /me · GET /clubs/{clubId}
-  const profile = demo ? DEMO_PROFILE : { name: '내 이름', role: '대표', email: '내 이메일' }
-  const club = demo ? DEMO_CLUB : EMPTY_CLUB
+  // 선택한 서비스 역할은 공유 세션을 사용한다. 동아리 상세/명단 API는 아직 미연결이다.
+  const profile = demo
+    ? DEMO_PROFILE
+    : {
+        name: user?.name ?? '내 이름',
+        role: user ? (MEMBER_ROLE_LABEL[user.role] ?? '역할 확인 필요') : '역할 확인 전',
+        email: user?.email ?? '내 이메일',
+      }
+  const club = demo
+    ? DEMO_CLUB
+    : {
+        ...EMPTY_CLUB,
+        name: me?.clubs.find((item) => item.id === clubId)?.name ?? EMPTY_CLUB.name,
+        myRole: profile.role,
+      }
 
   return (
     <div className="flex flex-col gap-[20px]">
@@ -69,13 +85,24 @@ export default function MyPage() {
       )}
 
       {tab === '동아리원' && (
-        <MembersTab
-          members={members}
+        <>
+          <MembersTab
+          members={demo ? members : (membersQuery.data ?? []).map((item) => ({
+            id: item.id,
+            name: item.name,
+            group: item.group,
+            subtitle: item.subtitle,
+            contact: item.contact ?? undefined,
+            account: item.account,
+            accountNote: item.accountAt ? new Date(item.accountAt).toLocaleDateString('ko-KR') : undefined,
+          }))}
           requests={requests}
-          total={demo ? DEMO_MEMBER_TOTAL : members.length}
+          total={demo ? DEMO_MEMBER_TOTAL : (membersQuery.data?.length ?? 0)}
           onAddClick={() => setAddOpen(true)}
+          canAdd={demo}
           onResolveRequest={(id) => setRequests((list) => list.filter((r) => r.id !== id))}
-        />
+          />
+        </>
       )}
 
       {tab === '동아리 자료' && <RecordsTab records={demo ? DEMO_RECORDS : []} />}
@@ -83,12 +110,9 @@ export default function MyPage() {
       <AddMemberModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onAdd={(member) =>
-          setMembers((list) => [
-            ...list,
-            { ...member, id: `mem_${list.length + 1}`, account: 'NONE' },
-          ])
-        }
+        onAdd={(member) => {
+          setMembers((list) => [...list, { ...member, id: `mem_${list.length + 1}`, account: 'NONE' }])
+        }}
       />
     </div>
   )

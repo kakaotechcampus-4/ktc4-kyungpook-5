@@ -38,6 +38,7 @@ from app.core.enums import (
 
 from .llm import EMBEDDING_DIMENSIONS
 from .errors import PlanningStateError
+from .planning_catalog import PLANNING_STEP_NAMES
 
 
 # 공통 계약 기반
@@ -281,6 +282,14 @@ class RecordConflict(ContractModel):
     values: tuple[RecordFact, ...] = Field(min_length=2)
 
 
+class RecordDiscoveryRequest(ContractModel):
+    """권한 확인된 소속에서 검색어와 가까운 자료 청크를 찾는 요청."""
+
+    club_id: NonBlankStr
+    query: NonBlankStr
+    limit: int = Field(default=20, strict=True, ge=1, le=50)
+
+
 class RecordSearchResult(ContractModel):
     """기록 검색 결과. 관련 기록이 없는 것도 정상 결과다"""
 
@@ -467,6 +476,30 @@ class ExcludedPlanStep(ContractModel):
     reason: NonBlankStr
 
 
+class ExcludedPreviewStep(ExcludedPlanStep):
+    """최종 제외 단계. LLM 출력과 달리 카탈로그 이름을 포함한다."""
+
+    name: NonBlankStr
+
+    @model_validator(mode="before")
+    @classmethod
+    def restore_missing_name(cls, value):
+        # 이전 저장 상태에는 name이 없다. 모델 재호출 없이 파생 정보만 보완한다.
+        # 전달받은 dict를 직접 고치지 않아 BE가 읽어 온 원본 상태도 보존한다.
+        if isinstance(value, dict) and "name" not in value:
+            code = value.get("code")
+            name = PLANNING_STEP_NAMES.get(code) if isinstance(code, str) else None
+            if name is not None:
+                return {**value, "name": name}
+        return value
+
+    @model_validator(mode="after")
+    def validate_catalog_name(self) -> Self:
+        if self.name != PLANNING_STEP_NAMES.get(self.code):
+            raise ValueError("제외 단계 이름이 계획 카탈로그와 다릅니다")
+        return self
+
+
 class PreviewStep(PlanStepFields):
     name: NonBlankStr
     phase: StepPhase
@@ -484,7 +517,7 @@ class EventPlanPreview(ContractModel):
     basis_draft: PlanningDraft
     trigger: ChatGenerationTrigger | ButtonGenerationTrigger
     steps: tuple[PreviewStep, ...] = Field(min_length=1)
-    excluded_steps: tuple[ExcludedPlanStep, ...]
+    excluded_steps: tuple[ExcludedPreviewStep, ...]
     assumptions: tuple[PlanAssumption, ...] = ()
     open_questions: tuple[NonBlankStr, ...] = ()
     warnings: tuple[NonBlankStr, ...] = ()
@@ -531,6 +564,8 @@ class PlanningGenerationState(ContractModel):
 # P1 대화를 이어가기 위한 저장 상태
 
 MAX_PLANNING_HISTORY = 60
+# 모델 품질 기준이 아닌 초기 안내 정책이다. 남은 사용자 턴 수로 환산하지 않는다.
+PLANNING_HISTORY_WARNING_THRESHOLD = MAX_PLANNING_HISTORY * 4 // 5
 
 
 class PlanningStoredToolCall(ContractModel):
@@ -662,7 +697,8 @@ class PlanningPreviewRequest(PlanningRequestContext):
 
 class PlanningGenerationReadiness(ContractModel):
     can_generate: bool
-    reasons: tuple[Literal['event_type_missing', 'condition_change_pending'], ...] = ()
+    reasons: tuple[Literal['event_type_missing', 'dates_unanswered', 'headcount_unanswered',
+                           'location_unanswered', 'condition_change_pending'], ...] = ()
 
     @model_validator(mode='after')
     def validate_reasons(self) -> Self:
@@ -670,6 +706,25 @@ class PlanningGenerationReadiness(ContractModel):
             raise ValueError('생성 가능 여부와 차단 사유가 일치하지 않습니다')
         if len(self.reasons) != len(set(self.reasons)):
             raise ValueError('차단 사유가 중복되었습니다')
+        return self
+
+
+class PlanningHistoryUsage(ContractModel):
+    """화면에 전달할 이력 정보. 사용자/AI/Tool 메시지를 같은 기준으로 센다."""
+
+    message_count: Annotated[int, Field(strict=True, ge=0, le=MAX_PLANNING_HISTORY)]
+    max_messages: Literal[60] = MAX_PLANNING_HISTORY
+    near_limit: bool
+
+    @classmethod
+    def from_count(cls, message_count: int) -> Self:
+        return cls(message_count=message_count,
+                   near_limit=message_count >= PLANNING_HISTORY_WARNING_THRESHOLD)
+
+    @model_validator(mode="after")
+    def validate_usage(self) -> Self:
+        if self.near_limit != (self.message_count >= PLANNING_HISTORY_WARNING_THRESHOLD):
+            raise ValueError("이력 사용량과 한도 임박 여부가 다릅니다")
         return self
 
 
@@ -681,6 +736,8 @@ class PlanningView(ContractModel):
     generation_readiness: PlanningGenerationReadiness
     generation_result: PlanGenerationResult | None = None
     preview_is_current: bool = False
+    # 이전에 저장한 화면 응답은 정보 없음으로 읽는다. 0개라고 추정하지 않는다.
+    history_usage: PlanningHistoryUsage | None = None
 
 # 화면용 결과와 보관용 상태
 class PlanningPublicResult(ContractModel):
@@ -693,4 +750,7 @@ class PlanningPublicResult(ContractModel):
     def validate_snapshot(self) -> Self:
         if self.view.draft != self.next_state.payload.basis_draft:
             raise ValueError('화면 조건과 보관 상태의 조건이 다릅니다')
+        if self.view.history_usage is not None:
+            if self.view.history_usage.message_count != len(self.next_state.payload.history):
+                raise ValueError('화면 이력 사용량과 보관 상태의 이력이 다릅니다')
         return self

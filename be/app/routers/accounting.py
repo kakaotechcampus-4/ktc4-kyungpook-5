@@ -1,6 +1,6 @@
 """영수 내역 기록 엔드포인트 (#133)."""
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import require_club_role, require_member
@@ -11,6 +11,7 @@ from app.schemas.accounting import (
     ExpenseCreateIn,
     ExpenseListResponse,
     ExpenseOut,
+    ExpenseUpdateIn,
     ReceiptImportConfirmIn,
     ReceiptImportConfirmOut,
     ReceiptImportDraftIn,
@@ -110,6 +111,38 @@ async def get_expense(
         session, club_id=club_id, expense_id=expense_id
     )
     return Envelope(data=ExpenseOut.model_validate(expense))
+
+
+@router.patch("/expenses/{expense_id}", response_model=Envelope[ExpenseOut])
+async def update_expense(
+    club_id: str,
+    expense_id: str,
+    body: ExpenseUpdateIn,
+    _member: Member = Depends(require_club_role(MemberRole.OWNER, MemberRole.MANAGER)),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[ExpenseOut]:
+    expense = await accounting_service.update_expense(
+        session,
+        club_id=club_id,
+        expense_id=expense_id,
+        expected_version=body.expected_version,
+        # 보내지 않은 필드는 그대로 두고, null로 보낸 필드는 비운다.
+        changes=body.model_dump(exclude_unset=True, exclude={"expected_version"}),
+    )
+    return Envelope(data=ExpenseOut.model_validate(expense))
+
+
+@router.delete("/expenses/{expense_id}", status_code=204)
+async def delete_expense(
+    club_id: str,
+    expense_id: str,
+    _member: Member = Depends(require_club_role(MemberRole.OWNER, MemberRole.MANAGER)),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    await accounting_service.delete_expense(
+        session, club_id=club_id, expense_id=expense_id
+    )
+    return Response(status_code=204)
 
 
 @router.post(

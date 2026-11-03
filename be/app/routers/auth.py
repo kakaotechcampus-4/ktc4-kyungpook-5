@@ -65,16 +65,18 @@ async def _exchange_kakao_code(code: str) -> tuple[str, str]:
     if not settings.kakao_rest_api_key or not settings.kakao_redirect_uri:
         raise ValidationFailed({"code": "카카오 로그인이 설정되지 않았습니다."})
 
+    token_data = {
+        "grant_type": "authorization_code",
+        "client_id": settings.kakao_rest_api_key,
+        "redirect_uri": settings.kakao_redirect_uri,
+        "code": code,
+    }
+    client_secret = settings.kakao_client_secret.get_secret_value()
+    if client_secret:
+        token_data["client_secret"] = client_secret
+
     async with httpx.AsyncClient(timeout=10) as client:
-        token_res = await client.post(
-            KAKAO_TOKEN_URL,
-            data={
-                "grant_type": "authorization_code",
-                "client_id": settings.kakao_rest_api_key,
-                "redirect_uri": settings.kakao_redirect_uri,
-                "code": code,
-            },
-        )
+        token_res = await client.post(KAKAO_TOKEN_URL, data=token_data)
         if token_res.status_code != 200:
             raise Unauthorized("카카오 인가 코드 교환에 실패했습니다.")
         kakao_access_token = token_res.json()["access_token"]
@@ -88,9 +90,14 @@ async def _exchange_kakao_code(code: str) -> tuple[str, str]:
         user = user_res.json()
 
     kakao_user_id = str(user["id"])
-    email = user.get("kakao_account", {}).get("email")
+    kakao_account = user.get("kakao_account") or {}
+    email = kakao_account.get("email")
     if not email:
-        raise ValidationFailed({"email": "카카오 계정에 이메일 동의가 필요합니다."})
+        if kakao_account.get("email_needs_agreement") is True:
+            raise ValidationFailed({"emailConsent": "카카오 이메일 제공 동의가 필요합니다."})
+        raise ValidationFailed({"email": "카카오 계정에서 이메일을 제공받지 못했습니다."})
+    if kakao_account.get("is_email_valid") is not True or kakao_account.get("is_email_verified") is not True:
+        raise ValidationFailed({"email": "카카오 계정의 유효하고 인증된 이메일이 필요합니다."})
     return kakao_user_id, email
 
 
