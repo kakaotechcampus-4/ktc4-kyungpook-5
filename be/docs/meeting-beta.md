@@ -138,6 +138,11 @@ is independent of RAG/NONE and still runs if lookup fails. The backend owns evid
 IDs, confirmation, membership, storage and delivery. Missing public contracts yield
 `AI_PUBLIC_CONTRACT_UNAVAILABLE`. Lookup failure is stored as ERROR/FAILED,
 not NONE. A successful independent candidate can coexist with a PARTIAL decision.
+The decision is saved first from the lookup judgment alone (SUCCEEDED, or FAILED
+when lookup failed) so the live `judgment` is not delayed by extraction. When
+extraction finishes, a single failed feature turns it into PARTIAL, and a transcript
+edited in the meantime keeps it STALE with no candidates. The final stored values
+are the same as when both calls were awaited together (#249).
 Agent jobs retain safe per-feature errors and candidate IDs; no provider secrets
 or exception bodies are returned.
 

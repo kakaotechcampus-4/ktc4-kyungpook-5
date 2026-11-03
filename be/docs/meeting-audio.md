@@ -29,7 +29,10 @@ creation. Query tokens must be redacted from access logs by the deployment.
    Existing `stage`/`judgment` events associate the later result with segmentId.
 6. `audio.completed` + `status:COMPLETED` means all accepted speech STT, persistence,
    and AI tasks finished; the meeting is now COMPLETED. `status:FAILED` and
-   `errorCount` mean some work failed. `audio.error` gives a safe code/message and
+   `errorCount` mean some work failed: STT/persistence errors or a failed lookup
+   judgment (`CONTEXT_PROCESSING_FAILED`). A task-extraction-only failure is not
+   counted; it stays in the agent job's per-feature errors and the decision's
+   `PARTIAL` status (#249). `audio.error` gives a safe code/message and
    affected segment or time range when known. STT error `startMs`/`endMs` use the
    same meeting timeline as `transcript.final` and `audio.no_transcript`, including
    `streamOffsetMs`; incoming audio metadata remains stream-relative. Read persisted transcripts, jobs,
@@ -55,7 +58,12 @@ The receiver, one ordered STT worker, and AI processing are separate. STT saves
 segments in speech order. Each saved segment then starts its own AI task
 (judgment + task extraction) without waiting for earlier ones; at most 4 run at
 once (`ai_concurrency`) and the rest wait in arrival order without blocking STT
-(#240). Results are broadcast as each task finishes, so `judgment` messages can
+(#240). Within one task, judgment and extraction start together, but `judgment`
+is committed and broadcast as soon as the lookup judgment finishes; it does not
+wait for extraction (#249). At that moment the job is still `RUNNING`. Extraction
+then finishes in the same task, saving candidates and the final job status, and
+may change the decision to `PARTIAL`. Candidates are not broadcast; clients read
+them again. Results are broadcast as each judgment finishes, so `judgment` messages can
 arrive out of speech order; clients match them by `segmentId`. `AUDIO_BACKPRESSURE`
 is an explicit failure only if queued speech exceeds the STT worker capacity (8
 segments); slow AI no longer causes it. There is no distributed queue or replay of
