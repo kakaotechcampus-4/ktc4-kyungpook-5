@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { useMeetingData } from '../hooks'
@@ -18,6 +18,7 @@ import {
 } from '../timeline'
 import { CandidatesModal, ConfirmedTasks } from './Suggestions'
 import { MeetingEnded } from './MeetingEnded'
+import { EndMeetingModal, LeaveMeetingModal } from './MeetingConfirm'
 const EMPTY: never[] = []
 const SILENCE_MS = 10_000
 // 입력이 사실상 0(음소거·고장)일 때만 알린다. 잡음 억제가 켜진 조용한 방도 0은 아니다.
@@ -53,6 +54,7 @@ export function MeetingWorkspace({
   const [justEnded, setJustEnded] = useState(false)
   const [hiddenWarning, setHiddenWarning] = useState<string | null>(null)
   const [candidatesOpen, setCandidatesOpen] = useState(false)
+  const [endOpen, setEndOpen] = useState(false)
   const audio = useMeetingAudio({
     meetingId: meetingId ?? '',
     onCompleted: () => setJustEnded(true),
@@ -72,6 +74,23 @@ export function MeetingWorkspace({
   const transcripts = data.transcripts.data?.items ?? EMPTY
   const decisions = data.decisions.data ?? EMPTY
   const answers = useMemo(() => meetingAnswers(transcripts, decisions), [transcripts, decisions])
+
+  // Leaving the page stops the microphone, so ask first (in-app links) or let the
+  // browser warn (reload, tab close).
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      live && currentLocation.pathname !== nextLocation.pathname,
+  )
+  const guardUnload = live || view === 'finalizing'
+  useEffect(() => {
+    if (!guardUnload) return
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [guardUnload])
 
   // The start card navigates here with autoStart; start, then drop the flag so a reload
   // never tries to restart a meeting that already has audio. No once-only ref: StrictMode
@@ -172,7 +191,12 @@ export function MeetingWorkspace({
   const time = recordedClock(audio.recordedMs)
   const silent = view === 'recording' && now - lastSoundAt > SILENCE_MS
   const finish = () => data.finish.mutate(undefined, { onSuccess: () => setJustEnded(true) })
-  const endMeeting = () => void audio.stop()
+  const askToEnd = () => setEndOpen(true)
+  const endMeeting = () => {
+    setEndOpen(false)
+    if (view === 'recording' || view === 'paused') void audio.stop()
+    else finish()
+  }
 
   const pills = {
     connecting: <StatusPill kind="connecting">연결하는 중</StatusPill>,
@@ -214,13 +238,13 @@ export function MeetingWorkspace({
         <Button variant="secondary" onClick={audio.pause}>
           일시정지
         </Button>
-        <Button onClick={endMeeting}>회의 끝내기</Button>
+        <Button onClick={askToEnd}>회의 끝내기</Button>
       </>
     ),
     paused: (
       <>
         <Button onClick={audio.resume}>다시 녹음</Button>
-        <Button variant="secondary" onClick={endMeeting}>
+        <Button variant="secondary" onClick={askToEnd}>
           회의 끝내기
         </Button>
       </>
@@ -232,13 +256,13 @@ export function MeetingWorkspace({
             녹음 시작
           </Button>
         )}
-        <Button disabled={data.finish.isPending} onClick={finish}>
+        <Button disabled={data.finish.isPending} onClick={askToEnd}>
           회의 끝내기
         </Button>
       </>
     ),
     dropped: audio.sentFrames === 0 && (
-      <Button variant="secondary" disabled={data.finish.isPending} onClick={finish}>
+      <Button variant="secondary" disabled={data.finish.isPending} onClick={askToEnd}>
         회의 끝내기
       </Button>
     ),
@@ -294,7 +318,7 @@ export function MeetingWorkspace({
                 variant="secondary"
                 size="sm"
                 disabled={data.finish.isPending}
-                onClick={finish}
+                onClick={askToEnd}
               >
                 회의 끝내기
               </Button>
@@ -388,6 +412,22 @@ export function MeetingWorkspace({
         </div>
       </div>
       {candidates}
+      <EndMeetingModal
+        open={endOpen}
+        subtitle={`${meeting.title || '회의'}${audio.recordedMs > 0 ? ` · ${time} 녹음` : ''} · 들은 말 ${heard}개`}
+        heard={heard}
+        answered={answers.length}
+        recording={view === 'recording' || view === 'paused'}
+        busy={data.finish.isPending}
+        onClose={() => setEndOpen(false)}
+        onConfirm={endMeeting}
+      />
+      <LeaveMeetingModal
+        open={blocker.state === 'blocked'}
+        subtitle={`${meeting.title || '회의'} · ${time} 녹음 중`}
+        onStay={() => blocker.reset?.()}
+        onLeave={() => blocker.proceed?.()}
+      />
     </>
   )
 }

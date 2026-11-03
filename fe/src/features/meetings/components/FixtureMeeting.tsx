@@ -5,6 +5,7 @@ import { MeetingBanner, MeetingHeader, StatusPill } from './MeetingHeader'
 import { ToriColumn, TranscriptColumn } from './MeetingColumns'
 import { MeetingEnded } from './MeetingEnded'
 import { CandidatesModal } from './Suggestions'
+import { EndMeetingModal } from './MeetingConfirm'
 import { fixtureDecisions, fixtureMeeting, fixtureSuggestion, fixtureTranscripts } from '../fixture'
 
 // 개발용: 서버와 마이크 없이 회의 중 화면 모양만 본다.
@@ -12,6 +13,7 @@ export function FixtureMeeting() {
   const now = Date.parse(fixtureMeeting.startedAt!) + 6 * 60_000
   const [params] = useSearchParams()
   const [candidatesOpen, setCandidatesOpen] = useState(false)
+  const [endOpen, setEndOpen] = useState(false)
   if (params.get('ended') === '1')
     return (
       <>
@@ -36,7 +38,7 @@ export function FixtureMeeting() {
   return (
     <div className="mx-auto flex max-w-[1240px] flex-col gap-4 lg:h-[calc(100dvh-72px)]">
       <MeetingBanner tone="pending" title="개발 fixture · 서버와 마이크에 연결하지 않은 예시">
-        버튼은 동작하지 않아요.{' '}
+        회의 끝내기는 확인 창만 열어요.{' '}
         <Link to="/meetings" className="underline">
           실제 회의로 돌아가기
         </Link>
@@ -52,7 +54,7 @@ export function FixtureMeeting() {
         actions={
           <>
             <Button variant="secondary">일시정지</Button>
-            <Button>회의 끝내기</Button>
+            <Button onClick={() => setEndOpen(true)}>회의 끝내기</Button>
           </>
         }
       />
@@ -76,6 +78,16 @@ export function FixtureMeeting() {
           onRefresh={() => undefined}
         />
       </div>
+      <EndMeetingModal
+        open={endOpen}
+        subtitle={`${fixtureMeeting.title} · 6:12 녹음 · 들은 말 4개`}
+        heard={4}
+        answered={2}
+        recording
+        busy={false}
+        onClose={() => setEndOpen(false)}
+        onConfirm={() => setEndOpen(false)}
+      />
     </div>
   )
 }
