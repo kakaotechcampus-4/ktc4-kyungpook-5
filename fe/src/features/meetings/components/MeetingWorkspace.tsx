@@ -4,6 +4,7 @@ import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { useMeetingData } from '../hooks'
 import { useMeetingAudio } from '../audio'
+import { useRecordingLock } from '@/shared/lib/recordingLock'
 import { MeetingList } from './MeetingList'
 import { MeetingStart, type MeetingEventOption } from './MeetingStart'
 import { MeetingBanner, MeetingHeader, StatusPill } from './MeetingHeader'
@@ -91,6 +92,12 @@ export function MeetingWorkspace({
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [guardUnload])
+  // Switching club remounts this screen and would cut the recording without asking.
+  const setRecording = useRecordingLock((state) => state.setRecording)
+  useEffect(() => {
+    setRecording(guardUnload)
+    return () => setRecording(false)
+  }, [guardUnload, setRecording])
 
   // The start card navigates here with autoStart; start, then drop the flag so a reload
   // never tries to restart a meeting that already has audio. No once-only ref: StrictMode
