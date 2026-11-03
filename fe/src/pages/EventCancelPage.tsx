@@ -145,7 +145,7 @@ export default function EventCancelPage() {
 
       <div className="flex items-start gap-[20px]">
         <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-          <CancelTaskList tasks={tasks} onCopyMessage={copyMessage} onComplete={demo ? complete : completeServer} />
+          <CancelTaskList tasks={tasks} onCopyMessage={copyMessage} onComplete={demo ? complete : completeServer} pending={!demo && completeMutation.isPending} />
           <ResolvedActionList
             actions={resolved?.items ?? []}
             totalCount={resolved?.totalCount ?? 0}

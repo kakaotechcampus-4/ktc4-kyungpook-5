@@ -12,6 +12,7 @@ import {
   type StepAction,
 } from '@/features/planning/stepDetail'
 import type { components } from '@/shared/api/schema'
+import { formatKstDateInput } from '@/shared/lib/format'
 import { Field, ErrorBanner } from '@/shared/ui/AuthShell'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
@@ -21,8 +22,9 @@ type Step = components['schemas']['PlannedStepOut']
 
 // <input type="date">는 yyyy-MM-dd만 받는다. 돌려줄 때는 그날 0시(한국)를 붙여
 // 서버가 주는 ISO 와 같은 모양으로 맞춘다.
-const toDateInput = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : '')
 const fromDateInput = (value: string) => (value ? `${value}T00:00:00+09:00` : null)
+const changedDate = (value: string, original: string | null) =>
+  value === formatKstDateInput(original) ? original : fromDateInput(value)
 
 interface Draft {
   startsAt: string | null
@@ -67,7 +69,7 @@ export function StepDetailModal({
 }
 
 function StepDetailForm({
-  step,
+  step: initialStep,
   onClose,
   onSaved,
   onReload,
@@ -77,6 +79,7 @@ function StepDetailForm({
   onSaved: () => void
   onReload: () => void
 }) {
+  const [step] = useState(() => initialStep)
   const [draft, setDraft] = useState<Draft>(() => toDraft(step))
   const [error, setError] = useState('')
   const save = useSaveStepDetail()
@@ -115,6 +118,7 @@ function StepDetailForm({
     >
       <div className="flex flex-col gap-[16px]">
         {error && (
+          <>
           <ErrorBanner
             title={error}
             action={
@@ -123,6 +127,8 @@ function StepDetailForm({
               </Button>
             }
           />
+          <p className="text-caption text-mute">최신 내용을 다시 불러오면 저장하지 않은 입력은 사라져요.</p>
+          </>
         )}
 
         <div className="flex flex-wrap gap-[14px]">
@@ -131,9 +137,9 @@ function StepDetailForm({
               <Input
                 type="date"
                 disabled={locked}
-                value={toDateInput(draft.startsAt)}
+                value={formatKstDateInput(draft.startsAt)}
                 onChange={(e) =>
-                  setDraft((d) => ({ ...d, startsAt: fromDateInput(e.target.value) }))
+                  setDraft((d) => ({ ...d, startsAt: changedDate(e.target.value, step.startsAt) }))
                 }
               />
             </Field>
@@ -143,9 +149,9 @@ function StepDetailForm({
               <Input
                 type="date"
                 disabled={locked}
-                value={toDateInput(draft.deadline)}
+                value={formatKstDateInput(draft.deadline)}
                 onChange={(e) =>
-                  setDraft((d) => ({ ...d, deadline: fromDateInput(e.target.value) }))
+                  setDraft((d) => ({ ...d, deadline: changedDate(e.target.value, step.deadline) }))
                 }
               />
             </Field>

@@ -79,6 +79,16 @@ export function formatDotDate(iso: string): string {
 // 한국 날짜 기준 남은 날수. 오늘 마감이면 0, 지났으면 음수. 날짜를 못 읽으면 NaN.
 const KST_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' })
 
+// 날짜 입력에는 한국 시간의 달력 날짜를 전달한다.
+export function formatKstDateInput(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const parts = KST_DATE.formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? ''
+  return `${part('year')}-${part('month').padStart(2, '0')}-${part('day').padStart(2, '0')}`
+}
+
 export function daysUntil(iso: string, now = new Date()): number {
   const target = new Date(iso)
   if (Number.isNaN(target.getTime())) return NaN

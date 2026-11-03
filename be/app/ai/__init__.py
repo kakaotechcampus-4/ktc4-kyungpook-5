@@ -121,3 +121,7 @@ __all__ += ("ToriRecordAnswerRequest", "ToriRecordAnswerResult", "answer_tori_re
 
 from .features.tori.query import ToriRecordQueryRequest, ToriRecordQueryResult, build_tori_record_query
 __all__ += ('ToriRecordQueryRequest', 'ToriRecordQueryResult', 'build_tori_record_query')
+
+from .features.operations.schemas import OperationalEventContext, OperationalSituationRequest, OperationalSituationResult
+from .facade import respond_operational_situation
+__all__ += ('OperationalEventContext', 'OperationalSituationRequest', 'OperationalSituationResult', 'respond_operational_situation')
