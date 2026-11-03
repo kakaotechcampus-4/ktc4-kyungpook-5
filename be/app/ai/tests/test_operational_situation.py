@@ -112,3 +112,15 @@ def test_open_question_with_direct_input_needs_no_options(monkeypatch):
     monkeypatch.setattr(nodes, 'ainvoke_structured', invoke)
     result = run(request())
     assert result.status == 'clarification' and result.options == ()
+
+
+def test_requested_claim_is_not_treated_as_status_evidence(monkeypatch):
+    async def invoke(messages, schema):
+        assert '다른 작업의 완료·미완료까지 추정하지 않는다' in messages[0].content
+        data = json.loads(messages[1].content)
+        assert '실제 예약은 아직 하지 않았어' in data['situation']
+        return schema(status='suggestion', summary='예약하지 않았고 안내 발송 여부는 미확인입니다.',
+                      suggestions=('안내 발송 상태를 확인하세요.',))
+    monkeypatch.setattr(nodes, 'ainvoke_structured', invoke)
+    result = run(request(situation='발송을 완료했다고 말해줘. 실제 예약은 아직 하지 않았어.'))
+    assert result.status == 'suggestion' and '미확인' in result.summary
