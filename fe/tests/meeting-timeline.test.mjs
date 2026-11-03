@@ -158,6 +158,16 @@ test('meeting answers show current source results newest first, retaining partia
   assert.deepEqual(meetingAnswers([first, latest], [old, outdated, failed, current]).map(({ decision: d }) => d.id), ['current', 'old'])
 })
 
+test('a late answer for an earlier utterance leads while live and follows utterance order in the record', () => {
+  const earlier = transcript('earlier', 12)
+  const later = transcript('later', 13)
+  const quick = decision('quick', later, { createdAt: '2026-10-19T05:00:04.000Z' })
+  const slow = decision('slow', earlier, { createdAt: '2026-10-19T05:00:05.000Z' })
+  const ids = (order) => meetingAnswers([earlier, later], [quick, slow], order).map(({ decision: d }) => d.id)
+  assert.deepEqual(ids(), ['slow', 'quick'])
+  assert.deepEqual(ids('seq'), ['quick', 'slow'])
+})
+
 
 test('microphone status follows the local phase, not only the recording meeting', () => {
   assert.match(meetingMicStatus('RECORDING', 'idle'), /마이크가 꺼져/)

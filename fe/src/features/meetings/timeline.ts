@@ -67,18 +67,24 @@ export function answerDelay(decision: Decision, transcript: Transcript, startedA
   return Math.max(1, Math.floor((new Date(decision.createdAt).getTime() - at) / 60000))
 }
 
-export function meetingAnswers(transcripts: Transcript[], decisions: Decision[]) {
+// judgment can arrive out of utterance order (#240). A live meeting shows the newest
+// arrival first; a finished meeting's record reads in utterance order.
+export function meetingAnswers(
+  transcripts: Transcript[],
+  decisions: Decision[],
+  order: 'arrival' | 'seq' = 'arrival',
+) {
   return decisions
     .filter(
       (d) =>
         (d.status === 'SUCCEEDED' || d.status === 'PARTIAL') && visibleDecision(d, transcripts),
     )
     .map((decision) => ({ decision, transcript: sourceOf(decision, transcripts)! }))
-    .sort(
-      (a, b) =>
-        b.transcript.seq - a.transcript.seq ||
-        b.decision.createdAt.localeCompare(a.decision.createdAt),
-    )
+    .sort((a, b) => {
+      const arrival = b.decision.createdAt.localeCompare(a.decision.createdAt)
+      const seq = b.transcript.seq - a.transcript.seq
+      return order === 'arrival' ? arrival || seq : seq || arrival
+    })
 }
 
 export function latestTranscriptStatus(
