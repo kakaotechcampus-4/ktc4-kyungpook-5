@@ -43,6 +43,10 @@ from .features.meeting.schemas import (
     MeetingUtterance,
     ToolCall,
 )
+from .features.meeting.event_facts import (
+    MeetingEventFact, MeetingEventFactsRequest, MeetingEventFactsResult,
+    answer_meeting_event_facts,
+)
 from .llm import EMBEDDING_DIMENSIONS
 from .ports import ChunkSearchQuery, RecordSearchPort, RetrievedChunk
 
@@ -70,6 +74,8 @@ __all__ = (
     "ToolCall",
     "MeetingProgressPort",
     "MeetingStage",
+    "MeetingEventFact", "MeetingEventFactsRequest", "MeetingEventFactsResult",
+    "answer_meeting_event_facts",
     # BE가 judge_utterance에 실어 보낼 앞 발화 수
     "MEETING_CONTEXT_UTTERANCES",
     # 기록 검색 port (BE가 구현)

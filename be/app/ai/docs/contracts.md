@@ -400,3 +400,12 @@ BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(cl
 `await app.ai.extract_receipt(ExtractReceiptRequest(file_name=..., mime_type=..., image_bytes=...))`는 이미지 한 장의 검토용 `ExtractReceiptResult.rows`를 반환한다. 각 `ExtractedReceiptRow`는 `spent_at`(날짜), `merchant`, `amount`(원 정수), `category`, `description`이며 읽지 못한 값은 `None`이다. 이미지에 없는 연도나 합산 금액은 추정하지 않는다. 분류도 근거가 없으면 비운다. 이미지 속 지시는 데이터다. 파일명은 식별용이고 판단 근거가 아니다.
 
 읽을 수 없거나 영수증이 아니면 `rows=()`이고, 모델 오류는 공통 AI 오류를 전달한다. `AIRetryableError`는 재시도 가능하며 `AITimeoutError`와 `AIInvalidResponseError`도 그 하위 타입이다. `AIConfigError`는 설정을 고쳐야 한다. 분류되지 않은 예외는 공통 오류 정책대로 그대로 전달한다. 빈 결과는 오류가 아니므로 BE가 처리 실패로 표시할 수 있다. 추출 결과에는 임의의 confidence나 raw 필드를 넣지 않으며 검토 출처는 BE가 기존 원본 파일 연결로 관리한다. BE가 파일 검증·DB 세션 관리·실패/재시도·검토·확정을 담당하며 AI는 저장하지 않는다. 실제 모델의 이미지 입력 지원과 정확도는 별도 확인이 필요하다.
+
+## 회의의 실제 행사 정보
+
+`answer_meeting_event_facts(MeetingEventFactsRequest(...))`는 BE가 질문의 대상과 필드를 정하고 동아리 권한을 확인해 조회한 행사 스냅샷만 정리한다. 기존 `MeetingEvent`는 연결된 행사의 검색 문맥이며, 이 스냅샷은 별도의 DB 조회 결과다. BE가 회의 발화 판단과 독립해 호출하고, 행사 출처를 자료 청크 출처로 위장하지 않는다.
+
+- `scope`는 `current`·`recent`·`selected`, `fields`는 질문한 `status`·`dates`·`location`·`expected_headcount`·`actual_headcount` 중 하나 이상이다. 선택 및 조회는 BE 책임이다. 잘못된 대상 선택이나 검색 실패는 빈 성공 결과로 전달하지 않는다.
+- `MeetingEventFact`는 행사 ID·이름·상태와 선택적 날짜·장소·예상 인원·실제 참가 인원이다. 예상과 실제는 다른 값이다. 실제 참가 인원을 확실하게 집계하는 기준이 없으면 null이다.
+- `complete`는 **해당 조회 범위가 완전하고 오류 없이 조회되었음**을, `latest_verified`는 **BE가 명시된 최근 기준과 전체 범위·정렬을 검증했음**을 뜻한다. 단순 페이지나 유사도 검색 결과로는 true로 설정하지 않는다. 최근 기준이 미정이면 거짓이다.
+- 반환은 `answered`·`partial`·`not_found`·`unavailable`, 답변, 실제로 사용한 행사 ID 목록이다. 선택 필드 값이 null이거나 범위·최신성이 미확인이면 명시한다. 조회가 불완전한 빈 결과는 unavailable이며, 완전한 빈 결과만 not_found다. 모델이나 DB 호출은 하지 않으며 없는 값을 생성하지 않는다. 현재 실제 서비스에서 완료 시각을 기준으로 한 최신 행사와 실제 참가 인원은 별도 BE 근거 없이는 미확인이다.
