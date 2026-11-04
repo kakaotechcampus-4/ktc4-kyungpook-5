@@ -23,6 +23,7 @@ from ..retrieval.nodes import (
     find_chunks,
 )
 from ..retrieval.schemas import RecordFact, RecordSearchRequest, RecordSearchResult
+from ..tori.records import _AMBIGUOUS_AMOUNT, _numbers, _requested_years, _supported
 from .schemas import MeetingAnswer
 
 
@@ -110,7 +111,21 @@ class RecordsLookup:
                 messages = [*messages, HumanMessage('회의의 원래 질문(데이터): ' + original)]
             return await self._invoke(messages, schema)
 
-        result = await assess_chunks(request, chunks, invoke=invoke)
+        years = _requested_years(_question_text(request))
+
+        def filter_evidence(assessment):
+            facts = [item for item in assessment.facts if _supported(item, chunks, years)]
+            conflicts = [conflict for conflict in assessment.conflicts
+                         if not _AMBIGUOUS_AMOUNT.search(conflict.description)
+                         and all(_supported(value, chunks, years) for value in conflict.values)
+                         and _numbers(conflict.description) <= _numbers(' '.join(v.content for v in conflict.values))]
+            removed = len(facts) != len(assessment.facts) or len(conflicts) != len(assessment.conflicts)
+            not_found = list(assessment.not_found)
+            if removed and not not_found:
+                not_found.append('자료의 일부 내용을 확인하지 못했어요')
+            return assessment.model_copy(update={'facts': facts, 'conflicts': conflicts, 'not_found': not_found})
+
+        result = await assess_chunks(request, chunks, invoke=invoke, filter_assessment=filter_evidence)
         answer = to_meeting_answer(result)
         if answer is not None and ('최근' in _question_text(request) or '마지막' in _question_text(request)):
             return answer.model_copy(update={'answer': '검색된 자료 기준이며 전체 자료에서 가장 최근인지 확인하지 못했어요.\n' + answer.answer})

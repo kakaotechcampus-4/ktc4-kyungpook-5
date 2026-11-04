@@ -303,7 +303,7 @@ def test_일반_검색은_기존_후보_개수를_유지한다(monkeypatch):
 
 def test_최근_답변은_전체_최신성을_단정하지_않는다(monkeypatch):
     from app.ai.features.meeting import lookup as meeting_lookup
-    async def assess(request, chunks, *, invoke):
+    async def assess(request, chunks, *, invoke, filter_assessment):
         return RecordSearchResult(facts=(RecordFact(content='2026 가을 교류회 실제 참가자 48명', sources=(REPORT,)),))
     monkeypatch.setattr(meeting_lookup, 'assess_chunks', assess)
     request = RecordSearchRequest(club_id=CLUB, query='가장 최근 행사 참가 인원', today='2026-11-03')
@@ -314,7 +314,7 @@ def test_최근_답변은_전체_최신성을_단정하지_않는다(monkeypatch
 
 def test_검색어에서_최근이_빠져도_원발화로_최신_한계를_표시한다(monkeypatch):
     from app.ai.features.meeting import lookup as meeting_lookup
-    async def assess(request, chunks, *, invoke):
+    async def assess(request, chunks, *, invoke, filter_assessment):
         return RecordSearchResult(facts=(RecordFact(content='2026 가을 교류회 실제 참가자 48명', sources=(REPORT,)),))
     monkeypatch.setattr(meeting_lookup, 'assess_chunks', assess)
     request = MeetingSearchRequest(
@@ -372,3 +372,24 @@ def test_최근_인원과_회고를_함께_물으면_두_항목을_유지한다(
     result = asyncio.run(RecordsLookup(_port()).search(request))
     assert any('참가 인원' in chunk.text for chunk in result)
     assert any('회고' in chunk.text for chunk in result)
+
+
+def test_근거에_없는_금액은_제거하고_확인된_금액과_출처는_보존한다():
+    invoke = FakeInvoke(_assessment(facts=[
+        EvidenceItem(content='2025 봄 MT 숙박비 550,000원', chunk_ids=['c1']),
+        EvidenceItem(content='2025 봄 MT 교통비 999,000원', chunk_ids=['c1']),
+    ]))
+    result = _run(_port(), invoke)
+    assert result.kind == 'ANSWER'
+    assert '550,000원' in result.answer and '999,000원' not in result.answer
+    assert '확인하지 못함' in result.answer
+    assert result.sources[0].record_id == 'rec_mt'
+
+
+def test_출처에_없는_연도를_추정한_답은_미확인이다():
+    port = InMemoryRecordSearch()
+    port.add(StoredRecord(record_id='r', club_id=CLUB, file_name='MT 보고.pdf', category=RecordCategory.ETC),
+             [IndexedChunk(text='숙소 펜션 550,000원', location=SourceLocation(label='1쪽'),
+                           block_indexes=(0,), embedding=_vector('숙소'))])
+    invoke = FakeInvoke(_assessment(facts=[EvidenceItem(content='2025 봄 MT 숙박비 550,000원', chunk_ids=['c1'])]))
+    assert _run(port, invoke).kind == 'NOT_FOUND'
