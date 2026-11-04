@@ -294,6 +294,9 @@ async def test_same_meeting_resume_keeps_frame_and_transcript_order(client, audi
     monkeypatch.setattr(WhisperStt, 'transcribe', transcribe)
     monkeypatch.setattr(meeting_service, 'process_saved_segment', decide)
     token, meeting = account_meeting(client)
+    started = client.get(f'/api/v1/meetings/{meeting}', headers={'Authorization': f'Bearer {token}'}).json()['data']['startedAt']
+    received_at = datetime.fromisoformat(started.replace('Z', '+00:00')) + timedelta(seconds=5)
+    monkeypatch.setattr(meetings_router, 'datetime', SimpleNamespace(now=lambda _: received_at))
     uri = f'/api/v1/meetings/{meeting}/stream?token={token}'
     first_pcm = voiced_pcm()
     with client.websocket_connect(uri) as ws:
@@ -318,6 +321,8 @@ async def test_same_meeting_resume_keeps_frame_and_transcript_order(client, audi
     saved = client.get(f'/api/v1/meetings/{meeting}/transcripts', headers={'Authorization':f'Bearer {token}'}).json()['data']['items']
     assert len(saved) == 1 and saved[0]['seq'] == 1 and saved[0]['text'] == '복구된 전사'
     assert saved[0]['endMs'] - saved[0]['startMs'] == 600
+    assert 4000 <= ready['streamOffsetMs'] <= 5000
+    assert saved[0]['startMs'] == ready['streamOffsetMs']
     async with db_session.get_sessionmaker()() as session:
         chunks = list(await session.scalars(select(MeetingAudioChunk).where(MeetingAudioChunk.meeting_id == meeting)))
         assert len(chunks) == 1 and chunks[0].seq == 1

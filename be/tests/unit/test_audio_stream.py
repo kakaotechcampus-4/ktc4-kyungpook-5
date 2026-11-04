@@ -432,3 +432,75 @@ async def test_resume_permission_failure_leaves_recoverable_state():
     await AudioStream(meeting_id=meeting_id, websocket=allowed, start=noop, resume=noop,
         transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
     assert allowed.sent[0]['resumed'] and allowed.sent[-1]['status'] == 'COMPLETED'
+
+
+async def test_immediate_resume_while_previous_stt_waits_preserves_order_and_errors():
+    from app.services.audio_stream_service import _resume_states
+    release_stt, release_ai, started_stt = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    transcribed, finalized = [], []
+    async def noop(*_): pass
+    async def transcribe(utterance):
+        transcribed.append(utterance.start_ms)
+        if len(transcribed) == 1:
+            started_stt.set()
+            await release_stt.wait()
+        return str(utterance.start_ms)
+    async def decide(segment_id):
+        if segment_id == '0':
+            await release_ai.wait()
+            raise RuntimeError('model failure')
+    async def finalize(success): finalized.append(success)
+    meeting_id = str(uuid.uuid4())
+    def make(socket):
+        return AudioStream(meeting_id=meeting_id, websocket=socket, start=noop,
+            resume=noop, transcribe=transcribe, decide=decide,
+            finalize=finalize, begin_finalizing=noop)
+    first = make(Socket([start(), *utterances(1)]))
+    first_task = asyncio.create_task(first.run())
+    second_task = None
+    try:
+        await asyncio.wait_for(started_stt.wait(), 1)
+        for _ in range(30):
+            if meeting_id in _resume_states: break
+            await asyncio.sleep(0)
+        assert meeting_id in _resume_states and not is_recording(meeting_id)
+        socket = Socket([msg({'type':'resume','format':'pcm_s16le','sampleRate':16000,'channels':1,'lastAckSeq':2}),
+                         *frame(3,900,1200), msg({'type':'end','lastAudioSeq':3})])
+        second_task = asyncio.create_task(make(socket).run())
+        for _ in range(30):
+            if any(e['type']=='audio.end_ack' for e in socket.sent): break
+            await asyncio.sleep(0)
+        assert socket.sent[0]['type'] == 'audio.ready'
+        assert any(e['type']=='audio.end_ack' for e in socket.sent)
+        assert transcribed == [0] and not finalized
+        release_stt.set()
+        for _ in range(30):
+            if len(transcribed) == 2: break
+            await asyncio.sleep(0)
+        assert len(transcribed) == 2 and not finalized
+        assert is_recording(meeting_id)
+        release_ai.set()
+        await asyncio.wait_for(asyncio.gather(first_task, second_task), 1)
+        assert finalized == [False]
+        assert socket.sent[-1]['status'] == 'FAILED'
+        assert socket.sent[-1]['errorCount'] == 1
+        assert any(e.get('code')=='CONTEXT_PROCESSING_FAILED' for e in socket.sent)
+    finally:
+        release_stt.set()
+        release_ai.set()
+        await asyncio.gather(*[t for t in (first_task, second_task) if t], return_exceptions=True)
+
+
+async def test_expired_resume_persists_accepted_tail_and_marks_interrupted():
+    from app.services.audio_stream_service import _resume_states, _forget_resume
+    saved, finalized = [], []
+    async def transcribe(utterance): saved.append(utterance)
+    async def finalize(success): finalized.append(success)
+    audio = stream(Socket([start(), *frame(1,0,300)]), transcribe=transcribe, finalize=finalize)
+    await audio.run()
+    _forget_resume(audio.meeting_id, _resume_states[audio.meeting_id])
+    for _ in range(30):
+        if finalized: break
+        await asyncio.sleep(0)
+    assert saved == [Utterance(pcm(300),0,300)]
+    assert finalized == [False]

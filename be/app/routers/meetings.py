@@ -287,8 +287,8 @@ async def meeting_stream(
         wav = pcm_to_wav(utterance.pcm)
         # Audio metadata remains stream-relative; persisted evidence uses the
         # meeting.startedAt timeline shared with AI and the FE timeline.
-        start_ms = stream_offset_ms + utterance.start_ms
-        end_ms = stream_offset_ms + utterance.end_ms
+        start_ms = audio.stream_offset_ms + utterance.start_ms
+        end_ms = audio.stream_offset_ms + utterance.end_ms
         async with get_sessionmaker()() as worker_session:
             chunk_id, job_id = await meeting_service.begin_stream_utterance(
                 worker_session, meeting_id=meeting_id, wav=wav,
@@ -339,12 +339,13 @@ async def meeting_stream(
                               model=settings.stt_model, timeout_seconds=settings.stt_timeout_seconds)
 
     try:
-        await AudioStream(
+        audio = AudioStream(
             meeting_id=meeting_id, websocket=websocket, start=start, resume=resume,
             transcribe=transcribe, decide=decide, finalize=finalize,
             begin_finalizing=begin_finalizing,
             rms_threshold=get_settings().audio_vad_rms_threshold,
-        ).run()
+        )
+        await audio.run()
     except WebSocketDisconnect:
         pass
     finally:

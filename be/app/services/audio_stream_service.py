@@ -121,8 +121,9 @@ _resume_states: dict[str, dict[str, Any]] = {}
 
 def _forget_resume(meeting_id: str, state: dict[str, Any]) -> None:
     if _resume_states.get(meeting_id) is state:
-        _resume_states.pop(meeting_id, None)
-
+        # Expiry must persist the accepted tail instead of silently dropping it.
+        state["expires"] = 0
+        asyncio.create_task(state["stream"]._expire_resume(state))
 
 
 def is_recording(meeting_id: str) -> bool:
@@ -167,11 +168,21 @@ class AudioStream:
         self.audio_seq = 0
         self.end_ms = 0
         self.stream_offset_ms = 0
-        self.errors = 0
+        self.failure = {"count": 0, "messages": deque(maxlen=16), "stream": self}
+        self.previous: AudioStream | None = None
+        self.finished = asyncio.Event()
         self.started = False
         self.connected = True
         self.pending_meta: dict[str, Any] | None = None
         self.tasks: list[asyncio.Task] = []
+
+    @property
+    def errors(self) -> int:
+        return self.failure["count"]
+
+    @errors.setter
+    def errors(self, value: int) -> None:
+        self.failure["count"] = value
 
     async def send(self, message: dict) -> None:
         if self.connected:
@@ -182,9 +193,14 @@ class AudioStream:
 
     async def error(self, code: str, message: str, **extra: Any) -> None:
         self.errors += 1
-        await self.send({"type": "audio.error", "code": code, "message": message, **extra})
+        event = {"type": "audio.error", "code": code, "message": message, **extra}
+        self.failure["messages"].append(event)
+        await self.failure["stream"].send(event)
 
     async def _audio_worker(self) -> None:
+        # Resume handshakes stay fast; only STT waits for the preceding ordered worker.
+        if self.previous and self.previous.tasks:
+            await asyncio.shield(self.previous.tasks[0])
         while True:
             utterance = await self.audio_queue.get()
             try:
@@ -295,6 +311,10 @@ class AudioStream:
                     self.audio_seq, self.end_ms = state["audio_seq"], state["end_ms"]
                     self.stream_offset_ms, self.vad = state["offset"], state["vad"]
                     self.frame_hashes = state["hashes"]
+                    self.previous = state["stream"]
+                    self.failure = self.previous.failure
+                    self.failure["stream"] = self
+                    self.ai_slots = self.previous.ai_slots
                     self.resumed = True
                 else:
                     if self.meeting_id in _resume_states:
@@ -311,6 +331,9 @@ class AudioStream:
                 "streamOffsetMs": self.stream_offset_ms,
                 **({"resumed": True, "lastAudioSeq": self.audio_seq, "endMs": self.end_ms} if kind == "resume" else {}),
             })
+            if self.resumed:
+                for event in self.failure["messages"]:
+                    await self.send(event)
         elif kind == "audio":
             if not self.started or self.pending_meta is not None:
                 raise AudioProtocolError("AUDIO_INVALID_ORDER", "start 후 메타데이터와 binary를 번갈아 보내 주세요.")
@@ -345,9 +368,31 @@ class AudioStream:
             await self.audio_queue.put(None)
             await self.tasks[0]
             await asyncio.gather(*self.ai_tasks)
+        if self.previous:
+            await self.previous.finished.wait()
+
+    async def _expire_resume(self, state: dict[str, Any]) -> None:
+        await self.finished.wait()
+        try:
+            utterance = self.vad.flush()
+            if utterance:
+                segment_id = await self.transcribe(utterance)
+                if segment_id:
+                    await self._decide_one(segment_id)
+        except Exception:
+            await self.error("AUDIO_RESUME_EXPIRED", "재연결 시간이 지나 음성 복구를 마치지 못했습니다.")
+        finally:
+            try:
+                # The recording ended without a complete client end handshake.
+                await self.finalize(False)
+            except Exception:
+                await self.error("MEETING_FINALIZATION_FAILED", "회의 종료 상태를 저장하지 못했습니다.")
+            if _resume_states.get(self.meeting_id) is state:
+                _resume_states.pop(self.meeting_id, None)
 
     async def run(self) -> None:
         ended = False
+        released = False
         try:
             while True:
                 message = await self.ws.receive()
@@ -369,6 +414,15 @@ class AudioStream:
                         self._enqueue(self.vad.flush())
                     except AudioProtocolError:
                         self.errors += 1
+                if self.started and not ended and not self.connected:
+                    state = {"audio_seq": self.audio_seq, "end_ms": self.end_ms,
+                             "offset": self.stream_offset_ms, "vad": self.vad,
+                             "hashes": self.frame_hashes, "stream": self,
+                             "expires": time.monotonic() + RESUME_WINDOW_SECONDS}
+                    _resume_states[self.meeting_id] = state
+                    asyncio.get_running_loop().call_later(RESUME_WINDOW_SECONDS, _forget_resume, self.meeting_id, state)
+                    _recorders.discard(self.meeting_id)
+                    released = True
                 await self._drain()
                 if ended:
                     try:
@@ -383,13 +437,7 @@ class AudioStream:
                 if self.connected:
                     await self.ws.close(code=1000 if ended else 1008)
             finally:
-                if self.started:
-                    if not ended and not self.connected:
-                        state = {"audio_seq": self.audio_seq, "end_ms": self.end_ms,
-                                 "offset": self.stream_offset_ms, "vad": self.vad,
-                                 "hashes": self.frame_hashes, "expires": time.monotonic() + RESUME_WINDOW_SECONDS}
-                        _resume_states[self.meeting_id] = state
-                        asyncio.get_running_loop().call_later(RESUME_WINDOW_SECONDS, _forget_resume, self.meeting_id, state)
+                if self.started and not released:
                     _recorders.discard(self.meeting_id)
                 # 정상 흐름에서는 _drain이 모두 끝냈다. 서버 종료처럼 run 자체가 취소된 경우만 남는다.
                 pending = [*self.tasks, *self.ai_tasks]
@@ -398,3 +446,4 @@ class AudioStream:
                         task.cancel()
                 if pending:
                     await asyncio.gather(*pending, return_exceptions=True)
+                self.finished.set()
