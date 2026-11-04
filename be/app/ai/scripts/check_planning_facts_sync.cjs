@@ -12,6 +12,8 @@ if (!process.env.PLANNING_STORAGE_STATE)
   throw new Error(
     "로그인한 Playwright storage state 경로를 PLANNING_STORAGE_STATE로 지정하세요.",
   );
+const tag = (process.env.PLANNING_PROBE_TAG || "").replace(/[^a-z0-9-]/g, "");
+const prefix = `plan-facts-sync-302${tag ? "-" + tag : ""}`;
 const output = root + "/be/app/ai/docs/planning/ui-tests/";
 const messages = [
   "MT를 준비할게요. 예상 인원은 40명, 참가비는 2만원으로 해줘. 초안은 아직 만들지 마.",
@@ -65,7 +67,7 @@ const messages = [
     await page.screenshot({
       path:
         output +
-        `plan-facts-sync-302-${i === 0 ? "new" : i === 1 ? "existing" : "reduced-motion"}.jpg`,
+        `${prefix}-${i === 0 ? "new" : i === 1 ? "existing" : "reduced-motion"}.jpg`,
       type: "jpeg",
       quality: 85,
     });
@@ -88,7 +90,7 @@ const messages = [
     trace.model = process.env.PLANNING_MODEL_LABEL || "미확인";
     trace.promptVersion = "planning-agent-v8";
     fs.writeFileSync(
-      output + `plan-facts-sync-302-real-${i + 1}.json`,
+      output + `${prefix}-real-${i + 1}.json`,
       JSON.stringify(trace, null, 2),
     );
     const event = trace.events.find(
