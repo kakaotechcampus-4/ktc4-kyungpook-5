@@ -41,11 +41,61 @@ from app.schemas.meetings import (
     MeetingOut,
     TranscriptListOut,
     TranscriptSegmentOut,
+    MeetingReviewOut, SpeakerNamesIn, ReviewDraftIn,
 )
 from app.services import meeting_service
+from app.services import meeting_review_service
 from app.services.audio_stream_service import AudioProtocolError, AudioStream, Utterance
 
 router = APIRouter(tags=["meetings"])
+
+
+async def _review_meeting(session, meeting_id: str, account: Account):
+    meeting = await _get_meeting_for_account(session, meeting_id=meeting_id, account=account)
+    return meeting
+
+
+@router.post('/api/v1/meetings/{meeting_id}/review', response_model=Envelope[MeetingReviewOut], status_code=202)
+async def start_meeting_review(meeting_id: str, account: Account = Depends(get_current_account),
+                               session: AsyncSession = Depends(get_session)):
+    meeting = await _review_meeting(session, meeting_id, account)
+    member = await ensure_member(session, club_id=meeting.club_id, account=account)
+    review = await meeting_review_service.start(session, meeting=meeting, member_id=member.id)
+    return Envelope(data=await meeting_review_service.output(session, review))
+
+
+@router.get('/api/v1/meetings/{meeting_id}/review', response_model=Envelope[MeetingReviewOut])
+async def get_meeting_review(meeting_id: str, account: Account = Depends(get_current_account),
+                             session: AsyncSession = Depends(get_session)):
+    meeting = await _review_meeting(session, meeting_id, account)
+    review = await meeting_review_service.get(session, meeting.id)
+    if review is None:
+        raise meeting_review_service.ReviewConflict('회의 후 검토가 아직 시작되지 않았어요.')
+    return Envelope(data=await meeting_review_service.output(session, review))
+
+
+@router.patch('/api/v1/meetings/{meeting_id}/review/speakers', response_model=Envelope[MeetingReviewOut])
+async def update_review_speakers(meeting_id: str, body: SpeakerNamesIn,
+                                 account: Account = Depends(get_current_account),
+                                 session: AsyncSession = Depends(get_session)):
+    meeting = await _review_meeting(session, meeting_id, account)
+    review = await meeting_review_service.get(session, meeting.id)
+    if review is None:
+        raise meeting_review_service.ReviewConflict()
+    review = await meeting_review_service.set_names(session, review, body.expected_version, body.names)
+    return Envelope(data=await meeting_review_service.output(session, review))
+
+
+@router.post('/api/v1/meetings/{meeting_id}/review/draft', response_model=Envelope[MeetingReviewOut])
+async def create_review_draft(meeting_id: str, body: ReviewDraftIn,
+                              account: Account = Depends(get_current_account),
+                              session: AsyncSession = Depends(get_session)):
+    meeting = await _review_meeting(session, meeting_id, account)
+    review = await meeting_review_service.get(session, meeting.id)
+    if review is None:
+        raise meeting_review_service.ReviewConflict()
+    review = await meeting_review_service.generate_draft(session, review, body.expected_version)
+    return Envelope(data=await meeting_review_service.output(session, review))
 
 
 def _meeting_out(meeting: Meeting) -> MeetingOut:

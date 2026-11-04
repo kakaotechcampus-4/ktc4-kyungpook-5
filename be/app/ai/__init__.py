@@ -141,3 +141,10 @@ __all__ += ('ToriRecordQueryRequest', 'ToriRecordQueryResult', 'build_tori_recor
 from .features.operations.schemas import OperationalEventContext, OperationalSituationRequest, OperationalSituationResult
 from .facade import respond_operational_situation
 __all__ += ('OperationalEventContext', 'OperationalSituationRequest', 'OperationalSituationResult', 'respond_operational_situation')
+
+from .features.meeting.review import (
+    MeetingReviewRequest, MeetingReviewResult, ReviewTranscript, ReviewTask,
+    ReviewSummaryItem, generate_meeting_review,
+)
+__all__ += ('MeetingReviewRequest', 'MeetingReviewResult', 'ReviewTranscript',
+            'ReviewTask', 'ReviewSummaryItem', 'generate_meeting_review')

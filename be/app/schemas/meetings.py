@@ -51,6 +51,27 @@ class TranscriptListOut(CamelModel):
     items: list[TranscriptSegmentOut]
 
 
+class MeetingReviewOut(CamelModel):
+    id: str
+    meeting_id: str
+    job_id: str
+    status: str
+    version: int
+    error_code: str | None
+    speakers: list[dict[str, str | None]]
+    segments: list[dict[str, object]]
+    draft: dict[str, object] | None
+
+
+class SpeakerNamesIn(CamelModel):
+    expected_version: int
+    names: dict[str, str]
+
+
+class ReviewDraftIn(CamelModel):
+    expected_version: int
+
+
 class AudioChunkOut(CamelModel):
     chunk_id: str
     seq: int

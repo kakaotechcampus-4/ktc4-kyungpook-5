@@ -417,3 +417,7 @@ BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(cl
 `await classify_meeting_event_facts(JudgeUtteranceRequest(...))`는 기존 회의 발화·앞 문맥·연결 행사 형식을 그대로 받아 행사 DB 질문 여부를 별도로 분류한다. 반환 `disposition`은 `lookup`·`none`·`clarify`다. `lookup`이면 `scope`와 요청된 `fields`가 있으며, `selected`는 발화에서 확인한 `event_reference`가 필요하다. `clarify`는 대상이나 조회 의도가 모호해 BE가 추측하지 않도록 안내한다. `none`은 행사 DB 조회가 없다는 뜻이고 기존 RAG 판단을 생략하라는 뜻이 아니다. `trace`는 기존 `JudgeTrace` 형식의 모델명·프롬프트 버전·분류 시간이다. 오류는 AI 오류로 전달하며 오류의 `trace`에도 시간을 남긴다.
 
 BE는 분류를 자료 판단 및 후보 추출과 독립해 호출하고, `current`의 진행 중 상태 또는 `selected`의 행사 참조를 소속 범위에서 확인한다. `recent`는 완료일 등 최신 기준과 범위·정렬이 확인되지 않으면 단일 최신이라고 단정하지 않으며 `latest_verified=False`로 facts 함수에 전달한다. 분류만으로 권한·대상·실제 참가자를 확정하지 않는다. 조회 실패는 성공한 빈 목록으로 바꾸지 않는다.
+
+## 종료 후 회의록 제안
+
+`generate_meeting_review(MeetingReviewRequest(transcripts=...))`는 확정 전사의 ID·내용과 선택적인 화자 라벨/사용자 확인 이름을 받아 `MeetingReviewResult(summary, tasks)`를 제안한다. 각 요약과 할 일은 입력 전사의 `evidence_segment_ids`를 필수로 참조하며 없는 ID는 오류다. 화자는 발언자이며 담당자는 내용에서 명시된 경우만 `suggested_assignee`로 제안한다. 이름·계정·수신자를 추측하거나 저장·예약·알림을 실행하지 않는다. 사용자 검토 및 확정은 BE 책임이다.
