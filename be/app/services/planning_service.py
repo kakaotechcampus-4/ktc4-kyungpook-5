@@ -336,20 +336,61 @@ async def _release_idempotency(record_id: str) -> None:
         await session.commit()
 
 
-async def _run_once(idem: idempotency.IdempotencyResult | None, work) -> dict:
+def _progress_kwargs(progress) -> dict:
+    # JSON 경로는 지금과 똑같이 progress 없이 부른다. AI는 이때 모델 응답을 통째로 받는다.
+    return {} if progress is None else {"progress": progress}
+
+
+class PlanTurn:
+    """스트림을 열기 전 확인(멱등키·revision)을 마친 한 요청 (#266, #284).
+
+    이미 끝난 요청이면 replay에 저장된 응답이 있고, 아니면 run(progress)이 AI 호출과 저장을
+    한다. JSON 경로는 result()로 바로 실행하고, SSE 경로는 run()을 별도 작업으로 돌린다.
+    """
+
+    def __init__(self, *, replay: dict | None = None, run=None) -> None:
+        self.replay = replay
+        self.run = run
+
+    async def result(self) -> dict:
+        if self.replay is not None:
+            return self.replay
+        return await self.run(None)
+
+
+async def _open_turn(
+    idem: idempotency.IdempotencyResult | None, *, prepare, call_ai, user_message_text: str | None,
+) -> PlanTurn:
     """멱등키가 있으면 처리 결과를 저장하고, 실패하면 키를 풀어 같은 키로 다시
     시도할 수 있게 한다. 풀지 않으면 재시도가 처리 중(409)으로 막힌다."""
     if idem is not None and idem.is_replay:
-        return idem.record.response_body
+        return PlanTurn(replay=idem.record.response_body)
+    # 행 잠금·revision 확인은 스트림을 열기 전에 끝낸다. 여기서 나는 VersionConflict 같은
+    # 오류는 SSE 경로에서도 일반 HTTP 오류(4xx)로 응답된다.
     try:
-        out = await work()
+        prepared = await prepare()
     except Exception:
         if idem is not None:
             await _release_idempotency(idem.record.id)
         raise
-    if idem is not None:
-        await _save_idempotency_response(idem.record.id, status_code=200, body=out)
-    return out
+
+    async def run(progress: "ai.PlanningProgressPort | None") -> dict:
+        try:
+            try:
+                result = await call_ai(prepared, progress)
+            except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
+                raise _translate_ai_error(error) from error
+            out = await _finish(prepared, result, user_message_text=user_message_text)
+        except Exception:
+            if idem is not None:
+                await _release_idempotency(idem.record.id)
+            raise
+        if idem is not None:
+            # 턴 저장과 별도 커밋이다. 그 사이 서버가 죽으면 키가 처리 중으로 남는다(#284 남은 한계).
+            await _save_idempotency_response(idem.record.id, status_code=200, body=out)
+        return out
+
+    return PlanTurn(run=run)
 
 
 class _PreparedTurn:
@@ -455,7 +496,7 @@ async def _finish(
     return out
 
 
-async def chat(
+async def open_chat(
     *,
     club_id: str,
     event_id: str,
@@ -464,7 +505,7 @@ async def chat(
     message_content: str,
     base_revision: int,
     idempotency_key: str | None,
-) -> dict:
+) -> PlanTurn:
     sessionmaker = get_sessionmaker()
     endpoint = "POST /events/{event_id}/plan/chat"
     request_body = json.dumps(
@@ -478,7 +519,7 @@ async def chat(
             endpoint=endpoint, request_body=request_body,
         )
 
-    async def work() -> dict:
+    async def prepare() -> _PreparedTurn:
         prepared, _event = await _prepare(
             club_id=club_id, event_id=event_id, member_id=member_id,
             base_revision=base_revision,
@@ -486,19 +527,25 @@ async def chat(
                 **ctx, message=ai.PlanningUserMessage(id=message_id, content=message_content)
             ),
         )
-        try:
-            result = await ai.chat_planning(
-                prepared.request,
-                records=PostgresRecordSearch(club_id=prepared.request.club_id),
-            )
-        except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
-            raise _translate_ai_error(error) from error
-        return await _finish(prepared, result, user_message_text=message_content)
+        return prepared
 
-    return await _run_once(idem, work)
+    async def call_ai(prepared: _PreparedTurn, progress) -> "ai.PlanningPublicResult":
+        return await ai.chat_planning(
+            prepared.request,
+            records=PostgresRecordSearch(club_id=prepared.request.club_id),
+            **_progress_kwargs(progress),
+        )
+
+    return await _open_turn(idem, prepare=prepare, call_ai=call_ai,
+                            user_message_text=message_content)
 
 
-async def generate(
+async def chat(**kwargs) -> dict:
+    """JSON 경로. 스트림 경로와 같은 확인·저장을 거치고 결과만 한 번에 돌려준다."""
+    return await (await open_chat(**kwargs)).result()
+
+
+async def open_generate(
     *,
     club_id: str,
     event_id: str,
@@ -506,7 +553,7 @@ async def generate(
     base_revision: int,
     use_current_conditions: bool,
     idempotency_key: str | None,
-) -> dict:
+) -> PlanTurn:
     sessionmaker = get_sessionmaker()
     endpoint = "POST /events/{event_id}/plan/generate"
     request_body = json.dumps(
@@ -520,7 +567,7 @@ async def generate(
             endpoint=endpoint, request_body=request_body,
         )
 
-    async def work() -> dict:
+    async def prepare() -> _PreparedTurn:
         prepared, _event = await _prepare(
             club_id=club_id, event_id=event_id, member_id=member_id,
             base_revision=base_revision,
@@ -528,13 +575,16 @@ async def generate(
                 **ctx, use_current_conditions=use_current_conditions
             ),
         )
-        try:
-            result = await ai.generate_planning_preview(prepared.request)
-        except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
-            raise _translate_ai_error(error) from error
-        return await _finish(prepared, result, user_message_text=None)
+        return prepared
 
-    return await _run_once(idem, work)
+    async def call_ai(prepared: _PreparedTurn, progress) -> "ai.PlanningPublicResult":
+        return await ai.generate_planning_preview(prepared.request, **_progress_kwargs(progress))
+
+    return await _open_turn(idem, prepare=prepare, call_ai=call_ai, user_message_text=None)
+
+
+async def generate(**kwargs) -> dict:
+    return await (await open_generate(**kwargs)).result()
 
 
 async def get_plan_screen(
