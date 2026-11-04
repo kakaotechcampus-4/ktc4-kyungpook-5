@@ -313,6 +313,24 @@ ButtonPlanGenerationRequest(request_id="click-1", draft=MT·50명·날짜 미정
 
 `generate_with_context()`는 성공한 preview만 상태에 채택한다. 같은 클릭 ID·같은 기준으로 성공 요청을 다시 보내면 모델 호출 없이 같은 preview를 반환한다. 같은 ID에 다른 조건을 넣으면 재확인을 요구한다. 아직 마지막 성공 한 건만 보관하므로 임의의 오래된 요청 전체를 중복 제거하는 서버 저장소는 아니다. 별도 버튼 HTTP/FE 연결은 아래 5-3 절을 따른다.
 
+### 모델이 고를 수 있는 단계 코드는 몇 개인가? (#276)
+
+13개다. 단계 코드 목록 `StepCode`(`app.core.enums`)에는 17개가 있지만, 그중 `CANCEL_*` 4개는 운영 중 행사를 취소할 때 쓰는 코드라 계획 카탈로그에 없다. 생성 모델의 출력 형식([generation/schemas.py](../../features/planning/generation/schemas.py)의 `ModelStep`, `ModelExcludedStep`)은 `code` 칸에 카탈로그 13개(`PLANNING_STEP_NAMES`의 키)만 허용한다.
+
+17개를 그대로 보여 주던 때(`planning-generation-v1`)에는 아래처럼 실패했다.
+
+```text
+생성 모델 출력 (v1, 11-04 실측)
+  steps          = 카탈로그 13개 전부
+  excluded_steps = CANCEL_NOTIFY_PARTICIPANTS, CANCEL_VENUE, CANCEL_REFUND, CANCEL_RECORD
+                   "현재 취소 조건이 없으므로 … 포함하지 않습니다."
+validate_plan(): 넣은 13 + 뺀 4 = 17 ≠ 카탈로그 13 → catalog_partition 거절 → 사용자는 "초안이 검증을 통과하지 못했어요"
+
+v2: 출력 형식에 CANCEL_*가 없다 → 같은 사례 30번 모두 13개 안에서만 고르고 통과
+```
+
+생성 모델 요청은 스트리밍이라 LangChain이 형식을 `strict: true`로 보낸다. 그래도 모델이 형식 밖 코드를 쓰면 `compose_plan()`의 형식 확인에서 출력 형식 실패(`invalid_output`)가 된다. 공개 계약(`contracts.py`)과 저장 형식의 `code`는 그대로 `StepCode`다. #239 재검사 도구는 예전 실패 원본을 읽어야 하므로 v1 형식(`scripts/generation_output_v1.py`)으로 읽는다. 측정은 [평가 기록](evaluation.md)에 있다.
+
 ### 제외한 단계의 이름은 누가 붙이나? (#198)
 
 예를 들어 생성 모델이 사전 수요 조사를 제외했다고 하자. 이 선택이 적절한지와 별개로, 화면에서 `DEMAND_SURVEY`라는 코드만 보여 주면 운영진이 이해하기 어렵다. 모델이 고정 이름을 다시 작성할 필요도 없다.
@@ -341,7 +359,7 @@ excluded_steps = tuple(ExcludedPreviewStep(
 ) for item in composition.excluded_steps)
 ```
 
-이름의 원본은 공통 [planning_catalog.py](../../planning_catalog.py)의 `PLANNING_STEP_NAMES`다. 포함 단계와 제외 단계 모두 이 목록을 읽는다. 공개 [contracts.py](../../contracts.py)는 내부 Graph에 의존하지 않고 같은 이름 목록을 사용한다. 모델용 `ExcludedPlanStep(code, reason)`과 최종 화면용 `ExcludedPreviewStep(code, name, reason)`을 나눠, LLM 출력 스키마와 프롬프트는 유지했다.
+이름의 원본은 공통 [planning_catalog.py](../../planning_catalog.py)의 `PLANNING_STEP_NAMES`다. 포함 단계와 제외 단계 모두 이 목록을 읽는다. 공개 [contracts.py](../../contracts.py)는 내부 Graph에 의존하지 않고 같은 이름 목록을 사용한다. 모델용 `ModelExcludedStep(code, reason)`(#276부터 code는 카탈로그 13개만)과 최종 화면용 `ExcludedPreviewStep(code, name, reason)`을 나눠, LLM 출력 스키마와 프롬프트는 유지했다.
 
 **예전에 저장한 JSON에는 name이 없는데 괜찮을까?** 공개 타입의 `restore_missing_name()`이 누락된 이름만 고정 목록으로 보완한다. `parse_resume_state()`로 복원하거나 공개 요청의 `resume_state`에 dict를 넣는 두 방식 모두 적용된다. 버전 1을 유지하며 기존 초안 ID, 조건, 제외 이유와 대화 이력을 보존한다. 이름이 명시돼 있는데 틀렸거나 코드가 유효하지 않으면 오류를 반환한다. 모델을 다시 부르거나 상태를 초기화하지 않는다.
 
@@ -670,6 +688,39 @@ generate_planning_preview
 
 비교는 [compare_generation_reasoning.py](../../scripts/compare_generation_reasoning.py)로 했다. 요청마다 `build_plan_model`을 변형 함수로 바꿔 끼워 `reasoning`만 덮어쓰고(기본값 변형은 `None`이라 값을 보내지 않음), 끝나면 되돌린다. 계획 검증에서 거절되면 #239의 `capture_validation_failures`로 어느 규칙에서 거절됐는지 남긴다. 결과는 [추론 깊이 측정](evaluation-results/planning-generation-reasoning-2026-11-04/README.md)에 있다.
 
+## 한 응답에 Tool이 여러 개 오면 (#265, #274)
+
+대화 모델은 Tool 요청을 응답에 적어 보내고, 코드가 실행한 결과는 그다음 호출에서야 받는다. 지금은 한 응답에 Tool을 여러 개 받는다(`llm.ainvoke_with_tools`의 `parallel_tool_calls`, 행사계획은 `nodes.PARALLEL_TOOL_CALLS = True`).
+
+```text
+"예상 참가 인원을 60명으로 바꿔줘. 계획 초안은 만들지 마."
+
+하나만 허용     호출 1 update_event_conditions(인원 60) → 결과
+               호출 2 update_generation_offer(defer)   → 결과
+               호출 3 답변
+지금 (여러 개)  호출 1 update_event_conditions(인원 60) + update_generation_offer(defer)
+                      → tools_node가 앞에서부터 차례로 실행
+               호출 2 답변
+```
+
+여러 개 허용은 11-04에 쟀다. 호출이 3번에서 2번, 요청 p50이 7.19초에서 6.17초로 줄었다(#265). 처음에는 "날짜는 다시 얘기하자. …"의 통과가 줄어 보류했는데, 실패한 응답의 Tool 인자를 보니 두 설정 모두 "나중에 다시 얘기하자"로 읽어 날짜를 다시 보류한 같은 모양이었다. 분명한 재개("이제 날짜 정하자")와 정정("아니, 날짜는 지금 정하자는 거였어")은 두 설정 모두 10/10이라 켰다(#274, [평가 기록](evaluation.md)).
+
+모델이 여러 개를 보내면 `tools_node()`가 아래를 지킨다. 같은 응답 안의 뒤 Tool은 앞 Tool의 결과를 보지 못한 채 인자가 정해졌기 때문이다.
+
+```text
+"작년 봄 MT 참가비로 하자" → [search_past_events, update_event_conditions(참가비 30,000원)]
+  search_past_events  → 실행. 결과 "작년 봄 MT 참가비 45,000원"
+  update_event_conditions → 실행하지 않음(rejected). "검색 결과를 확인한 뒤 다시 요청"
+  다음 호출에서 모델이 45,000원을 보고 다시 변경
+
+"60명으로 바꿔줘. 초안은 만들지 마." → [update_generation_offer(defer), update_event_conditions(인원 60)]
+  보류 → 50명 기준으로 저장
+  인원 변경 성공 → 이번 응답에서 남긴 보류의 기준을 60명 초안으로 맞춤
+  (맞추지 않으면 다음 턴에 "조건이 바뀌었다"며 같은 권유를 다시 할 수 있다)
+```
+
+`tools_node()` 안에서는 `searched`(앞에 검색이 있었나)와 `deferred_offer_id`(이번 응답에서 남긴 보류)로 이 둘을 판단한다. 사용자가 값을 직접 말한 변경은 보통 [변경, 검색] 순서로 오므로 그대로 실행한다. 고정 응답 회귀 테스트는 [test_planning_agent_parallel_tools.py](../../tests/test_planning_agent_parallel_tools.py)에 있다. 비교 실행기는 [compare_parallel_tool_calls.py](../../scripts/compare_parallel_tool_calls.py)이고 요청마다 `PARALLEL_TOOL_CALLS`만 바꿔 끼운다.
+
 ## 응답 시간은 어떻게 비교할까? (#196)
 
 같은 MT 조건에서 사용자가 “응, 만들어줘.”라고 답하는 경우와 버튼을 누르는 경우를 생각해 보자.
@@ -965,3 +1016,47 @@ history_usage = PlanningHistoryUsage.from_count(len(state.payload.history))
 이후 버튼으로 생성해도 새 채팅 이력이 없으므로 48개를 유지한다. JSON 저장 후 복원한 상태를 다시 사용해도 같은 개수다. 과거 화면 응답에 필드가 없으면 null이며 0개로 꾸미지 않는다. Agent 상태 형식 버전은 바꾸지 않는다.
 
 독립 UI의 테스트 API도 같은 `from_count()`를 사용하고 화면은 `near_limit`만 읽어 안내를 표시한다. 프롬프트와 Tool은 바꾸지 않는다. 제품 HTTP 매핑은 [공개 계약 14절](p1-public-contract.md#14-대화-이력-안내-194)의 AI 구현안이며 BE/FE 합의와 실제 연결은 남아 있다.
+
+## 수정 → 검토: P2 계획 수정 후 AI 검토 (#177)
+
+생성된 계획에서 운영진이 "수요 조사"를 빼고 「단계 수정」에서 저장하면 검토가 자동으로 이어지는 예시다(카드에는 「검토 받기」·「다시 시도」·「다시 검토」 버튼이 있다). 인원은 "대략 30명"으로 잠정이다. 평가 케이스 `survey_removed`와 같은 입력이다.
+
+```text
+FE: 「단계 수정」 저장(PATCH /plan/steps) → 저장 뒤 GET /plan/steps/snapshot의 planRevision이
+    편집을 시작할 때 본 값보다 커졌을 때만 → POST /api/v1/events/{id}/plan/review {expectedRevision}
+  → plan_review_service.request_review()
+     · 행사·검토 행을 잠그고 버전 확인(다르면 409), 같은 버전을 이미 끝냈으면 AI를 다시 부르지 않음
+     · build_review_request(draft, today, current, baseline, ai_excluded)
+         baseline(생성 직후 스냅샷)과 current를 비교해 changes를 채움
+     · REVIEWING으로 커밋한 뒤 잠금을 놓고 AI 호출
+  → app.ai.review_plan_edit(request)
+  → 결과를 요청이 아직 최신일 때만 저장(DONE/FAILED) → 카드 표시
+```
+
+`build_review_request()`가 만드는 입력의 핵심은 아래와 같다. DB 접근이 없는 순수 함수다.
+
+```python
+PlanEditReviewRequest(
+    draft=...,  # headcount=30은 condition_meta에서 tentative
+    included_steps=(ReviewStep(code=RECRUIT_NOTICE, ...), ...),
+    excluded_steps=(ReviewExcludedStep(code=DEMAND_SURVEY, excluded_by="user"),),
+    changes=PlanChangeSet(removed_codes=(DEMAND_SURVEY,)),
+)
+```
+
+`excluded_by`는 처음 생성 때 AI가 뺀 단계(`ai`)와 사용자가 뺀 단계(`user`)를 구분하려고 둔다. AI가 뺐던 단계를 사용자가 다시 넣으면 `added_codes`에 들어가고 제외 목록에서 사라진다.
+
+`features/planning/review/review.py`의 `review_plan_edit()`는 프롬프트(`prompts/review.md`)를 시스템 메시지로, 요청 JSON을 별도 사용자 메시지로 보내 `PlanEditReviewResult`를 받는다. 요청 속 문장은 데이터로만 취급한다. 결과의 `step_codes`가 입력의 포함·제외 단계에 없으면 `AIInvalidResponseError`를 낸다. 모델이 입력에 없는 단계를 지어내면 화면에 잘못된 안내가 나가기 때문이다.
+
+결과가 카드가 되는 모습은 이렇다.
+
+```text
+outcome=issues, items=[{step_codes:[DEMAND_SURVEY, CHECK_RESPONSES, CONFIRM_DETAILS, BOOK_VENUE], kind:missing_step,
+  message:"수요 조사를 빼면, 약 25명이라는 잠정 인원을 행사 전에 별도로 확인하는 단계가 없어져요. …",
+  suggestion:"모집 공지와 신청 현황 확인에서 잠정 인원을 검증한 뒤 …"}]
+  → BE가 status=DONE, items 저장 → PlanReviewCard가 항목별로 message와 suggestion 표시
+outcome=no_issues → "이번 검토에서는 추가로 짚을 주의점을 찾지 못했어요" 카드
+AI 오류 → status=FAILED(error_code) → 카드가 실패와 다시 시도 표시, 편집은 그대로
+```
+
+위 결과 예시는 실제 모델 평가의 `undecided_dates`(날짜 미정, 인원 약 25명 잠정) 응답이며 입력 예시와 다른 케이스다. 입력 예시의 시나리오(`survey_removed`)는 평가에서 no_issues가 나왔다. 인원이 잠정이어도 수요 조사 누락을 짚지 않은 것으로, 남은 한계다. 고정 케이스 6개의 결과와 프롬프트 수정 전후는 [평가 기록](evaluation.md#계획-수정-검토-실제-모델-확인-177-ai-plan-07-2026-11-01)에 있다. 직접 돌리려면 api 컨테이너에서 `python -m app.ai.scripts.run_plan_review_eval --out <폴더>`를 실행한다. AI는 계획을 자동으로 고치지 않으며 검토한 버전(`reviewed_revision`)과 현재 버전이 다르면 FE가 최신 검토로 표시하지 않는다.

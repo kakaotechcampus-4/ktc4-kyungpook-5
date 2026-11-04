@@ -17,7 +17,7 @@ from app.ai.config import AISettings
 from app.ai.errors import AIInvalidResponseError
 from app.ai.features.planning.agent.generation_tools import latest_reference_facts, plan_messages
 from app.ai.features.planning.agent.graph import run_planning_agent_turn
-from app.ai.features.planning.agent.nodes import PROMPT_VERSION, agent_tool_schemas
+from app.ai.features.planning.agent.nodes import PARALLEL_TOOL_CALLS, PROMPT_VERSION, agent_tool_schemas
 from app.ai.features.planning.agent.schemas import PlanningAgentTurnInput
 from app.ai.features.planning.agent.state import PlanningDraft
 from app.ai.features.planning.generation.entrypoints import ButtonPlanGenerationRequest, run_button_plan_generation
@@ -66,7 +66,7 @@ async def run(output: Path, *, dialog_id: str | None = None) -> int:
         schema_errors=[]
         async def invoke(messages, *, allow_tools):
             return await ainvoke_with_tools(messages,tools=agent_tool_schemas(search_enabled=False,generation_enabled=True),
-                                            allow_tools=allow_tools,model=model)
+                                            allow_tools=allow_tools,parallel_tool_calls=PARALLEL_TOOL_CALLS,model=model)
         async def generate(request):
             captured=[]
             async def structured(messages,schema):

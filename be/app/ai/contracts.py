@@ -787,3 +787,82 @@ class PlanningPublicResult(ContractModel):
             if self.view.history_usage.message_count != len(self.next_state.payload.history):
                 raise ValueError('화면 이력 사용량과 보관 상태의 이력이 다릅니다')
         return self
+
+
+# 계획 수정 후 검토 (AI-PLAN-07, #177)
+# BE가 생성 직후 스냅샷과 현재 계획을 비교해 채워 보낸다. AI는 이 입력만 근거로 쓴다.
+
+class ReviewAction(ContractModel):
+    type: ActionType
+    title: NonBlankStr
+    amount: int | None = None
+    due_date: date | None = None
+
+
+class ReviewStep(ContractModel):
+    code: StepCode
+    name: NonBlankStr
+    phase: StepPhase
+    actor: StepActor
+    starts_at: datetime | None = None
+    deadline: datetime | None = None
+    actions: tuple[ReviewAction, ...] = ()
+
+
+class ReviewExcludedStep(ContractModel):
+    code: StepCode
+    name: NonBlankStr
+    # AI가 뺀 단계를 사용자가 다시 넣은 경우와 사용자가 뺀 경우를 구분하려고 둔다.
+    excluded_by: Literal["ai", "user"]
+    reason: str | None = None
+
+
+class ScheduleChange(ContractModel):
+    code: StepCode
+    before_starts_at: datetime | None = None
+    before_deadline: datetime | None = None
+    after_starts_at: datetime | None = None
+    after_deadline: datetime | None = None
+
+
+class ActionChange(ContractModel):
+    code: StepCode
+    action_title: NonBlankStr
+    field: Literal["amount", "due_date", "title"]
+    before: str | None = None
+    after: str | None = None
+
+
+class PlanChangeSet(ContractModel):
+    removed_codes: tuple[StepCode, ...] = ()
+    added_codes: tuple[StepCode, ...] = ()
+    moved_codes: tuple[StepCode, ...] = ()
+    schedule_changes: tuple[ScheduleChange, ...] = ()
+    action_changes: tuple[ActionChange, ...] = ()
+
+
+class PlanEditReviewRequest(ContractModel):
+    # 조건·잠정 여부·미룬 주제는 P1 초안 계약을 그대로 쓴다.
+    draft: PlanningDraft
+    today: date
+    included_steps: tuple[ReviewStep, ...]
+    excluded_steps: tuple[ReviewExcludedStep, ...] = ()
+    changes: PlanChangeSet = Field(default_factory=PlanChangeSet)
+
+
+class PlanReviewItem(ContractModel):
+    step_codes: tuple[StepCode, ...] = Field(min_length=1)
+    kind: Literal["missing_step", "order", "schedule", "other"]
+    message: NonBlankStr
+    suggestion: NonBlankStr | None = None
+
+
+class PlanEditReviewResult(ContractModel):
+    outcome: Literal["issues", "no_issues"]
+    items: tuple[PlanReviewItem, ...] = Field(default=(), max_length=4)
+
+    @model_validator(mode="after")
+    def _outcome_matches_items(self) -> Self:
+        if (self.outcome == "issues") != bool(self.items):
+            raise ValueError("issues는 항목이 1개 이상, no_issues는 항목이 없어야 합니다")
+        return self

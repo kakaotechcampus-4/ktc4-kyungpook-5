@@ -359,6 +359,21 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 - 답 카드의 길이. 사실이 여러 개면 한 줄씩 늘어나 4줄 이상인 답이 약 39개 중 7~9개였다. 화면에서 접어 보여줄지(FE)와 함께 정한다.
 - 카드에 근거 원문 조각을 보여줄지(FE·PM). 보여준다면 결과의 출처에 청크 원문을 더한다.
 
+## 계획 수정 후 검토 (#177)
+
+BE는 생성 직후 계획과 현재 계획을 비교해 `PlanEditReviewRequest`를 만들고 `await app.ai.review_plan_edit(request)`를 호출한다. AI는 저장·확정을 하지 않고 걱정되는 점만 돌려준다.
+
+입력 `PlanEditReviewRequest`: `draft`(P1 `PlanningDraft`, 잠정 여부와 미룬 주제 포함), `today`, `included_steps`(순서대로, 단계 코드·이름·phase·actor·일정·행동), `excluded_steps`(`excluded_by`가 `ai`면 처음 생성 때 AI가 뺀 것, `user`면 사용자가 뺀 것), `changes`(`removed_codes`, `added_codes`, `moved_codes`, `schedule_changes`, `action_changes`). 모두 BE가 채우며 AI는 이 입력만 근거로 쓴다.
+
+결과 `PlanEditReviewResult`: `outcome`(`issues`/`no_issues`)과 `items`(0~4개). 항목은 `step_codes`(1개 이상), `kind`(`missing_step`/`order`/`schedule`/`other`), `message`(해요체 1~2문장), `suggestion`(없으면 null)이다. `issues`는 항목 1개 이상, `no_issues`는 0개여야 계약 검증을 통과한다. 항목의 단계 코드가 입력의 포함·제외 단계에 없으면 `AIInvalidResponseError`로 막는다. 모델 실패는 다른 AI 호출처럼 `AIRetryableError` 등으로 전달되며 BE가 실패 상태로 저장한다.
+
+```python
+result = await app.ai.review_plan_edit(request)
+# PlanEditReviewResult(outcome="issues", items=(PlanReviewItem(step_codes=("BOOK_VENUE","CONFIRM_DETAILS"), kind="order", ...),))
+```
+
+[코드 따라가기](planning/walkthrough.md#수정--검토-p2-계획-수정-후-ai-검토-177)와 [실제 모델 평가](planning/evaluation.md#계획-수정-검토-실제-모델-확인-177-ai-plan-07-2026-11-01)를 함께 본다.
+
 ## 회의 일정·할 일 후보 추출 초안
 
 BE는 기존 회의 payload에 IANA `timezone`과 offset이 있는 `occurred_at`을 더해 `TaskExtractionRequest`를 만들고 `await app.ai.extract_task_suggestions(request)`를 호출한다. 최근 문맥은 지시 대상 해석에만 사용하며 현재 발화에서 새로 명시된 항목을 추출한다. 검색 판단과 독립 호출하므로 NONE이나 조회 실패에도 추출할 수 있다.

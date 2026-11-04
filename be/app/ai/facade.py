@@ -16,7 +16,13 @@ from .features.meeting.schemas import (
 )
 from .features.retrieval.indexing import index_record_chunks
 from .ports import RecordSearchPort, RetrievedChunk
-from .contracts import PlanningChatRequest, PlanningPreviewRequest, PlanningPublicResult
+from .contracts import (
+    PlanEditReviewRequest,
+    PlanEditReviewResult,
+    PlanningChatRequest,
+    PlanningPreviewRequest,
+    PlanningPublicResult,
+)
 
 
 async def index_record(request: IndexRecordRequest) -> IndexRecordResult:
@@ -92,3 +98,9 @@ async def respond_operational_situation(request: "OperationalSituationRequest") 
     """운영 상황을 확인하거나 후속 제안만 한다. 권한·저장·실행은 BE 책임이다."""
     from .features.operations.nodes import respond_operational_situation as respond
     return await respond(request)
+
+
+async def review_plan_edit(request: "PlanEditReviewRequest") -> "PlanEditReviewResult":
+    """사용자가 고친 계획을 검토해 걱정되는 점을 0~4개 돌려준다. 저장·확정은 BE 책임."""
+    from .features.planning.review.review import review_plan_edit as review
+    return await review(request)

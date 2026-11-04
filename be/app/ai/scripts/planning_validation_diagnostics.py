@@ -15,8 +15,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.ai import PlanningChatRequest
 from app.ai.features.planning.agent.nodes import PROMPT_VERSION as AGENT_PROMPT_VERSION
 from app.ai.features.planning.generation import graph
-from app.ai.features.planning.generation.schemas import PlanComposition, PlanGenerationInput
+from app.ai.features.planning.generation.schemas import PlanGenerationInput
 from app.ai.features.planning.generation.validation import PlanValidationError, PlanValidationViolation
+from app.ai.scripts.generation_output_v1 import PlanComposition as RecordedComposition
 from app.ai.scripts.measure_planning_latency import now
 from app.ai.scripts.planning_latency_inputs import AI_DIR, digest
 from app.ai.scripts.planning_latency_observation import CURRENT_TRACE, PARENT_SPAN
@@ -58,7 +59,9 @@ class ValidationSnapshot(BaseModel):
     generation_prompt_version: str
     source: ValidatorSource
     input: PlanGenerationInput
-    composition: PlanComposition
+    # 현재 출력 형식(v2)은 단계 코드가 카탈로그 13개뿐이라 #276 전 원본의 CANCEL_*를 읽지 못한다.
+    # 더 넓은 v1 형식으로 읽어야 예전 실패도 원래 규칙으로 다시 거절되는지 재검사할 수 있다.
+    composition: RecordedComposition
     violation: PlanValidationViolation
     input_sha256: str
     composition_sha256: str
@@ -112,7 +115,7 @@ def capture_validation_failures(request, *, run_id, model, source=None):
                             validation_span_id=span_id, captured_at=now(), model=model,
                             agent_prompt_version=AGENT_PROMPT_VERSION, generation_prompt_version=graph.PROMPT_VERSION,
                             source=source, input=PlanGenerationInput.model_validate(input_data),
-                            composition=PlanComposition.model_validate(composition_data),
+                            composition=RecordedComposition.model_validate(composition_data),
                             violation=error.violation.model_copy(deep=True),
                             input_sha256=digest(input_data), composition_sha256=digest(composition_data)))
                     except Exception as capture_error:

@@ -1,8 +1,16 @@
 import { useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import { usePlanningChat, usePlanningDrafts, useStartEvent } from '@/features/planning/hooks'
+import {
+  usePlanningChat,
+  usePlanningDrafts,
+  useRequestPlanReview,
+  useReviewInFlight,
+  useStartEvent,
+} from '@/features/planning/hooks'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
+import { PlanReviewCard } from '@/features/planning/components/PlanReviewCard'
+import { reviewCardState, showGenerationWarnings } from '@/features/planning/reviewState'
 import type { components } from '@/shared/api/schema'
 import { useAuthStore } from '@/shared/auth/store'
 import { Button } from '@/shared/ui/Button'
@@ -180,11 +188,14 @@ function Conversation({
               {live.busy ? '초안을 만드는 중…' : '현재 조건으로 초안 생성'}
             </Button>
             {screen && <StepSummaryLine summary={screen.summary} steps={steps} edited={false} />}
-            {screen?.warnings.map((warning, index) => (
-              <p key={index} className="text-mute">
-                {warning}
-              </p>
-            ))}
+            {/* 생성 때 낸 주의사항은 계획을 고친 뒤엔 낡은 정보라 숨긴다. 대신 아래 검토 카드가 안내한다. */}
+            {screen &&
+              showGenerationWarnings(screen.planRevision, screen.review ?? null) &&
+              screen.warnings.map((warning, index) => (
+                <p key={index} className="text-mute">
+                  {warning}
+                </p>
+              ))}
             {steps.length > 0 ? (
               <ol className="space-y-2">
                 {steps.map((step) => (
@@ -208,6 +219,7 @@ function Conversation({
             )}
             <PlanHandoff eventId={eventId} hasSteps={steps.length > 0} />
           </Card>
+          {eventId && screen && <PlanReview eventId={eventId} screen={screen} />}
           <PlanFacts
             facts={live.facts}
             readiness={{ canGenerate: false, reasons: [] }}
@@ -217,6 +229,22 @@ function Conversation({
         </div>
       </div>
     </>
+  )
+}
+
+// 계획 수정 후 AI 검토 (#177). 단계 수정 화면에서 바뀐 채로 저장하면 그 화면이 검토를 요청하고,
+// 여기서는 진행 중·결과·「다시 검토」를 보여준다. 세부 수정만 했으면 「다시 필요」로 바뀐다.
+function PlanReview({ eventId, screen }: { eventId: string; screen: S['PlanScreenOut'] }) {
+  const requestReview = useRequestPlanReview(eventId)
+  const requesting = useReviewInFlight(eventId)
+  const review = screen.review ?? null
+  return (
+    <PlanReviewCard
+      state={reviewCardState({ planRevision: screen.planRevision, review, requesting })}
+      review={review}
+      requesting={requesting}
+      onRequest={() => requestReview.mutate(screen.planRevision)}
+    />
   )
 }
 

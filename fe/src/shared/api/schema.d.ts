@@ -1126,6 +1126,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{event_id}/plan/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Plan Review
+         * @description 계획 수정 후 AI 검토 (#177). AI 실패는 200 + status FAILED로 돌려준다.
+         *
+         *     서비스가 AI 호출 전에 커밋해 이 세션의 트랜잭션을 닫는다.
+         */
+        post: operations["request_plan_review_api_v1_events__event_id__plan_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/{event_id}/actions": {
         parameters: {
             query?: never;
@@ -2176,6 +2198,12 @@ export interface components {
             /** Meta */
             meta?: null;
         };
+        /** Envelope[PlanReviewOut] */
+        Envelope_PlanReviewOut_: {
+            data: components["schemas"]["PlanReviewOut"];
+            /** Meta */
+            meta?: null;
+        };
         /** Envelope[PlanScreenOut] */
         Envelope_PlanScreenOut_: {
             data: components["schemas"]["PlanScreenOut"];
@@ -2960,6 +2988,50 @@ export interface components {
             /** Content */
             content: string;
         };
+        /**
+         * PlanReviewIn
+         * @description 계획 수정 후 AI 검토 요청 (#177). 화면이 본 버전과 다르면 409.
+         */
+        PlanReviewIn: {
+            /** Expectedrevision */
+            expectedRevision: number;
+        };
+        /** PlanReviewItemOut */
+        PlanReviewItemOut: {
+            /** Stepcodes */
+            stepCodes: components["schemas"]["StepCode"][];
+            /** Stepnames */
+            stepNames: string[];
+            /** Kind */
+            kind: string;
+            /** Message */
+            message: string;
+            /** Suggestion */
+            suggestion: string | null;
+        };
+        /**
+         * PlanReviewOut
+         * @description REVIEWING이 90초를 넘으면 status=FAILED, errorCode=REVIEW_TIMEOUT으로 내보낸다.
+         */
+        PlanReviewOut: {
+            status: components["schemas"]["PlanReviewStatus"];
+            /** Generatedrevision */
+            generatedRevision: number;
+            /** Reviewedrevision */
+            reviewedRevision: number | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Items */
+            items: components["schemas"]["PlanReviewItemOut"][];
+            /** Errorcode */
+            errorCode: string | null;
+        };
+        /**
+         * PlanReviewStatus
+         * @description 계획 수정 후 AI 검토 상태 (#177).
+         * @enum {string}
+         */
+        PlanReviewStatus: "NOT_REQUESTED" | "REVIEWING" | "DONE" | "FAILED";
         /** PlanScreenOut */
         PlanScreenOut: {
             draft: components["schemas"]["PlanDraftOut"];
@@ -2973,6 +3045,9 @@ export interface components {
             baseRevision: number;
             generationReadiness?: components["schemas"]["GenerationReadinessOut"] | null;
             lastRecordLookup?: components["schemas"]["RecordLookupOut"] | null;
+            /** Planrevision */
+            planRevision: number;
+            review: components["schemas"]["PlanReviewOut"] | null;
         };
         /**
          * PlanStepsSnapshotOut
@@ -2981,6 +3056,8 @@ export interface components {
         PlanStepsSnapshotOut: {
             /** Baserevision */
             baseRevision: number;
+            /** Planrevision */
+            planRevision: number;
             /** Steps */
             steps: components["schemas"]["PlannedStepOut"][];
         };
@@ -6650,6 +6727,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_PlanScreenOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_plan_review_api_v1_events__event_id__plan_review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PlanReviewOut_"];
                 };
             };
             /** @description Validation Error */

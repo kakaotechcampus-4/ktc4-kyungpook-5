@@ -62,6 +62,15 @@ class EventStatus(CodeEnum):
     CANCELLED = "CANCELLED"
 
 
+class PlanReviewStatus(CodeEnum):
+    """계획 수정 후 AI 검토 상태 (#177)."""
+
+    NOT_REQUESTED = "NOT_REQUESTED"
+    REVIEWING = "REVIEWING"
+    DONE = "DONE"
+    FAILED = "FAILED"
+
+
 class EventType(CodeEnum):
     MT = "MT"
     WELCOME = "WELCOME"

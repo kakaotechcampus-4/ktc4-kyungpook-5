@@ -1,0 +1,170 @@
+[
+  {
+    "id": "survey_removed",
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "DEMAND_SURVEY"
+      ],
+      "must_not_mention_codes": []
+    },
+    "latency_ms": 6507,
+    "error": null,
+    "result": {
+      "outcome": "no_issues",
+      "items": []
+    },
+    "checks": {
+      "outcome_match": false,
+      "mentions_match": false,
+      "kind_match": null
+    },
+    "passed": false
+  },
+  {
+    "id": "book_before_confirm",
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "BOOK_VENUE",
+        "CONFIRM_DETAILS"
+      ],
+      "must_not_mention_codes": []
+    },
+    "latency_ms": 5311,
+    "error": null,
+    "result": {
+      "outcome": "issues",
+      "items": [
+        {
+          "step_codes": [
+            "BOOK_VENUE",
+            "CONFIRM_DETAILS"
+          ],
+          "kind": "order",
+          "message": "장소 예약을 인원·세부 사항 확정보다 앞에 두면, 아직 잠정인 참가 인원에 맞는 장소인지 확정하기 전에 예약하게 될 수 있어요. 다만 장소를 먼저 확보하려는 의도라면 가능한 순서예요.",
+          "suggestion": "이대로 진행한다면 잠정 인원으로도 예약 가능한지와 이후 인원·세부 사항 변경이 가능한지를 먼저 확인해 주세요."
+        }
+      ]
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": true
+  },
+  {
+    "id": "fee_deadline_after_event",
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "COLLECT_FEES"
+      ],
+      "must_not_mention_codes": [],
+      "expected_kind": "schedule"
+    },
+    "latency_ms": 4410,
+    "error": null,
+    "result": {
+      "outcome": "issues",
+      "items": [
+        {
+          "step_codes": [
+            "COLLECT_FEES"
+          ],
+          "kind": "schedule",
+          "message": "참가비 수납 마감일을 2026-11-25로 변경해 행사 종료일인 2026-11-22보다 늦어졌어요. 행사 전에 참가비 납부 여부를 확인하려는 계획이었다면, 행사 당일 참석자 중 미납자가 생길 수 있어요.",
+          "suggestion": "행사 후까지 수납하는 의도라면 괜찮고, 아니라면 행사 전 납부 확인이 가능하도록 마감일과 확인 시점을 점검해 보세요."
+        }
+      ]
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": true
+    },
+    "passed": true
+  },
+  {
+    "id": "ai_excluded_readded",
+    "expect": {
+      "outcome": "any",
+      "must_mention_codes": [],
+      "must_not_mention_codes": [],
+      "manual_check": "무료 행사에 환불 단계를 다시 넣은 의도를 존중하는 말투인지 확인"
+    },
+    "latency_ms": 2970,
+    "error": null,
+    "result": {
+      "outcome": "no_issues",
+      "items": []
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": true
+  },
+  {
+    "id": "harmless_reorder",
+    "expect": {
+      "outcome": "no_issues",
+      "must_mention_codes": [],
+      "must_not_mention_codes": []
+    },
+    "latency_ms": 3918,
+    "error": null,
+    "result": {
+      "outcome": "issues",
+      "items": [
+        {
+          "step_codes": [
+            "RESEARCH_VENUE",
+            "ASSIGN_ROLES"
+          ],
+          "kind": "order",
+          "message": "장소 조사를 역할 분담보다 앞에 두면 담당자 없이 장소 조사를 시작하게 될 수 있어요.",
+          "suggestion": "장소 조사를 먼저 진행하려는 경우에는 조사 담당자를 별도로 정했는지 확인해 주세요."
+        }
+      ]
+    },
+    "checks": {
+      "outcome_match": false,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": false
+  },
+  {
+    "id": "undecided_dates",
+    "expect": {
+      "outcome": "any",
+      "must_mention_codes": [],
+      "must_not_mention_codes": [],
+      "manual_check": "날짜 미정·인원 잠정이라고 분명히 말하는지, 확정 사실처럼 쓰지 않는지 확인"
+    },
+    "latency_ms": 6156,
+    "error": null,
+    "result": {
+      "outcome": "issues",
+      "items": [
+        {
+          "step_codes": [
+            "DEMAND_SURVEY"
+          ],
+          "kind": "missing_step",
+          "message": "수요 조사를 뺀 상태에서 인원 25명은 잠정이고 날짜도 아직 미뤄져 있어, 모집 전에 실제 참여 의향과 가능한 일정을 별도로 확인하지 못할 수 있어요.",
+          "suggestion": "행사를 이미 진행하기로 확정했고 모집 공지에서 참여 의향과 가능한 날짜를 함께 확인한다면 이대로 진행해도 되지만, 그렇지 않다면 해당 내용을 모집 전에 확인해 보세요."
+        }
+      ]
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": true
+  }
+]

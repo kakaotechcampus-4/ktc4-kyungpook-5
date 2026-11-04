@@ -17,6 +17,7 @@ from app.core.enums import (
     EventStatus,
     EventType,
     MemberRole,
+    PlanReviewStatus,
     StepActor,
     StepCode,
     StepPhase,
@@ -350,6 +351,8 @@ class PlanStepsSnapshotOut(CamelModel):
     """단계 구성과 그 구성을 읽은 시점의 버전."""
 
     base_revision: int
+    # 계획 편집 버전 (#177). 저장 뒤 값과 비교해 실제로 바뀌었을 때만 검토를 요청한다.
+    plan_revision: int
     steps: list[PlannedStepOut]
 
 
@@ -483,6 +486,32 @@ class PlanSummaryOut(CamelModel):
     manual_steps: int
 
 
+class PlanReviewIn(CamelModel):
+    """계획 수정 후 AI 검토 요청 (#177). 화면이 본 버전과 다르면 409."""
+
+    expected_revision: int = Field(ge=0)
+
+
+class PlanReviewItemOut(CamelModel):
+    step_codes: list[StepCode]
+    # 카탈로그 고정 이름. AI 출력에 이름을 맡기지 않는다.
+    step_names: list[str]
+    kind: str
+    message: str
+    suggestion: str | None
+
+
+class PlanReviewOut(CamelModel):
+    """REVIEWING이 90초를 넘으면 status=FAILED, errorCode=REVIEW_TIMEOUT으로 내보낸다."""
+
+    status: PlanReviewStatus
+    generated_revision: int
+    reviewed_revision: int | None
+    outcome: str | None
+    items: list[PlanReviewItemOut]
+    error_code: str | None
+
+
 class PlanScreenOut(CamelModel):
     draft: PlanDraftOut
     warnings: list[str]
@@ -492,3 +521,7 @@ class PlanScreenOut(CamelModel):
     base_revision: int
     generation_readiness: GenerationReadinessOut | None = None
     last_record_lookup: RecordLookupOut | None = None
+    # 계획 편집 버전 (#177). review.reviewedRevision과 비교해 검토가 지금 계획 기준인지 본다.
+    plan_revision: int
+    # 초안 생성 전이면 null.
+    review: PlanReviewOut | None

@@ -2,6 +2,8 @@
 
 행사계획 응답 시간의 고정 입력은 별도 [planning_latency.json](planning_latency.json)이다(#196). 합성 MT 조건에서 고정 모델 응답을 실제 공개 함수와 권유 Tool에 통과시켜 만들었고 외부 모델 호출은 없었다. 이력 4개, 현재 조건과 같은 pending offer, 생성 전 상태를 사용한다. 실제 사용자 정답 라벨이나 검색 평가 세트로 사용하지 않는다. [측정 기준과 실행 방법](../../../docs/planning/latency-baseline.md)을 따른다.
 
+[planning_date_resume_correction.json](planning_date_resume_correction.json)은 보류 경계 정정 사례의 시작 상태다(#274). 실제 모델이 "날짜는 다시 얘기하자. 인원은 60명으로 바꿔줘. 초안은 만들지 마."를 날짜 재보류로 읽은 턴의 다음 상태(인원 60, 보류 dates, 생성 권유 보류)를 그대로 저장했다. 출처는 파일의 `provenance`에 있다.
+
 기록 검색의 효과를 재는 질문 50개와 정답이다(#99). 기록은 [예시 기록](../records/README.md) 12종을 쓴다.
 정답은 사람이 검토해 확정한다. 검토 전 라벨로 잰 결과는 평가 기록에 남기지 않는다.
 

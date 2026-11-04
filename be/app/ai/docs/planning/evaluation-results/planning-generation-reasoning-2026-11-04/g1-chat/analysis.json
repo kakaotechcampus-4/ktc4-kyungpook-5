@@ -1,0 +1,1269 @@
+{
+  "source": "planning-generation-reasoning-2026-11-04 attempts",
+  "summary": {
+    "default": {
+      "latency": {
+        "counts": {
+          "planned": 30,
+          "started": 30,
+          "finished": 30,
+          "completed": 30,
+          "success": 29,
+          "failed": 1,
+          "interrupted": 0,
+          "pending": 0,
+          "not_started": 0
+        },
+        "success_rate": 0.9666666666666667,
+        "provisional": false,
+        "success_ms": {
+          "n": 29,
+          "p50_ms": 21218.890958,
+          "p95_ms": 26439.3438412,
+          "mean_ms": 21712.03087072414,
+          "max_ms": 27187.76725
+        },
+        "failure_ms": {
+          "n": 1,
+          "p50_ms": 23683.766625,
+          "p95_ms": 23683.766625,
+          "mean_ms": 23683.766625,
+          "max_ms": 23683.766625
+        },
+        "completed_ms": {
+          "n": 30,
+          "p50_ms": 21467.795833,
+          "p95_ms": 26435.7027641,
+          "mean_ms": 21777.75539586667,
+          "max_ms": 27187.76725
+        },
+        "interrupted_wait_ms": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "mean_ms": null,
+          "max_ms": null
+        },
+        "failures_by_category": {
+          "invalid_plan": {
+            "n": 1,
+            "p50_ms": 23683.766625,
+            "p95_ms": 23683.766625,
+            "mean_ms": 23683.766625,
+            "max_ms": 23683.766625
+          }
+        },
+        "observation": {
+          "observed_requests": 30,
+          "unobserved_requests": 0,
+          "complete": true,
+          "model_call_attempts": {
+            "agent_model": 60,
+            "generation_model": 30
+          },
+          "by_stage": {
+            "agent_model": {
+              "calls": 60,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 60,
+                "p50_ms": 3141.5991670000003,
+                "p95_ms": 7615.146812499999,
+                "mean_ms": 3360.709374283333,
+                "max_ms": 10272.320042
+              },
+              "ok_call_ms": {
+                "n": 60,
+                "p50_ms": 3141.5991670000003,
+                "p95_ms": 7615.146812499999,
+                "mean_ms": 3360.709374283333,
+                "max_ms": 10272.320042
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 30,
+                "p50_ms": 5932.947854,
+                "p95_ms": 11732.2553538,
+                "mean_ms": 6721.418748566667,
+                "max_ms": 13604.160167
+              },
+              "error_codes": {},
+              "usage": {
+                "observed_calls": 60,
+                "missing_calls": {},
+                "per_call": {
+                  "input_tokens": {
+                    "n": 60,
+                    "p50": 3594.0,
+                    "p95": 6814.799999999999,
+                    "mean": 5042.283333333333,
+                    "max": 6971
+                  },
+                  "output_tokens": {
+                    "n": 60,
+                    "p50": 125.0,
+                    "p95": 258.2,
+                    "mean": 139.33333333333334,
+                    "max": 284
+                  },
+                  "reasoning_tokens": {
+                    "n": 60,
+                    "p50": 16.0,
+                    "p95": 79.59999999999997,
+                    "mean": 24.166666666666668,
+                    "max": 131
+                  },
+                  "cached_input_tokens": {
+                    "n": 60,
+                    "p50": 3206.0,
+                    "p95": 3206.0,
+                    "mean": 3206.0,
+                    "max": 3206
+                  }
+                },
+                "totals": {
+                  "input_tokens": 302537,
+                  "output_tokens": 8360,
+                  "reasoning_tokens": 1450,
+                  "cached_input_tokens": 192360
+                },
+                "reasoning_share_of_output": {
+                  "calls": 60,
+                  "ratio": 0.173444976076555
+                },
+                "cached_share_of_input": {
+                  "calls": 60,
+                  "ratio": 0.6358230563534377
+                }
+              }
+            },
+            "generation": {
+              "calls": 30,
+              "error_calls": 1,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 30,
+                "p50_ms": 14916.8238125,
+                "p95_ms": 19520.407106249993,
+                "mean_ms": 15044.565275033334,
+                "max_ms": 21358.063
+              },
+              "ok_call_ms": {
+                "n": 29,
+                "p50_ms": 14795.898375,
+                "p95_ms": 19623.257199999996,
+                "mean_ms": 14934.020616413793,
+                "max_ms": 21358.063
+              },
+              "error_call_ms": {
+                "n": 1,
+                "p50_ms": 18250.360375,
+                "p95_ms": 18250.360375,
+                "mean_ms": 18250.360375,
+                "max_ms": 18250.360375
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 30,
+                "p50_ms": 14916.8238125,
+                "p95_ms": 19520.407106249993,
+                "mean_ms": 15044.565275033334,
+                "max_ms": 21358.063
+              },
+              "error_codes": {
+                "invalid_plan": 1
+              }
+            },
+            "compose_plan": {
+              "calls": 30,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 30,
+                "p50_ms": 14911.7917915,
+                "p95_ms": 19515.05971059999,
+                "mean_ms": 15039.5896333,
+                "max_ms": 21349.09925
+              },
+              "ok_call_ms": {
+                "n": 30,
+                "p50_ms": 14911.7917915,
+                "p95_ms": 19515.05971059999,
+                "mean_ms": 15039.5896333,
+                "max_ms": 21349.09925
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 30,
+                "p50_ms": 14911.7917915,
+                "p95_ms": 19515.05971059999,
+                "mean_ms": 15039.5896333,
+                "max_ms": 21349.09925
+              },
+              "error_codes": {}
+            },
+            "generation_model": {
+              "calls": 30,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 30,
+                "p50_ms": 14911.416228999999,
+                "p95_ms": 19514.707839399995,
+                "mean_ms": 15039.170784633334,
+                "max_ms": 21348.649167
+              },
+              "ok_call_ms": {
+                "n": 30,
+                "p50_ms": 14911.416228999999,
+                "p95_ms": 19514.707839399995,
+                "mean_ms": 15039.170784633334,
+                "max_ms": 21348.649167
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 30,
+                "p50_ms": 14911.416228999999,
+                "p95_ms": 19514.707839399995,
+                "mean_ms": 15039.170784633334,
+                "max_ms": 21348.649167
+              },
+              "error_codes": {},
+              "usage": {
+                "observed_calls": 30,
+                "missing_calls": {},
+                "per_call": {
+                  "input_tokens": {
+                    "n": 30,
+                    "p50": 2057.0,
+                    "p95": 2057.0,
+                    "mean": 2057.0,
+                    "max": 2057
+                  },
+                  "output_tokens": {
+                    "n": 30,
+                    "p50": 1433.0,
+                    "p95": 1736.5999999999997,
+                    "mean": 1472.8,
+                    "max": 1917
+                  },
+                  "reasoning_tokens": {
+                    "n": 30,
+                    "p50": 516.0,
+                    "p95": 833.0999999999995,
+                    "mean": 520.8333333333334,
+                    "max": 921
+                  },
+                  "cached_input_tokens": {
+                    "n": 30,
+                    "p50": 2054.0,
+                    "p95": 2054.0,
+                    "mean": 2054.0,
+                    "max": 2054
+                  }
+                },
+                "totals": {
+                  "input_tokens": 61710,
+                  "output_tokens": 44184,
+                  "reasoning_tokens": 15625,
+                  "cached_input_tokens": 61620
+                },
+                "reasoning_share_of_output": {
+                  "calls": 30,
+                  "ratio": 0.35363479992757557
+                },
+                "cached_share_of_input": {
+                  "calls": 30,
+                  "ratio": 0.9985415653864852
+                }
+              }
+            },
+            "validate_plan": {
+              "calls": 30,
+              "error_calls": 1,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 30,
+                "p50_ms": 0.459792,
+                "p95_ms": 1.252835049999999,
+                "mean_ms": 0.5599401666666667,
+                "max_ms": 1.517834
+              },
+              "ok_call_ms": {
+                "n": 29,
+                "p50_ms": 0.449625,
+                "p95_ms": 1.0185582,
+                "mean_ms": 0.5298978965517241,
+                "max_ms": 1.517834
+              },
+              "error_call_ms": {
+                "n": 1,
+                "p50_ms": 1.431166,
+                "p95_ms": 1.431166,
+                "mean_ms": 1.431166,
+                "max_ms": 1.431166
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 30,
+                "p50_ms": 0.459792,
+                "p95_ms": 1.252835049999999,
+                "mean_ms": 0.5599401666666667,
+                "max_ms": 1.517834
+              },
+              "error_codes": {
+                "invalid_plan": 1
+              }
+            }
+          }
+        }
+      },
+      "success_step_count": {
+        "n": 29,
+        "median": 13,
+        "min": 11,
+        "max": 13
+      },
+      "violations": {
+        "unknown_fact_id": 1
+      },
+      "failures": {
+        "invalid_plan": 1
+      }
+    },
+    "low": {
+      "latency": {
+        "counts": {
+          "planned": 30,
+          "started": 30,
+          "finished": 30,
+          "completed": 30,
+          "success": 25,
+          "failed": 5,
+          "interrupted": 0,
+          "pending": 0,
+          "not_started": 0
+        },
+        "success_rate": 0.8333333333333334,
+        "provisional": false,
+        "success_ms": {
+          "n": 25,
+          "p50_ms": 18141.0555,
+          "p95_ms": 19499.1563746,
+          "mean_ms": 17811.72452168,
+          "max_ms": 22536.150875
+        },
+        "failure_ms": {
+          "n": 5,
+          "p50_ms": 18690.863333,
+          "p95_ms": 25150.5936414,
+          "mean_ms": 19828.3864166,
+          "max_ms": 26673.582083
+        },
+        "completed_ms": {
+          "n": 30,
+          "p50_ms": 18190.9379585,
+          "p95_ms": 21184.41739984999,
+          "mean_ms": 18147.8348375,
+          "max_ms": 26673.582083
+        },
+        "interrupted_wait_ms": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "mean_ms": null,
+          "max_ms": null
+        },
+        "failures_by_category": {
+          "invalid_plan": {
+            "n": 5,
+            "p50_ms": 18690.863333,
+            "p95_ms": 25150.5936414,
+            "mean_ms": 19828.3864166,
+            "max_ms": 26673.582083
+          }
+        },
+        "observation": {
+          "observed_requests": 30,
+          "unobserved_requests": 0,
+          "complete": true,
+          "model_call_attempts": {
+            "agent_model": 60,
+            "generation_model": 30
+          },
+          "by_stage": {
+            "agent_model": {
+              "calls": 60,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 60,
+                "p50_ms": 2828.0157295,
+                "p95_ms": 4762.327489599998,
+                "mean_ms": 3032.48238975,
+                "max_ms": 6689.635334
+              },
+              "ok_call_ms": {
+                "n": 60,
+                "p50_ms": 2828.0157295,
+                "p95_ms": 4762.327489599998,
+                "mean_ms": 3032.48238975,
+                "max_ms": 6689.635334
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 30,
+                "p50_ms": 5761.971146,
+                "p95_ms": 8001.924429799995,
+                "mean_ms": 6064.9647795,
+                "max_ms": 10240.016459
+              },
+              "error_codes": {},
+              "usage": {
+                "observed_calls": 60,
+                "missing_calls": {},
+                "per_call": {
+                  "input_tokens": {
+                    "n": 60,
+                    "p50": 3578.5,
+                    "p95": 6637.45,
+                    "mean": 4788.05,
+                    "max": 6731
+                  },
+                  "output_tokens": {
+                    "n": 60,
+                    "p50": 75.0,
+                    "p95": 246.34999999999997,
+                    "mean": 132.68333333333334,
+                    "max": 274
+                  },
+                  "reasoning_tokens": {
+                    "n": 60,
+                    "p50": 22.0,
+                    "p95": 67.44999999999997,
+                    "mean": 28.233333333333334,
+                    "max": 94
+                  },
+                  "cached_input_tokens": {
+                    "n": 60,
+                    "p50": 3206.0,
+                    "p95": 3206.0,
+                    "mean": 3206.0,
+                    "max": 3206
+                  }
+                },
+                "totals": {
+                  "input_tokens": 287283,
+                  "output_tokens": 7961,
+                  "reasoning_tokens": 1694,
+                  "cached_input_tokens": 192360
+                },
+                "reasoning_share_of_output": {
+                  "calls": 60,
+                  "ratio": 0.21278733827408616
+                },
+                "cached_share_of_input": {
+                  "calls": 60,
+                  "ratio": 0.6695836509643801
+                }
+              }
+            },
+            "generation": {
+              "calls": 30,
+              "error_calls": 5,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 30,
+                "p50_ms": 11806.578729,
+                "p95_ms": 13956.237712499998,
+                "mean_ms": 12071.215838866667,
+                "max_ms": 21202.737
+              },
+              "ok_call_ms": {
+                "n": 25,
+                "p50_ms": 11744.077125,
+                "p95_ms": 13394.8126746,
+                "mean_ms": 11584.033915,
+                "max_ms": 13973.989875
+              },
+              "error_call_ms": {
+                "n": 5,
+                "p50_ms": 13587.641417,
+                "p95_ms": 19749.097725,
+                "mean_ms": 14507.1254582,
+                "max_ms": 21202.737
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 30,
+                "p50_ms": 11806.578729,
+                "p95_ms": 13956.237712499998,
+                "mean_ms": 12071.215838866667,
+                "max_ms": 21202.737
+              },
+              "error_codes": {
+                "invalid_plan": 5
+              }
+            },
+            "compose_plan": {
+              "calls": 30,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 30,
+                "p50_ms": 11801.3671875,
+                "p95_ms": 13949.2903292,
+                "mean_ms": 12066.589329266666,
+                "max_ms": 21197.176208
+              },
+              "ok_call_ms": {
+                "n": 30,
+                "p50_ms": 11801.3671875,
+                "p95_ms": 13949.2903292,
+                "mean_ms": 12066.589329266666,
+                "max_ms": 21197.176208
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 30,
+                "p50_ms": 11801.3671875,
+                "p95_ms": 13949.2903292,
+                "mean_ms": 12066.589329266666,
+                "max_ms": 21197.176208
+              },
+              "error_codes": {}
+            },
+            "generation_model": {
+              "calls": 30,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 30,
+                "p50_ms": 11801.0599165,
+                "p95_ms": 13948.9729061,
+                "mean_ms": 12066.291931933334,
+                "max_ms": 21196.884375
+              },
+              "ok_call_ms": {
+                "n": 30,
+                "p50_ms": 11801.0599165,
+                "p95_ms": 13948.9729061,
+                "mean_ms": 12066.291931933334,
+                "max_ms": 21196.884375
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 30,
+                "p50_ms": 11801.0599165,
+                "p95_ms": 13948.9729061,
+                "mean_ms": 12066.291931933334,
+                "max_ms": 21196.884375
+              },
+              "error_codes": {},
+              "usage": {
+                "observed_calls": 30,
+                "missing_calls": {},
+                "per_call": {
+                  "input_tokens": {
+                    "n": 30,
+                    "p50": 2057.0,
+                    "p95": 2057.0,
+                    "mean": 2057.0,
+                    "max": 2057
+                  },
+                  "output_tokens": {
+                    "n": 30,
+                    "p50": 1176.0,
+                    "p95": 1332.6499999999996,
+                    "mean": 1169.3,
+                    "max": 1397
+                  },
+                  "reasoning_tokens": {
+                    "n": 30,
+                    "p50": 260.0,
+                    "p95": 381.4499999999999,
+                    "mean": 263.1666666666667,
+                    "max": 406
+                  },
+                  "cached_input_tokens": {
+                    "n": 30,
+                    "p50": 2054.0,
+                    "p95": 2054.0,
+                    "mean": 2054.0,
+                    "max": 2054
+                  }
+                },
+                "totals": {
+                  "input_tokens": 61710,
+                  "output_tokens": 35079,
+                  "reasoning_tokens": 7895,
+                  "cached_input_tokens": 61620
+                },
+                "reasoning_share_of_output": {
+                  "calls": 30,
+                  "ratio": 0.22506342826192308
+                },
+                "cached_share_of_input": {
+                  "calls": 30,
+                  "ratio": 0.9985415653864852
+                }
+              }
+            },
+            "validate_plan": {
+              "calls": 30,
+              "error_calls": 5,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 30,
+                "p50_ms": 0.4861045,
+                "p95_ms": 1.4529603499999997,
+                "mean_ms": 0.661668,
+                "max_ms": 2.211458
+              },
+              "ok_call_ms": {
+                "n": 25,
+                "p50_ms": 0.43975,
+                "p95_ms": 1.170408399999999,
+                "mean_ms": 0.537115,
+                "max_ms": 1.488041
+              },
+              "error_call_ms": {
+                "n": 5,
+                "p50_ms": 1.108416,
+                "p95_ms": 2.0511831999999997,
+                "mean_ms": 1.284433,
+                "max_ms": 2.211458
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 30,
+                "p50_ms": 0.4861045,
+                "p95_ms": 1.4529603499999997,
+                "mean_ms": 0.661668,
+                "max_ms": 2.211458
+              },
+              "error_codes": {
+                "invalid_plan": 5
+              }
+            }
+          }
+        }
+      },
+      "success_step_count": {
+        "n": 25,
+        "median": 13,
+        "min": 12,
+        "max": 13
+      },
+      "violations": {
+        "catalog_partition": 5
+      },
+      "failures": {
+        "invalid_plan": 5
+      }
+    }
+  },
+  "generation_calls": {
+    "default": {
+      "calls": 30,
+      "call_ms": {
+        "n": 30,
+        "p50_ms": 14911.416228999999,
+        "p95_ms": 19514.707839399995,
+        "mean_ms": 15039.170784633334,
+        "max_ms": 21348.649167
+      },
+      "usage_observed": 30,
+      "input_tokens": {
+        "n": 30,
+        "p50": 2057.0,
+        "p95": 2057.0,
+        "mean": 2057.0,
+        "max": 2057
+      },
+      "output_tokens": {
+        "n": 30,
+        "p50": 1433.0,
+        "p95": 1736.5999999999997,
+        "mean": 1472.8,
+        "max": 1917
+      },
+      "reasoning_tokens": {
+        "n": 30,
+        "p50": 516.0,
+        "p95": 833.0999999999995,
+        "mean": 520.8333333333334,
+        "max": 921
+      },
+      "cached_input_tokens": {
+        "n": 30,
+        "p50": 2054.0,
+        "p95": 2054.0,
+        "mean": 2054.0,
+        "max": 2054
+      },
+      "reasoning_share_of_output": 0.35363479992757557
+    },
+    "low": {
+      "calls": 30,
+      "call_ms": {
+        "n": 30,
+        "p50_ms": 11801.0599165,
+        "p95_ms": 13948.9729061,
+        "mean_ms": 12066.291931933334,
+        "max_ms": 21196.884375
+      },
+      "usage_observed": 30,
+      "input_tokens": {
+        "n": 30,
+        "p50": 2057.0,
+        "p95": 2057.0,
+        "mean": 2057.0,
+        "max": 2057
+      },
+      "output_tokens": {
+        "n": 30,
+        "p50": 1176.0,
+        "p95": 1332.6499999999996,
+        "mean": 1169.3,
+        "max": 1397
+      },
+      "reasoning_tokens": {
+        "n": 30,
+        "p50": 260.0,
+        "p95": 381.4499999999999,
+        "mean": 263.1666666666667,
+        "max": 406
+      },
+      "cached_input_tokens": {
+        "n": 30,
+        "p50": 2054.0,
+        "p95": 2054.0,
+        "mean": 2054.0,
+        "max": 2054
+      },
+      "reasoning_share_of_output": 0.22506342826192308
+    }
+  },
+  "generation_calls_by_session": {
+    "session-01": {
+      "default": {
+        "calls": 10,
+        "call_ms": {
+          "n": 10,
+          "p50_ms": 15553.359521,
+          "p95_ms": 19951.9890981,
+          "mean_ms": 16474.6601542,
+          "max_ms": 21348.649167
+        },
+        "usage_observed": 10,
+        "input_tokens": {
+          "n": 10,
+          "p50": 2057.0,
+          "p95": 2057.0,
+          "mean": 2057.0,
+          "max": 2057
+        },
+        "output_tokens": {
+          "n": 10,
+          "p50": 1420.0,
+          "p95": 1803.1499999999996,
+          "mean": 1488.8,
+          "max": 1917
+        },
+        "reasoning_tokens": {
+          "n": 10,
+          "p50": 473.0,
+          "p95": 767.3999999999996,
+          "mean": 514.4,
+          "max": 915
+        },
+        "cached_input_tokens": {
+          "n": 10,
+          "p50": 2054.0,
+          "p95": 2054.0,
+          "mean": 2054.0,
+          "max": 2054
+        },
+        "reasoning_share_of_output": 0.34551316496507256
+      },
+      "low": {
+        "calls": 10,
+        "call_ms": {
+          "n": 10,
+          "p50_ms": 12343.469499499999,
+          "p95_ms": 13948.9729061,
+          "mean_ms": 12256.9615041,
+          "max_ms": 13968.005
+        },
+        "usage_observed": 10,
+        "input_tokens": {
+          "n": 10,
+          "p50": 2057.0,
+          "p95": 2057.0,
+          "mean": 2057.0,
+          "max": 2057
+        },
+        "output_tokens": {
+          "n": 10,
+          "p50": 1176.0,
+          "p95": 1326.8,
+          "mean": 1170.1,
+          "max": 1379
+        },
+        "reasoning_tokens": {
+          "n": 10,
+          "p50": 279.0,
+          "p95": 370.19999999999993,
+          "mean": 275.2,
+          "max": 399
+        },
+        "cached_input_tokens": {
+          "n": 10,
+          "p50": 2054.0,
+          "p95": 2054.0,
+          "mean": 2054.0,
+          "max": 2054
+        },
+        "reasoning_share_of_output": 0.23519357319887188
+      }
+    },
+    "session-02": {
+      "default": {
+        "calls": 10,
+        "call_ms": {
+          "n": 10,
+          "p50_ms": 15554.006458,
+          "p95_ms": 19498.4176891,
+          "mean_ms": 16080.9194997,
+          "max_ms": 20553.592333
+        },
+        "usage_observed": 10,
+        "input_tokens": {
+          "n": 10,
+          "p50": 2057.0,
+          "p95": 2057.0,
+          "mean": 2057.0,
+          "max": 2057
+        },
+        "output_tokens": {
+          "n": 10,
+          "p50": 1465.5,
+          "p95": 1736.1499999999999,
+          "mean": 1526.1,
+          "max": 1796
+        },
+        "reasoning_tokens": {
+          "n": 10,
+          "p50": 516.0,
+          "p95": 836.3999999999999,
+          "mean": 579.2,
+          "max": 921
+        },
+        "cached_input_tokens": {
+          "n": 10,
+          "p50": 2054.0,
+          "p95": 2054.0,
+          "mean": 2054.0,
+          "max": 2054
+        },
+        "reasoning_share_of_output": 0.3795295196907149
+      },
+      "low": {
+        "calls": 10,
+        "call_ms": {
+          "n": 10,
+          "p50_ms": 11390.0621455,
+          "p95_ms": 12580.392049999999,
+          "mean_ms": 11297.2151832,
+          "max_ms": 13015.334375
+        },
+        "usage_observed": 10,
+        "input_tokens": {
+          "n": 10,
+          "p50": 2057.0,
+          "p95": 2057.0,
+          "mean": 2057.0,
+          "max": 2057
+        },
+        "output_tokens": {
+          "n": 10,
+          "p50": 1114.5,
+          "p95": 1230.5,
+          "mean": 1139.8,
+          "max": 1244
+        },
+        "reasoning_tokens": {
+          "n": 10,
+          "p50": 244.5,
+          "p95": 337.65,
+          "mean": 256.0,
+          "max": 357
+        },
+        "cached_input_tokens": {
+          "n": 10,
+          "p50": 2054.0,
+          "p95": 2054.0,
+          "mean": 2054.0,
+          "max": 2054
+        },
+        "reasoning_share_of_output": 0.22460080715915073
+      }
+    },
+    "session-03": {
+      "default": {
+        "calls": 10,
+        "call_ms": {
+          "n": 10,
+          "p50_ms": 12731.323208999998,
+          "p95_ms": 13810.43071615,
+          "mean_ms": 12561.932700000001,
+          "max_ms": 13824.177916
+        },
+        "usage_observed": 10,
+        "input_tokens": {
+          "n": 10,
+          "p50": 2057.0,
+          "p95": 2057.0,
+          "mean": 2057.0,
+          "max": 2057
+        },
+        "output_tokens": {
+          "n": 10,
+          "p50": 1403.5,
+          "p95": 1487.25,
+          "mean": 1403.5,
+          "max": 1503
+        },
+        "reasoning_tokens": {
+          "n": 10,
+          "p50": 483.0,
+          "p95": 516.0,
+          "mean": 468.9,
+          "max": 516
+        },
+        "cached_input_tokens": {
+          "n": 10,
+          "p50": 2054.0,
+          "p95": 2054.0,
+          "mean": 2054.0,
+          "max": 2054
+        },
+        "reasoning_share_of_output": 0.334093338083363
+      },
+      "low": {
+        "calls": 10,
+        "call_ms": {
+          "n": 10,
+          "p50_ms": 12178.4315835,
+          "p95_ms": 17771.332762799993,
+          "mean_ms": 12644.6991085,
+          "max_ms": 21196.884375
+        },
+        "usage_observed": 10,
+        "input_tokens": {
+          "n": 10,
+          "p50": 2057.0,
+          "p95": 2057.0,
+          "mean": 2057.0,
+          "max": 2057
+        },
+        "output_tokens": {
+          "n": 10,
+          "p50": 1192.0,
+          "p95": 1342.55,
+          "mean": 1198.0,
+          "max": 1397
+        },
+        "reasoning_tokens": {
+          "n": 10,
+          "p50": 218.5,
+          "p95": 385.29999999999995,
+          "mean": 258.3,
+          "max": 406
+        },
+        "cached_input_tokens": {
+          "n": 10,
+          "p50": 2054.0,
+          "p95": 2054.0,
+          "mean": 2054.0,
+          "max": 2054
+        },
+        "reasoning_share_of_output": 0.21560934891485808
+      }
+    }
+  },
+  "paired_generation_seconds": {
+    "pairs": 30,
+    "default_minus_low_seconds_median": 3.433464271,
+    "default_minus_low_seconds_mean": 2.9728788526999996,
+    "pairs_low_faster": 26
+  },
+  "criteria": {
+    "passed": {
+      "default": 29,
+      "low": 25
+    },
+    "step_count_median": {
+      "default": 13,
+      "low": 13
+    },
+    "generation_p50_by_session": {
+      "session-01": {
+        "default": 15553.359521,
+        "low": 12343.469499499999
+      },
+      "session-02": {
+        "default": 15554.006458,
+        "low": 11390.0621455
+      },
+      "session-03": {
+        "default": 12731.323208999998,
+        "low": 12178.4315835
+      }
+    },
+    "checks": {
+      "pass_count_not_lower": false,
+      "generation_p50_lower_every_session": true,
+      "step_count_median_not_lower": true
+    },
+    "adopt_low": false
+  },
+  "violations": [
+    {
+      "file": "session-01/validation/g1-reasoning-01-measurement-007-G1-low-1.json",
+      "rule": "catalog_partition",
+      "outside_catalog": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "outside_catalog_in_excluded": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "missing": [],
+      "duplicated": 0
+    },
+    {
+      "file": "session-01/validation/g1-reasoning-01-measurement-009-G1-default-1.json",
+      "rule": "unknown_fact_id"
+    },
+    {
+      "file": "session-02/validation/g1-reasoning-02-warmup-000-G1-low-1.json",
+      "rule": "catalog_partition",
+      "outside_catalog": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "outside_catalog_in_excluded": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "missing": [],
+      "duplicated": 0
+    },
+    {
+      "file": "session-03/validation/g1-reasoning-03-measurement-003-G1-low-1.json",
+      "rule": "catalog_partition",
+      "outside_catalog": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "outside_catalog_in_excluded": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "missing": [],
+      "duplicated": 0
+    },
+    {
+      "file": "session-03/validation/g1-reasoning-03-measurement-005-G1-low-1.json",
+      "rule": "catalog_partition",
+      "outside_catalog": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "outside_catalog_in_excluded": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "missing": [],
+      "duplicated": 0
+    },
+    {
+      "file": "session-03/validation/g1-reasoning-03-measurement-006-G1-low-1.json",
+      "rule": "catalog_partition",
+      "outside_catalog": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "outside_catalog_in_excluded": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "missing": [],
+      "duplicated": 0
+    },
+    {
+      "file": "session-03/validation/g1-reasoning-03-measurement-009-G1-low-1.json",
+      "rule": "catalog_partition",
+      "outside_catalog": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "outside_catalog_in_excluded": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_RECORD",
+        "CANCEL_REFUND",
+        "CANCEL_VENUE"
+      ],
+      "missing": [],
+      "duplicated": 0
+    }
+  ]
+}

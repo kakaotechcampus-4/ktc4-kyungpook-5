@@ -1,0 +1,713 @@
+[
+  {
+    "id": "survey_removed",
+    "description": "수요 조사를 뺐다. 인원이 잠정이라 수요 조사 없이 장소 예약까지 가는 위험을 짚어야 한다.",
+    "request": {
+      "draft": {
+        "conditions": {
+          "title": "가을 MT",
+          "event_type": "MT",
+          "headcount": 30,
+          "fee_per_person": 40000,
+          "start_date": "2026-11-21",
+          "end_date": "2026-11-22",
+          "location": "가평 펜션"
+        },
+        "condition_meta": {
+          "headcount": {
+            "status": "tentative",
+            "evidence": {
+              "message_id": "m1",
+              "quote": "대략 30명"
+            }
+          }
+        },
+        "deferred_topics": []
+      },
+      "today": "2026-11-01",
+      "included_steps": [
+        {
+          "code": "ASSIGN_ROLES",
+          "name": "역할 분담",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "RESEARCH_VENUE",
+          "name": "장소 조사",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "RECRUIT_NOTICE",
+          "name": "모집 공지",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "CHECK_RESPONSES",
+          "name": "신청 현황 확인",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "CONFIRM_DETAILS",
+          "name": "인원·세부 사항 확정",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "BOOK_VENUE",
+          "name": "장소 예약",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "COLLECT_FEES",
+          "name": "참가비 수납",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "PRE_EVENT_NOTICE",
+          "name": "행사 전 안내",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "EVENT_DAY",
+          "name": "행사 당일 운영",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "SETTLE_EXPENSES",
+          "name": "비용 정산",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "REFUND_FEES",
+          "name": "참가비 환불",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "RECORD_FEEDBACK",
+          "name": "후기 기록",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        }
+      ],
+      "excluded_steps": [
+        {
+          "code": "DEMAND_SURVEY",
+          "name": "수요 조사",
+          "excluded_by": "user"
+        }
+      ],
+      "changes": {
+        "removed_codes": [
+          "DEMAND_SURVEY"
+        ]
+      }
+    },
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "DEMAND_SURVEY"
+      ],
+      "must_not_mention_codes": []
+    }
+  },
+  {
+    "id": "book_before_confirm",
+    "description": "장소 예약을 인원·세부 사항 확정보다 앞으로 옮겼다. 순서 문제를 짚어야 한다.",
+    "request": {
+      "draft": {
+        "conditions": {
+          "title": "가을 MT",
+          "event_type": "MT",
+          "headcount": 30,
+          "fee_per_person": 40000,
+          "start_date": "2026-11-21",
+          "end_date": "2026-11-22",
+          "location": "가평 펜션"
+        },
+        "condition_meta": {
+          "headcount": {
+            "status": "tentative",
+            "evidence": {
+              "message_id": "m1",
+              "quote": "대략 30명"
+            }
+          }
+        },
+        "deferred_topics": []
+      },
+      "today": "2026-11-01",
+      "included_steps": [
+        {
+          "code": "ASSIGN_ROLES",
+          "name": "역할 분담",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "RESEARCH_VENUE",
+          "name": "장소 조사",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "DEMAND_SURVEY",
+          "name": "수요 조사",
+          "phase": "PREPARATION",
+          "actor": "AI"
+        },
+        {
+          "code": "RECRUIT_NOTICE",
+          "name": "모집 공지",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "CHECK_RESPONSES",
+          "name": "신청 현황 확인",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "BOOK_VENUE",
+          "name": "장소 예약",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "CONFIRM_DETAILS",
+          "name": "인원·세부 사항 확정",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "COLLECT_FEES",
+          "name": "참가비 수납",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "PRE_EVENT_NOTICE",
+          "name": "행사 전 안내",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "EVENT_DAY",
+          "name": "행사 당일 운영",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "SETTLE_EXPENSES",
+          "name": "비용 정산",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "REFUND_FEES",
+          "name": "참가비 환불",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "RECORD_FEEDBACK",
+          "name": "후기 기록",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        }
+      ],
+      "changes": {
+        "moved_codes": [
+          "BOOK_VENUE",
+          "CONFIRM_DETAILS"
+        ]
+      }
+    },
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "BOOK_VENUE",
+        "CONFIRM_DETAILS"
+      ],
+      "must_not_mention_codes": []
+    }
+  },
+  {
+    "id": "fee_deadline_after_event",
+    "description": "참가비 수납 마감을 행사 시작일(11-21) 뒤인 11-25로 미뤘다. 일정 문제를 짚어야 한다.",
+    "request": {
+      "draft": {
+        "conditions": {
+          "title": "가을 MT",
+          "event_type": "MT",
+          "headcount": 30,
+          "fee_per_person": 40000,
+          "start_date": "2026-11-21",
+          "end_date": "2026-11-22",
+          "location": "가평 펜션"
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "today": "2026-11-01",
+      "included_steps": [
+        {
+          "code": "ASSIGN_ROLES",
+          "name": "역할 분담",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "RESEARCH_VENUE",
+          "name": "장소 조사",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "DEMAND_SURVEY",
+          "name": "수요 조사",
+          "phase": "PREPARATION",
+          "actor": "AI"
+        },
+        {
+          "code": "RECRUIT_NOTICE",
+          "name": "모집 공지",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "CHECK_RESPONSES",
+          "name": "신청 현황 확인",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "CONFIRM_DETAILS",
+          "name": "인원·세부 사항 확정",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "BOOK_VENUE",
+          "name": "장소 예약",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "COLLECT_FEES",
+          "name": "참가비 수납",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED",
+          "starts_at": "2026-11-10T09:00:00",
+          "deadline": "2026-11-25T18:00:00"
+        },
+        {
+          "code": "PRE_EVENT_NOTICE",
+          "name": "행사 전 안내",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "EVENT_DAY",
+          "name": "행사 당일 운영",
+          "phase": "EXECUTION",
+          "actor": "MANUAL",
+          "starts_at": "2026-11-21T10:00:00",
+          "deadline": "2026-11-22T14:00:00"
+        },
+        {
+          "code": "SETTLE_EXPENSES",
+          "name": "비용 정산",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "REFUND_FEES",
+          "name": "참가비 환불",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "RECORD_FEEDBACK",
+          "name": "후기 기록",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        }
+      ],
+      "changes": {
+        "schedule_changes": [
+          {
+            "code": "COLLECT_FEES",
+            "before_starts_at": "2026-11-10T09:00:00",
+            "before_deadline": "2026-11-15T18:00:00",
+            "after_starts_at": "2026-11-10T09:00:00",
+            "after_deadline": "2026-11-25T18:00:00"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "COLLECT_FEES"
+      ],
+      "must_not_mention_codes": [],
+      "expected_kind": "schedule"
+    }
+  },
+  {
+    "id": "ai_excluded_readded",
+    "description": "AI가 뺐던 참가비 환불을 사용자가 다시 넣었다. 설명 가능하지만 issues를 강제하지 않는다. 결과는 수동 확인한다.",
+    "request": {
+      "draft": {
+        "conditions": {
+          "title": "가을 MT",
+          "event_type": "MT",
+          "headcount": 30,
+          "fee_per_person": 0,
+          "start_date": "2026-11-21",
+          "end_date": "2026-11-22",
+          "location": "가평 펜션"
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "today": "2026-11-01",
+      "included_steps": [
+        {
+          "code": "ASSIGN_ROLES",
+          "name": "역할 분담",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "RESEARCH_VENUE",
+          "name": "장소 조사",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "DEMAND_SURVEY",
+          "name": "수요 조사",
+          "phase": "PREPARATION",
+          "actor": "AI"
+        },
+        {
+          "code": "RECRUIT_NOTICE",
+          "name": "모집 공지",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "CHECK_RESPONSES",
+          "name": "신청 현황 확인",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "CONFIRM_DETAILS",
+          "name": "인원·세부 사항 확정",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "BOOK_VENUE",
+          "name": "장소 예약",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "COLLECT_FEES",
+          "name": "참가비 수납",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "PRE_EVENT_NOTICE",
+          "name": "행사 전 안내",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "EVENT_DAY",
+          "name": "행사 당일 운영",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "SETTLE_EXPENSES",
+          "name": "비용 정산",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "REFUND_FEES",
+          "name": "참가비 환불",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "RECORD_FEEDBACK",
+          "name": "후기 기록",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        }
+      ],
+      "excluded_steps": [],
+      "changes": {
+        "added_codes": [
+          "REFUND_FEES"
+        ]
+      }
+    },
+    "expect": {
+      "outcome": "any",
+      "must_mention_codes": [],
+      "must_not_mention_codes": [],
+      "manual_check": "무료 행사에 환불 단계를 다시 넣은 의도를 존중하는 말투인지 확인"
+    }
+  },
+  {
+    "id": "harmless_reorder",
+    "description": "같은 준비 단계 안에서 역할 분담과 장소 조사의 순서만 바꿨다. 문제가 없어야 한다.",
+    "request": {
+      "draft": {
+        "conditions": {
+          "title": "가을 MT",
+          "event_type": "MT",
+          "headcount": 30,
+          "fee_per_person": 40000,
+          "start_date": "2026-11-21",
+          "end_date": "2026-11-22",
+          "location": "가평 펜션"
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "today": "2026-11-01",
+      "included_steps": [
+        {
+          "code": "RESEARCH_VENUE",
+          "name": "장소 조사",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "ASSIGN_ROLES",
+          "name": "역할 분담",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "DEMAND_SURVEY",
+          "name": "수요 조사",
+          "phase": "PREPARATION",
+          "actor": "AI"
+        },
+        {
+          "code": "RECRUIT_NOTICE",
+          "name": "모집 공지",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "CHECK_RESPONSES",
+          "name": "신청 현황 확인",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "CONFIRM_DETAILS",
+          "name": "인원·세부 사항 확정",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "BOOK_VENUE",
+          "name": "장소 예약",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "COLLECT_FEES",
+          "name": "참가비 수납",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "PRE_EVENT_NOTICE",
+          "name": "행사 전 안내",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "EVENT_DAY",
+          "name": "행사 당일 운영",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "SETTLE_EXPENSES",
+          "name": "비용 정산",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "REFUND_FEES",
+          "name": "참가비 환불",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "RECORD_FEEDBACK",
+          "name": "후기 기록",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        }
+      ],
+      "changes": {
+        "moved_codes": [
+          "RESEARCH_VENUE",
+          "ASSIGN_ROLES"
+        ]
+      }
+    },
+    "expect": {
+      "outcome": "no_issues",
+      "must_mention_codes": [],
+      "must_not_mention_codes": []
+    }
+  },
+  {
+    "id": "undecided_dates",
+    "description": "날짜는 나중에 정하기로 했고 인원은 잠정이다. 수요 조사를 뺐을 때 잠정·미정이라고 말하는지 수동 확인한다.",
+    "request": {
+      "draft": {
+        "conditions": {
+          "title": "가을 MT",
+          "event_type": "MT",
+          "headcount": 25,
+          "fee_per_person": 40000,
+          "start_date": null,
+          "end_date": null,
+          "location": "가평 펜션"
+        },
+        "condition_meta": {
+          "headcount": {
+            "status": "tentative",
+            "evidence": {
+              "message_id": "m1",
+              "quote": "한 25명쯤"
+            }
+          }
+        },
+        "deferred_topics": [
+          "dates"
+        ]
+      },
+      "today": "2026-11-01",
+      "included_steps": [
+        {
+          "code": "ASSIGN_ROLES",
+          "name": "역할 분담",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "RESEARCH_VENUE",
+          "name": "장소 조사",
+          "phase": "PREPARATION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "RECRUIT_NOTICE",
+          "name": "모집 공지",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "CHECK_RESPONSES",
+          "name": "신청 현황 확인",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "CONFIRM_DETAILS",
+          "name": "인원·세부 사항 확정",
+          "phase": "RECRUITING",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "BOOK_VENUE",
+          "name": "장소 예약",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "COLLECT_FEES",
+          "name": "참가비 수납",
+          "phase": "RECRUITING",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "PRE_EVENT_NOTICE",
+          "name": "행사 전 안내",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "EVENT_DAY",
+          "name": "행사 당일 운영",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "SETTLE_EXPENSES",
+          "name": "비용 정산",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        },
+        {
+          "code": "REFUND_FEES",
+          "name": "참가비 환불",
+          "phase": "EXECUTION",
+          "actor": "APPROVAL_REQUIRED"
+        },
+        {
+          "code": "RECORD_FEEDBACK",
+          "name": "후기 기록",
+          "phase": "EXECUTION",
+          "actor": "MANUAL"
+        }
+      ],
+      "excluded_steps": [
+        {
+          "code": "DEMAND_SURVEY",
+          "name": "수요 조사",
+          "excluded_by": "user"
+        }
+      ],
+      "changes": {
+        "removed_codes": [
+          "DEMAND_SURVEY"
+        ]
+      }
+    },
+    "expect": {
+      "outcome": "any",
+      "must_mention_codes": [],
+      "must_not_mention_codes": [],
+      "manual_check": "날짜 미정·인원 잠정이라고 분명히 말하는지, 확정 사실처럼 쓰지 않는지 확인"
+    }
+  }
+]

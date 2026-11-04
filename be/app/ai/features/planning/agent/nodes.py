@@ -20,6 +20,10 @@ from .generation_tools import GenerateEventPlanInput, condition_generation_state
 
 PROMPT_VERSION = "planning-agent-v8"
 MAX_TOOL_CALLS = 3
+# 한 응답에 Tool 요청을 여러 개 받는다. "60명으로 바꾸고 초안은 만들지 마"가 모델 호출 3번 → 2번
+# (C2 p50 7.19 → 6.17초)으로 준다(#265). 보류 재개 실패는 "다시 얘기하자"라는 모호한 문장을 "나중에"로
+# 읽은 것이었고, 분명한 재개·정정·보류 대조는 하나만 받을 때와 같아 켰다(#274). 받은 요청은 tools_node가 차례로 실행한다.
+PARALLEL_TOOL_CALLS = True
 PROMPT = (Path(__file__).parent / "prompts/chat.md").read_text()
 TOOL_NAME = "update_event_conditions"
 SEARCH_TOOL_NAME = "search_past_events"
@@ -73,7 +77,7 @@ async def call_agent_model(messages: list[AnyMessage], *, allow_tools: bool,
                            search_enabled: bool = False, generation_enabled: bool = False) -> AIMessage:
     return await ainvoke_with_tools(messages, tools=agent_tool_schemas(search_enabled=search_enabled,
                                                                     generation_enabled=generation_enabled),
-                                   allow_tools=allow_tools)
+                                   allow_tools=allow_tools, parallel_tool_calls=PARALLEL_TOOL_CALLS)
 
 
 TOOL_LIMIT_NOTICE = "이번 턴의 Tool 한도에 도달했습니다. 추가 실행 없이 실제 완료한 결과와 남은 내용을 답하세요."
@@ -133,6 +137,9 @@ async def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInp
     generation = state["generation"]
     generation_result = state["generation_result"]
     generation_calls = state["generation_model_calls"]
+    # 같은 응답 안의 앞선 Tool을 기억한다. 모델은 응답 하나를 다 쓴 뒤에야 Tool 결과를 받는다.
+    searched = False  # 앞에 검색이 있었다 → 뒤의 조건 변경은 검색 결과를 보기 전에 정한 값이다.
+    deferred_offer_id = None  # 이번 응답에서 남긴 보류 → 뒤의 조건 변경 뒤 기준으로 맞춘다.
     def reject(call, reason):
         if call["name"] == SEARCH_TOOL_NAME:
             query = call["args"].get("query")
@@ -178,6 +185,12 @@ async def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInp
                         result = await search(arguments, draft, request.reference_date)
             elif call["name"] != TOOL_NAME:
                 result = reject(call, "지원하지 않는 Tool이에요.")
+            elif searched:
+                # 예: "작년 참가비로 하자" → [검색, 참가비 변경]을 한 응답에 담으면 금액은 모델의 짐작이다.
+                # 검색 결과를 본 다음 호출에서 다시 요청하게 한다. 사용자가 값을 직접 말한 변경은
+                # 보통 검색보다 앞에 오고, 그 순서는 그대로 실행한다.
+                result = reject(call, "같은 응답의 검색 결과를 보기 전에 정한 값이라 반영하지 않았어요. "
+                                      "검색 결과를 확인한 뒤 필요하면 다시 요청해 주세요.")
             else:
                 try:
                     arguments = UpdateEventConditionsInput.model_validate(call["args"])
@@ -193,15 +206,24 @@ async def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInp
             draft = result.draft
             if call["name"] == TOOL_NAME:
                 generation = condition_generation_state(generation, result, call["args"])
+                offer = generation.offer
+                if result.status == "applied" and offer and offer.id == deferred_offer_id:
+                    # "60명으로 바꿔줘, 초안은 만들지 마"를 [보류, 변경] 순서로 담아도
+                    # 보류를 60명 기준으로 남긴다. 50명 기준이면 다음 턴에 같은 권유를 다시 하게 된다.
+                    generation = generation.model_copy(update=dict(
+                        offer=offer.model_copy(update=dict(basis_draft=draft.model_copy(deep=True)))))
         elif isinstance(result, RecordLookupResult):
             lookup = result
         elif isinstance(result, OfferUpdateResult):
             generation = PlanningGenerationState(offer=result.offer, preview=generation.preview,
                 condition_change_pending=generation.condition_change_pending,
                 pending_condition_fields=generation.pending_condition_fields)
+            if result.status == "applied" and result.offer.status == "deferred":
+                deferred_offer_id = result.offer.id
         else:
             generation_result = result
             generation_calls += result.model_calls
+        searched = searched or call["name"] == SEARCH_TOOL_NAME
         executions.append(ToolExecution(tool_call_id=call["id"], name=call["name"], result=result))
         # 호출 ID와 연결한 결과를 LLM에 전달한다. '반영했어요' 문장을 코드가 만들지 않는다.
         messages.append(ToolMessage(content=result.model_dump_json(), tool_call_id=call["id"], name=call["name"]))

@@ -12,7 +12,7 @@ from app.models.chat import Conversation, Message
 from app.models.clubs import Club, Invitation, Member
 from app.models.common import IdempotencyKey
 from app.models.discord import DiscordConnection, DiscordMessage
-from app.models.events import Action, Event, Participant, Step
+from app.models.events import Action, Event, Participant, PlanReview, Step
 from app.models.operation_cases import OperationCase
 from app.models.meeting_review import MeetingReview
 from app.models.meetings import Meeting, MeetingAudioChunk, TranscriptSegment
@@ -46,6 +46,7 @@ __all__ = [
     "Message",
     "OperationCase",
     "Participant",
+    "PlanReview",
     "Record",
     "RecordChunk",
     "ConfirmedTask",
