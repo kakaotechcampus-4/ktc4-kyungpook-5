@@ -6,16 +6,17 @@ import {
   searchRecords,
   uploadRecord,
 } from '@/features/records/api'
-import type { UploadRecordInput } from '@/features/records/types'
+import type { RecordCategory, UploadRecordInput } from '@/features/records/types'
 
 const listKey = (clubId: string) => ['records', clubId, 'list'] as const
 
 // 실제 API의 업로드/목록 결과만 표시한다. 실패를 예시 결과로 바꾸지 않는다.
-export function useRecordUploads(clubId: string, page: number) {
+// 분류는 listKey 뒤에 붙여, 업로드 뒤 listKey 무효화가 모든 분류 목록에 닿게 한다.
+export function useRecordUploads(clubId: string, page: number, category?: RecordCategory) {
   const queryClient = useQueryClient()
   const records = useQuery({
-    queryKey: [...listKey(clubId), page],
-    queryFn: () => getRecords(clubId, page),
+    queryKey: [...listKey(clubId), category ?? 'ALL', page],
+    queryFn: () => getRecords(clubId, page, category),
     enabled: Boolean(clubId),
     retry: false,
   })
