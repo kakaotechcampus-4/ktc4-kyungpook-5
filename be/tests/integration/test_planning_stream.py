@@ -51,8 +51,10 @@ def post_stream(client: TestClient, path: str, headers: dict, body: dict) -> htt
     return res
 
 
-def progress_event(kind="condition_applied", status="completed", text="예상 인원 60명 반영했어요"):
-    return ai.PlanningProgress(operation_id="call_1", kind=kind, status=status, text=text)
+def progress_event(kind="condition_applied", status="completed", text="예상 인원 반영했어요"):
+    return ai.PlanningProgress(operation_id="call_1", kind=kind, status=status, text=text,
+        condition_draft=ai.PlanningDraft(conditions=ai.PlanningConditions(headcount=60))
+        if kind == "condition_applied" and status == "completed" else None)
 
 
 def fake_chat(calls: list | None = None, *, error: Exception | None = None, delay: float = 0):
@@ -85,8 +87,12 @@ async def test_채팅_스트림은_진행_답변_조각_뒤에_JSON과_같은_�
     assert res.headers["content-type"].startswith("text/event-stream")
     events = parse(res.text)
     assert [name for name, _ in events] == ["progress", "reply_delta", "reply_delta", "done"]
-    assert events[0][1] == {"operationId": "call_1", "kind": "condition_applied",
-                            "status": "completed", "text": "예상 인원 60명 반영했어요"}
+    progress = events[0][1]
+    assert progress["operationId"] == "call_1"
+    assert progress["kind"] == "condition_applied" and progress["status"] == "completed"
+    assert progress["text"] == "예상 인원 반영했어요"
+    assert progress["conditionDraft"]["conditions"]["headcount"] == 60
+    assert progress["conditionDraft"]["conditions"]["feePerPerson"] is None
     assert "".join(data["text"] for name, data in events if name == "reply_delta") == \
         events[-1][1]["reply"]
 
@@ -310,3 +316,28 @@ async def test_연결이_끊겨도_AI_작업은_끝까지_진행해_저장한다
         replay = await http.post(f"/api/v1/events/{event_id}/plan/chat/stream",
                                  headers={**headers, "Idempotency-Key": "stream-cut"}, json=CHAT_BODY)
         assert [name for name, _ in parse(replay.text)] == ["done"]
+
+
+async def test_조건_완료의_잠정_메타와_해제값을_전달하고_다른_알림에는_초안을_넣지_않는다():
+    from app.ai.contracts import ConditionMeta, MessageEvidence
+
+    queue = asyncio.Queue()
+    port = planning_stream._QueuePort(queue)
+    draft = ai.PlanningDraft(
+        conditions=ai.PlanningConditions(headcount=50, fee_per_person=0),
+        condition_meta={"headcount": ConditionMeta(status="tentative",
+            evidence=MessageEvidence(message_id="u1", quote="일단 50명"))},
+    )
+    await port.progress(ai.PlanningProgress(operation_id="c1", kind="condition_applied",
+        status="completed", text="예상 인원 · 참가비 반영했어요", condition_draft=draft))
+    payload = parse(queue.get_nowait())[0][1]["conditionDraft"]
+    assert payload["conditions"]["headcount"] == 50
+    assert payload["conditions"]["feePerPerson"] == 0
+    assert payload["conditions"]["startDate"] is None
+    assert payload["conditionMeta"]["headcount"] == {
+        "status": "tentative", "evidenceMessageId": "u1", "evidenceQuote": "일단 50명"}
+    for kind, status in [("condition_applied", "skipped"), ("search_started", "running"),
+                         ("search_finished", "empty"), ("generation_finished", "completed")]:
+        await port.progress(ai.PlanningProgress(operation_id="other", kind=kind,
+                                                status=status, text="처리 상태"))
+        assert "conditionDraft" not in parse(queue.get_nowait())[0][1]

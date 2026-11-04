@@ -1,7 +1,6 @@
 """검증된 작업 결과를 일시적인 진행 문구로 바꾼다. 답변과 저장은 기존 경로가 맡는다."""
 
 import logging
-from datetime import date
 
 from ...contracts import PlanningProgress, RecordLookupResult, PlanGenerationResult
 from ...ports import PlanningProgressPort
@@ -13,10 +12,6 @@ FIELD_LABELS = {
     "title": "행사 이름", "event_type": "행사 종류", "headcount": "예상 인원",
     "fee_per_person": "참가비", "start_date": "일정", "end_date": "일정",
     "location": "장소", "budget_total": "총예산",
-}
-EVENT_TYPES = {
-    "MT": "MT", "WELCOME": "개총·신환회", "PICNIC": "피크닉",
-    "ACADEMIC": "학술행사", "WORKSHOP": "워크샵", "ETC": "기타",
 }
 
 
@@ -69,73 +64,18 @@ def condition_skipped(operation_id: str) -> PlanningProgress:
                             text="바뀐 조건이 없어요")
 
 
-def _shown(field: str, value) -> str:
-    """패널에서 읽는 값의 모양으로 보여 준다. 예: 40 → '40명', 0(참가비) → '무료'."""
-    if value is None:
-        return "미정"
-    if field == "headcount":
-        return f"{value:,}명"
-    if field == "fee_per_person":
-        return "무료" if value == 0 else f"1인 {value:,}원"
-    if field == "budget_total":
-        return f"{value:,}원"
-    if field == "event_type":
-        return EVENT_TYPES.get(value, value)
-    if isinstance(value, date):
-        return f"{value.year}년 {value.month}월 {value.day}일"
-    # 이름·장소는 자유 입력이라 따옴표로 값의 경계를 보인다. 예: 장소 ‘가평 펜션’
-    return f"‘{value}’"
-
-
-def _period(start: date | None, end: date | None) -> str:
-    """행사 기간을 한 덩어리로 적는다. 같은 해·같은 달이면 뒤쪽을 줄인다.
-
-    (12/5, 12/6) → '2026년 12월 5일~6일', (12/31, 1/2) → '2026년 12월 31일~2027년 1월 2일',
-    (12/5, None) → '2026년 12월 5일', (None, None) → '미정'.
-    """
-    if start is None and end is None:
-        return "미정"
-    if start is None:
-        return f"~{_shown('end_date', end)}"
-    if end is None or end == start:
-        return _shown("start_date", start)
-    if end.year != start.year:
-        tail = _shown("end_date", end)
-    elif end.month != start.month:
-        tail = f"{end.month}월 {end.day}일"
-    else:
-        tail = f"{end.day}일"
-    return f"{_shown('start_date', start)}~{tail}"
-
-
 def condition_progress(operation_id: str, result: ConditionUpdateResult) -> PlanningProgress | None:
-    """검증된 조건 변경을 '항목 값 반영했어요' 한 줄로 만든다(#290).
+    """검증된 조건 변경 → 항목 이름 요약 + 패널용 초안(#302).
 
-    "인원 40명, 12월 5일부터 6일까지로 해 줘" → "예상 인원 40명 · 일정 2026년 12월 5일~6일 반영했어요".
-    바뀐 항목이 여럿이어도 값을 모두 적는다. 처음 정한 값과 바꾼 값을 구분할 정보가 없으므로
-    '변경'이 아니라 '반영'이라고 쓰고, 이전 값은 화면의 조건 패널이 보여 준다.
+    시작일·종료일은 「일정」 하나다. 값·잠정 여부는 초안과 답변이 전달한다.
     """
     if result.status != "applied" or not result.changed_fields:
         return None
-    conditions = result.draft.conditions
-    items = []
-    for field in result.changed_fields:
-        # 시작일·종료일은 패널의 「일정」 한 칸이라 한 항목으로 묶는다(#300). 둘 다 바뀌어도 한 번만 적는다.
-        if field in ("start_date", "end_date"):
-            if any(item.startswith("일정 ") for item in items):
-                continue
-            fields = ("start_date", "end_date")
-            shown = _period(conditions.start_date, conditions.end_date)
-        else:
-            fields = (field,)
-            shown = _shown(field, getattr(conditions, field))
-        tentative = " (잠정)" if any(
-            getattr(conditions, f) is not None
-            and (meta := result.draft.condition_meta.get(f)) and meta.status == "tentative"
-            for f in fields) else ""
-        items.append(f"{FIELD_LABELS[field]} {shown}{tentative}")
+    items = list(dict.fromkeys(FIELD_LABELS[field] for field in result.changed_fields))
+    summary = " · ".join(items) if len(items) <= 3 else f"{' · '.join(items[:2])} 외 {len(items) - 2}개"
     return PlanningProgress(operation_id=operation_id, kind="condition_applied",
-                            status="completed", text=f"{' · '.join(items)} 반영했어요")
+                            status="completed", text=f"{summary} 반영했어요",
+                            condition_draft=result.draft)
 
 
 def search_finished(operation_id: str, result: RecordLookupResult) -> PlanningProgress | None:

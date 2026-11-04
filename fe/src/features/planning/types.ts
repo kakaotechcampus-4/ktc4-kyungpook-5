@@ -1,3 +1,5 @@
+import type { components } from '@/shared/api/schema'
+
 // 계획 1단계(큰 틀 잡기) 도메인 타입.
 
 export interface ChatMessage {
@@ -25,6 +27,8 @@ export interface PlanProgress {
     | 'generation_finished'
   status: 'running' | 'completed' | 'failed' | 'skipped' | 'empty'
   text: string
+  // 조건 완료에만 오는 검증된 초안. 없으면 done에서 저장 결과를 표시한다.
+  conditionDraft?: components['schemas']['PlanDraftOut'] | null
 }
 
 // 큰 틀에서 정해야 하는 것. 여섯 개로 고정이라 화면이 흔들리지 않는다.

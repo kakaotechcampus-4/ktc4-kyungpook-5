@@ -58,7 +58,7 @@ def test_change_and_defer_only_reports_actual_condition_change():
     result = run_turn(req, [change_call(req, "headcount", 60), defer_call(req)], progress=port)
     assert result.draft.conditions.headcount == 60
     assert [(e.kind, e.status, e.text) for e in port.events] == [
-        ("condition_applied", "completed", "예상 인원 60명 반영했어요")]
+        ("condition_applied", "completed", "예상 인원 반영했어요")]
 
 
 @pytest.mark.parametrize("mode", ["rejected", "unchanged", "defer_only"])
@@ -78,18 +78,18 @@ def test_no_false_condition_completion(mode):
 
 
 @pytest.mark.parametrize("field,value,status,expected", [
-    ("headcount", 60, "tentative", "예상 인원 60명 (잠정) 반영했어요"),
-    ("fee_per_person", 0, "specified", "참가비 무료 반영했어요"),
-    ("fee_per_person", 45000, "specified", "참가비 1인 45,000원 반영했어요"),
-    ("fee_per_person", None, "specified", "참가비 미정 반영했어요"),
-    ("event_type", "WELCOME", "specified", "행사 종류 개총·신환회 반영했어요"),
-    # 이름·장소 같은 자유 입력은 따옴표로 경계를 보이고, 날짜는 읽기 쉬운 형식으로 보여 준다.
-    ("location", "가평", "specified", "장소 ‘가평’ 반영했어요"),
-    ("title", "봄 MT", "specified", "행사 이름 ‘봄 MT’ 반영했어요"),
+    ("headcount", 60, "tentative", "예상 인원 반영했어요"),
+    ("fee_per_person", 0, "specified", "참가비 반영했어요"),
+    ("fee_per_person", 45000, "specified", "참가비 반영했어요"),
+    ("fee_per_person", None, "specified", "참가비 반영했어요"),
+    ("event_type", "WELCOME", "specified", "행사 종류 반영했어요"),
+    # 값과 잠정 여부는 문구가 아니라 초안 payload로 보존한다(#302).
+    ("location", "가평", "specified", "장소 반영했어요"),
+    ("title", "봄 MT", "specified", "행사 이름 반영했어요"),
     # 시작일·종료일은 패널의 「일정」 한 칸이라 문구도 「일정」으로 적는다(#300).
-    ("start_date", "2026-05-10", "specified", "일정 2026년 5월 10일 반영했어요"),
+    ("start_date", "2026-05-10", "specified", "일정 반영했어요"),
 ])
-def test_condition_wording_preserves_value_meaning(field, value, status, expected):
+def test_condition_payload_preserves_value_meaning(field, value, status, expected):
     req = request()
     args = change_call(req, field, value)["args"]
     change = args["changes"][0]
@@ -98,7 +98,10 @@ def test_condition_wording_preserves_value_meaning(field, value, status, expecte
         args["changes"] = [dict(op="CLEAR", field=field, evidence=change["evidence"])]
     result = update_event_conditions(req.draft, UpdateEventConditionsInput.model_validate(args),
                                      current_message=req.current_message)
-    assert condition_progress("c1", result).text == expected
+    event = condition_progress("c1", result)
+    assert event.text == expected
+    assert event.condition_draft == result.draft
+    assert getattr(event.condition_draft.conditions, field) == getattr(result.draft.conditions, field)
 
 
 def test_search_then_guessed_change_does_not_claim_change():
@@ -227,19 +230,19 @@ def test_multiple_fields_and_metadata_only_change():
     args = change_call(req, "headcount", 50)["args"]
     result = update_event_conditions(req.draft, UpdateEventConditionsInput.model_validate(args),
                                      current_message=req.current_message)
-    assert condition_progress("c1", result).text == "예상 인원 50명 반영했어요"
+    assert condition_progress("c1", result).text == "예상 인원 반영했어요"
     args["changes"].extend(change_call(req, "fee_per_person", 30000)["args"]["changes"])
     result = update_event_conditions(req.draft, UpdateEventConditionsInput.model_validate(args),
                                      current_message=req.current_message)
-    # 여러 항목이 바뀌어도 값을 모두 적는다(#290). 예전에는 값 없이 "예상 인원·참가비 항목을 변경했어요"였다.
-    assert condition_progress("c2", result).text == "예상 인원 50명 · 참가비 1인 30,000원 반영했어요"
+    # 항목 이름만 적고 값은 payload로 보낸다(#302).
+    assert condition_progress("c2", result).text == "예상 인원 · 참가비 반영했어요"
 
 
 @pytest.mark.parametrize("start,end,expected", [
-    ("2026-12-05", "2026-12-06", "일정 2026년 12월 5일~6일 반영했어요"),
-    ("2026-12-31", "2027-01-02", "일정 2026년 12월 31일~2027년 1월 2일 반영했어요"),
-    ("2026-11-28", "2026-12-01", "일정 2026년 11월 28일~12월 1일 반영했어요"),
-    ("2026-12-05", "2026-12-05", "일정 2026년 12월 5일 반영했어요"),
+    ("2026-12-05", "2026-12-06", "일정 반영했어요"),
+    ("2026-12-31", "2027-01-02", "일정 반영했어요"),
+    ("2026-11-28", "2026-12-01", "일정 반영했어요"),
+    ("2026-12-05", "2026-12-05", "일정 반영했어요"),
 ])
 def test_start_and_end_dates_read_as_one_schedule(start, end, expected):
     """시작일·종료일이 함께 바뀌어도 「일정」 한 항목으로 적는다(#300)."""
@@ -251,7 +254,7 @@ def test_start_and_end_dates_read_as_one_schedule(start, end, expected):
                                      current_message=req.current_message)
     text = condition_progress("c1", result).text
     assert text.count("일정") == 1
-    assert text.replace("예상 인원 40명 · ", "").replace(" · 예상 인원 40명", "") == expected
+    assert text.replace("예상 인원 · ", "").replace(" · 예상 인원", "") == expected
 
 
 def test_button_port_failure_preserves_result(monkeypatch):
@@ -301,3 +304,24 @@ def test_progress_cancellation_is_not_swallowed():
 
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(notify(CancelledPort(), started("s1")))
+
+
+@pytest.mark.parametrize("fields,expected", [
+    (["headcount", "start_date", "end_date", "fee_per_person"], "예상 인원 · 일정 · 참가비 반영했어요"),
+    (["headcount", "start_date", "end_date", "fee_per_person", "location"], "예상 인원 · 일정 외 2개 반영했어요"),
+    (["title", "event_type", "headcount", "fee_per_person", "location"], "행사 이름 · 행사 종류 외 3개 반영했어요"),
+])
+def test_summary_counts_schedule_once_and_limits_names(fields, expected):
+    from app.ai.features.planning.agent.tools import ConditionUpdateResult
+    result = ConditionUpdateResult(status="applied", changed_fields=tuple(fields), draft=ai.PlanningDraft())
+    assert condition_progress("c1", result).text == expected
+
+
+@pytest.mark.parametrize("kind,status", [
+    ("condition_started", "running"), ("condition_applied", "skipped"),
+    ("search_finished", "completed"), ("generation_finished", "completed"),
+])
+def test_condition_payload_is_for_condition_completion_only(kind, status):
+    with pytest.raises(ValidationError, match="조건 초안"):
+        ai.PlanningProgress(operation_id="c1", kind=kind, status=status, text="문구",
+                            condition_draft=ai.PlanningDraft())
