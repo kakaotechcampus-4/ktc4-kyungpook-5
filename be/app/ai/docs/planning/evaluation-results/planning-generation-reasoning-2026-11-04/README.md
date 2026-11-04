@@ -62,7 +62,7 @@ CANCEL_NOTIFY_PARTICIPANTS, CANCEL_VENUE, CANCEL_REFUND, CANCEL_RECORD 4개가 �
 
 ## 바꾼 코드
 
-`features/planning/generation/model.py`의 `build_plan_model`이 `reasoning={"effort": "low"}`(`PLAN_REASONING`)를 보낸다. 대화 모델은 그대로(값 미지정)다. 테스트 `test_plan_generation_model.py`가 실제 SDK 요청 본문에 이 값이 실리는지 고정한다.
+`features/planning/generation/model.py`의 `build_plan_model`이 `reasoning={"effort": "low"}`(`PLAN_REASONING`)를 보낸다. 대화 모델은 그대로(값 미지정)다. 대화 호출의 추론은 #263에서 호출당 p50 13토큰이라 줄일 여지가 작아, 따로 재지 않고 기본값을 유지하기로 했다. 테스트 `test_plan_generation_model.py`가 실제 SDK 요청 본문에 이 값이 실리는지 고정한다.
 
 ## 파일과 재집계
 
