@@ -104,3 +104,111 @@ def test_chat_case_goes_through_agent_and_same_generation_setting(tmp_path, monk
     assert {'agent_model', 'generation_model'} <= stages
     assert [row['outcome'] for row in finished] == ['success', 'failed', 'success', 'failed']
     assert report['summary']['low']['violations'] == {'dates_when_unknown': 1}
+
+
+# --- #276: 출력 형식 v1/v2 비교 ---------------------------------------------------------
+
+from langchain_core.outputs import ChatGeneration, LLMResult
+
+from app.ai.errors import AIInvalidResponseError
+from app.ai.features.planning.generation import graph as generation_graph, schemas
+from app.ai.features.planning.generation.catalog import CATALOG
+from app.ai.scripts import generation_output_v1
+from app.ai.scripts.planning_latency_observation import CURRENT_TRACE, PARENT_SPAN
+
+CANCEL_CODES = ('CANCEL_NOTIFY_PARTICIPANTS', 'CANCEL_VENUE', 'CANCEL_REFUND', 'CANCEL_RECORD')
+
+
+def cancel_answer():
+    """11-04 G1 실패와 같은 모양: 13단계를 모두 넣고 CANCEL_* 4개를 뺀 단계로 적은 응답."""
+    return dict(steps=[dict(code=x.code.value, purpose='필요') for x in CATALOG],
+                excluded_steps=[dict(code=code, reason='현재 취소 조건이 없음') for code in CANCEL_CODES])
+
+
+def test_step_code_variants_differ_only_in_output_schema_and_both_use_low(monkeypatch):
+    monkeypatch.setattr(generation_model, 'build_chat_model', lambda settings=None, **params: params)
+    seen = {}
+    for name in ('v1', 'v2'):
+        with compare.variant_patches(name, 'step-codes'):
+            seen[name] = (generation_model.build_plan_model(), generation_graph.PlanComposition,
+                          generation_graph.PROMPT_VERSION)
+    assert seen['v1'][0] == seen['v2'][0] == dict(max_tokens=generation_model.PLAN_MAX_OUTPUT_TOKENS, streaming=True,
+                                                  reasoning={'effort': 'low'})
+    assert seen['v1'][1:] == (generation_output_v1.PlanComposition, 'planning-generation-v1')
+    assert seen['v2'][1:] == (schemas.PlanComposition, 'planning-generation-v2')
+    # 요청이 끝나면 현재 코드로 돌아온다.
+    assert generation_graph.PlanComposition is schemas.PlanComposition
+    assert generation_model.build_plan_model is compare.BUILD_PLAN_MODEL
+
+
+def test_v1_output_schema_offers_cancel_codes_and_v2_does_not():
+    def codes(schema):
+        found = set()
+        def walk(node):
+            if isinstance(node, dict):
+                found.update(node.get('enum', []))
+                for value in node.values():
+                    walk(value)
+            elif isinstance(node, list):
+                for value in node:
+                    walk(value)
+        walk(schema.model_json_schema())
+        return {code for code in found if code in compare.PLANNING_STEP_NAMES or code.startswith('CANCEL_')}
+    assert codes(generation_output_v1.PlanComposition) == set(compare.PLANNING_STEP_NAMES) | set(CANCEL_CODES)
+    assert codes(schemas.PlanComposition) == set(compare.PLANNING_STEP_NAMES)
+
+
+def test_step_code_session_separates_plan_rejection_and_output_failure(tmp_path, monkeypatch):
+    """같은 CANCEL 응답이 v1에서는 계획 검사 거절, v2에서는 출력 형식 실패로 끝나는지 기록한다."""
+    monkeypatch.setattr(generation_model, 'build_chat_model', lambda settings=None, **params: SimpleNamespace(**params))
+    schemas_sent = []
+
+    async def ainvoke_structured(messages, schema, *, model):
+        schemas_sent.append(schema)
+        # 실제 SDK처럼 받은 형식으로 응답을 읽는다. v2는 CANCEL_*를 읽지 못해 출력 형식 오류가 된다.
+        try:
+            return schema.model_validate(cancel_answer())
+        except Exception as error:
+            raise AIInvalidResponseError('형식 불일치') from error
+
+    monkeypatch.setattr(generation_model, 'ainvoke_structured', ainvoke_structured)
+    output = tmp_path / 'out'
+    report = asyncio.run(compare.run_session(output, session_id='t', comparison='step-codes', rounds=2, interval=0,
+                                             settings=SETTINGS))
+    finished = [row for row in events(output) if row['event'] == 'finished']
+    assert [row['variant'] for row in finished] == ['v1', 'v2', 'v1', 'v2', 'v2', 'v1']
+    assert [schema is generation_output_v1.PlanComposition for schema in schemas_sent] == [
+        row['variant'] == 'v1' for row in finished]
+    for row in finished:
+        if row['variant'] == 'v1':
+            assert row['failure']['category'] == 'invalid_plan'
+            [violation] = row['violations']
+            saved = json.loads((output / violation['file']).read_text())
+            assert violation['rule'] == 'catalog_partition'
+            assert saved['generation_prompt_version'] == 'planning-generation-v1'
+        else:
+            assert row['failure']['category'] == 'invalid_output' and row['violations'] == []
+    assert report['comparison'] == 'step-codes'
+    assert report['generation_prompt_versions'] == dict(v1='planning-generation-v1', v2='planning-generation-v2')
+    assert report['environment']['model_options']['reasoning'] == dict(v1={'effort': 'low'}, v2={'effort': 'low'})
+    assert report['summary']['v1']['violations'] == {'catalog_partition': 2}
+    assert report['summary']['v2']['failures'] == {'invalid_output': 2}
+
+
+def test_outside_catalog_codes_are_read_only_from_generation_model_responses():
+    found = []
+    recorder = compare.OutsideCodeRecorder(found)
+    text = json.dumps(cancel_answer(), ensure_ascii=False)
+    response = LLMResult(generations=[[ChatGeneration(message=AIMessage(content=text))]])
+    trace = SimpleNamespace(spans=[dict(id=1, stage='generation_model'), dict(id=2, stage='agent_model')])
+    trace_token, span_token = CURRENT_TRACE.set(trace), PARENT_SPAN.set(2)
+    try:
+        asyncio.run(recorder.on_llm_end(response))  # 대화 모델 응답은 보지 않는다.
+        assert found == []
+        PARENT_SPAN.set(1)
+        asyncio.run(recorder.on_llm_end(response))
+        asyncio.run(recorder.on_llm_end(response))  # 같은 코드는 한 번만 남긴다.
+    finally:
+        PARENT_SPAN.reset(span_token)
+        CURRENT_TRACE.reset(trace_token)
+    assert found == list(CANCEL_CODES)
