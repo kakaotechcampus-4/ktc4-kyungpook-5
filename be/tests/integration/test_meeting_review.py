@@ -23,6 +23,7 @@ async def test_review_state_and_names_restore_without_confirming_tasks(app_db):
     async with factory() as session:
         member_id, meeting_id = await seed(session); meeting = await session.get(Meeting, meeting_id)
         review = await meeting_review_service.start(session, meeting=meeting, member_id=member_id)
+        review.status = 'PROCESSING'; review.provider_job_id = 'provider-job-1'; await session.commit()
         review = await meeting_review_service.apply_diarization(session, review.id, provider_job_id='provider-job-1', turns=[{'start_ms':0,'end_ms':1000,'speaker_label':'SPEAKER_00'}])
         review = await meeting_review_service.set_names(session, review, review.version, {'SPEAKER_00':'민수'})
         result = await meeting_review_service.output(session, review)
@@ -33,6 +34,7 @@ async def test_overlap_is_unknown_and_stale_version_rejected(app_db):
     async with factory() as session:
         member_id, meeting_id = await seed(session); meeting = await session.get(Meeting, meeting_id)
         review = await meeting_review_service.start(session, meeting=meeting, member_id=member_id)
+        review.status = 'PROCESSING'; review.provider_job_id = 'provider-job-2'; await session.commit()
         review = await meeting_review_service.apply_diarization(session, review.id, provider_job_id='provider-job-2', turns=[{'start_ms':0,'end_ms':800,'speaker_label':'SPEAKER_00'},{'start_ms':500,'end_ms':1000,'speaker_label':'SPEAKER_01'}])
         output = await meeting_review_service.output(session, review)
         assert output['segments'][0]['speakerLabel'] is None

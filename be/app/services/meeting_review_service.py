@@ -102,7 +102,7 @@ async def apply_diarization(session: AsyncSession, review_id: str, *, provider_j
                             turns: list[dict], duration_ms: int | None = None):
     review = await session.scalar(select(MeetingReview).where(MeetingReview.id == review_id)
                                   .with_for_update().execution_options(populate_existing=True))
-    if review is None or review.status not in ('QUEUED', 'PROCESSING'):
+    if review is None or review.status != 'PROCESSING' or review.provider_job_id != provider_job_id:
         raise ReviewConflict('화자분리 작업 상태가 바뀌었어요.')
     valid = []
     previous_end = -1
@@ -125,10 +125,27 @@ async def apply_diarization(session: AsyncSession, review_id: str, *, provider_j
 async def submit_diarization(session: AsyncSession, review_id: str, *, wav_path: Path,
                              provider: DiarizationProvider):
     """제출 직후 provider job ID를 저장한다. WAV 조립은 호출 adapter가 담당한다."""
-    review = await get(session, review_id, lock=True)
-    if review is None or review.status not in ('QUEUED', 'FAILED'):
+    review = await session.scalar(select(MeetingReview).where(MeetingReview.id == review_id)
+                                  .with_for_update().execution_options(populate_existing=True))
+    if review is None or review.status != 'QUEUED' or review.provider_job_id:
         raise ReviewConflict('화자분리 작업을 시작할 수 없어요.')
-    provider_job_id = await provider.submit(wav_path)
+    review.status = 'SUBMITTING'
+    review.version += 1
+    await session.commit()
+    try:
+        provider_job_id = await provider.submit(wav_path)
+    except Exception as error:
+        review = await session.scalar(select(MeetingReview).where(MeetingReview.id == review_id)
+                                      .with_for_update().execution_options(populate_existing=True))
+        review.status = 'SUBMISSION_UNKNOWN'
+        review.error_code = getattr(error, 'code', None) or type(error).__name__
+        review.version += 1
+        await session.commit()
+        raise
+    review = await session.scalar(select(MeetingReview).where(MeetingReview.id == review_id)
+                                  .with_for_update().execution_options(populate_existing=True))
+    if review is None or review.status != 'SUBMITTING':
+        raise ReviewConflict('화자분리 제출 상태가 바뀌었어요.')
     review.provider_job_id = provider_job_id
     review.status = 'PROCESSING'
     review.version += 1
@@ -138,21 +155,16 @@ async def submit_diarization(session: AsyncSession, review_id: str, *, wav_path:
 
 async def poll_diarization(session: AsyncSession, review_id: str, *, duration_ms: int,
                            provider: DiarizationProvider):
-    review = await get(session, review_id, lock=True)
+    review = await session.scalar(select(MeetingReview).where(MeetingReview.id == review_id)
+                                  .with_for_update().execution_options(populate_existing=True))
     if review is None or review.status != 'PROCESSING' or not review.provider_job_id:
         raise ReviewConflict('진행 중인 화자분리 작업이 없어요.')
-    try:
-        turns = await provider.result(review.provider_job_id, duration_ms=duration_ms)
-    except Exception as error:
-        review.status = 'FAILED'
-        review.error_code = getattr(error, 'code', None) or type(error).__name__
-        review.version += 1
-        await session.commit()
-        raise
+    provider_job_id = review.provider_job_id
+    await session.commit()
+    turns = await provider.result(provider_job_id, duration_ms=duration_ms)
     if turns is None:
-        await session.commit()
-        return review
-    return await apply_diarization(session, review.id, provider_job_id=review.provider_job_id,
+        return await session.get(MeetingReview, review_id)
+    return await apply_diarization(session, review_id, provider_job_id=provider_job_id,
                                    turns=turns, duration_ms=duration_ms)
 
 
