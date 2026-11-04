@@ -31,6 +31,8 @@ from .errors import (
     AITimeoutError,
 )
 from .facade import index_record, judge_utterance, search_related_records
+from .facade import extract_receipt
+from .contracts import ExtractedReceiptRow, ExtractReceiptRequest, ExtractReceiptResult
 from .features.meeting.context import MEETING_CONTEXT_UTTERANCES
 from .features.meeting.schemas import (
     JudgeTrace,
@@ -41,6 +43,13 @@ from .features.meeting.schemas import (
     MeetingStage,
     MeetingUtterance,
     ToolCall,
+)
+from .features.meeting.event_facts import (
+    MeetingEventFact, MeetingEventFactsRequest, MeetingEventFactsResult,
+    answer_meeting_event_facts,
+)
+from .features.meeting.event_intent import (
+    MeetingEventIntent, MeetingEventIntentResult, classify_meeting_event_facts,
 )
 from .llm import EMBEDDING_DIMENSIONS
 from .ports import ChunkSearchQuery, RecordSearchPort, RetrievedChunk, PlanningProgressPort
@@ -57,6 +66,10 @@ __all__ = (
     "IndexedChunk",
     "RecordBlock",
     "SourceLocation",
+    "extract_receipt",
+    "ExtractReceiptRequest",
+    "ExtractReceiptResult",
+    "ExtractedReceiptRow",
     # 회의 발화 처리. #113에서 BE와 합의하기 전의 초안이라 바뀔 수 있다 (docs/contracts.md)
     "judge_utterance",
     "JudgeUtteranceRequest",
@@ -67,6 +80,9 @@ __all__ = (
     "ToolCall",
     "MeetingProgressPort",
     "MeetingStage",
+    "MeetingEventFact", "MeetingEventFactsRequest", "MeetingEventFactsResult",
+    "answer_meeting_event_facts",
+    "MeetingEventIntent", "MeetingEventIntentResult", "classify_meeting_event_facts",
     # BE가 judge_utterance에 실어 보낼 앞 발화 수
     "MEETING_CONTEXT_UTTERANCES",
     # 기록 검색 port (BE가 구현)
@@ -128,6 +144,13 @@ __all__ += ('ToriRecordQueryRequest', 'ToriRecordQueryResult', 'build_tori_recor
 from .features.operations.schemas import OperationalEventContext, OperationalSituationRequest, OperationalSituationResult
 from .facade import respond_operational_situation
 __all__ += ('OperationalEventContext', 'OperationalSituationRequest', 'OperationalSituationResult', 'respond_operational_situation')
+
+from .features.meeting.review import (
+    MeetingReviewRequest, MeetingReviewResult, ReviewTranscript, ReviewTask,
+    ReviewSummaryItem, generate_meeting_review,
+)
+__all__ += ('MeetingReviewRequest', 'MeetingReviewResult', 'ReviewTranscript',
+            'ReviewTask', 'ReviewSummaryItem', 'generate_meeting_review')
 
 # 계획 수정 후 검토 (AI-PLAN-07, #177). 비교 계산과 저장은 BE가 맡는다.
 from .contracts import (

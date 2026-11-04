@@ -6,6 +6,7 @@
 """
 
 from .contracts import IndexRecordRequest, IndexRecordResult, RecordDiscoveryRequest
+from .contracts import ExtractReceiptRequest, ExtractReceiptResult
 from .features.meeting.lookup import RecordsLookup
 from .features.meeting.nodes import judge_utterance as judge_meeting_utterance
 from .features.meeting.schemas import (
@@ -31,6 +32,13 @@ async def index_record(request: IndexRecordRequest) -> IndexRecordResult:
     읽을 블록이 없으면 AIEmptyRecordError, 임베딩 호출이 실패하면 AI 오류 타입을 올린다.
     """
     return await index_record_chunks(request)
+
+
+async def extract_receipt(request: ExtractReceiptRequest) -> ExtractReceiptResult:
+    """영수증 이미지에서 검토용 지출 행만 제안한다. 저장·확정은 BE 책임이다."""
+    from .features.accounting.receipt_extraction import extract_receipt as extract
+
+    return await extract(request)
 
 
 async def search_related_records(

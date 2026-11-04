@@ -14,6 +14,7 @@ from app.models.common import IdempotencyKey
 from app.models.discord import DiscordConnection, DiscordMessage
 from app.models.events import Action, Event, Participant, PlanReview, Step
 from app.models.operation_cases import OperationCase
+from app.models.meeting_review import MeetingReview
 from app.models.meetings import Meeting, MeetingAudioChunk, TranscriptSegment
 from app.models.records import Record
 from app.models.record_chunks import RecordChunk
@@ -39,6 +40,7 @@ __all__ = [
     "IdempotencyKey",
     "Invitation",
     "Meeting",
+    "MeetingReview",
     "MeetingAudioChunk",
     "Member",
     "Message",

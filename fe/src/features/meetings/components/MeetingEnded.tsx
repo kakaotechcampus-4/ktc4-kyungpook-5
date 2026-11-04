@@ -5,6 +5,8 @@ import { Chip } from '@/shared/ui/Chip'
 import { Tori } from '@/shared/ui/Tori'
 import { candidateMeta } from '../confirmed'
 import type { Suggestion } from '../types'
+import type { MeetingReview } from '../types'
+import { MeetingReviewPanel } from './MeetingReviewPanel'
 
 const SHOWN = 3
 
@@ -16,6 +18,13 @@ export function MeetingEnded({
   onRetry,
   onOpenCandidates,
   onOpenRecord,
+  review,
+  onStartReview,
+  onSubmitReview,
+  onSaveReviewNames,
+  onCreateReviewDraft,
+  reviewBusy,
+  reviewError,
 }: {
   summary: string
   suggestions: Suggestion[]
@@ -24,6 +33,13 @@ export function MeetingEnded({
   onRetry: () => void
   onOpenCandidates: () => void
   onOpenRecord: () => void
+  review?: MeetingReview
+  onStartReview?: () => void
+  onSubmitReview?: () => void
+  onSaveReviewNames?: (version: number, names: Record<string, string>) => void
+  onCreateReviewDraft?: (version: number) => void
+  reviewBusy?: boolean
+  reviewError?: unknown
 }) {
   return (
     <div className="mx-auto max-w-[1040px] space-y-6">
@@ -101,6 +117,17 @@ export function MeetingEnded({
           새 회의 시작하기 ›
         </Link>
       </Card>
+      {onStartReview && onSubmitReview && onSaveReviewNames && onCreateReviewDraft && (
+        <MeetingReviewPanel
+          review={review}
+          onStart={onStartReview}
+          onSubmit={onSubmitReview}
+          onSaveNames={onSaveReviewNames}
+          onDraft={onCreateReviewDraft}
+          busy={reviewBusy ?? false}
+          error={reviewError}
+        />
+      )}
     </div>
   )
 }

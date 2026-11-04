@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createExpense, getExpenses } from './api'
-import type { CreateExpenseInput } from './types'
+import { createExpense, getExpenses, getReceiptImports, retryReceiptImport, getReceiptImport, uploadReceipt, saveReceiptDraft, confirmReceiptImport } from './api'
+import type { CreateExpenseInput, ReceiptDraft } from './types'
 import { ApiError } from '@/shared/api/types'
 
 export function useExpenses(clubId: string, page: number) {
@@ -29,4 +29,41 @@ export function expenseFormErrorMessage(error: unknown): string {
     if (error.code === 'UNAUTHORIZED') return '로그인이 만료됐어요. 다시 로그인해 주세요.'
   }
   return '지출을 등록하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
+}
+
+export function useReceiptImports(clubId: string) {
+  return useQuery({
+    queryKey: ['accounting', clubId, 'receipt-imports'],
+    queryFn: () => getReceiptImports(clubId),
+    enabled: Boolean(clubId),
+    retry: false,
+    refetchInterval: (query) => query.state.data?.data.some((item) => item.status === 'PROCESSING') ? 5000 : false,
+  })
+}
+
+export function useRetryReceiptImport(clubId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => retryReceiptImport(clubId, id),
+    onSettled: () => client.invalidateQueries({ queryKey: ['accounting', clubId, 'receipt-imports'] }),
+  })
+}
+
+export function useReceiptDetail(clubId: string, id: string | null) {
+  return useQuery({
+    queryKey: ['accounting', clubId, 'receipt-import', id],
+    queryFn: () => getReceiptImport(clubId, id!),
+    enabled: Boolean(id),
+    retry: false,
+    refetchInterval: (query) => query.state.data?.status === 'PROCESSING' ? 5000 : false,
+  })
+}
+export function useReceiptActions(clubId: string) {
+  const client = useQueryClient()
+  const refresh = () => client.invalidateQueries({ queryKey: ['accounting', clubId] })
+  return {
+    upload: useMutation({ mutationFn: (file: File) => uploadReceipt(clubId, file), onSettled: refresh }),
+    draft: useMutation({ mutationFn: ({id, body}: {id: string; body: ReceiptDraft}) => saveReceiptDraft(clubId, id, body) }),
+    confirm: useMutation({ mutationFn: ({id, version}: {id: string; version: number}) => confirmReceiptImport(clubId, id, version), onSettled: refresh }),
+  }
 }

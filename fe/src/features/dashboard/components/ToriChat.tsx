@@ -430,6 +430,7 @@ export function ToriChat({
       <div className="flex shrink-0 items-start gap-4 border-b border-line pb-5">
         <Tori size={48} />
         <div>
+          <p className="mb-1 text-caption text-ink2">토리가 함께할게요.</p>
           <h2 className="text-h2">무엇을 도와드릴까요?</h2>
           <p className="mt-2 text-caption leading-6 text-ink2">
             자료와 확인된 할 일을 찾고 회의나 행사 계획을 시작해요.
