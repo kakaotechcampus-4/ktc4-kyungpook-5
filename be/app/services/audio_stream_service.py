@@ -7,6 +7,8 @@ judgment neither delays the next one nor stalls capture (#240).
 
 import asyncio
 import json
+import hashlib
+import time
 import math
 import struct
 from collections import deque
@@ -22,6 +24,8 @@ from app.infra.stt import SttError
 SAMPLE_RATE = 16000
 BYTES_PER_MS = 32
 MAX_FRAME_MS = 1000
+RESUME_WINDOW_SECONDS = 60
+RESUME_FRAME_LIMIT = 256
 
 
 class AudioProtocolError(Exception):
@@ -111,6 +115,14 @@ class PcmVad:
 
 # One producer per meeting; other authenticated sockets can still subscribe.
 _recorders: set[str] = set()
+# PCM stays bounded in the VAD tail; frame hashes permit safe ACK-loss replay.
+_resume_states: dict[str, dict[str, Any]] = {}
+
+
+def _forget_resume(meeting_id: str, state: dict[str, Any]) -> None:
+    if _resume_states.get(meeting_id) is state:
+        _resume_states.pop(meeting_id, None)
+
 
 
 def is_recording(meeting_id: str) -> bool:
@@ -128,6 +140,7 @@ class AudioStream:
         meeting_id: str,
         websocket: WebSocket,
         start: Callable[[], Awaitable[int | None]],
+        resume: Callable[[], Awaitable[None]] | None = None,
         transcribe: Callable[[Utterance], Awaitable[str | None]],
         decide: Callable[[str], Awaitable[None]],
         finalize: Callable[[bool], Awaitable[None]],
@@ -138,6 +151,9 @@ class AudioStream:
         self.meeting_id = meeting_id
         self.ws = websocket
         self.on_start = start
+        self.on_resume = resume
+        self.frame_hashes: dict[int, tuple[int, int, str]] = {}
+        self.resumed = False
         self.transcribe = transcribe
         self.decide = decide
         self.finalize = finalize
@@ -230,6 +246,16 @@ class AudioStream:
                 raise AudioProtocolError("AUDIO_ODD_PCM", "PCM16 오디오는 2바이트 샘플 단위여야 합니다.")
             if len(pcm) != (meta["endMs"] - meta["startMs"]) * BYTES_PER_MS:
                 raise AudioProtocolError("AUDIO_SIZE_MISMATCH", "PCM 길이가 startMs/endMs와 맞지 않습니다.")
+            digest = hashlib.sha256(pcm).hexdigest()
+            if meta["audioSeq"] <= self.audio_seq:
+                if self.frame_hashes.get(meta["audioSeq"]) != (meta["startMs"], meta["endMs"], digest):
+                    raise AudioProtocolError("AUDIO_REPLAY_MISMATCH", "재전송 프레임을 확인할 수 없습니다.")
+                self.pending_meta = None
+                await self.send({"type": "audio.accepted", "audioSeq": meta["audioSeq"]})
+                return False
+            self.frame_hashes[meta["audioSeq"]] = (meta["startMs"], meta["endMs"], digest)
+            if len(self.frame_hashes) > RESUME_FRAME_LIMIT:
+                del self.frame_hashes[min(self.frame_hashes)]
             for utterance in self.vad.feed(pcm):
                 self._enqueue(utterance)
             self.audio_seq = meta["audioSeq"]
@@ -244,7 +270,7 @@ class AudioStream:
         if not isinstance(payload, dict):
             raise AudioProtocolError("AUDIO_INVALID_JSON", "JSON 객체를 보내 주세요.")
         kind = payload.get("type")
-        if kind == "start":
+        if kind in ("start", "resume"):
             if self.started or self.meeting_id in _recorders:
                 raise AudioProtocolError("AUDIO_ALREADY_RECORDING", "이 회의는 이미 음성을 받고 있습니다.")
             if (
@@ -257,7 +283,23 @@ class AudioStream:
                 raise AudioProtocolError("AUDIO_UNSUPPORTED_FORMAT", "pcm_s16le, 16000Hz, mono만 지원합니다.")
             _recorders.add(self.meeting_id)
             try:
-                self.stream_offset_ms = (await self.on_start()) or 0
+                if kind == "resume":
+                    state = _resume_states.get(self.meeting_id)
+                    last_ack = payload.get("lastAckSeq")
+                    if (state is None or time.monotonic() >= state["expires"]
+                            or not _integer(last_ack) or last_ack < max(0, state["audio_seq"] - RESUME_FRAME_LIMIT)
+                            or last_ack > state["audio_seq"] or self.on_resume is None):
+                        raise AudioProtocolError("AUDIO_RESUME_UNAVAILABLE", "복구 가능한 음성 구간이 없습니다. 저장된 전사를 확인해 주세요.")
+                    await self.on_resume()
+                    _resume_states.pop(self.meeting_id, None)
+                    self.audio_seq, self.end_ms = state["audio_seq"], state["end_ms"]
+                    self.stream_offset_ms, self.vad = state["offset"], state["vad"]
+                    self.frame_hashes = state["hashes"]
+                    self.resumed = True
+                else:
+                    if self.meeting_id in _resume_states:
+                        raise AudioProtocolError("AUDIO_RESUME_REQUIRED", "기존 녹음을 재연결해 주세요.")
+                    self.stream_offset_ms = (await self.on_start()) or 0
             except BaseException:
                 _recorders.discard(self.meeting_id)
                 raise
@@ -267,15 +309,16 @@ class AudioStream:
                 "type": "audio.ready", "format": "pcm_s16le",
                 "sampleRate": SAMPLE_RATE, "channels": 1, "maxFrameMs": MAX_FRAME_MS,
                 "streamOffsetMs": self.stream_offset_ms,
+                **({"resumed": True, "lastAudioSeq": self.audio_seq, "endMs": self.end_ms} if kind == "resume" else {}),
             })
         elif kind == "audio":
             if not self.started or self.pending_meta is not None:
                 raise AudioProtocolError("AUDIO_INVALID_ORDER", "start 후 메타데이터와 binary를 번갈아 보내 주세요.")
             seq, start, end = (payload.get(key) for key in ("audioSeq", "startMs", "endMs"))
+            replay = self.resumed and _integer(seq) and seq <= self.audio_seq and seq in self.frame_hashes
             if (
                 not all(_integer(value) for value in (seq, start, end))
-                or seq != self.audio_seq + 1
-                or start != self.end_ms
+                or (not replay and (seq != self.audio_seq + 1 or start != self.end_ms))
                 or not 0 < end - start <= MAX_FRAME_MS
             ):
                 raise AudioProtocolError("AUDIO_SEQUENCE_GAP", "audioSeq는 1부터 연속이며 시각은 0ms부터 이어져야 합니다.")
@@ -321,7 +364,7 @@ class AudioStream:
         finally:
             try:
                 # Keep already accepted utterances on disconnect/protocol failure.
-                if self.started and not ended:
+                if self.started and not ended and self.connected:
                     try:
                         self._enqueue(self.vad.flush())
                     except AudioProtocolError:
@@ -341,6 +384,12 @@ class AudioStream:
                     await self.ws.close(code=1000 if ended else 1008)
             finally:
                 if self.started:
+                    if not ended and not self.connected:
+                        state = {"audio_seq": self.audio_seq, "end_ms": self.end_ms,
+                                 "offset": self.stream_offset_ms, "vad": self.vad,
+                                 "hashes": self.frame_hashes, "expires": time.monotonic() + RESUME_WINDOW_SECONDS}
+                        _resume_states[self.meeting_id] = state
+                        asyncio.get_running_loop().call_later(RESUME_WINDOW_SECONDS, _forget_resume, self.meeting_id, state)
                     _recorders.discard(self.meeting_id)
                 # 정상 흐름에서는 _drain이 모두 끝냈다. 서버 종료처럼 run 자체가 취소된 경우만 남는다.
                 pending = [*self.tasks, *self.ai_tasks]

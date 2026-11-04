@@ -243,6 +243,7 @@ async def meeting_stream(
         return
 
     language = meeting.language
+    account_id = account.id
     # The websocket can last hours. Do not retain its authentication DB transaction.
     await session.rollback()
     await websocket.accept()
@@ -320,9 +321,26 @@ async def meeting_stream(
         async with get_sessionmaker()() as worker_session:
             await meeting_service.set_stream_status(worker_session, meeting_id=meeting_id, status=MeetingStatus.COMPLETED if success else MeetingStatus.FAILED)
 
+    async def resume() -> None:
+        nonlocal provider
+        async with get_sessionmaker()() as check_session:
+            current = await check_session.get(Meeting, meeting_id)
+            if current is None or current.status != MeetingStatus.RECORDING:
+                raise AudioProtocolError("MEETING_NOT_RECORDING", "녹음 중인 회의가 아닙니다.")
+            current_account = await check_session.get(Account, account_id)
+            if current_account is None:
+                raise AudioProtocolError("AUDIO_FORBIDDEN", "이 회의에 접근할 수 없습니다.")
+            try:
+                await ensure_member(check_session, club_id=current.club_id, account=current_account)
+            except Forbidden as exc:
+                raise AudioProtocolError("AUDIO_FORBIDDEN", "이 회의에 접근할 수 없습니다.") from exc
+        settings = get_settings()
+        provider = WhisperStt(url=settings.stt_url, api_key=settings.stt_api_key.get_secret_value(),
+                              model=settings.stt_model, timeout_seconds=settings.stt_timeout_seconds)
+
     try:
         await AudioStream(
-            meeting_id=meeting_id, websocket=websocket, start=start,
+            meeting_id=meeting_id, websocket=websocket, start=start, resume=resume,
             transcribe=transcribe, decide=decide, finalize=finalize,
             begin_finalizing=begin_finalizing,
             rms_threshold=get_settings().audio_vad_rms_threshold,

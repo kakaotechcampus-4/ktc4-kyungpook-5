@@ -39,9 +39,8 @@ creation. Query tokens must be redacted from access logs by the deployment.
    decisions and candidates after reconnect. No dummy transcript is substituted.
 
 `audioSeq`, transcript `seq`, and transcript change `cursor` are separate axes.
-WS WAV/PCM is used in memory for STT and is not written to retained files. Audio
-chunk rows keep hash, size, interval and job metadata with null storage_key; final
-transcripts remain in the DB. Audio replay/retention is outside this beta slice.
+Speech utterance WAV files are saved in the configured storage backend before STT;
+frame-level resume state is held in process memory for at most 60 seconds.
 Silence is suppressed by WebRTC VAD and a 20ms RMS floor (200ms pre-roll, 600ms
 silence endpoint, at least 160ms voiced audio, maximum 15s segments). Noise can
 still pass or quiet speech can be missed; this has not been evaluated on beta
@@ -70,10 +69,23 @@ segments); slow AI no longer causes it. There is no distributed queue or replay 
 raw frames. `end` and disconnect both wait for running AI tasks, so their decisions
 are still saved. Abrupt disconnect keeps queued
 utterances and flushes received tail, but does not claim a complete meeting.
-Reconnecting capture has no resume/replay contract yet: a new start after persisted
-speech is rejected with AUDIO_RESUME_UNSUPPORTED. End one live capture with `end`
-and create a new meeting for a new capture. GET restores
-persisted results, not an unacknowledged network frame.
+On an unexpected disconnect, the single server keeps the VAD tail, accepted frame
+sequence, timestamps and hashes of at most 256 recent frames for 60 seconds after
+the previous worker finishes. It does not keep a separate unbounded frame buffer.
+The client retains unsafely acknowledged frames locally and reconnects with
+`{"type":"resume","format":"pcm_s16le","sampleRate":16000,"channels":1,"lastAckSeq":N}`.
+`audio.ready` includes `resumed:true`, `lastAudioSeq`, `endMs`, and the original
+`streamOffsetMs`. Send retained frames with their original sequence/time from the
+server's next expected sequence. If an ACK was lost, an exact retained frame replay
+is acknowledged without reprocessing; a different replay is AUDIO_REPLAY_MISMATCH.
+Client audio captured after the server's last accepted sequence must be retransmitted;
+the server cannot recover frames absent from both sides. Expired window, server
+restart, or lastAckSeq outside the retained range returns AUDIO_RESUME_UNAVAILABLE.
+If the old worker is still draining, AUDIO_ALREADY_RECORDING means retry later.
+The original member/meeting authorization and RECORDING status are rechecked. New
+capture on a stopped/completed meeting is rejected. A new `start` while a resume
+state exists returns AUDIO_RESUME_REQUIRED. Resume is single-process only; no
+cross-process or restart durability is claimed. Read stored transcripts by cursor.
 
 Configure `STT_URL` as the full gateway endpoint and `STT_API_KEY` as its bearer key,
 plus `STT_MODEL` and `STT_TIMEOUT_SECONDS` (default 60). The adapter posts multipart

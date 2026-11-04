@@ -286,3 +286,38 @@ async def test_ws_judge_failure_still_fails_meeting(client: TestClient, audio_db
     assert any(event.get("code") == "CONTEXT_PROCESSING_FAILED" for event in events)
     assert (events[-1]["status"], events[-1]["errorCount"]) == ("FAILED", 1)
     assert client.get(f"/api/v1/meetings/{meeting}", headers=headers).json()["data"]["status"] == "FAILED"
+
+
+async def test_same_meeting_resume_keeps_frame_and_transcript_order(client, audio_db, monkeypatch):
+    async def transcribe(*_, **__): return '복구된 전사'
+    async def decide(*_, **__): return None
+    monkeypatch.setattr(WhisperStt, 'transcribe', transcribe)
+    monkeypatch.setattr(meeting_service, 'process_saved_segment', decide)
+    token, meeting = account_meeting(client)
+    uri = f'/api/v1/meetings/{meeting}/stream?token={token}'
+    first_pcm = voiced_pcm()
+    with client.websocket_connect(uri) as ws:
+        ws.send_json({'type':'start','format':'pcm_s16le','sampleRate':16000,'channels':1})
+        ready = ws.receive_json(); assert ready['type'] == 'audio.ready'
+        ws.send_json({'type':'audio','audioSeq':1,'startMs':0,'endMs':300}); ws.send_bytes(first_pcm)
+        assert ws.receive_json()['audioSeq'] == 1
+    with client.websocket_connect(uri) as ws:
+        ws.send_json({'type':'resume','format':'pcm_s16le','sampleRate':16000,'channels':1,'lastAckSeq':0})
+        resumed = ws.receive_json(); assert resumed['type'] == 'audio.ready' and resumed['lastAudioSeq'] == 1
+        assert resumed['streamOffsetMs'] == ready['streamOffsetMs'] and resumed['endMs'] == 300
+        ws.send_json({'type':'audio','audioSeq':1,'startMs':0,'endMs':300}); ws.send_bytes(first_pcm)
+        assert ws.receive_json()['audioSeq'] == 1
+        ws.send_json({'type':'audio','audioSeq':2,'startMs':300,'endMs':600}); ws.send_bytes(voiced_pcm())
+        assert ws.receive_json()['audioSeq'] == 2
+        ws.send_json({'type':'end','lastAudioSeq':2})
+        events = []
+        for _ in range(20):
+            item = ws.receive_json(); events.append(item)
+            if item['type'] == 'audio.completed': break
+        assert events[-1]['status'] == 'COMPLETED'
+    saved = client.get(f'/api/v1/meetings/{meeting}/transcripts', headers={'Authorization':f'Bearer {token}'}).json()['data']['items']
+    assert len(saved) == 1 and saved[0]['seq'] == 1 and saved[0]['text'] == '복구된 전사'
+    assert saved[0]['endMs'] - saved[0]['startMs'] == 600
+    async with db_session.get_sessionmaker()() as session:
+        chunks = list(await session.scalars(select(MeetingAudioChunk).where(MeetingAudioChunk.meeting_id == meeting)))
+        assert len(chunks) == 1 and chunks[0].seq == 1

@@ -376,3 +376,59 @@ async def test_second_socket_cannot_replace_live_recorder() -> None:
     assert is_recording(first.meeting_id)
     await first.run()
     assert not is_recording(first.meeting_id)
+
+
+async def test_resume_replays_ack_lost_frame_once_and_keeps_tail():
+    meeting_id = str(uuid.uuid4())
+    saved = []
+    async def noop(*_): return None
+    async def transcribe(utterance): saved.append(utterance); return None
+    first = Socket([start(), *frame(1, 0, 100)])
+    await AudioStream(meeting_id=meeting_id, websocket=first, start=noop, resume=noop,
+        transcribe=transcribe, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    assert saved == []
+    resume = msg({'type':'resume', 'format':'pcm_s16le', 'sampleRate':16000, 'channels':1, 'lastAckSeq':0})
+    second = Socket([resume, *frame(1, 0, 100), *frame(2, 100, 300), msg({'type':'end','lastAudioSeq':2})])
+    await AudioStream(meeting_id=meeting_id, websocket=second, start=noop, resume=noop,
+        transcribe=transcribe, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    ready = second.sent[0]
+    assert ready['resumed'] and ready['lastAudioSeq'] == 1 and ready['endMs'] == 100
+    assert len(saved) == 1 and saved[0].start_ms == 0 and saved[0].end_ms == 300
+    assert saved[0].pcm == pcm(100) + pcm(200)
+    assert second.sent[-1]['status'] == 'COMPLETED'
+
+
+async def test_resume_rejects_unknown_state_and_replay_mismatch():
+    async def noop(*_): return None
+    meeting_id = str(uuid.uuid4())
+    resume = msg({'type':'resume', 'format':'pcm_s16le', 'sampleRate':16000, 'channels':1, 'lastAckSeq':0})
+    missing = Socket([resume])
+    await AudioStream(meeting_id=meeting_id, websocket=missing, start=noop, resume=noop,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    assert missing.sent[-1]['code'] == 'AUDIO_RESUME_UNAVAILABLE'
+    first = Socket([start(), *frame(1,0,100)])
+    await AudioStream(meeting_id=meeting_id, websocket=first, start=noop, resume=noop,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    bad = Socket([resume, *frame(1,0,100, amplitude=3000)])
+    await AudioStream(meeting_id=meeting_id, websocket=bad, start=noop, resume=noop,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    assert bad.sent[-1]['code'] == 'AUDIO_REPLAY_MISMATCH' and bad.closed == 1008
+
+
+async def test_resume_permission_failure_leaves_recoverable_state():
+    from app.services.audio_stream_service import AudioProtocolError
+    async def noop(*_): return None
+    async def forbidden(): raise AudioProtocolError('AUDIO_FORBIDDEN', '권한 없음')
+    meeting_id = str(uuid.uuid4())
+    first = Socket([start(), *frame(1,0,100)])
+    await AudioStream(meeting_id=meeting_id, websocket=first, start=noop, resume=noop,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    handshake = msg({'type':'resume','format':'pcm_s16le','sampleRate':16000,'channels':1,'lastAckSeq':1})
+    denied = Socket([handshake])
+    await AudioStream(meeting_id=meeting_id, websocket=denied, start=noop, resume=forbidden,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    assert denied.sent[-1]['code'] == 'AUDIO_FORBIDDEN'
+    allowed = Socket([handshake, msg({'type':'end','lastAudioSeq':1})])
+    await AudioStream(meeting_id=meeting_id, websocket=allowed, start=noop, resume=noop,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    assert allowed.sent[0]['resumed'] and allowed.sent[-1]['status'] == 'COMPLETED'
