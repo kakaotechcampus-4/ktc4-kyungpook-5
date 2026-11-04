@@ -4,6 +4,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const fs = require("node:fs"),
   assert = require("node:assert/strict");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
+const tag = (process.env.PLANNING_PROBE_TAG || "").replace(/[^a-z0-9-]/g, "");
+const prefix = `plan-facts-sync-302${tag ? "-" + tag : ""}`;
 const root = path.resolve(__dirname, "../../../..");
 const output = path.join(root, "be/app/ai/docs/planning/ui-tests/");
 const web = process.env.PLANNING_WEB_URL || "http://localhost:5174";
@@ -132,7 +135,7 @@ const installFactsProbe = require("./planning_facts_probe.cjs");
     );
     if (scenario === "new-fast-done") saved = true;
     await page.screenshot({
-      path: output + `plan-facts-sync-302-${scenario}-pending.jpg`,
+      path: output + `${prefix}-${scenario}-pending.jpg`,
       type: "jpeg",
       quality: 85,
     });
@@ -171,18 +174,22 @@ const installFactsProbe = require("./planning_facts_probe.cjs");
       assert.equal(await page.locator(".animate-fact-flash").count(), 2);
     }
     await page.screenshot({
-      path: output + `plan-facts-sync-302-${scenario}.jpg`,
+      path: output + `${prefix}-${scenario}.jpg`,
       type: "jpeg",
       quality: 85,
     });
     await page.waitForTimeout(1700);
     const trace = await page.evaluate(() => window.__trace);
     trace.scenario = scenario;
+    trace.codeCommit = execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: root,
+      encoding: "utf8",
+    }).trim();
     trace.responseSource = "fixed-sse";
     trace.before = before;
     trace.after = after;
     fs.writeFileSync(
-      output + `plan-facts-sync-302-${scenario}.json`,
+      output + `${prefix}-${scenario}.json`,
       JSON.stringify(trace, null, 2),
     );
     console.log("PASS", scenario);

@@ -791,3 +791,21 @@ PLANNING_PLAN_URL='http://localhost:5174/planning?eventId=확인한ID' \
 ```
 
 Orca는 로컬 runtime 연결/기동 시간 초과로 사용할 수 없어 설치된 Playwright와 Chromium으로 확인했다. 모델 속도를 바꾸는 작업은 아니며, 네트워크 환경·공급자별 스트림 묶임에 따른 전체 지연은 남는다.
+
+### 최신 develop의 답변 형식 통합 뒤 재확인
+
+작업 중 #305가 develop `cd31192`에 병합돼 `walkthrough.md` 설명 한 곳이 충돌했다. #302의 동시 갱신 설명과 #304의 답변 형식 설명을 함께 남겼다. 통합 커밋은 `12f73c1`이다. `PlanChat.tsx`는 최신 develop과 비교하면 오류 영역의 실패 진행 줄 5줄만 다르며, 답변 말풍선은 그대로다.
+
+같은 모델·지침·세 문장·브라우저 조건으로 다시 실행했다. 이전 측정은 위에 보존하며, 아래가 통합 후 결과다.
+
+| 턴 | 조건 완료 → done | 완료 줄 / 패널·강조 프레임 | 이벤트 수신 → 같은 갱신 | 강조 삽입 → 제거 |
+| --- | ---: | --- | ---: | ---: |
+| 새 계획 첫 턴 | 2.533초 | 833 / 833 | 6.0ms | 1496.6ms |
+| 기존 계획 참가비 | 2.729초 | 1733 / 1733 | 9.9ms | 1493.6ms |
+| 잠정 인원·일정, 움직임 줄이기 | 3.235초 | 2945 / 2945 | 12.3ms | 1493.8ms |
+
+3턴 모두 같은 observer 콜백이며 같은 done 값에서 재강조 0회다. 움직임 줄이기는 `animationName: none`이었다. 고정 SSE의 실패 2경우·저장 차이·빠른 주소 이동 4경우도 다시 통과했다. FE는 추가된 답변 형식 테스트를 포함해 **102 통과**, TypeScript·ESLint·빌드 통과다.
+
+통합 후 원본: [첫 턴](ui-tests/plan-facts-sync-302-integrated-real-1.json) · [기존 계획](ui-tests/plan-facts-sync-302-integrated-real-2.json) · [움직임 줄이기](ui-tests/plan-facts-sync-302-integrated-real-3.json). 사진: [첫 턴](ui-tests/plan-facts-sync-302-integrated-new.jpg) · [움직임 줄이기](ui-tests/plan-facts-sync-302-integrated-reduced-motion.jpg) · [실패 복구](ui-tests/plan-facts-sync-302-integrated-existing-failure.jpg) · [저장 차이](ui-tests/plan-facts-sync-302-integrated-saved-difference.jpg).
+
+재실행 때 `PLANNING_PROBE_TAG=integrated`처럼 태그를 주면 기존 사진·기록을 덮어쓰지 않고 파일명에 태그를 붙인다.

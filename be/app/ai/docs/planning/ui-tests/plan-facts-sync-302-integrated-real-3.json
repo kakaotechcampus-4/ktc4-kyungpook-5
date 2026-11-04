@@ -1,0 +1,521 @@
+{
+  "events": [
+    {
+      "at": 22688,
+      "frame": 2710,
+      "event": "progress",
+      "data": {
+        "operationId": "call_O8IWQQx4mLK0jsFI8FfGnkxD",
+        "kind": "condition_started",
+        "status": "running",
+        "text": "조건을 반영하고 있어요"
+      }
+    },
+    {
+      "at": 24642.59999999404,
+      "frame": 2945,
+      "event": "progress",
+      "data": {
+        "operationId": "call_O8IWQQx4mLK0jsFI8FfGnkxD",
+        "kind": "condition_applied",
+        "status": "completed",
+        "text": "예상 인원 · 일정 반영했어요",
+        "conditionDraft": {
+          "conditions": {
+            "title": null,
+            "eventType": "MT",
+            "headcount": 50,
+            "feePerPerson": 30000,
+            "startDate": "2026-12-05",
+            "endDate": "2026-12-06",
+            "location": null,
+            "budgetTotal": null
+          },
+          "conditionMeta": {
+            "headcount": {
+              "status": "tentative",
+              "evidenceMessageId": "d5baf614-f4d2-4527-9f78-876995cae843",
+              "evidenceQuote": "인원은 일단 50명"
+            },
+            "event_type": {
+              "status": "specified",
+              "evidenceMessageId": "f1b81fce-9069-443e-93dd-94118fa41bbb",
+              "evidenceQuote": "MT를 준비할게요."
+            },
+            "fee_per_person": {
+              "status": "specified",
+              "evidenceMessageId": "5086d5c4-551b-42e5-a763-654768b1ef8c",
+              "evidenceQuote": "참가비 3만원으로 해줘."
+            },
+            "start_date": {
+              "status": "specified",
+              "evidenceMessageId": "d5baf614-f4d2-4527-9f78-876995cae843",
+              "evidenceQuote": "일정은 2026년 12월 5일부터 6일까지로 해줘."
+            },
+            "end_date": {
+              "status": "specified",
+              "evidenceMessageId": "d5baf614-f4d2-4527-9f78-876995cae843",
+              "evidenceQuote": "일정은 2026년 12월 5일부터 6일까지로 해줘."
+            }
+          },
+          "deferredTopics": []
+        }
+      }
+    },
+    {
+      "at": 26815,
+      "frame": 3204,
+      "event": "reply_delta",
+      "data": {
+        "text": "예"
+      }
+    },
+    {
+      "at": 26828,
+      "frame": 3206,
+      "event": "reply_delta",
+      "data": {
+        "text": "상"
+      }
+    },
+    {
+      "at": 26835.30000001192,
+      "frame": 3206,
+      "event": "reply_delta",
+      "data": {
+        "text": " 인"
+      }
+    },
+    {
+      "at": 26835.30000001192,
+      "frame": 3206,
+      "event": "reply_delta",
+      "data": {
+        "text": "원"
+      }
+    },
+    {
+      "at": 26839,
+      "frame": 3207,
+      "event": "reply_delta",
+      "data": {
+        "text": "은"
+      }
+    },
+    {
+      "at": 26865.30000001192,
+      "frame": 3210,
+      "event": "reply_delta",
+      "data": {
+        "text": " 일"
+      }
+    },
+    {
+      "at": 26868.80000001192,
+      "frame": 3211,
+      "event": "reply_delta",
+      "data": {
+        "text": "단"
+      }
+    },
+    {
+      "at": 26871.69999998808,
+      "frame": 3211,
+      "event": "reply_delta",
+      "data": {
+        "text": " "
+      }
+    },
+    {
+      "at": 26871.69999998808,
+      "frame": 3211,
+      "event": "reply_delta",
+      "data": {
+        "text": "50"
+      }
+    },
+    {
+      "at": 26889.5,
+      "frame": 3213,
+      "event": "reply_delta",
+      "data": {
+        "text": "명"
+      }
+    },
+    {
+      "at": 26893.59999999404,
+      "frame": 3213,
+      "event": "reply_delta",
+      "data": {
+        "text": "으로"
+      }
+    },
+    {
+      "at": 26923.40000000596,
+      "frame": 3217,
+      "event": "reply_delta",
+      "data": {
+        "text": ","
+      }
+    },
+    {
+      "at": 26930.19999998808,
+      "frame": 3218,
+      "event": "reply_delta",
+      "data": {
+        "text": " 일정"
+      }
+    },
+    {
+      "at": 26933.69999998808,
+      "frame": 3218,
+      "event": "reply_delta",
+      "data": {
+        "text": "은"
+      }
+    },
+    {
+      "at": 26948.19999998808,
+      "frame": 3220,
+      "event": "reply_delta",
+      "data": {
+        "text": " "
+      }
+    },
+    {
+      "at": 26959.30000001192,
+      "frame": 3222,
+      "event": "reply_delta",
+      "data": {
+        "text": "202"
+      }
+    },
+    {
+      "at": 26962.80000001192,
+      "frame": 3222,
+      "event": "reply_delta",
+      "data": {
+        "text": "6"
+      }
+    },
+    {
+      "at": 26966.30000001192,
+      "frame": 3222,
+      "event": "reply_delta",
+      "data": {
+        "text": "년"
+      }
+    },
+    {
+      "at": 26978.09999999404,
+      "frame": 3224,
+      "event": "reply_delta",
+      "data": {
+        "text": " "
+      }
+    },
+    {
+      "at": 26993.5,
+      "frame": 3226,
+      "event": "reply_delta",
+      "data": {
+        "text": "12"
+      }
+    },
+    {
+      "at": 26997.5,
+      "frame": 3226,
+      "event": "reply_delta",
+      "data": {
+        "text": "월"
+      }
+    },
+    {
+      "at": 26997.5,
+      "frame": 3226,
+      "event": "reply_delta",
+      "data": {
+        "text": " "
+      }
+    },
+    {
+      "at": 27007.69999998808,
+      "frame": 3227,
+      "event": "reply_delta",
+      "data": {
+        "text": "5"
+      }
+    },
+    {
+      "at": 27011.5,
+      "frame": 3228,
+      "event": "reply_delta",
+      "data": {
+        "text": "~"
+      }
+    },
+    {
+      "at": 27122.19999998808,
+      "frame": 3241,
+      "event": "reply_delta",
+      "data": {
+        "text": "6"
+      }
+    },
+    {
+      "at": 27122.19999998808,
+      "frame": 3241,
+      "event": "reply_delta",
+      "data": {
+        "text": "일"
+      }
+    },
+    {
+      "at": 27122.19999998808,
+      "frame": 3241,
+      "event": "reply_delta",
+      "data": {
+        "text": "로"
+      }
+    },
+    {
+      "at": 27122.19999998808,
+      "frame": 3241,
+      "event": "reply_delta",
+      "data": {
+        "text": " 반"
+      }
+    },
+    {
+      "at": 27122.19999998808,
+      "frame": 3241,
+      "event": "reply_delta",
+      "data": {
+        "text": "영"
+      }
+    },
+    {
+      "at": 27122.19999998808,
+      "frame": 3241,
+      "event": "reply_delta",
+      "data": {
+        "text": "했"
+      }
+    },
+    {
+      "at": 27122.19999998808,
+      "frame": 3241,
+      "event": "reply_delta",
+      "data": {
+        "text": "어요"
+      }
+    },
+    {
+      "at": 27127.90000000596,
+      "frame": 3242,
+      "event": "reply_delta",
+      "data": {
+        "text": ".\n\n"
+      }
+    },
+    {
+      "at": 27142.69999998808,
+      "frame": 3244,
+      "event": "reply_delta",
+      "data": {
+        "text": "장"
+      }
+    },
+    {
+      "at": 27147,
+      "frame": 3244,
+      "event": "reply_delta",
+      "data": {
+        "text": "소"
+      }
+    },
+    {
+      "at": 27147,
+      "frame": 3244,
+      "event": "reply_delta",
+      "data": {
+        "text": "는"
+      }
+    },
+    {
+      "at": 27156.80000001192,
+      "frame": 3245,
+      "event": "reply_delta",
+      "data": {
+        "text": " 어디"
+      }
+    },
+    {
+      "at": 27167.5,
+      "frame": 3247,
+      "event": "reply_delta",
+      "data": {
+        "text": "로"
+      }
+    },
+    {
+      "at": 27171.40000000596,
+      "frame": 3247,
+      "event": "reply_delta",
+      "data": {
+        "text": " 생각"
+      }
+    },
+    {
+      "at": 27175.19999998808,
+      "frame": 3247,
+      "event": "reply_delta",
+      "data": {
+        "text": "하고"
+      }
+    },
+    {
+      "at": 27195.59999999404,
+      "frame": 3250,
+      "event": "reply_delta",
+      "data": {
+        "text": " 계"
+      }
+    },
+    {
+      "at": 27205.09999999404,
+      "frame": 3251,
+      "event": "reply_delta",
+      "data": {
+        "text": "세요"
+      }
+    },
+    {
+      "at": 27220,
+      "frame": 3253,
+      "event": "reply_delta",
+      "data": {
+        "text": "?"
+      }
+    },
+    {
+      "at": 27877.40000000596,
+      "frame": 3332,
+      "event": "done",
+      "data": {
+        "reply": "예상 인원은 일단 50명으로, 일정은 2026년 12월 5~6일로 반영했어요.\n\n장소는 어디로 생각하고 계세요?",
+        "draft": {
+          "conditions": {
+            "title": null,
+            "eventType": "MT",
+            "headcount": 50,
+            "feePerPerson": 30000,
+            "startDate": "2026-12-05",
+            "endDate": "2026-12-06",
+            "location": null,
+            "budgetTotal": null
+          },
+          "conditionMeta": {
+            "headcount": {
+              "status": "tentative",
+              "evidenceMessageId": "d5baf614-f4d2-4527-9f78-876995cae843",
+              "evidenceQuote": "인원은 일단 50명"
+            },
+            "event_type": {
+              "status": "specified",
+              "evidenceMessageId": "f1b81fce-9069-443e-93dd-94118fa41bbb",
+              "evidenceQuote": "MT를 준비할게요."
+            },
+            "fee_per_person": {
+              "status": "specified",
+              "evidenceMessageId": "5086d5c4-551b-42e5-a763-654768b1ef8c",
+              "evidenceQuote": "참가비 3만원으로 해줘."
+            },
+            "start_date": {
+              "status": "specified",
+              "evidenceMessageId": "d5baf614-f4d2-4527-9f78-876995cae843",
+              "evidenceQuote": "일정은 2026년 12월 5일부터 6일까지로 해줘."
+            },
+            "end_date": {
+              "status": "specified",
+              "evidenceMessageId": "d5baf614-f4d2-4527-9f78-876995cae843",
+              "evidenceQuote": "일정은 2026년 12월 5일부터 6일까지로 해줘."
+            }
+          },
+          "deferredTopics": []
+        },
+        "changedFields": [
+          "headcount",
+          "start_date",
+          "end_date"
+        ],
+        "recordLookup": null,
+        "generationReadiness": {
+          "canGenerate": false,
+          "reasons": [
+            "location_unanswered"
+          ]
+        },
+        "generationResult": null,
+        "historyUsage": {
+          "messageCount": 13,
+          "maxMessages": 60,
+          "nearLimit": false
+        },
+        "baseRevision": 3
+      }
+    }
+  ],
+  "renders": [
+    {
+      "frame": 2710,
+      "at": 22696.19999998808,
+      "url": "?eventId=evt_LxvvLVIWg22Xy0vr7clLS",
+      "completedChecks": 2,
+      "lines": [
+        "행사 종류 · 예상 인원 · 참가비 반영했어요",
+        "참가비 반영했어요",
+        "조건을 반영하고 있어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n✓\n종류\nMT\n✓\n예상 인원\n40명\n✓\n참가비\n1인 30,000원\n일정\n아직이에요\n장소\n아직이에요",
+      "flash": [],
+      "animation": null
+    },
+    {
+      "frame": 2945,
+      "at": 24654.90000000596,
+      "url": "?eventId=evt_LxvvLVIWg22Xy0vr7clLS",
+      "completedChecks": 3,
+      "lines": [
+        "행사 종류 · 예상 인원 · 참가비 반영했어요",
+        "참가비 반영했어요",
+        "예상 인원 · 일정 반영했어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n✓\n종류\nMT\n~\n예상 인원\n50명\n잠정\n\n「인원은 일단 50명」\n\n✓\n참가비\n1인 30,000원\n✓\n일정\n12/5 – 12/6\n장소\n아직이에요",
+      "flash": [
+        "~\n예상 인원\n50명\n잠정\n\n「인원은 일단 50명」",
+        "✓\n일정\n12/5 – 12/6"
+      ],
+      "animation": "none"
+    },
+    {
+      "frame": 3124,
+      "at": 26148.69999998808,
+      "url": "?eventId=evt_LxvvLVIWg22Xy0vr7clLS",
+      "completedChecks": 3,
+      "lines": [
+        "행사 종류 · 예상 인원 · 참가비 반영했어요",
+        "참가비 반영했어요",
+        "예상 인원 · 일정 반영했어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n✓\n종류\nMT\n~\n예상 인원\n50명\n잠정\n\n「인원은 일단 50명」\n\n✓\n참가비\n1인 30,000원\n✓\n일정\n12/5 – 12/6\n장소\n아직이에요",
+      "flash": [],
+      "animation": null
+    }
+  ],
+  "message": "인원은 일단 50명, 일정은 2026년 12월 5일부터 6일까지로 해줘.",
+  "reducedMotion": true,
+  "codeCommit": "12f73c139d4ece779e25c5c0ba156acf2f46f787",
+  "model": "gpt-5.6-luna",
+  "promptVersion": "planning-agent-v8"
+}
