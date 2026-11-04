@@ -12,15 +12,17 @@ export interface ChatMessage {
 
 // SSE progress 이벤트(#285, BE PlanProgressOut). 저장되지 않는 임시 작업 상태다.
 // 같은 operationId의 running 줄은 completed/failed 줄로 바뀐다. DB 저장 완료는 done으로만 안다.
+// skipped는 보여 줄 결과 없이 끝난 작업이다(조건 거절·같은 값). 그 running 줄을 조용히 지운다.
 export interface PlanProgress {
   operationId: string
   kind:
+    | 'condition_started'
     | 'condition_applied'
     | 'search_started'
     | 'search_finished'
     | 'generation_started'
     | 'generation_finished'
-  status: 'running' | 'completed' | 'failed'
+  status: 'running' | 'completed' | 'failed' | 'skipped'
   text: string
 }
 

@@ -6,6 +6,7 @@ from langchain_core.messages import AIMessage, AIMessageChunk, message_chunk_to_
 
 TextCallback = Callable[[str], Awaitable[None]]
 ResetCallback = Callable[[], Awaitable[None]]
+ToolStartCallback = Callable[[str, str], Awaitable[None]]
 
 
 def final_answer_text(message: AIMessage) -> str:
@@ -37,9 +38,12 @@ def assembled_message(chunk: AIMessageChunk) -> AIMessage:
 class ReplyStream:
     """UI에 전달한 접두부를 관리한다. Tool이 있으면 이번 모델 호출의 답변은 숨긴다."""
 
-    def __init__(self, on_text: TextCallback, on_reset: ResetCallback):
+    def __init__(self, on_text: TextCallback, on_reset: ResetCallback,
+                 on_tool_start: ToolStartCallback | None = None):
         self.on_text = on_text
         self.on_reset = on_reset
+        self.on_tool_start = on_tool_start
+        self.started_tools: set[str] = set()
         self.sent = ''
         self.has_tools = False
         self.buffered = False
@@ -50,6 +54,14 @@ class ReplyStream:
             self.sent = ''
 
     async def accept(self, combined: AIMessageChunk):
+        # Tool 호출의 첫 조각에는 이름과 호출 ID가 있고, 인자는 뒤 조각으로 이어진다.
+        # 시작만 알리고 실행은 하지 않는다. 인자 검증과 실행은 완성 메시지를 받은 Node가 한다.
+        if self.on_tool_start is not None:
+            for part in combined.tool_call_chunks or []:
+                call_id, name = part.get('id'), part.get('name')
+                if call_id and name and call_id not in self.started_tools:
+                    self.started_tools.add(call_id)
+                    await self.on_tool_start(name, call_id)
         self.has_tools |= bool(combined.tool_call_chunks or combined.tool_calls or combined.invalid_tool_calls)
         if self.has_tools:
             await self.reset()

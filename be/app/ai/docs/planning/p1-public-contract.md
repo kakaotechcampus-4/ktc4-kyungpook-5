@@ -46,13 +46,16 @@ phase가 전혀 없으면 기존 text를 사용한다. commentary만 있고 Tool
 
 | kind | status | 알리는 시점 / 문구 예 |
 | --- | --- | --- |
+| condition_started | running | 스트림에서 조건 변경 Tool의 첫 조각(이름·호출 ID)을 받았을 때. 인자를 다 받기 전이라 값 없이 “조건을 반영하고 있어요”(#297) |
+| condition_applied | skipped | 같은 호출이 거절·같은 값·보류만으로 끝났을 때. “바뀐 조건이 없어요”. 모델이 거절 이유를 보고 다시 요청할 수 있어, 화면은 답변이 시작될 때 진행 중 줄을 지운다. 그 사이 같은 턴의 `condition_started`가 오면 그 자리를 이어 쓴다(#297) |
 | condition_applied | completed | applied이고 변경 필드가 있을 때. “예상 인원 60명 반영했어요”. 바뀐 항목이 여럿이면 “예상 인원 60명 · 참가비 1인 30,000원 반영했어요”(#290) |
 | search_started | running | 검증 후 실제 검색 직전. “지난 행사 기록을 찾고 있어요” |
 | search_finished | completed / failed | 자료 있음 / 자료 없음 / 검색 실패를 구분 |
 | generation_started | running | 공통 검증·성공 요청 재사용 분기를 통과한 실제 생성 직전 |
 | generation_finished | completed / failed | 최종 생성 결과의 기준 조건 검증까지 통과한 초안 / 생성 실패 |
 
-조건의 unchanged/rejected, 보류만 변경한 경우에는 조건 성공 알림을 만들지 않는다.
+조건의 unchanged/rejected, 보류만 변경한 경우에는 조건 성공 알림을 만들지 않고 skipped를 보낸다.
+시작 알림은 Tool 실행을 뜻하지 않는다. 실행은 완성된 인자를 검증한 뒤 Node가 한다.
 잠정 값, 미정으로 해제, 무료를 구분하며 모델 인자가 아닌 검증 결과로 문구를 만든다.
 생성 전 확인이 필요하거나 기존 성공 초안을 재사용하면 생성 시작·종료 알림을 보내지 않는다.
 검색 자료 없음은 검색 처리의 정상 종료이며 검색 실패와 다르다. 검색 개수를 사실 개수로 추정하지 않는다.

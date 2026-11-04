@@ -17,7 +17,7 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import BaseModel, ValidationError
 
 from .config import AISettings, get_settings
-from .llm_stream import ReplyStream, TextCallback, ResetCallback, assembled_message, final_answer_text
+from .llm_stream import ReplyStream, TextCallback, ResetCallback, ToolStartCallback, assembled_message, final_answer_text
 from .errors import (
     AIConfigError,
     AIError,
@@ -220,13 +220,13 @@ async def astream_with_tools(
     messages: LanguageModelInput, *, tools: Sequence[dict[str, Any]],
     on_text: TextCallback, on_reset: ResetCallback,
     allow_tools: bool = True, parallel_tool_calls: bool = False,
-    model: ChatOpenAI | None = None,
+    model: ChatOpenAI | None = None, on_tool_start: ToolStartCallback | None = None,
 ) -> AIMessage:
     """최종 답변만 조각으로 알리고, Graph에는 검증한 완성 메시지를 반환한다."""
     model = model or get_chat_model()
     bound = model.bind_tools(list(tools), parallel_tool_calls=parallel_tool_calls,
                              tool_choice="auto" if allow_tools else "none")
-    display = ReplyStream(on_text, on_reset)
+    display = ReplyStream(on_text, on_reset, on_tool_start)
     combined = None
     try:
         # 실패·취소 시에도 공급자 스트림을 닫는다. Tool은 조립·검증 뒤 Node에서 실행한다.
