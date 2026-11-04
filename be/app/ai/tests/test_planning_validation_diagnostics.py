@@ -12,7 +12,7 @@ from app.ai import AITimeoutError, PlanningPreviewRequest, PlanningResumeState
 from app.ai.config import AISettings
 from app.ai.features.planning import public_workflow
 from app.ai.features.planning.agent import graph as agent_graph, nodes
-from app.ai.features.planning.generation import graph
+from app.ai.features.planning.generation import graph, schemas
 from app.ai.features.planning.generation.validation import PlanValidationError
 from app.ai.scripts import check_planning_generation_requests as check
 from app.ai.scripts import planning_validation_diagnostics as diag
@@ -58,7 +58,7 @@ def test_each_rule_roundtrips_and_replays_without_any_model(monkeypatch, tmp_pat
     assert snapshot.generation_attempt == 1
     span = next(s for s in row['observation']['spans'] if s['id'] == snapshot.validation_span_id)
     assert span['stage'] == 'validate_plan' and span['parent_id'] == snapshot.generation_span_id
-    assert snapshot.input.messages == () and snapshot.composition == answer
+    assert snapshot.input.messages == () and snapshot.composition.model_dump(mode='json') == answer.model_dump(mode='json')
     saved = tmp_path / 'failure.json'
     diag.write_snapshot(saved, snapshot)
     raw = saved.read_bytes()
@@ -199,8 +199,23 @@ def test_snapshot_serialization_error_keeps_the_original_p1_result(monkeypatch):
     def broken(*args, **kwargs):
         raise RuntimeError('private-serialization-message')
 
-    monkeypatch.setattr(diag.PlanComposition, 'model_dump', broken)
+    monkeypatch.setattr(schemas.PlanComposition, 'model_dump', broken)
     captured, row = collect(request)
     assert row['generation_status'] == 'failed' and row['failure_category'] == 'invalid_plan'
     assert captured.errors == ['RuntimeError'] and not captured.snapshots
     assert 'private-serialization-message' not in json.dumps(row)
+
+
+def test_drafts_recorded_before_276_with_cancel_codes_still_replay(tmp_path):
+    # 11-04 G1 실측의 실제 실패 원본. 저장 당시 형식(v1)은 CANCEL_*를 허용했다.
+    # 지금 생성 형식은 이 초안을 읽지 못하지만, 재검사는 같은 catalog_partition 거절을 다시 확인해야 한다.
+    source = (diag.AI_DIR / 'docs/planning/evaluation-results/planning-generation-reasoning-2026-11-04'
+              / 'g1-chat/session-03/validation/g1-reasoning-03-measurement-003-G1-low-1.json')
+    snapshot = diag.ValidationSnapshot.model_validate_json(source.read_bytes())
+    assert {x.code for x in snapshot.composition.excluded_steps} == {
+        'CANCEL_NOTIFY_PARTICIPANTS', 'CANCEL_VENUE', 'CANCEL_REFUND', 'CANCEL_RECORD'}
+    with pytest.raises(ValidationError):
+        schemas.PlanComposition.model_validate(snapshot.composition.model_dump(mode='json'))
+    report = replay_file(source, tmp_path / 'replay.json')
+    assert report['status'] == 'rejected' and report['reproduced'] is True
+    assert report['actual_violation']['rule'] == 'catalog_partition'

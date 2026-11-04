@@ -132,7 +132,7 @@ AI: 날짜는 비워두고, 이 조건으로 준비 순서를 먼저 잡아볼�
 | --- | --- |
 | `basis_draft` | 어느 조건으로 만든 결과인지 보존 |
 | `steps` | 1개 이상. 허용 code, 단계 목적, 묶음 안 순서, 시작·마감, 예정 행동 |
-| `excluded_steps` | 모델은 code와 이유 작성. 최종 응답에는 코드가 고정 name을 추가 (#198) |
+| `excluded_steps` | 모델은 code와 이유 작성. code는 카탈로그 13개 중에서만 고른다(#276, 출력 형식이 취소 단계 코드를 허용하지 않음). 최종 응답에는 코드가 고정 name을 추가 (#198) |
 | `assumptions` | AI가 둔 가정과 근거 출처. 사용자 조건과 분리, 없으면 빈 목록 |
 | `open_questions` | 날짜·장소 등 아직 정할 내용. 모두 즉시 되묻는 질문 목록은 아님 |
 | `warnings` | 일정 충돌·준비 기간 부족·확인할 제약 |
@@ -348,7 +348,7 @@ BE·FE와 합의할 것은 권유/보류·초안 보관 주체, 새 내부 결�
 
 `scripts/planning_validation_diagnostics.py`의 `capture_validation_failures()` 안쪽에 기존 `install_observers()`를 설치한다. 실제 검증 구간에서 `PlanValidationError`를 받으면 입력/초안/위반을 복사하고 같은 예외를 다시 올린다. 자료 생성에 오류가 생겨도 원래 P1 실패 안내는 유지하며 진단 세션은 `capture_error`로 구분한다. 대화 본문은 재검사 입력에서 제외하고 입력/초안 해시를 검증한다.
 
-`scripts/replay_planning_validation.py`는 `ValidationSnapshot`을 읽어 `validate_plan()`만 실행한다. 모델·설정을 읽지 않고 기록된 규칙/위치/비교값과 재검사 결과, 검증 소스 해시 일치를 새 파일에 기록한다. 원본이나 기존 출력 파일을 덮어쓰지 않는다.
+`scripts/replay_planning_validation.py`는 `ValidationSnapshot`을 읽어 `validate_plan()`만 실행한다. 저장된 초안은 #276 전 출력 형식(v1, `scripts/generation_output_v1.py`)으로 읽는다. 지금 형식은 `CANCEL_*`를 허용하지 않아 예전 실패 원본을 읽지 못하기 때문이다. 모델·설정을 읽지 않고 기록된 규칙/위치/비교값과 재검사 결과, 검증 소스 해시 일치를 새 파일에 기록한다. 원본이나 기존 출력 파일을 덮어쓰지 않는다.
 
 `scripts/capture_planning_validation.py`는 고정 fixture의 인원 변경 채팅만 최대 10개 공개 요청으로 실행한다. 요청 안의 모든 생성 시도가 끝난 후 실패 자료를 파일로 저장하고 오프라인 재검사까지 일치하면 `captured`로 중단한다. 실패 없이 상한을 소진하면 `limit_reached`다. 최종 요청이 성공이어도 내부 실패 자료가 있으면 보존한다. 설정 오류·수집 오류·중단은 각각 상태와 시작/종료 기록을 남긴다.
 
