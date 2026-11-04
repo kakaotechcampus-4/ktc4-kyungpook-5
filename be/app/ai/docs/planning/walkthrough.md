@@ -688,24 +688,24 @@ generate_planning_preview
 
 비교는 [compare_generation_reasoning.py](../../scripts/compare_generation_reasoning.py)로 했다. 요청마다 `build_plan_model`을 변형 함수로 바꿔 끼워 `reasoning`만 덮어쓰고(기본값 변형은 `None`이라 값을 보내지 않음), 끝나면 되돌린다. 계획 검증에서 거절되면 #239의 `capture_validation_failures`로 어느 규칙에서 거절됐는지 남긴다. 결과는 [추론 깊이 측정](evaluation-results/planning-generation-reasoning-2026-11-04/README.md)에 있다.
 
-## 한 응답에 Tool이 여러 개 오면 (#265)
+## 한 응답에 Tool이 여러 개 오면 (#265, #274)
 
-대화 모델은 Tool 요청을 응답에 적어 보내고, 코드가 실행한 결과는 그다음 호출에서야 받는다. 지금은 한 응답에 Tool을 하나만 받는다(`llm.ainvoke_with_tools`의 `parallel_tool_calls`, 행사계획은 `nodes.PARALLEL_TOOL_CALLS = False`).
+대화 모델은 Tool 요청을 응답에 적어 보내고, 코드가 실행한 결과는 그다음 호출에서야 받는다. 지금은 한 응답에 Tool을 여러 개 받는다(`llm.ainvoke_with_tools`의 `parallel_tool_calls`, 행사계획은 `nodes.PARALLEL_TOOL_CALLS = True`).
 
 ```text
 "예상 참가 인원을 60명으로 바꿔줘. 계획 초안은 만들지 마."
 
-지금 (하나만)   호출 1 update_event_conditions(인원 60) → 결과
+하나만 허용     호출 1 update_event_conditions(인원 60) → 결과
                호출 2 update_generation_offer(defer)   → 결과
                호출 3 답변
-여러 개 허용    호출 1 update_event_conditions(인원 60) + update_generation_offer(defer)
+지금 (여러 개)  호출 1 update_event_conditions(인원 60) + update_generation_offer(defer)
                       → tools_node가 앞에서부터 차례로 실행
                호출 2 답변
 ```
 
-여러 개 허용은 11-04에 쟀다. 호출이 3번에서 2번, 요청 p50이 7.19초에서 6.17초로 줄었지만 "날짜는 다시 얘기하자. …"에서 날짜 보류를 풀지 않는 경우가 늘어(11/13 → 7/13) 채택하지 않았다([평가 기록](evaluation.md)).
+여러 개 허용은 11-04에 쟀다. 호출이 3번에서 2번, 요청 p50이 7.19초에서 6.17초로 줄었다(#265). 처음에는 "날짜는 다시 얘기하자. …"의 통과가 줄어 보류했는데, 실패한 응답의 Tool 인자를 보니 두 설정 모두 "나중에 다시 얘기하자"로 읽어 날짜를 다시 보류한 같은 모양이었다. 분명한 재개("이제 날짜 정하자")와 정정("아니, 날짜는 지금 정하자는 거였어")은 두 설정 모두 10/10이라 켰다(#274, [평가 기록](evaluation.md)).
 
-설정을 켜거나 모델이 여러 개를 보내도 `tools_node()`가 아래를 지킨다. 같은 응답 안의 뒤 Tool은 앞 Tool의 결과를 보지 못한 채 인자가 정해졌기 때문이다.
+모델이 여러 개를 보내면 `tools_node()`가 아래를 지킨다. 같은 응답 안의 뒤 Tool은 앞 Tool의 결과를 보지 못한 채 인자가 정해졌기 때문이다.
 
 ```text
 "작년 봄 MT 참가비로 하자" → [search_past_events, update_event_conditions(참가비 30,000원)]

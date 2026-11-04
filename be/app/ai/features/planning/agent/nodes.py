@@ -20,10 +20,10 @@ from .generation_tools import GenerateEventPlanInput, condition_generation_state
 
 PROMPT_VERSION = "planning-agent-v8"
 MAX_TOOL_CALLS = 3
-# 한 응답에 Tool 요청을 하나만 받는다. 여러 개를 허용하면 "60명으로 바꾸고 초안은 만들지 마"가
-# 모델 호출 3번 → 2번(C2 p50 7.19 → 6.17초)으로 줄었지만, "날짜는 다시 얘기하자. …"에서 날짜 보류를
-# 풀지 않는 경우가 늘어(11/13 → 7/13) 채택하지 않았다(#265). 켜더라도 tools_node가 차례로 실행한다.
-PARALLEL_TOOL_CALLS = False
+# 한 응답에 Tool 요청을 여러 개 받는다. "60명으로 바꾸고 초안은 만들지 마"가 모델 호출 3번 → 2번
+# (C2 p50 7.19 → 6.17초)으로 준다(#265). 보류 재개 실패는 "다시 얘기하자"라는 모호한 문장을 "나중에"로
+# 읽은 것이었고, 분명한 재개·정정·보류 대조는 하나만 받을 때와 같아 켰다(#274). 받은 요청은 tools_node가 차례로 실행한다.
+PARALLEL_TOOL_CALLS = True
 PROMPT = (Path(__file__).parent / "prompts/chat.md").read_text()
 TOOL_NAME = "update_event_conditions"
 SEARCH_TOOL_NAME = "search_past_events"

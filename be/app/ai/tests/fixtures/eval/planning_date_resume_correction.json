@@ -1,0 +1,249 @@
+{
+ "fixture_version": 1,
+ "provenance": "#274 2단계 실측(74ed046, gpt-5.6-luna, planning-agent-v8, 2026-11-04 15:32~15:35)에서 \"날짜는 다시 얘기하자. 인원은 60명으로 바꿔줘. 초안은 만들지 마.\"를 날짜 재보류로 읽어 실패한 턴(attempt resume-274-control-002-date_resume-single)의 다음 상태를 그대로 저장했다. 인원 60, 보류 [dates], 생성 권유 deferred, 마지막 답변 \"날짜는 나중에 다시 논의하고 …\".",
+ "base_revision": 1,
+ "resume_state": {
+  "club_id": "synthetic-latency-club",
+  "conversation_id": "synthetic-latency-conversation",
+  "event_id": "synthetic-latency-event",
+  "payload": {
+   "basis_draft": {
+    "condition_meta": {
+     "headcount": {
+      "evidence": {
+       "message_id": "resume-274-control-002-date_resume-single-user",
+       "quote": "인원은 60명으로 바꿔줘"
+      },
+      "status": "specified"
+     }
+    },
+    "conditions": {
+     "budget_total": null,
+     "end_date": null,
+     "event_type": "MT",
+     "fee_per_person": 25000,
+     "headcount": 60,
+     "location": null,
+     "start_date": null,
+     "title": null
+    },
+    "deferred_topics": [
+     "dates"
+    ]
+   },
+   "generation": {
+    "condition_change_pending": false,
+    "offer": {
+     "basis_draft": {
+      "condition_meta": {
+       "headcount": {
+        "evidence": {
+         "message_id": "resume-274-control-002-date_resume-single-user",
+         "quote": "인원은 60명으로 바꿔줘"
+        },
+        "status": "specified"
+       }
+      },
+      "conditions": {
+       "budget_total": null,
+       "end_date": null,
+       "event_type": "MT",
+       "fee_per_person": 25000,
+       "headcount": 60,
+       "location": null,
+       "start_date": null,
+       "title": null
+      },
+      "deferred_topics": [
+       "dates"
+      ]
+     },
+     "id": "aea216ce-52b7-4048-9e2b-8c4765466067",
+     "status": "deferred",
+     "summary": "사용자가 초안 생성을 원하지 않습니다."
+    },
+    "pending_condition_fields": [],
+    "preview": null
+   },
+   "history": [
+    {
+     "content": "날짜와 장소는 아직 미정이야. 현재 조건으로 준비 순서 초안을 만들지 물어봐 줘. 아직 생성하지는 마.",
+     "id": "fixture-user",
+     "name": null,
+     "role": "user",
+     "tool_call_id": null,
+     "tool_calls": [],
+     "tool_status": null
+    },
+    {
+     "content": "",
+     "id": "fixture-offer-call",
+     "name": null,
+     "role": "assistant",
+     "tool_call_id": null,
+     "tool_calls": [
+      {
+       "args": {
+        "action": "offer",
+        "reason": "날짜와 장소는 미정으로 두고 MT 준비 순서의 초안을 만들 수 있어요."
+       },
+       "id": "fixture-offer-tool",
+       "name": "update_generation_offer"
+      }
+     ],
+     "tool_status": null
+    },
+    {
+     "content": "{\"status\": \"applied\", \"offer\": {\"id\": \"19600000-0000-4000-8000-000000000001\", \"status\": \"pending\", \"summary\": \"날짜와 장소는 미정으로 두고 MT 준비 순서의 초안을 만들 수 있어요.\", \"basis_draft\": {\"conditions\": {\"title\": null, \"event_type\": \"MT\", \"headcount\": 50, \"fee_per_person\": 25000, \"start_date\": null, \"end_date\": null, \"location\": null, \"budget_total\": null}, \"condition_meta\": {}, \"deferred_topics\": [\"dates\"]}}, \"reason\": null}",
+     "id": "bb5953e5-4863-46a8-bb0a-de1cedcfca8e",
+     "name": "update_generation_offer",
+     "role": "tool",
+     "tool_call_id": "fixture-offer-tool",
+     "tool_calls": [],
+     "tool_status": "success"
+    },
+    {
+     "content": "MT, 50명, 참가비 25,000원으로 정리돼 있어요. 날짜와 장소는 미정으로 두고 준비 순서 초안을 만들까요?",
+     "id": "fixture-offer-reply",
+     "name": null,
+     "role": "assistant",
+     "tool_call_id": null,
+     "tool_calls": [],
+     "tool_status": null
+    },
+    {
+     "content": "날짜는 다시 얘기하자. 인원은 60명으로 바꿔줘. 초안은 만들지 마.",
+     "id": "resume-274-control-002-date_resume-single-user",
+     "name": null,
+     "role": "user",
+     "tool_call_id": null,
+     "tool_calls": [],
+     "tool_status": null
+    },
+    {
+     "content": [
+      {
+       "content": [],
+       "encrypted_content": "gAAAAABq6tGfpHtW3K701d7SnjbMBzmcXvtQ7l-NL-65iaMucVVghklSzefsBvvM63Vclzxs8y-fJeVdTFWFupJk-RY9V0VkyR1Gl8cWBVp3hAhDniFkkUiGfqim1uofC2AvJUt_yE9-toLKu0pspQWyygVZ-kB0FGXoCEDJ3yMpO6GQxNOhLTZNWcBS1gdWx6wTaKdSLSeVZVuKz1WNtB-742_8BkinbYoeVyHB6RcwmY4m86XSEFs8dDeaoxBZUxolCFmZBta03bjCNm8Y47F1XxYBgnIk3S2WJnYakUsqye5J4vXEEoRuB0qfpfyRsFNuOCsEAMsw5kx2TQQIOaSDU5VcBntu3QE7mo1IuI5jp5st0uOkU3fsaOXofmXNLBPiVbsTimfRsqHn-25px4OkLAZWNQQ1YFayKjZwqoxWhawYquWxxVKA4A6t0LrkKNXUqwKc5Q6qUT-U9A9_Dkw_j2PkepepET_rRP6ajJkbSH0dOwE6f8pGWQ66hKjcBgJZE1UN0Gr5I3fTBGN2MdgmchzJQB8z8yRSTreSVbokMI1AiK10DHY8NPc1Qwlw52-jQULPv7SuNVYchnzoQfRkFPsPjFsjlO8RG1aZfOBd4zfR_uQ3CFBAQ5-vQykqiGVlazp4WOlmXnUWzqzrMf6wPaUT4ofOzG8dd4TOXZi2s8GJmeVfD2rSWOQQgxdHUgs_vt0q7zpBpTw91CMFvhWBxyzqZdIMzUnA9KCa1wEUl6TKMvUezd27ac5iAkBOiZWlXo-cGN-EesHX_mH5O4Pq3RyOhoYGsEvbO_kNbOaJNPeQqKkr1VdPy8QerDI844v41kZSkArZeItchNSn94HsxXO1B85sUx_Lbrhw9B5bRPsqTKk0KI2MFpQchWPJdX0SXnu1ryGE0WvZDITcFPMj3tCla8d1NlmQlp5r2QH8e8ygM3_HNzTKmT0mLKgX1ZNTeD15yBGIOKukCG4N2oamSdh--1gcLkNIgG3859F_WMzweHcXikoygHqM2kX1_cE7WurYK7_EeOzZPnVP1NReeBA5YitZcES-Y9cZg1RBIEA8LLvE5-FfvGPVLsJQmykj991qy4zxdnYoPzm9NF9u4TVvDCU9u7TKe8V5bXpuV_jxBn_AFQKCOcd3gmAvMRbnI_ycS5-oOrwQpHJlg8x85Jfds73N3NeclGa0dmo7CLJbGue4T_qW5L_nEnrsfWZw44hSChKSyCCz504Xp3NJ_WYM-zqL4isoy7y5TUype9VMJw7s45iOqCpeZfMIaZ9VirfZe9omrdGMTquGVeZi7ihzglScmbQmW96Mc6ZDhiW4AvtcupmS3dVdNypo6c231tNpGRytIavn1WjviJdSC7T8xW2DRp_psvHHlxus-rpdFY7BVKU2Poyrqe3HHcidwbt5MdMxhzrRV1PSeqMOXbIc2LKneLw2D6ZjrLyTL4Hmm7uB6aJD-9q27vzu14oRUD85u1lioOmT5l7w-qLLkfgX9KXFOFcm6K_2xslle0E-bCr3Ck5Q3wCuepwxFJuQjnNoNOe3D8o1Ay7x0EK2uFRRJzdx6eGb8lxufgD0yFqmOY4xa9AppN8-5IctseRSiag3su0jobqDZeMgaFMf7FjzxyrgPoO6s9MgzUlkLuq-v61eVtjys007Ub_hj5fqiy5w0e2TfAzu6t7QpCQpbaBjPs7qgEaDey677ovE3G6EbORp6aAr7WUuyV225381tuTZC26UQ22dAtUWc7ciOpOcTy68Xkm99basTPvOyCyAoeEluXWULMBRpmF5GXSINCWNWAHdw8w9wINC8Z5se4unawSB4OrbI9rocvduDdlj5I_FqRKQjGBB-MhufYTvFkV4FWC2BcxMIl7JvBx1MuhV_XAM6lNxQ3ltYDsqF-EiglhSH3h-cY59QWzJzFKQBDV5K6nz_X6fczNM08syAhsOpWVj3FrchgKpWfJ2V2OhPCmsSdW2h0qk72t--gaEr5glrMw_imT4Idt3zjDs7N85AtBTxCX5rn8AKI_OwewVx-NOtU_Ao6FnuL3190rxcs9NrDSrBwdcP_cQxoOzgiAe0hUly3mpDV-5SppVfw0VWE5seUVBYJJ-WQWot41fMLmxiIFe9FOI9OyaEMbYbBQ-wARSKOpmL-Yp1wAbGyx1XYpgPExGELLO1CjfhNfNBzmYSqNnhFLmGVOtuVFX_FeArN7_tr2r7ysEF-T0olqo1gk8rig4bFJVNpgVS7IHIAS0Fc-mPoLyOcmvxb7VNcrnMv_EbOcy_7Rqg8MPa6KmaPloAgZ0irWdzMUIwtqKEd7m8YGJ4dMP_kxoV1fYAsnOagrRh3GJgNffnFireDlGj6kPt5PVoFszgNarKe4vFPm58BT2C9KFnMfqQ5gzX6izZXyse7mOHKaNwuvGOLJgDzLJiFsSbOfaoCTMhqN9M-Ha2NzzUtZ0qr-tDZJvm3q9QRlQ5M9_OwcjoM-EBHtAjhrrADZyoCrg4HHxx4-B3jWtBnutPk5B00hR2Bo4VIpQNDi1l4tlDAZQQQX1Dlntxe4omMAxhSUFIF_ZsACXHyM_4i40d_6YFkmVeUYqk4kovQZzhMm2_d1n8xh_g6lTql8t0Ci6h_ol3W0NFiBJywyKvbQh4yhEU0c-my-xo3XgpwpIspEpT6mf0_lPLOEXgCHqjL5j4SxX4Ei3oMHX8DfaTGDVaFkTwimGj10BpmH4u76KcM7kLZRf4W7fX7UwjiRNe1BUWDn_CcC5pjzvZYvhdVmg_SKn5wJIW4EZ1CO9d8F1fQvKucsXfB4oPfILKOMq_86jDZjKlTOTFQ7Z6usa-vSo4Tx6fOM5uN7QcvFXDxMEzhXA9dDGiSDWr4GyMRo0t261yV3GkPy3bkUrIweR55Fxrp116hkUjzUG2EHgjMX16kDm-defrx9PnLa91nGGQSoIHx79yQcrGmJ8vqkglSLB-HiLOQWK8W_dfQQH_s8Sjg==",
+       "id": "rs_0a48c96104f1ac40006aead19d927887d08fb56f9f099ca0af",
+       "summary": [],
+       "type": "reasoning"
+      },
+      {
+       "arguments": "{\"changes\":[{\"op\":\"SET\",\"change\":{\"field\":\"headcount\",\"value\":60},\"status\":\"specified\",\"evidence\":{\"message_id\":\"resume-274-control-002-date_resume-single-user\",\"quote\":\"인원은 60명으로 바꿔줘\"} }],\"defer_topics\":[{\"topic\":\"dates\",\"evidence\":{\"message_id\":\"resume-274-control-002-date_resume-single-user\",\"quote\":\"날짜는 다시 얘기하자\"}}],\"resume_topics\":[] }",
+       "call_id": "call_fhb7avyX9VMUtW5Z73VUttj9",
+       "id": "fc_0a48c96104f1ac40006aead19e95c887d0b6a3ecb6ee690dc2",
+       "name": "update_event_conditions",
+       "status": "completed",
+       "type": "function_call"
+      }
+     ],
+     "id": "resp_0a48c96104f1ac40006aead19d0e2087d0ba5d08a3f4488d25",
+     "name": null,
+     "role": "assistant",
+     "tool_call_id": null,
+     "tool_calls": [
+      {
+       "args": {
+        "changes": [
+         {
+          "change": {
+           "field": "headcount",
+           "value": 60
+          },
+          "evidence": {
+           "message_id": "resume-274-control-002-date_resume-single-user",
+           "quote": "인원은 60명으로 바꿔줘"
+          },
+          "op": "SET",
+          "status": "specified"
+         }
+        ],
+        "defer_topics": [
+         {
+          "evidence": {
+           "message_id": "resume-274-control-002-date_resume-single-user",
+           "quote": "날짜는 다시 얘기하자"
+          },
+          "topic": "dates"
+         }
+        ],
+        "resume_topics": []
+       },
+       "id": "call_fhb7avyX9VMUtW5Z73VUttj9",
+       "name": "update_event_conditions"
+      }
+     ],
+     "tool_status": null
+    },
+    {
+     "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":60,\"fee_per_person\":25000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"resume-274-control-002-date_resume-single-user\",\"quote\":\"인원은 60명으로 바꿔줘\"}}},\"deferred_topics\":[\"dates\"]},\"changed_fields\":[\"headcount\"],\"reason\":null}",
+     "id": "6c65c2c5-8200-4356-bac3-ec36a2d164a9",
+     "name": "update_event_conditions",
+     "role": "tool",
+     "tool_call_id": "call_fhb7avyX9VMUtW5Z73VUttj9",
+     "tool_calls": [],
+     "tool_status": "success"
+    },
+    {
+     "content": [
+      {
+       "arguments": "{\"action\":\"defer\",\"reason\":\"사용자가 초안 생성을 원하지 않습니다.\",\"evidence\":{\"message_id\":\"resume-274-control-002-date_resume-single-user\",\"quote\":\"초안은 만들지 마\"}}",
+       "call_id": "call_Z6yNpa3TxvHDg0ELXgqJnnEw",
+       "id": "fc_0a48c96104f1ac40006aead1a0b30c87d092a3944eb1fe1008",
+       "name": "update_generation_offer",
+       "status": "completed",
+       "type": "function_call"
+      }
+     ],
+     "id": "resp_0a48c96104f1ac40006aead1a0217c87d095d378d69dc6377a",
+     "name": null,
+     "role": "assistant",
+     "tool_call_id": null,
+     "tool_calls": [
+      {
+       "args": {
+        "action": "defer",
+        "evidence": {
+         "message_id": "resume-274-control-002-date_resume-single-user",
+         "quote": "초안은 만들지 마"
+        },
+        "reason": "사용자가 초안 생성을 원하지 않습니다."
+       },
+       "id": "call_Z6yNpa3TxvHDg0ELXgqJnnEw",
+       "name": "update_generation_offer"
+      }
+     ],
+     "tool_status": null
+    },
+    {
+     "content": "{\"status\":\"applied\",\"offer\":{\"id\":\"aea216ce-52b7-4048-9e2b-8c4765466067\",\"status\":\"deferred\",\"summary\":\"사용자가 초안 생성을 원하지 않습니다.\",\"basis_draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":60,\"fee_per_person\":25000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"resume-274-control-002-date_resume-single-user\",\"quote\":\"인원은 60명으로 바꿔줘\"}}},\"deferred_topics\":[\"dates\"]}},\"reason\":null}",
+     "id": "3700c204-224c-4270-b7fc-7d92262a3574",
+     "name": "update_generation_offer",
+     "role": "tool",
+     "tool_call_id": "call_Z6yNpa3TxvHDg0ELXgqJnnEw",
+     "tool_calls": [],
+     "tool_status": "success"
+    },
+    {
+     "content": [
+      {
+       "annotations": [],
+       "id": "msg_0a48c96104f1ac40006aead1a2452c87d08baa334a4edaf9e7",
+       "phase": "final_answer",
+       "text": "인원은 60명으로 변경했어요. 날짜는 나중에 다시 논의하고, 준비 순서 초안은 지금 만들지 않을게요.",
+       "type": "text"
+      }
+     ],
+     "id": "resp_0a48c96104f1ac40006aead1a1b4f487d09dde475a052c9005",
+     "name": null,
+     "role": "assistant",
+     "tool_call_id": null,
+     "tool_calls": [],
+     "tool_status": null
+    }
+   ]
+  },
+  "schema_version": 1
+ }
+}
