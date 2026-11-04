@@ -368,7 +368,7 @@ function ReviewFields({
           {notice}
         </p>
       )}
-      <Button type="submit" disabled={!valid || !checked || busy}>
+      <Button type="submit" loading={busy} disabled={!valid || !checked}>
         {busy ? '서버 확인 중…' : existing ? '확인한 내용으로 예약 변경' : '확인 후 저장·예약'}
       </Button>
     </form>
