@@ -1,0 +1,891 @@
+{
+  "report_version": 1,
+  "session_id": "g1-reasoning-03",
+  "status": "completed",
+  "started_at": "2026-11-04T14:18:04.442235+09:00",
+  "purpose": "#264 생성 모델 추론 깊이 default/low 번갈아 비교",
+  "variants": {
+    "default": "reasoning 미지정(공급자 기본값, 값 미확인)",
+    "low": "reasoning={\"effort\": \"low\"}"
+  },
+  "scope": "생성 프롬프트·출력 한도·스트리밍·모델은 같고 reasoning만 다르다. 사례는 G1",
+  "fixture_sha256": "f4a8fa5f6df9c3415ad963edadc3c50ab5a72f04efb72a2266e1130f7c9db425",
+  "generation_prompt_version": "planning-generation-v1",
+  "generation_prompt_sha256": "57b54f2ab15a4fbd775aac42a06c63e0cbbf33a380dcff10b177bd0d3fb94902",
+  "script_sha256": "11b25e146a7e143e67ef9ee19a7f9ef8888b55044157fc98c71f820b726faf17",
+  "profile": {
+    "rounds": 10,
+    "interval_seconds": 1.0,
+    "concurrency": 1,
+    "case_id": "G1"
+  },
+  "environment": {
+    "mode": "real_model",
+    "python": "3.13.14",
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "dependencies": {
+      "langgraph": "1.2.12",
+      "langchain-openai": "1.6.2",
+      "pydantic": "2.13.5",
+      "openai": "3.16.2"
+    },
+    "commit": "7652a904490803a4148c273a74ebbf929fa90456",
+    "dirty": false,
+    "source_sha256": {
+      "__init__.py": "30ba2d1ad1997cdb4afb633bb650f3bd380847cf35148a7052839235c9f86af3",
+      "contracts.py": "af92fab0ac1fec0c71853a79af113855550194544b6e185ba0b92a8894bd87fc",
+      "facade.py": "7f58ebfa02096836164cde813f1610d7ec31986ec6d1a9b84ae85dbf3f1818d6",
+      "ports.py": "965b8a802e992a98e7f2fafd0859efe9c2595fd80ceee27794b7bcbd8ec99207",
+      "config.py": "8e73de866fb2ba884d892b3e9d073d56e369af7adcfd4574f66619e70ec35042",
+      "llm.py": "47e55dbcb69ce4ea9cc887b3e5e5857a3f5368f178aed53d3f4a4916ab468e6b",
+      "errors.py": "68d223bf71b58a42c786ee3a9e63322827b81cb41bc6a9e5f47870c426dab296",
+      "planning_catalog.py": "79a09450a2a26a149faf28a82a9b6bacd08a55551898701eab5f7d187db4ded0",
+      "features/planning/agent/generation_tools.py": "0a586b5750d93f86678464a80b2529d4b31dce3aeb9b5843416247321d669bdd",
+      "features/planning/agent/graph.py": "83292a96948abb8a37edb94948c855e503a0b054ea9c02ecbc3f19d04b879b88",
+      "features/planning/agent/nodes.py": "976db5df47a550f1521f60eb57a088a343d095f0734e2d10381ecfc608f49921",
+      "features/planning/agent/record_tool.py": "49c78509084ac094835d7b08a00e8b94bd701767b9796a7f45e621b85dd7e587",
+      "features/planning/agent/schemas.py": "98a149880147d89b018ca3aed23f3f6e6fedcdbaee0892d0a2699b07e687199d",
+      "features/planning/agent/state.py": "9bb22837b9f662ef8e1d8b398fd398ee2032bc5fcd6f75718f5d24130df07180",
+      "features/planning/agent/tools.py": "a7af857e94efc4619a9a021dbb57b2a59ae4f6672a66648daf869aa733fc2c6a",
+      "features/planning/generation/__init__.py": "d64c4710852440e504ea0b350647283c050637a2fbafa6864c0b81feeba87f26",
+      "features/planning/generation/catalog.py": "f100ef03fd8ed059edf8a74f58c5200cd2316590f1454852eacb2a0caaf0c7d5",
+      "features/planning/generation/entrypoints.py": "ee0734da3a0013f61f864bc518c8182ab96cd776e67d9ebc6438f4a20b825aff",
+      "features/planning/generation/graph.py": "c9c19c89c078968d11afb121de15a46f2c918fe7bc96f92c3a1ac194cca1d112",
+      "features/planning/generation/model.py": "39c45842ef85e9931b934a00dce4f3c5a9654c041680baa4320de09c7c4dcd53",
+      "features/planning/generation/offers.py": "330a785334f9ce1c7e3094b4e1b242375cf2157474da25087bf1df75277e413a",
+      "features/planning/generation/readiness.py": "6ea211a1ae19f22ac97ca8f070bd38753158cf7ee18f05ff9beb42f76cdc5b28",
+      "features/planning/generation/schemas.py": "78c19e499702e2aec6ea55c8da85e8c1b2507c13331182816b0bc7a7dd886253",
+      "features/planning/generation/validation.py": "d473ab9aea7528abbf73dc3b8b174e6d5c22f08b8fd53e4d595a6890f1079e01",
+      "features/planning/legacy/__init__.py": "ccb2cf6104f535a3f11a69d8519c70478e7c869fe671625aa31589c10712973e",
+      "features/planning/legacy/lookup.py": "f9ba70f85e03e171191727da47f4ecfa37751337e4a68785116a9d08a774cee7",
+      "features/planning/legacy/nodes.py": "729f2e11f2cac2bd017712cc74ccb74908b4c2e69a05308982e7854a961d441b",
+      "features/planning/legacy/questions.py": "c4c61a997fef981ce3c7a8f299993a915ca175779b0963ff67d1557d9f1e8c2a",
+      "features/planning/legacy/records.py": "7c41800667c79c90f8ef4249e5b98cbc4e3237ff5f8222290341533e9698fd8b",
+      "features/planning/legacy/schemas.py": "d85c6a8abe05c72c72fb60408939eda4fae4567aab5adf3b8ab757c79ee36247",
+      "features/planning/legacy/turn_assembly.py": "6789cc7014116c7bbb2a35e4289d45232550560783327b6d79b5539b7fa9c9cb",
+      "features/planning/legacy/turn_flow.py": "1d78bf73d46fce3a2513bf51fa033cafa4336ed2373ff2d20ac3f21172e976aa",
+      "features/planning/legacy/turn_policy.py": "03eddee6dd029c8901c181e4a8d958ec14cd71ac8157cc8f606938b571d119a8",
+      "features/planning/legacy/turn_schemas.py": "d452ffb1d2669f92a1e698ec506c8b3cb03a4fe04ea6546469bd427791dd11ea",
+      "features/planning/public_workflow.py": "0dd41ab429d7afd06606eb0c98059d373c91a5689e3637a7a9e2d6dffcebd5ce",
+      "features/planning/schemas.py": "76322b809f170e2d4a26f86e018d51a67dad5f981ffc9bcb00962e0c07ed7651",
+      "features/planning/state_codec.py": "a76ac37d00d37d8db01280067729473c2b1888941a9b4fc536fd1935f649035b",
+      "features/planning/agent/prompts/chat.md": "76ca3203e1f5ad89ed0b6300dd9d4beab7b5dbf6ed2588b3fbc5e721e09be412",
+      "features/planning/generation/prompts/compose.md": "57b54f2ab15a4fbd775aac42a06c63e0cbbf33a380dcff10b177bd0d3fb94902",
+      "features/planning/legacy/README.md": "b490dbbe3906fff65377c5eb6cccd627260370c29411218a8292273107041ebc",
+      "features/planning/legacy/prompts/decide_lookup.md": "3c2a3bbdfb7ba10f6fe7b3640431310db436d6bd42df213aa103406761658b82",
+      "features/planning/legacy/prompts/extract_conditions.md": "b4aaf9d1c66d57c7739526bb90dd6661224c1ed650fdede7ed30d00c8df8735b",
+      "scripts/measure_planning_latency.py": "da5c9d8e456719513e1515d903b811ef23fa0373a212a83ed9fbe4ef1f49ee23",
+      "scripts/planning_latency_inputs.py": "e9ffc6fd6983a81fd65d05d03d30a9cc7173f79e13f0178c24eb396da3a2c2a2",
+      "scripts/planning_latency_checks.py": "5daaf38ca129b9f03404bdfbe96f89fb79c7e2a91162e3bc19f745282d64ab5c",
+      "scripts/planning_latency_observation.py": "ebcca9a7da5cc8a6638abc3c96bd264ddce7bd117d05c392c416a47336f98f55"
+    },
+    "model": "gpt-5.6-luna",
+    "model_options": {
+      "temperature": "not_set",
+      "reasoning": {
+        "default": null,
+        "low": {
+          "effort": "low"
+        }
+      },
+      "sdk_max_retries": 2,
+      "request_timeout_seconds": 60.0,
+      "generation_max_tokens": 8192,
+      "generation_streaming": true
+    },
+    "coverage": {
+      "timing": "public_function_with_nested_spans",
+      "stage_timings": "planning_function_wrappers_v1",
+      "model_call_attempts": "wrapped_invoker_attempts",
+      "http_attempts": null,
+      "token_usage": "langchain_usage_metadata_last_response",
+      "model_input_chars": null,
+      "unavailable_reason": "SDK 내부 HTTP 시도는 미관측. 토큰은 재시도 중 마지막 응답의 값. 구간의 메시지 문자 수는 text만 포함"
+    }
+  },
+  "validator_source": {
+    "commit": "7652a904490803a4148c273a74ebbf929fa90456",
+    "sha256": {
+      "features/planning/generation/graph.py": "c9c19c89c078968d11afb121de15a46f2c918fe7bc96f92c3a1ac194cca1d112",
+      "features/planning/generation/validation.py": "d473ab9aea7528abbf73dc3b8b174e6d5c22f08b8fd53e4d595a6890f1079e01",
+      "features/planning/generation/schemas.py": "78c19e499702e2aec6ea55c8da85e8c1b2507c13331182816b0bc7a7dd886253",
+      "features/planning/generation/catalog.py": "f100ef03fd8ed059edf8a74f58c5200cd2316590f1454852eacb2a0caaf0c7d5",
+      "contracts.py": "af92fab0ac1fec0c71853a79af113855550194544b6e185ba0b92a8894bd87fc",
+      "planning_catalog.py": "79a09450a2a26a149faf28a82a9b6bacd08a55551898701eab5f7d187db4ded0",
+      "errors.py": "68d223bf71b58a42c786ee3a9e63322827b81cb41bc6a9e5f47870c426dab296"
+    }
+  },
+  "planned": 22,
+  "finished": 22,
+  "finished_at": "2026-11-04T14:25:34.830695+09:00",
+  "summary": {
+    "default": {
+      "latency": {
+        "counts": {
+          "planned": 10,
+          "started": 10,
+          "finished": 10,
+          "completed": 10,
+          "success": 10,
+          "failed": 0,
+          "interrupted": 0,
+          "pending": 0,
+          "not_started": 0
+        },
+        "success_rate": 1.0,
+        "provisional": false,
+        "success_ms": {
+          "n": 10,
+          "p50_ms": 18683.975687500002,
+          "p95_ms": 26061.0950977,
+          "mean_ms": 20256.913008300002,
+          "max_ms": 26395.650916
+        },
+        "failure_ms": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "mean_ms": null,
+          "max_ms": null
+        },
+        "completed_ms": {
+          "n": 10,
+          "p50_ms": 18683.975687500002,
+          "p95_ms": 26061.0950977,
+          "mean_ms": 20256.913008300002,
+          "max_ms": 26395.650916
+        },
+        "interrupted_wait_ms": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "mean_ms": null,
+          "max_ms": null
+        },
+        "failures_by_category": {},
+        "observation": {
+          "observed_requests": 10,
+          "unobserved_requests": 0,
+          "complete": true,
+          "model_call_attempts": {
+            "agent_model": 20,
+            "generation_model": 10
+          },
+          "by_stage": {
+            "agent_model": {
+              "calls": 20,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 20,
+                "p50_ms": 3224.62475,
+                "p95_ms": 9799.14431845,
+                "mean_ms": 3839.51153745,
+                "max_ms": 10272.320042
+              },
+              "ok_call_ms": {
+                "n": 20,
+                "p50_ms": 3224.62475,
+                "p95_ms": 9799.14431845,
+                "mean_ms": 3839.51153745,
+                "max_ms": 10272.320042
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 10,
+                "p50_ms": 5893.0325625,
+                "p95_ms": 12811.897029049998,
+                "mean_ms": 7679.0230749,
+                "max_ms": 13604.160167
+              },
+              "error_codes": {},
+              "usage": {
+                "observed_calls": 20,
+                "missing_calls": {},
+                "per_call": {
+                  "input_tokens": {
+                    "n": 20,
+                    "p50": 5015.0,
+                    "p95": 6749.5,
+                    "mean": 5074.55,
+                    "max": 6759
+                  },
+                  "output_tokens": {
+                    "n": 20,
+                    "p50": 124.0,
+                    "p95": 278.3,
+                    "mean": 143.65,
+                    "max": 284
+                  },
+                  "reasoning_tokens": {
+                    "n": 20,
+                    "p50": 18.0,
+                    "p95": 91.1,
+                    "mean": 25.95,
+                    "max": 93
+                  },
+                  "cached_input_tokens": {
+                    "n": 20,
+                    "p50": 3206.0,
+                    "p95": 3206.0,
+                    "mean": 3206.0,
+                    "max": 3206
+                  }
+                },
+                "totals": {
+                  "input_tokens": 101491,
+                  "output_tokens": 2873,
+                  "reasoning_tokens": 519,
+                  "cached_input_tokens": 64120
+                },
+                "reasoning_share_of_output": {
+                  "calls": 20,
+                  "ratio": 0.1806474068917508
+                },
+                "cached_share_of_input": {
+                  "calls": 20,
+                  "ratio": 0.6317801578465085
+                }
+              }
+            },
+            "generation": {
+              "calls": 10,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 10,
+                "p50_ms": 12739.0366255,
+                "p95_ms": 13813.548018899999,
+                "mean_ms": 12567.0465793,
+                "max_ms": 13826.866875
+              },
+              "ok_call_ms": {
+                "n": 10,
+                "p50_ms": 12739.0366255,
+                "p95_ms": 13813.548018899999,
+                "mean_ms": 12567.0465793,
+                "max_ms": 13826.866875
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 10,
+                "p50_ms": 12739.0366255,
+                "p95_ms": 13813.548018899999,
+                "mean_ms": 12567.0465793,
+                "max_ms": 13826.866875
+              },
+              "error_codes": {}
+            },
+            "compose_plan": {
+              "calls": 10,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 10,
+                "p50_ms": 12731.7556665,
+                "p95_ms": 13810.646203799999,
+                "mean_ms": 12562.3874208,
+                "max_ms": 13824.357666
+              },
+              "ok_call_ms": {
+                "n": 10,
+                "p50_ms": 12731.7556665,
+                "p95_ms": 13810.646203799999,
+                "mean_ms": 12562.3874208,
+                "max_ms": 13824.357666
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 10,
+                "p50_ms": 12731.7556665,
+                "p95_ms": 13810.646203799999,
+                "mean_ms": 12562.3874208,
+                "max_ms": 13824.357666
+              },
+              "error_codes": {}
+            },
+            "generation_model": {
+              "calls": 10,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 10,
+                "p50_ms": 12731.323208999998,
+                "p95_ms": 13810.43071615,
+                "mean_ms": 12561.932700000001,
+                "max_ms": 13824.177916
+              },
+              "ok_call_ms": {
+                "n": 10,
+                "p50_ms": 12731.323208999998,
+                "p95_ms": 13810.43071615,
+                "mean_ms": 12561.932700000001,
+                "max_ms": 13824.177916
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 10,
+                "p50_ms": 12731.323208999998,
+                "p95_ms": 13810.43071615,
+                "mean_ms": 12561.932700000001,
+                "max_ms": 13824.177916
+              },
+              "error_codes": {},
+              "usage": {
+                "observed_calls": 10,
+                "missing_calls": {},
+                "per_call": {
+                  "input_tokens": {
+                    "n": 10,
+                    "p50": 2057.0,
+                    "p95": 2057.0,
+                    "mean": 2057.0,
+                    "max": 2057
+                  },
+                  "output_tokens": {
+                    "n": 10,
+                    "p50": 1403.5,
+                    "p95": 1487.25,
+                    "mean": 1403.5,
+                    "max": 1503
+                  },
+                  "reasoning_tokens": {
+                    "n": 10,
+                    "p50": 483.0,
+                    "p95": 516.0,
+                    "mean": 468.9,
+                    "max": 516
+                  },
+                  "cached_input_tokens": {
+                    "n": 10,
+                    "p50": 2054.0,
+                    "p95": 2054.0,
+                    "mean": 2054.0,
+                    "max": 2054
+                  }
+                },
+                "totals": {
+                  "input_tokens": 20570,
+                  "output_tokens": 14035,
+                  "reasoning_tokens": 4689,
+                  "cached_input_tokens": 20540
+                },
+                "reasoning_share_of_output": {
+                  "calls": 10,
+                  "ratio": 0.334093338083363
+                },
+                "cached_share_of_input": {
+                  "calls": 10,
+                  "ratio": 0.9985415653864852
+                }
+              }
+            },
+            "validate_plan": {
+              "calls": 10,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 10,
+                "p50_ms": 0.36572899999999997,
+                "p95_ms": 1.2107274499999992,
+                "mean_ms": 0.5385457,
+                "max_ms": 1.517834
+              },
+              "ok_call_ms": {
+                "n": 10,
+                "p50_ms": 0.36572899999999997,
+                "p95_ms": 1.2107274499999992,
+                "mean_ms": 0.5385457,
+                "max_ms": 1.517834
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 10,
+                "p50_ms": 0.36572899999999997,
+                "p95_ms": 1.2107274499999992,
+                "mean_ms": 0.5385457,
+                "max_ms": 1.517834
+              },
+              "error_codes": {}
+            }
+          }
+        }
+      },
+      "success_step_count": {
+        "n": 10,
+        "median": 13.0,
+        "min": 12,
+        "max": 13
+      },
+      "violations": {},
+      "failures": {}
+    },
+    "low": {
+      "latency": {
+        "counts": {
+          "planned": 10,
+          "started": 10,
+          "finished": 10,
+          "completed": 10,
+          "success": 6,
+          "failed": 4,
+          "interrupted": 0,
+          "pending": 0,
+          "not_started": 0
+        },
+        "success_rate": 0.6,
+        "provisional": false,
+        "success_ms": {
+          "n": 6,
+          "p50_ms": 18440.7580835,
+          "p95_ms": 21572.702146,
+          "mean_ms": 18476.753882166668,
+          "max_ms": 22536.150875
+        },
+        "failure_ms": {
+          "n": 4,
+          "p50_ms": 18231.5910835,
+          "p95_ms": 25531.3407518,
+          "mean_ms": 20112.7671875,
+          "max_ms": 26673.582083
+        },
+        "completed_ms": {
+          "n": 10,
+          "p50_ms": 18440.7580835,
+          "p95_ms": 24811.738039399996,
+          "mean_ms": 19131.1592043,
+          "max_ms": 26673.582083
+        },
+        "interrupted_wait_ms": {
+          "n": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "mean_ms": null,
+          "max_ms": null
+        },
+        "failures_by_category": {
+          "invalid_plan": {
+            "n": 4,
+            "p50_ms": 18231.5910835,
+            "p95_ms": 25531.3407518,
+            "mean_ms": 20112.7671875,
+            "max_ms": 26673.582083
+          }
+        },
+        "observation": {
+          "observed_requests": 10,
+          "unobserved_requests": 0,
+          "complete": true,
+          "model_call_attempts": {
+            "agent_model": 20,
+            "generation_model": 10
+          },
+          "by_stage": {
+            "agent_model": {
+              "calls": 20,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 20,
+                "p50_ms": 2867.6147505,
+                "p95_ms": 6492.2226417,
+                "mean_ms": 3234.97637305,
+                "max_ms": 6689.635334
+              },
+              "ok_call_ms": {
+                "n": 20,
+                "p50_ms": 2867.6147505,
+                "p95_ms": 6492.2226417,
+                "mean_ms": 3234.97637305,
+                "max_ms": 6689.635334
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 10,
+                "p50_ms": 5758.859125,
+                "p95_ms": 9552.569271349998,
+                "mean_ms": 6469.9527461,
+                "max_ms": 10240.016459
+              },
+              "error_codes": {},
+              "usage": {
+                "observed_calls": 20,
+                "missing_calls": {},
+                "per_call": {
+                  "input_tokens": {
+                    "n": 20,
+                    "p50": 3578.5,
+                    "p95": 6608.25,
+                    "mean": 4459.0,
+                    "max": 6613
+                  },
+                  "output_tokens": {
+                    "n": 20,
+                    "p50": 95.5,
+                    "p95": 247.40000000000003,
+                    "mean": 125.55,
+                    "max": 274
+                  },
+                  "reasoning_tokens": {
+                    "n": 20,
+                    "p50": 23.5,
+                    "p95": 76.9,
+                    "mean": 32.95,
+                    "max": 94
+                  },
+                  "cached_input_tokens": {
+                    "n": 20,
+                    "p50": 3206.0,
+                    "p95": 3206.0,
+                    "mean": 3206.0,
+                    "max": 3206
+                  }
+                },
+                "totals": {
+                  "input_tokens": 89180,
+                  "output_tokens": 2511,
+                  "reasoning_tokens": 659,
+                  "cached_input_tokens": 64120
+                },
+                "reasoning_share_of_output": {
+                  "calls": 20,
+                  "ratio": 0.2624452409398646
+                },
+                "cached_share_of_input": {
+                  "calls": 20,
+                  "ratio": 0.7189952904238619
+                }
+              }
+            },
+            "generation": {
+              "calls": 10,
+              "error_calls": 4,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 10,
+                "p50_ms": 12183.8256875,
+                "p95_ms": 17775.943987649993,
+                "mean_ms": 12649.7233209,
+                "max_ms": 21202.737
+              },
+              "ok_call_ms": {
+                "n": 6,
+                "p50_ms": 11718.849917,
+                "p95_ms": 12367.36425025,
+                "mean_ms": 11316.024423833333,
+                "max_ms": 12395.243042
+              },
+              "error_call_ms": {
+                "n": 4,
+                "p50_ms": 12855.2730415,
+                "p95_ms": 20060.472662549997,
+                "mean_ms": 14650.2716665,
+                "max_ms": 21202.737
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 10,
+                "p50_ms": 12183.8256875,
+                "p95_ms": 17775.943987649993,
+                "mean_ms": 12649.7233209,
+                "max_ms": 21202.737
+              },
+              "error_codes": {
+                "invalid_plan": 4
+              }
+            },
+            "compose_plan": {
+              "calls": 10,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 10,
+                "p50_ms": 12178.7299375,
+                "p95_ms": 17771.580626749994,
+                "mean_ms": 12644.9941001,
+                "max_ms": 21197.176208
+              },
+              "ok_call_ms": {
+                "n": 10,
+                "p50_ms": 12178.7299375,
+                "p95_ms": 17771.580626749994,
+                "mean_ms": 12644.9941001,
+                "max_ms": 21197.176208
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 10,
+                "p50_ms": 12178.7299375,
+                "p95_ms": 17771.580626749994,
+                "mean_ms": 12644.9941001,
+                "max_ms": 21197.176208
+              },
+              "error_codes": {}
+            },
+            "generation_model": {
+              "calls": 10,
+              "error_calls": 0,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 10,
+                "p50_ms": 12178.4315835,
+                "p95_ms": 17771.332762799993,
+                "mean_ms": 12644.6991085,
+                "max_ms": 21196.884375
+              },
+              "ok_call_ms": {
+                "n": 10,
+                "p50_ms": 12178.4315835,
+                "p95_ms": 17771.332762799993,
+                "mean_ms": 12644.6991085,
+                "max_ms": 21196.884375
+              },
+              "error_call_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 10,
+                "p50_ms": 12178.4315835,
+                "p95_ms": 17771.332762799993,
+                "mean_ms": 12644.6991085,
+                "max_ms": 21196.884375
+              },
+              "error_codes": {},
+              "usage": {
+                "observed_calls": 10,
+                "missing_calls": {},
+                "per_call": {
+                  "input_tokens": {
+                    "n": 10,
+                    "p50": 2057.0,
+                    "p95": 2057.0,
+                    "mean": 2057.0,
+                    "max": 2057
+                  },
+                  "output_tokens": {
+                    "n": 10,
+                    "p50": 1192.0,
+                    "p95": 1342.55,
+                    "mean": 1198.0,
+                    "max": 1397
+                  },
+                  "reasoning_tokens": {
+                    "n": 10,
+                    "p50": 218.5,
+                    "p95": 385.29999999999995,
+                    "mean": 258.3,
+                    "max": 406
+                  },
+                  "cached_input_tokens": {
+                    "n": 10,
+                    "p50": 2054.0,
+                    "p95": 2054.0,
+                    "mean": 2054.0,
+                    "max": 2054
+                  }
+                },
+                "totals": {
+                  "input_tokens": 20570,
+                  "output_tokens": 11980,
+                  "reasoning_tokens": 2583,
+                  "cached_input_tokens": 20540
+                },
+                "reasoning_share_of_output": {
+                  "calls": 10,
+                  "ratio": 0.21560934891485808
+                },
+                "cached_share_of_input": {
+                  "calls": 10,
+                  "ratio": 0.9985415653864852
+                }
+              }
+            },
+            "validate_plan": {
+              "calls": 10,
+              "error_calls": 4,
+              "interrupted_calls": 0,
+              "pending_calls": 0,
+              "not_generated_calls": 0,
+              "per_call_ms": {
+                "n": 10,
+                "p50_ms": 0.539479,
+                "p95_ms": 1.2743333999999997,
+                "mean_ms": 0.7056375,
+                "max_ms": 1.410084
+              },
+              "ok_call_ms": {
+                "n": 6,
+                "p50_ms": 0.46152099999999996,
+                "p95_ms": 0.7732607499999999,
+                "mean_ms": 0.474278,
+                "max_ms": 0.868042
+              },
+              "error_call_ms": {
+                "n": 4,
+                "p50_ms": 1.105291,
+                "p95_ms": 1.3648337999999998,
+                "mean_ms": 1.05267675,
+                "max_ms": 1.410084
+              },
+              "interrupted_wait_ms": {
+                "n": 0,
+                "p50_ms": null,
+                "p95_ms": null,
+                "mean_ms": null,
+                "max_ms": null
+              },
+              "per_completed_request_total_ms": {
+                "n": 10,
+                "p50_ms": 0.539479,
+                "p95_ms": 1.2743333999999997,
+                "mean_ms": 0.7056375,
+                "max_ms": 1.410084
+              },
+              "error_codes": {
+                "invalid_plan": 4
+              }
+            }
+          }
+        }
+      },
+      "success_step_count": {
+        "n": 6,
+        "median": 13.0,
+        "min": 12,
+        "max": 13
+      },
+      "violations": {
+        "catalog_partition": 4
+      },
+      "failures": {
+        "invalid_plan": 4
+      }
+    }
+  }
+}
