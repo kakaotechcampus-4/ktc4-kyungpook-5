@@ -40,7 +40,7 @@ test('값이나 상태가 달라진 칸만 강조하고, 근거 발화만 바뀐
   assert.deepEqual(changedFacts(after, after), [])
 })
 
-test('강조는 저장된 순간부터 정해진 시간 동안만 켜지고, 다시 그려도 지난 강조는 켜지지 않는다', () => {
+test('강조는 조건 완료 순간부터 정해진 시간 동안만 켜지고, 다시 그려도 지난 강조는 켜지지 않는다', () => {
   const flash = { at: 1000, keys: ['예상 인원'] }
   assert.equal(flashLeft(flash, 1000), FACT_FLASH_MS)
   assert.equal(flashLeft(flash, 1000 + FACT_FLASH_MS - 100), 100)

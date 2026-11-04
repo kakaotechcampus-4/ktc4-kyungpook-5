@@ -25,7 +25,7 @@ from collections.abc import AsyncIterator
 import app.ai as ai
 from app.core.exceptions import ApiError
 from app.schemas.events import PlanProgressOut, PlanViewOut
-from app.services.planning_service import PlanTurn
+from app.services.planning_service import PlanTurn, _draft_out
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,15 @@ class _QueuePort:
             self.queue.put_nowait(_sse(event, data))
 
     async def progress(self, event: "ai.PlanningProgress") -> None:
-        out = PlanProgressOut.model_validate(event, from_attributes=True)
-        self._put("progress", out.model_dump(mode="json", by_alias=True))
+        # 저장 결과와 같은 변환을 써서 메타 근거·날짜의 HTTP 형식을 맞춘다.
+        data = event.model_dump(exclude={"condition_draft"})
+        if event.condition_draft is not None:
+            data["condition_draft"] = _draft_out(event.condition_draft)
+        out = PlanProgressOut.model_validate(data)
+        payload = out.model_dump(mode="json", by_alias=True)
+        if event.condition_draft is None:
+            payload.pop("conditionDraft")
+        self._put("progress", payload)
 
     async def reply_delta(self, text: str) -> None:
         self._put("reply_delta", {"text": text})

@@ -475,6 +475,7 @@ class PlanProgressOut(CamelModel):
     # empty는 정상으로 끝났지만 찾은 것이 없다는 뜻이다(기록 검색 자료 없음, #300).
     status: Literal["running", "completed", "failed", "skipped", "empty"]
     text: str
+    condition_draft: PlanDraftOut | None = None
 
 
 class PlanViewOut(CamelModel):

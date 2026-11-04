@@ -362,6 +362,11 @@ export function PlanChat({
                 '토리가 답변을 준비하고 있어요…'))}
         </p>
       )}
+      {!busy && error && progress.length > 0 && (
+        <div className="px-[24px] pb-[8px]">
+          <TurnLines lines={progress} settled />
+        </div>
+      )}
       {error && (
         <p role="alert" className="px-[24px] text-failed">
           {error}

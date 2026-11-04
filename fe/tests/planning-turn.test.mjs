@@ -173,3 +173,23 @@ test('기록 없음(empty) 줄은 실패가 아니라 끝난 작업으로 답변
     [['empty', '맞는 기록이 없었어요']],
   )
 })
+
+test('저장 전 실패하면 완료 줄도 실패로 바꾸고 임시 조건은 남기지 않는다', async () => {
+  const { failedLines } = await load()
+  const lines = [
+    {
+      operationId: 'c1',
+      kind: 'condition_applied',
+      status: 'completed',
+      text: '예상 인원 반영했어요',
+      conditionDraft: { conditions: { headcount: 40 } },
+    },
+    { operationId: 's1', kind: 'search_started', status: 'running', text: '검색 중' },
+    { operationId: 'c2', kind: 'condition_applied', status: 'skipped', text: '바뀐 조건 없음' },
+  ]
+  const failed = failedLines(lines)
+  assert.equal(failed.length, 2)
+  assert.ok(failed.every((line) => line.status === 'failed' && !line.conditionDraft))
+  assert.equal(failed[0].text, '조건 반영을 확인하지 못했어요')
+  assert.equal(lines[0].status, 'completed')
+})
