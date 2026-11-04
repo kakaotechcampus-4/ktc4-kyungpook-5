@@ -5,7 +5,7 @@ from copy import deepcopy
 from functools import partial
 import json
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 import pytest
 
 from app.ai import AIConfigError, AITimeoutError, parse_resume_state
@@ -18,6 +18,11 @@ from app.ai.scripts.planning_latency_observation import install_observers, valid
 from app.ai.tests.test_plan_generation_graph import composition
 
 
+def last_turn(messages):
+    """실행 문맥(시스템 메시지)이 맨 끝에 붙어도(planning-agent-v8, #269) 마지막 대화 메시지를 본다."""
+    return next(m for m in reversed(messages) if not isinstance(m, SystemMessage))
+
+
 @pytest.fixture(scope='module')
 def fixture():
     return asyncio.run(check.build_fixture())
@@ -28,7 +33,7 @@ def configure(monkeypatch, fixture, *, stale_id=False, error=None):
     offer_id = fixture['cases'][0]['resume_state']['payload']['generation']['offer']['id']
 
     async def agent(messages, **kwargs):
-        if isinstance(messages[-1], ToolMessage):
+        if isinstance(last_turn(messages), ToolMessage):
             return AIMessage(content='처리 결과를 확인해 주세요.')
         human = next(m for m in reversed(messages) if isinstance(m, HumanMessage))
         args = dict(quote=human.text)
@@ -122,7 +127,7 @@ def test_tools_are_preserved_if_final_reply_raises(monkeypatch, fixture):
     original = agent_graph.call_agent_model
 
     async def agent(messages, **kwargs):
-        if isinstance(messages[-1], ToolMessage):
+        if isinstance(last_turn(messages), ToolMessage):
             raise AIConfigError('private-settings')
         return await original(messages, **kwargs)
 
