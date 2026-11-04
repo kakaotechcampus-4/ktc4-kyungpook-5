@@ -468,10 +468,11 @@ class PlanProgressOut(CamelModel):
 
     operation_id: str
     kind: Literal[
-        "condition_applied", "search_started", "search_finished",
+        "condition_started", "condition_applied", "search_started", "search_finished",
         "generation_started", "generation_finished",
     ]
-    status: Literal["running", "completed", "failed"]
+    # skipped는 같은 operationId의 running 줄을 지우라는 뜻이다(조건 거절·같은 값, #290).
+    status: Literal["running", "completed", "failed", "skipped"]
     text: str
 
 

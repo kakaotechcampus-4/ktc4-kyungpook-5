@@ -8,10 +8,18 @@ import {
 } from '@tanstack/react-query'
 import { planningApi } from './api'
 import { PartialPlanSaveError } from './errors'
-import type { ChatMessage, PlanFacts, PlanProgress } from './types'
+import type { ChatMessage, PlanFacts } from './types'
 import type { PlanStreamHandlers } from './stream'
 import { FIRST_MESSAGE } from './mock'
-import { attachReceipts, upsertProgress, type TurnReceipt } from './turn'
+import {
+  attachReceipts,
+  dropSkipped,
+  finishedLines,
+  LINE_EXIT_MS,
+  upsertProgress,
+  type TurnLine,
+  type TurnReceipt,
+} from './turn'
 import { ApiError } from '@/shared/api/types'
 import type { components } from '@/shared/api/schema'
 
@@ -86,7 +94,7 @@ export function usePlanningChat(
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   // 스트림으로 받는 동안만 보이는 임시 표시(#285). done 뒤 저장된 대화로 바뀌면 지운다.
-  const [progress, setProgress] = useState<PlanProgress[]>([])
+  const [progress, setProgress] = useState<TurnLine[]>([])
   const [pendingText, setPendingText] = useState('')
   const [pendingReply, setPendingReply] = useState('')
   const [notice, setNotice] = useState('')
@@ -94,7 +102,7 @@ export function usePlanningChat(
   const [pendingBase, setPendingBase] = useState<number | null>(null)
   const locked = useRef(false)
   // 이번 턴의 작업 줄. 답변이 끝나면 화면 상태가 아니라 이 값으로 저장할 작업 줄을 정한다.
-  const turnLines = useRef<PlanProgress[]>([])
+  const turnLines = useRef<TurnLine[]>([])
   const clearPending = () => {
     setPendingBase(null)
     turnLines.current = []
@@ -109,7 +117,16 @@ export function usePlanningChat(
       turnLines.current = upsertProgress(turnLines.current, event)
       setProgress(turnLines.current)
     },
-    onReply: setPendingReply,
+    onReply: (text) => {
+      setPendingReply(text)
+      // 답변이 시작되면 다시 시도되지 않은 조건 줄(거절·같은 값)이 사라지는 움직임
+      // (PlanChat의 line-out)을 보인 뒤 목록에서 뺀다. 이유는 이제 나오는 답변이 설명한다.
+      if (text && turnLines.current.some((line) => line.status === 'skipped'))
+        setTimeout(() => {
+          turnLines.current = dropSkipped(turnLines.current)
+          setProgress(turnLines.current)
+        }, LINE_EXIT_MS)
+    },
     onReconnect: () => {
       turnLines.current = []
       setProgress([])
@@ -195,7 +212,7 @@ export function usePlanningChat(
       succeeded = true
       // 저장된 대화를 다시 불러오기 전에 작업 줄을 먼저 넣어 둔다. 그래야 임시 표시가
       // 저장된 답변으로 바뀌는 같은 화면 갱신에서 작업 줄이 답변 위에 그대로 남는다.
-      const lines = turnLines.current.filter((line) => line.status !== 'running')
+      const lines = finishedLines(turnLines.current)
       if (lines.length)
         queryClient.setQueryData<TurnReceipt[]>(
           receiptsKey(userId, clubId, eventId),
@@ -206,9 +223,7 @@ export function usePlanningChat(
         // 저장된 대화를 먼저 받아 두면 넘어가자마자 그 대화를 그려,
         // 임시 말풍선 → "불러오는 중" 카드 → 저장된 대화로 깜빡이지 않는다.
         // 실패해도 넘어간 화면이 직접 다시 불러오므로 여기서는 오류로 보지 않는다.
-        await queryClient
-          .fetchQuery(snapshotQuery(userId, clubId, eventId))
-          .catch(() => undefined)
+        await queryClient.fetchQuery(snapshotQuery(userId, clubId, eventId)).catch(() => undefined)
       } else {
         const updated = await snapshot.refetch()
         if (updated.isError)

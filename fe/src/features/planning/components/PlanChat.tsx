@@ -1,6 +1,7 @@
 // P1 왼쪽: 토리와 주고받는 대화.
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ChatMessage, PlanProgress } from '@/features/planning/types'
+import type { TurnLine } from '@/features/planning/turn'
 import { isSendKey } from '@/features/planning/chatKey'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
@@ -18,7 +19,7 @@ interface PlanChatProps {
   error?: string
   // 스트림으로 받는 동안의 임시 표시(#285). 보낸 말, 진행 줄, 흘러나오는 토리 답변.
   pendingText?: string
-  progress?: PlanProgress[]
+  progress?: TurnLine[]
   pendingReply?: string
   notice?: string
 }
@@ -47,7 +48,8 @@ function CheckIcon({ className }: { className?: string }) {
 // 점이 체크로 바뀔 때 줄이 흔들리지 않는다. 진행 중임은 점이 아니라 글자 디밍이 알린다(#290).
 // live면 받는 중인 응답이라 체크가 제자리에서 나타난다. 저장된 대화로 바뀐 뒤에는 다시 움직이지 않는다.
 function ProgressIcon({ status, live }: { status: PlanProgress['status']; live: boolean }) {
-  if (status === 'running')
+  // skipped는 진행 중 줄이 사라지는 중이라 같은 점을 유지한다.
+  if (status === 'running' || status === 'skipped')
     return (
       <span aria-hidden className="mt-[2px] flex size-[14px] shrink-0 items-center justify-center">
         <span className="size-[6px] rounded-full bg-blue-400" />
@@ -75,7 +77,7 @@ function TurnLines({
   settled,
   live = false,
 }: {
-  lines: PlanProgress[]
+  lines: TurnLine[]
   settled: boolean
   live?: boolean
 }) {
@@ -83,19 +85,24 @@ function TurnLines({
     <ul aria-label="토리가 처리한 작업" className="flex flex-col gap-[4px] pt-[8px]">
       {lines.map((line) => (
         <li
-          key={line.operationId}
+          key={line.slot ?? line.operationId}
           className={cn(
             // 문구가 길어 두 줄이 되면 아이콘은 첫 줄 높이에 맞춘다(아이콘 쪽 mt).
             'flex items-start gap-[7px] text-[12px] leading-[18px]',
             'transition-colors duration-200 ease-out motion-reduce:transition-none',
             line.status === 'failed' ? 'text-failed' : settled ? 'text-mute' : 'text-ink2',
-            live && 'animate-turn-in motion-reduce:animate-none',
+            // 결과 없이 끝난 줄(거절·같은 값)은 답변이 시작되면 조용히 사라진다. 이유는 답변이 설명한다.
+            // 그 전까지는 다시 시도될 수 있어 진행 중 줄처럼 보인다(turn.ts upsertProgress).
+            line.status === 'skipped' && settled
+              ? 'animate-line-out overflow-hidden motion-reduce:animate-none'
+              : live && 'animate-turn-in motion-reduce:animate-none',
           )}
         >
           <ProgressIcon status={line.status} live={live} />
           <span
             className={cn(
-              line.status === 'running' && 'animate-progress-dim motion-reduce:animate-none',
+              (line.status === 'running' || (line.status === 'skipped' && !settled)) &&
+                'animate-progress-dim motion-reduce:animate-none',
             )}
           >
             {line.text}
@@ -328,7 +335,8 @@ export function PlanChat({
           {notice ||
             (pendingReply
               ? '토리가 답변을 쓰고 있어요…'
-              : (progress.at(-1)?.text ?? '토리가 답변을 준비하고 있어요…'))}
+              : (progress.filter((line) => line.status !== 'skipped').at(-1)?.text ??
+                '토리가 답변을 준비하고 있어요…'))}
         </p>
       )}
       {error && (
