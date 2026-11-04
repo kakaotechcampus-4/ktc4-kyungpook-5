@@ -178,7 +178,7 @@ jobs:
           else
             docker exec \"\$pg_container\" pg_dump -Fc -U \"\$pg_user\" -d \"\$pg_db\" > \"/opt/unyounghae/backups/pre-migration-\$stamp.dump\"
           fi
-          docker run --rm --network unyounghae-db --env-file /opt/unyounghae/api.env \"$BACKEND_IMAGE\" uv run --no-sync alembic upgrade 20261101_plan_review
+          docker run --rm --network unyounghae-db --env-file /opt/unyounghae/api.env \"$BACKEND_IMAGE\" uv run --no-sync alembic upgrade head
           docker run --rm --network unyounghae-db --env-file /opt/unyounghae/api.env \"$BACKEND_IMAGE\" uv run --no-sync python deployment_preflight.py"
           jq -n --arg command "$command_text" '{commands: [$command]}' > "$RUNNER_TEMP/ssm-migration.json"
           command_id=$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name AWS-RunShellScript --parameters "file://$RUNNER_TEMP/ssm-migration.json" --query 'Command.CommandId' --output text)
