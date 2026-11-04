@@ -409,3 +409,9 @@ BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(cl
 - `MeetingEventFact`는 행사 ID·이름·상태와 선택적 날짜·장소·예상 인원·실제 참가 인원이다. 예상과 실제는 다른 값이다. 실제 참가 인원을 확실하게 집계하는 기준이 없으면 null이다.
 - `complete`는 **해당 조회 범위가 완전하고 오류 없이 조회되었음**을, `latest_verified`는 **BE가 명시된 최근 기준과 전체 범위·정렬을 검증했음**을 뜻한다. 단순 페이지나 유사도 검색 결과로는 true로 설정하지 않는다. 최근 기준이 미정이면 거짓이다.
 - 반환은 `answered`·`partial`·`not_found`·`unavailable`, 답변, 실제로 사용한 행사 ID 목록이다. 선택 필드 값이 null이거나 범위·최신성이 미확인이면 명시한다. 조회가 불완전한 빈 결과는 unavailable이며, 완전한 빈 결과만 not_found다. 모델이나 DB 호출은 하지 않으며 없는 값을 생성하지 않는다. 현재 실제 서비스에서 완료 시각을 기준으로 한 최신 행사와 실제 참가 인원은 별도 BE 근거 없이는 미확인이다.
+
+### 회의 발화의 행사 조회 분류
+
+`await classify_meeting_event_facts(JudgeUtteranceRequest(...))`는 기존 회의 발화·앞 문맥·연결 행사 형식을 그대로 받아 행사 DB 질문 여부를 별도로 분류한다. 반환 `disposition`은 `lookup`·`none`·`clarify`다. `lookup`이면 `scope`와 요청된 `fields`가 있으며, `selected`는 발화에서 확인한 `event_reference`가 필요하다. `clarify`는 대상이나 조회 의도가 모호해 BE가 추측하지 않도록 안내한다. `none`은 행사 DB 조회가 없다는 뜻이고 기존 RAG 판단을 생략하라는 뜻이 아니다. `trace`는 기존 `JudgeTrace` 형식의 모델명·프롬프트 버전·분류 시간이다. 오류는 AI 오류로 전달하며 오류의 `trace`에도 시간을 남긴다.
+
+BE는 분류를 자료 판단 및 후보 추출과 독립해 호출하고, `current`의 진행 중 상태 또는 `selected`의 행사 참조를 소속 범위에서 확인한다. `recent`는 완료일 등 최신 기준과 범위·정렬이 확인되지 않으면 단일 최신이라고 단정하지 않으며 `latest_verified=False`로 facts 함수에 전달한다. 분류만으로 권한·대상·실제 참가자를 확정하지 않는다. 조회 실패는 성공한 빈 목록으로 바꾸지 않는다.
