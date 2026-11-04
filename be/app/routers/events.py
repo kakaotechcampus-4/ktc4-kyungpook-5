@@ -38,12 +38,20 @@ from app.schemas.events import (
     PlannedStepOut,
     PlannedStepListResponse,
     PlanGenerateIn,
+    PlanReviewIn,
+    PlanReviewOut,
     PlanScreenOut,
     PlanViewOut,
     StepListResponse,
 )
 from app.schemas.common import Envelope
-from app.services import action_service, event_service, planning_service, planning_stream
+from app.services import (
+    action_service,
+    event_service,
+    plan_review_service,
+    planning_service,
+    planning_stream,
+)
 
 router = APIRouter(prefix="/api/v1/events", tags=["events"])
 
@@ -288,12 +296,15 @@ async def get_plan_steps_snapshot(
         select(Conversation).where(Conversation.event_id == event_id)
         .order_by(Conversation.created_at.desc()).limit(1)
     )
+    # 잠근 뒤 컬럼을 다시 읽는다. 세션에 올라온 Event는 잠그기 전 값일 수 있다.
+    plan_revision = await session.scalar(select(Event.plan_revision).where(Event.id == event_id))
     rows = await session.scalars(
         select(Step).where(Step.event_id == event_id)
         .options(selectinload(Step.actions)).order_by(Step.step_order)
     )
     return Envelope(data=PlanStepsSnapshotOut(
         base_revision=conversation.base_revision if conversation else 0,
+        plan_revision=plan_revision or 0,
         steps=[PlannedStepOut.model_validate(event_service.planned_step_out(row)) for row in rows],
     ))
 
@@ -377,6 +388,26 @@ async def get_plan(
         session, club_id=event.club_id, event_id=event_id
     )
     return Envelope(data=PlanScreenOut.model_validate(screen))
+
+
+@router.post("/{event_id}/plan/review", response_model=Envelope[PlanReviewOut])
+async def request_plan_review(
+    event_id: str,
+    body: PlanReviewIn,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[PlanReviewOut]:
+    """계획 수정 후 AI 검토 (#177). AI 실패는 200 + status FAILED로 돌려준다.
+
+    서비스가 AI 호출 전에 커밋해 이 세션의 트랜잭션을 닫는다.
+    """
+    event, member = await _get_event_for_account(session, event_id=event_id, account=account)
+    if member.role not in WRITER_ROLES:
+        raise Forbidden()
+    review = await plan_review_service.request_review(
+        session, event=event, expected_revision=body.expected_revision
+    )
+    return Envelope(data=PlanReviewOut.model_validate(review))
 
 
 def _parse_statuses(raw: str | None) -> list[ActionStatus] | None:

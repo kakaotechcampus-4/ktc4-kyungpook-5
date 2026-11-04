@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
 import { PartialPlanSaveError } from './errors'
 import type { ChatMessage, PlanFacts, PlanProgress } from './types'
@@ -85,6 +85,8 @@ export function usePlanningChat(
     queryKey: ['planning', 'snapshot', userId, clubId, selectedId],
     enabled: !!clubId && !!selectedId,
     retry: false,
+    // 서버가 검토 중이면 결과가 나올 때까지 짧게 다시 불러온다.
+    refetchInterval: (q) => (q.state.data?.screen.review?.status === 'REVIEWING' ? 2000 : false),
     queryFn: async () => {
       const [screen, messages, steps] = await Promise.all([
         planningApi.get(selectedId!),
@@ -322,4 +324,21 @@ export function useSaveStepDetail() {
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
   })
+}
+
+// 계획 검토 요청 (#177). 무효화는 옵션에 둔다 — 호출한 화면이 먼저 사라져도 실행돼야 한다.
+export const reviewMutationKey = (eventId: string) => ['planning', 'review', eventId] as const
+
+export function useRequestPlanReview(eventId: string | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationKey: reviewMutationKey(eventId ?? ''),
+    mutationFn: (expectedRevision: number) => planningApi.review(eventId!, expectedRevision),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['planning'] }),
+  })
+}
+
+// 다른 화면에서 보낸 검토 요청까지 포함해 진행 중인지.
+export function useReviewInFlight(eventId: string | null): boolean {
+  return useIsMutating({ mutationKey: reviewMutationKey(eventId ?? '') }) > 0
 }

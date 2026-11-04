@@ -128,3 +128,15 @@ __all__ += ('ToriRecordQueryRequest', 'ToriRecordQueryResult', 'build_tori_recor
 from .features.operations.schemas import OperationalEventContext, OperationalSituationRequest, OperationalSituationResult
 from .facade import respond_operational_situation
 __all__ += ('OperationalEventContext', 'OperationalSituationRequest', 'OperationalSituationResult', 'respond_operational_situation')
+
+# 계획 수정 후 검토 (AI-PLAN-07, #177). 비교 계산과 저장은 BE가 맡는다.
+from .contracts import (
+    ActionChange, PlanChangeSet, PlanEditReviewRequest, PlanEditReviewResult,
+    PlanReviewItem, ReviewAction, ReviewExcludedStep, ReviewStep, ScheduleChange,
+)
+from .facade import review_plan_edit
+__all__ += (
+    "review_plan_edit", "PlanEditReviewRequest", "PlanEditReviewResult", "PlanReviewItem",
+    "ReviewStep", "ReviewAction", "ReviewExcludedStep", "PlanChangeSet",
+    "ScheduleChange", "ActionChange",
+)
