@@ -22,7 +22,9 @@ from .schemas import (
 )
 
 
-PROMPT_VERSION = "planning-generation-v1"
+# v2(#276): 지시문은 v1과 같고, 모델에 보내는 출력 형식의 단계 코드가 카탈로그 13개로 줄었다.
+# 모델이 받는 입력이 바뀌었으므로 측정 기록에서 v1 결과와 구분한다.
+PROMPT_VERSION = "planning-generation-v2"
 PROMPT = (Path(__file__).parent / "prompts/compose.md").read_text()
 logger = logging.getLogger(__name__)
 
