@@ -1,5 +1,5 @@
 // P1 왼쪽: 토리와 주고받는 대화.
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ChatMessage, PlanProgress } from '@/features/planning/types'
 import { isSendKey } from '@/features/planning/chatKey'
 import { cn } from '@/shared/lib/cn'
@@ -106,6 +106,79 @@ function TurnLines({
   )
 }
 
+// 저장된 답변 위의 작업 줄. 2줄 이상이면 답변이 끝난 뒤 "처리한 작업 2개" 한 줄로 접는다.
+// 답변이 가장 중요하므로 체크 줄들이 토리 옆에서 답변보다 먼저 눈에 띄지 않게 한다.
+// AI 문구를 잘라 합치지 않고 개수만 적어, 문구가 바뀌어도 요약이 깨지지 않는다.
+//
+//   저장 직후     ✓ 참고할 기록을 찾았어요      ← 받는 중일 때와 같은 모습(바뀌는 순간 튀지 않게)
+//                ✓ 행사 종류 MT · … 반영했어요
+//   잠시 뒤      ✓ 처리한 작업 2개 ▾            ← 줄 높이가 부드럽게 줄며 접힘. 누르면 다시 펼침
+//
+// 1줄은 접어도 높이가 같아 그대로 두고, 실패가 섞이면 알려야 하므로 접지 않는다.
+const FOLD_DELAY_MS = 400
+
+function Receipt({ lines }: { lines: PlanProgress[] }) {
+  const foldable = lines.length > 1 && lines.every((line) => line.status === 'completed')
+  // fresh: 막 저장돼 펼친 채 보이는 중 → folded: 접힘 → open: 사용자가 펼침
+  const [state, setState] = useState<'fresh' | 'folded' | 'open'>('fresh')
+  useEffect(() => {
+    if (!foldable) return
+    const timer = setTimeout(() => setState((s) => (s === 'fresh' ? 'folded' : s)), FOLD_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [foldable])
+  const listId = useId()
+  if (!foldable) return <TurnLines lines={lines} settled />
+
+  const showList = state !== 'folded'
+  // grid 행 높이 0fr ↔ 1fr 전환으로 실제 높이를 몰라도 부드럽게 접고 편다.
+  const collapse =
+    'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none'
+  return (
+    <div className="flex flex-col">
+      <div className={cn(collapse, state === 'fresh' ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]')}>
+        <div className="min-h-0 overflow-hidden">
+          <button
+            type="button"
+            aria-expanded={showList}
+            aria-controls={listId}
+            onClick={() => setState(showList ? 'folded' : 'open')}
+            className="mt-[8px] flex items-center gap-[7px] rounded-[6px] text-[12px] leading-[18px] text-mute hover:text-ink2"
+          >
+            <CheckIcon />
+            처리한 작업 {lines.length}개
+            <svg
+              aria-hidden
+              viewBox="0 0 12 12"
+              className={cn(
+                'size-[11px] transition-transform duration-200 ease-out motion-reduce:transition-none',
+                showList && 'rotate-180',
+              )}
+              fill="none"
+            >
+              <path
+                d="m3 4.5 3 3 3-3"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div
+        id={listId}
+        inert={!showList}
+        className={cn(collapse, showList ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <TurnLines lines={lines} settled />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // 보내자마자 토리 답변 자리에 뜨는 입력 중 표시. 답변 첫 조각이 오면 같은 말풍선 안에서
 // 글자로 바뀐다. 움직임 줄이기 설정이면 점 세 개가 움직이지 않고 그대로 보인다.
 function TypingDots() {
@@ -192,7 +265,7 @@ export function PlanChat({
               <div className="flex items-start gap-[10px]">
                 <Tori size={26} className="mt-[4px] shrink-0" />
                 <div className="flex min-w-0 flex-col items-start gap-[8px]">
-                  {message.receipt && <TurnLines lines={message.receipt} settled />}
+                  {message.receipt && <Receipt lines={message.receipt} />}
                   <p className={TORI_BUBBLE}>{message.text}</p>
                 </div>
               </div>
