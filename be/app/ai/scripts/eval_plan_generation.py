@@ -22,7 +22,7 @@ from app.ai.features.planning.agent.schemas import PlanningAgentTurnInput
 from app.ai.features.planning.agent.state import PlanningDraft
 from app.ai.features.planning.generation.entrypoints import ButtonPlanGenerationRequest, run_button_plan_generation
 from app.ai.features.planning.generation.graph import PROMPT_VERSION as GENERATION_VERSION, run_plan_generation, validate_plan
-from app.ai.features.planning.generation.model import PLAN_MAX_OUTPUT_TOKENS, build_plan_model
+from app.ai.features.planning.generation.model import PLAN_MAX_OUTPUT_TOKENS, PLAN_REASONING, build_plan_model
 from app.ai.features.planning.generation.schemas import PlanningGenerationState
 from app.ai.features.planning.schemas import PlanningConditions, PlanningMessage
 from app.ai.llm import ainvoke_structured, ainvoke_with_tools, build_chat_model
@@ -43,7 +43,7 @@ async def run(output: Path, *, dialog_id: str | None = None) -> int:
            *sorted((AI_DIR/"features/planning/generation").rglob("*.py")),
            *sorted((AI_DIR/"features/planning/generation").rglob("*.md")),AI_DIR/"llm.py",CASES,Path(__file__)]
     report=dict(state="RUNNING",started_at=datetime.now(timezone.utc).isoformat(),model=settings.model,
-        reasoning="provider default",generation_max_output_tokens=PLAN_MAX_OUTPUT_TOKENS,
+        reasoning=dict(agent="provider default",generation=PLAN_REASONING),generation_max_output_tokens=PLAN_MAX_OUTPUT_TOKENS,
         prompt_version=PROMPT_VERSION,generation_prompt_version=GENERATION_VERSION,
         review_status=dataset["review_status"],reference_date=dataset["reference_date"],dialog_filter=dialog_id,
         git_commit=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),

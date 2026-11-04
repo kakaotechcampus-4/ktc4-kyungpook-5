@@ -92,7 +92,7 @@ async def run_session(output_dir: Path, *, session_id, rounds=10, interval=1.0, 
         environment=execution_metadata('real_model', settings),
         validator_source=source.model_dump(), planned=len(plan), finished=0,
     )
-    # 공통 메타정보의 reasoning='not_set'은 이 실행에 맞지 않는다. 변형별 값으로 바꿔 적는다.
+    # 공통 메타정보의 reasoning은 현재 코드의 값이다. 이 실행은 요청마다 바꾸므로 변형별 값으로 적는다.
     report['environment']['model_options']['reasoning'] = {name: value['reasoning'] for name, value in VARIANTS.items()}
     output_dir.mkdir(parents=True, exist_ok=False)
     (output_dir / 'validation').mkdir()

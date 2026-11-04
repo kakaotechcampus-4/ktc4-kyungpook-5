@@ -1,4 +1,4 @@
-"""생성 graph의 기본 경로가 실제 SDK 요청에 출력 한도·스트리밍을 지정하는지 확인한다."""
+"""생성 graph의 기본 경로가 실제 SDK 요청에 출력 한도·스트리밍·추론 깊이를 지정하는지 확인한다."""
 
 import asyncio
 import json
@@ -40,4 +40,6 @@ def test_default_graph_uses_streaming_budget_and_validates_complete_preview(monk
     assert len(bodies) == result.model_calls == 1
     assert bodies[0]["stream"] is True
     assert bodies[0]["max_output_tokens"] == plan_model.PLAN_MAX_OUTPUT_TOKENS == 8192
+    # #264에서 같은 실행의 기본값과 번갈아 재고 채택한 값이다. 바꾸려면 다시 재고 근거 문서를 갱신한다.
+    assert bodies[0]["reasoning"] == plan_model.PLAN_REASONING == {"effort": "low"}
     assert bodies[0]["text"]["format"]["type"] == "json_schema"
