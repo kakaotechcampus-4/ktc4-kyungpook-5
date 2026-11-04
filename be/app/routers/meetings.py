@@ -6,7 +6,9 @@ WS PCM 연속 음성은 BE VAD·실제 STT를 거쳐 확정 전사·AI로 연결
 
 from datetime import UTC, datetime
 import asyncio
+import io
 import tempfile
+import wave
 from pathlib import Path
 
 from fastapi import (
@@ -31,7 +33,7 @@ from app.core.deps import (
     resolve_account_by_token,
 )
 from app.core.enums import MeetingStatus
-from app.core.exceptions import Forbidden
+from app.core.exceptions import Forbidden, ValidationFailed
 from app.db.session import get_session, get_sessionmaker
 from app.infra.stt import SttError, WhisperStt, pcm_to_wav
 from app.infra.diarization import DiarizationError, PyannoteDiarization
@@ -47,13 +49,29 @@ from app.schemas.meetings import (
     MeetingOut,
     TranscriptListOut,
     TranscriptSegmentOut,
-    MeetingReviewOut, SpeakerNamesIn, ReviewDraftIn,
+    MeetingReviewOut, SpeakerNamesIn, ReviewDraftIn, ReviewCandidatesIn,
 )
+from app.schemas.tasks import TaskSuggestionOut
 from app.services import meeting_service
 from app.services import meeting_review_service
 from app.services.audio_stream_service import AudioProtocolError, AudioStream, Utterance
 
 router = APIRouter(tags=["meetings"])
+
+
+def _crop_wav(content: bytes, *, chunk_start_ms: int, start_ms: int, end_ms: int) -> bytes:
+    with wave.open(io.BytesIO(content), 'rb') as source:
+        if (source.getnchannels(), source.getsampwidth(), source.getframerate(), source.getcomptype()) != (1, 2, 16000, 'NONE'):
+            raise ValueError('지원하지 않는 음성 형식입니다.')
+        start_frame = round((start_ms - chunk_start_ms) * 16)
+        frame_count = round((end_ms - start_ms) * 16)
+        source.setpos(start_frame)
+        frames = source.readframes(frame_count)
+    output = io.BytesIO()
+    with wave.open(output, 'wb') as target:
+        target.setnchannels(1); target.setsampwidth(2); target.setframerate(16000)
+        target.writeframes(frames)
+    return output.getvalue()
 
 
 async def _review_meeting(session, meeting_id: str, account: Account):
@@ -88,8 +106,31 @@ async def update_review_speakers(meeting_id: str, body: SpeakerNamesIn,
     review = await meeting_review_service.get(session, meeting.id)
     if review is None:
         raise meeting_review_service.ReviewConflict()
-    review = await meeting_review_service.set_names(session, review, body.expected_version, body.names)
+    review = await meeting_review_service.set_names(
+        session, review, body.expected_version, body.names,
+        {label: value.model_dump(by_alias=True) for label, value in body.members.items()},
+    )
     return Envelope(data=await meeting_review_service.output(session, review))
+
+
+@router.post('/api/v1/meetings/{meeting_id}/review/candidates', response_model=Envelope[list[TaskSuggestionOut]], status_code=201)
+async def save_review_candidates(
+    meeting_id: str,
+    body: ReviewCandidatesIn,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+):
+    meeting = await _review_meeting(session, meeting_id, account)
+    member = await ensure_member(session, club_id=meeting.club_id, account=account)
+    review = await meeting_review_service.get(session, meeting.id)
+    if review is None:
+        raise meeting_review_service.ReviewConflict('회의 후 검토가 아직 시작되지 않았어요.')
+    candidates = await meeting_review_service.save_candidates(
+        session, review_id=review.id, expected_version=body.expected_version,
+        client_request_id=body.client_request_id,
+        candidates=[item.model_dump() for item in body.candidates], confirmed_by=member.id,
+    )
+    return Envelope(data=[TaskSuggestionOut.model_validate(item) for item in candidates])
 
 
 @router.post('/api/v1/meetings/{meeting_id}/review/draft', response_model=Envelope[MeetingReviewOut])
@@ -135,7 +176,7 @@ async def submit_review_diarization(meeting_id: str, account: Account = Depends(
         provider = PyannoteDiarization(get_settings().pyannote_api_key.get_secret_value(), get_settings().pyannote_model, get_settings().pyannote_timeout_seconds)
         review = await meeting_review_service.submit_diarization(session, review.id, wav_path=path, provider=provider)
     except DiarizationError as error:
-        raise meeting_review_service.DiarizationUnavailable() from error
+        raise meeting_review_service.DiarizationUnavailable(error.code) from error
     except ValueError as error:
         raise meeting_review_service.ReviewConflict(str(error)) from error
     finally:
@@ -154,8 +195,15 @@ async def poll_review_diarization(meeting_id: str, account: Account = Depends(ge
     try:
         provider = PyannoteDiarization(get_settings().pyannote_api_key.get_secret_value(), get_settings().pyannote_model, get_settings().pyannote_timeout_seconds)
     except DiarizationError as error:
-        raise meeting_review_service.DiarizationUnavailable() from error
-    review = await meeting_review_service.poll_diarization(session, review.id, duration_ms=duration, provider=provider)
+        await meeting_review_service.fail_diarization(
+            session, review.id, error_code=error.code,
+        )
+        raise meeting_review_service.DiarizationUnavailable(error.code) from error
+    try:
+        review = await meeting_review_service.poll_diarization(session, review.id, duration_ms=duration, provider=provider)
+    except DiarizationError as error:
+        await meeting_review_service.fail_diarization(session, review.id, error_code=error.code)
+        raise meeting_review_service.DiarizationUnavailable(error.code) from error
     return Envelope(data=await meeting_review_service.output(session, review))
 
 def _meeting_out(meeting: Meeting) -> MeetingOut:
@@ -300,6 +348,70 @@ async def get_audio_chunk_file(
         raise meeting_service.MeetingNotFound()
     content = await asyncio.to_thread(read_file, chunk.storage_key)
     return Response(content=content, media_type=chunk.mime_type or 'audio/wav')
+
+
+@router.get('/api/v1/meetings/{meeting_id}/audio-chunks/{seq}/clip')
+async def get_audio_chunk_clip(
+    meeting_id: str,
+    seq: int,
+    start_ms: int | None = Query(None, alias='startMs', ge=0),
+    end_ms: int | None = Query(None, alias='endMs', ge=1),
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+):
+    """Return a bounded WAV clip after the same meeting membership check as the source file."""
+    meeting = await _get_meeting_for_account(session, meeting_id=meeting_id, account=account)
+    chunk = await session.scalar(select(MeetingAudioChunk).where(
+        MeetingAudioChunk.meeting_id == meeting.id, MeetingAudioChunk.seq == seq
+    ))
+    if chunk is None or not chunk.storage_key:
+        raise meeting_service.MeetingNotFound()
+    requested_start = chunk.start_ms if start_ms is None else start_ms
+    requested_end = chunk.end_ms if end_ms is None else end_ms
+    if not chunk.start_ms <= requested_start < requested_end <= chunk.end_ms:
+        raise ValidationFailed({'range': '음성 청크 안의 startMs/endMs만 요청할 수 있습니다.'})
+    content = await asyncio.to_thread(read_file, chunk.storage_key)
+
+    try:
+        clipped = await asyncio.to_thread(
+            _crop_wav, content, chunk_start_ms=chunk.start_ms,
+            start_ms=requested_start, end_ms=requested_end,
+        )
+    except (ValueError, wave.Error) as error:
+        raise ValidationFailed({'audio': str(error)}) from error
+    return Response(content=clipped, media_type='audio/wav')
+
+
+@router.get('/api/v1/meetings/{meeting_id}/review/segments/{segment_id}/clip')
+async def get_review_segment_clip(
+    meeting_id: str,
+    segment_id: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+):
+    """Resolve a transcript segment to its stored source chunk before clipping."""
+    meeting = await _get_meeting_for_account(session, meeting_id=meeting_id, account=account)
+    segment = await session.scalar(select(TranscriptSegment).where(
+        TranscriptSegment.id == segment_id, TranscriptSegment.meeting_id == meeting.id,
+    ))
+    if segment is None or segment.start_ms is None or segment.end_ms is None:
+        raise meeting_service.MeetingNotFound()
+    chunk = await session.scalar(select(MeetingAudioChunk).where(
+        MeetingAudioChunk.meeting_id == meeting.id,
+        MeetingAudioChunk.start_ms <= segment.start_ms,
+        MeetingAudioChunk.end_ms >= segment.end_ms,
+    ).order_by(MeetingAudioChunk.seq))
+    if chunk is None or not chunk.storage_key:
+        raise meeting_service.MeetingNotFound()
+    content = await asyncio.to_thread(read_file, chunk.storage_key)
+    try:
+        clipped = await asyncio.to_thread(
+            _crop_wav, content, chunk_start_ms=chunk.start_ms,
+            start_ms=segment.start_ms, end_ms=segment.end_ms,
+        )
+    except (ValueError, wave.Error) as error:
+        raise ValidationFailed({'audio': str(error)}) from error
+    return Response(content=clipped, media_type='audio/wav')
 
 
 @router.get(
