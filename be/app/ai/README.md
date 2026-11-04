@@ -37,7 +37,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 
 P1은 행사 조건 대화와 최초 생성 요청까지입니다. 단계 제외와 복원, 순서 변경은 P2 범위입니다. 테스트 UI는 `tests/ui/planning/`의 독립 앱이고 제품 `fe/`를 수정하거나 참조하지 않습니다. 이전 고정 추출과 질문 조립 코드는 `features/planning/legacy/`에 보존하며 현재 공개 P1에서 호출하지 않습니다.
 
-현재 이력 한도는 Tool 메시지 포함 60개이며 자동 압축은 없습니다. 한도 안내 정보는 `view.history_usage`로 제공합니다(#194, 제품 전달 계약은 협의 전). 압축 설계는 #195의 후속 작업입니다. #196의 [응답 시간 기준](docs/planning/latency-baseline.md)에 맞춰 반복 관측과 집계를 구현하고 실제 모델 3세션의 본측정 120건과 준비 실행 12건을 기록했습니다. 채팅 생성 성공 p50/p95는 17.066/19.754초, 버튼 생성은 11.828/13.293초였습니다. 실패와 조건 변경의 부가 상태 불일치도 보존했으며 전체 품질이나 완료 시간 보장은 아닙니다. [측정 원본과 해석](docs/planning/evaluation-results/planning-latency-real-2026-10-28/README.md)을 확인합니다. #263에서 모델 호출별 토큰도 기록해 11-03에 기준값을 다시 쟀습니다(채팅 생성 성공 p50 25.462초, 버튼 18.826초, 생성 출력의 약 37%가 추론). 지금 기준값은 [11-03 측정 기록](docs/planning/evaluation-results/planning-latency-tokens-2026-11-03/README.md)입니다. #269에서 대화 모델의 실행 문맥을 입력 맨 끝으로 옮겨(`planning-agent-v8`) 대화 호출에도 입력 캐시가 걸리게 했고, 대화 호출 1번의 p50이 3.25초에서 2.91초로 줄었습니다([11-04 측정 기록](docs/planning/evaluation-results/planning-agent-context-layout-2026-11-04/README.md)). #264에서 생성 모델의 추론 깊이를 `low`로 바꿔 버튼 생성의 생성 호출 p50이 15.39초에서 11.14초로 줄었습니다([추론 깊이 측정](docs/planning/evaluation-results/planning-generation-reasoning-2026-11-04/README.md)). #265에서 대화 모델이 한 응답에 Tool 여러 개를 고르게 해 봤습니다. 인원 변경 요청의 모델 호출이 3번에서 2번, p50이 약 1초 줄었지만 보류 재개 판단이 나빠져 채택하지 않았습니다([측정 기록](docs/planning/evaluation-results/planning-parallel-tool-calls-2026-11-04/README.md)).
+현재 이력 한도는 Tool 메시지 포함 60개이며 자동 압축은 없습니다. 한도 안내 정보는 `view.history_usage`로 제공합니다(#194, 제품 전달 계약은 협의 전). 압축 설계는 #195의 후속 작업입니다. #196의 [응답 시간 기준](docs/planning/latency-baseline.md)에 맞춰 반복 관측과 집계를 구현하고 실제 모델 3세션의 본측정 120건과 준비 실행 12건을 기록했습니다. 채팅 생성 성공 p50/p95는 17.066/19.754초, 버튼 생성은 11.828/13.293초였습니다. 실패와 조건 변경의 부가 상태 불일치도 보존했으며 전체 품질이나 완료 시간 보장은 아닙니다. [측정 원본과 해석](docs/planning/evaluation-results/planning-latency-real-2026-10-28/README.md)을 확인합니다. #263에서 모델 호출별 토큰도 기록해 11-03에 기준값을 다시 쟀습니다(채팅 생성 성공 p50 25.462초, 버튼 18.826초, 생성 출력의 약 37%가 추론). 지금 기준값은 [11-03 측정 기록](docs/planning/evaluation-results/planning-latency-tokens-2026-11-03/README.md)입니다. #269에서 대화 모델의 실행 문맥을 입력 맨 끝으로 옮겨(`planning-agent-v8`) 대화 호출에도 입력 캐시가 걸리게 했고, 대화 호출 1번의 p50이 3.25초에서 2.91초로 줄었습니다([11-04 측정 기록](docs/planning/evaluation-results/planning-agent-context-layout-2026-11-04/README.md)). #264에서 생성 모델의 추론 깊이를 `low`로 바꿔 버튼 생성의 생성 호출 p50이 15.39초에서 11.14초로 줄었습니다([추론 깊이 측정](docs/planning/evaluation-results/planning-generation-reasoning-2026-11-04/README.md)). #265에서 대화 모델이 한 응답에 Tool 여러 개를 고르게 해 봤습니다. 인원 변경 요청의 모델 호출이 3번에서 2번, p50이 약 1초 줄었지만 보류 재개 판단이 나빠져 채택하지 않았습니다([측정 기록](docs/planning/evaluation-results/planning-parallel-tool-calls-2026-11-04/README.md)). #276에서 생성 모델의 출력 형식이 취소 단계 코드(`CANCEL_*`)를 허용하지 않게 해, 채팅 생성의 계획 검증 통과가 25/30에서 30/30이 됐습니다([측정 기록](docs/planning/evaluation-results/planning-generation-step-codes-2026-11-04/README.md)).
 
 ```text
 be/app/ai/
@@ -115,6 +115,8 @@ Agent·노드에서만 `build_chat_model(reasoning={"effort": "none"})`으로 �
 `none`은 추론을 끄고 나머지 값은 추론을 사용합니다.
 행사계획 생성 모델은 `low`를 씁니다(`generation/model.py`의 `PLAN_REASONING`). 기본값과 같은 실행에서 번갈아 재
 계획 검증 통과와 초안 단계 수가 줄지 않으면서 생성 호출 p50이 15.4초에서 11.1초로 줄어 채택했습니다(#264).
+채팅 생성에서는 처음에 low의 통과가 적었는데, 원인인 취소 단계 코드 실패를 출력 형식에서 없앤 뒤(#276) 다시 재
+통과 수가 같고(30/30) 생성 호출 p50이 18.9초에서 10.7초로 줄어 유지했습니다.
 대화 모델은 값을 보내지 않습니다(공급자 기본값). 대화 호출의 추론은 호출당 p50 13토큰(#263)으로 줄일 여지가 작아
 재지 않고 기본값을 유지했습니다(#264).
 

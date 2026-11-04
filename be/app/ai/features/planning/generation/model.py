@@ -9,6 +9,9 @@ PLAN_MAX_OUTPUT_TOKENS = 8192
 # 추론 토큰 p50이 516 → 240, 생성 호출 p50이 15.4 → 11.1초로 줄었다.
 # 계획 검증 통과(26 → 28/30)와 초안 단계 수(중앙값 13)는 줄지 않았다.
 # 근거: docs/planning/evaluation-results/planning-generation-reasoning-2026-11-04/README.md
+# 채팅 생성(G1)에서는 처음에 low 통과가 적었다(29 → 25/30, 취소 단계 코드 실패). 출력 형식을 카탈로그 13개로 줄인 뒤(#276)
+# 다시 재니 둘 다 30/30이고 생성 호출 p50이 18.9 → 10.7초로 줄어 low를 유지했다.
+# 근거: docs/planning/evaluation-results/planning-generation-step-codes-2026-11-04/README.md
 PLAN_REASONING = {"effort": "low"}
 
 

@@ -106,7 +106,7 @@ BE의 `expected_headcount`와 AI의 `headcount`는 어댑터에서 변환한다.
 최종 응답: {code: BOOK_VENUE, name: 예약, reason: 별도 시설 예약을 포함하지 않았어요.}
 ```
 
-LLM 출력에는 기존 `ExcludedPlanStep(code, reason)`을 유지한다. 최종 응답은 `ExcludedPreviewStep`으로 구분하므로 모델이 name을 새로 작성하지 않는다. 포함 단계도 같은 이름 목록을 참조한다. 이름 보완에 추가 모델 호출은 없다.
+LLM 출력은 `code, reason` 두 칸을 유지한다(`ModelExcludedStep`, #276부터 code는 계획 카탈로그 13개만 허용). 최종 응답은 `ExcludedPreviewStep`으로 구분하므로 모델이 name을 새로 작성하지 않는다. 포함 단계도 같은 이름 목록을 참조한다. 이름 보완에 추가 모델 호출은 없다.
 
 기존 형식 버전 1의 저장 JSON에는 name이 없을 수 있다. 공개 타입을 읽을 때 누락된 이름만 코드로 보완하며, 새로 직렬화한 JSON에는 이름이 포함된다. 명시된 이름이 카탈로그와 다르거나 null/빈 문자열이면 오류로 구분한다. 코드, 제외 이유, 초안 ID, 현재 조건과 대화/Tool 이력은 유지한다. BE가 상태 payload를 직접 수정하거나 복원을 위해 모델을 다시 호출할 필요는 없다.
 

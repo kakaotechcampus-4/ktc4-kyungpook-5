@@ -313,6 +313,24 @@ ButtonPlanGenerationRequest(request_id="click-1", draft=MT·50명·날짜 미정
 
 `generate_with_context()`는 성공한 preview만 상태에 채택한다. 같은 클릭 ID·같은 기준으로 성공 요청을 다시 보내면 모델 호출 없이 같은 preview를 반환한다. 같은 ID에 다른 조건을 넣으면 재확인을 요구한다. 아직 마지막 성공 한 건만 보관하므로 임의의 오래된 요청 전체를 중복 제거하는 서버 저장소는 아니다. 별도 버튼 HTTP/FE 연결은 아래 5-3 절을 따른다.
 
+### 모델이 고를 수 있는 단계 코드는 몇 개인가? (#276)
+
+13개다. 단계 코드 목록 `StepCode`(`app.core.enums`)에는 17개가 있지만, 그중 `CANCEL_*` 4개는 운영 중 행사를 취소할 때 쓰는 코드라 계획 카탈로그에 없다. 생성 모델의 출력 형식([generation/schemas.py](../../features/planning/generation/schemas.py)의 `ModelStep`, `ModelExcludedStep`)은 `code` 칸에 카탈로그 13개(`PLANNING_STEP_NAMES`의 키)만 허용한다.
+
+17개를 그대로 보여 주던 때(`planning-generation-v1`)에는 아래처럼 실패했다.
+
+```text
+생성 모델 출력 (v1, 11-04 실측)
+  steps          = 카탈로그 13개 전부
+  excluded_steps = CANCEL_NOTIFY_PARTICIPANTS, CANCEL_VENUE, CANCEL_REFUND, CANCEL_RECORD
+                   "현재 취소 조건이 없으므로 … 포함하지 않습니다."
+validate_plan(): 넣은 13 + 뺀 4 = 17 ≠ 카탈로그 13 → catalog_partition 거절 → 사용자는 "초안이 검증을 통과하지 못했어요"
+
+v2: 출력 형식에 CANCEL_*가 없다 → 같은 사례 30번 모두 13개 안에서만 고르고 통과
+```
+
+생성 모델 요청은 스트리밍이라 LangChain이 형식을 `strict: true`로 보낸다. 그래도 모델이 형식 밖 코드를 쓰면 `compose_plan()`의 형식 확인에서 출력 형식 실패(`invalid_output`)가 된다. 공개 계약(`contracts.py`)과 저장 형식의 `code`는 그대로 `StepCode`다. #239 재검사 도구는 예전 실패 원본을 읽어야 하므로 v1 형식(`scripts/generation_output_v1.py`)으로 읽는다. 측정은 [평가 기록](evaluation.md)에 있다.
+
 ### 제외한 단계의 이름은 누가 붙이나? (#198)
 
 예를 들어 생성 모델이 사전 수요 조사를 제외했다고 하자. 이 선택이 적절한지와 별개로, 화면에서 `DEMAND_SURVEY`라는 코드만 보여 주면 운영진이 이해하기 어렵다. 모델이 고정 이름을 다시 작성할 필요도 없다.
@@ -341,7 +359,7 @@ excluded_steps = tuple(ExcludedPreviewStep(
 ) for item in composition.excluded_steps)
 ```
 
-이름의 원본은 공통 [planning_catalog.py](../../planning_catalog.py)의 `PLANNING_STEP_NAMES`다. 포함 단계와 제외 단계 모두 이 목록을 읽는다. 공개 [contracts.py](../../contracts.py)는 내부 Graph에 의존하지 않고 같은 이름 목록을 사용한다. 모델용 `ExcludedPlanStep(code, reason)`과 최종 화면용 `ExcludedPreviewStep(code, name, reason)`을 나눠, LLM 출력 스키마와 프롬프트는 유지했다.
+이름의 원본은 공통 [planning_catalog.py](../../planning_catalog.py)의 `PLANNING_STEP_NAMES`다. 포함 단계와 제외 단계 모두 이 목록을 읽는다. 공개 [contracts.py](../../contracts.py)는 내부 Graph에 의존하지 않고 같은 이름 목록을 사용한다. 모델용 `ModelExcludedStep(code, reason)`(#276부터 code는 카탈로그 13개만)과 최종 화면용 `ExcludedPreviewStep(code, name, reason)`을 나눠, LLM 출력 스키마와 프롬프트는 유지했다.
 
 **예전에 저장한 JSON에는 name이 없는데 괜찮을까?** 공개 타입의 `restore_missing_name()`이 누락된 이름만 고정 목록으로 보완한다. `parse_resume_state()`로 복원하거나 공개 요청의 `resume_state`에 dict를 넣는 두 방식 모두 적용된다. 버전 1을 유지하며 기존 초안 ID, 조건, 제외 이유와 대화 이력을 보존한다. 이름이 명시돼 있는데 틀렸거나 코드가 유효하지 않으면 오류를 반환한다. 모델을 다시 부르거나 상태를 초기화하지 않는다.
 
