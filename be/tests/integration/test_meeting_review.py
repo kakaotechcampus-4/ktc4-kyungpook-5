@@ -41,7 +41,7 @@ async def test_overlap_is_unknown_and_stale_version_rejected(app_db):
         review = await meeting_review_service.apply_diarization(session, review.id, provider_job_id='provider-job-2', turns=[{'start_ms':0,'end_ms':800,'speaker_label':'SPEAKER_00'},{'start_ms':500,'end_ms':1000,'speaker_label':'SPEAKER_01'}])
         output = await meeting_review_service.output(session, review)
         assert output['segments'][0]['speakerLabel'] is None
-        with pytest.raises(meeting_review_service.ReviewConflict):
+        with pytest.raises(VersionConflict):
             await meeting_review_service.set_names(session, review, review.version - 1, {'SPEAKER_00':'민수'})
 
 

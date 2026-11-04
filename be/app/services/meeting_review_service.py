@@ -114,7 +114,9 @@ async def set_names(
     members: dict[str, dict[str, object]] | None = None,
 ):
     review = await get(session, review.meeting_id, lock=True)
-    if review.version != version or review.status not in ('NEEDS_REVIEW', 'DRAFT_READY'):
+    if review.version != version:
+        raise VersionConflict()
+    if review.status not in ('NEEDS_REVIEW', 'DRAFT_READY'):
         raise ReviewConflict()
     labels = {turn['speaker_label'] for turn in review.turns or []}
     if not set(names) <= labels:
