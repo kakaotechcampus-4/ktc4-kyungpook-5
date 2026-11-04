@@ -61,6 +61,55 @@
   --text-caption: 13px;
   --text-label: 12px;
   --text-label--font-weight: 500;
+
+  /* 토리 대화의 기다리는 동안 움직임(#290). 전환은 0.2초 안팎, 튀는 곡선은 쓰지 않는다.
+     움직임 줄이기 설정이면 쓰는 쪽에서 motion-reduce:animate-none으로 끈다. */
+  --animate-typing-dot: typing-dot 1.2s ease-in-out infinite;
+  --animate-progress-dim: progress-dim 1.6s ease-in-out infinite;
+  --animate-turn-in: turn-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-check-in: check-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-in: fade-in 150ms ease-out both;
+
+  /* 입력 중 점 세 개가 차례로 떠올랐다 내려온다. */
+  @keyframes typing-dot {
+    0%,
+    60%,
+    100% {
+      opacity: 0.35;
+      transform: translateY(0);
+    }
+    30% {
+      opacity: 1;
+      transform: translateY(-3px);
+    }
+  }
+  /* 진행 중인 작업 줄의 글자. 옅어질 때도 읽히도록 0.6 아래로 내리지 않는다. */
+  @keyframes progress-dim {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+  @keyframes turn-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+  @keyframes check-in {
+    from {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
 }
 
 body {
