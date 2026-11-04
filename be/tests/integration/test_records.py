@@ -123,6 +123,48 @@ async def test_동아리원이_아니면_목록을_볼_수_없다(client: TestCl
     assert res.json()["error"]["code"] == "FORBIDDEN"
 
 
+async def test_분류별_건수를_한번에_받는다(client: TestClient, app_db: None) -> None:
+    headers, club_id = _owner_with_club(client)
+    _upload(client, headers, club_id, "RULES", "rules-1.csv")
+    _upload(client, headers, club_id, "RULES", "rules-2.csv")
+    _upload(client, headers, club_id, "LEDGER", "ledger.csv")
+
+    other_headers, other_club_id = _owner_with_club(client)
+    _upload(client, other_headers, other_club_id, "ETC", "theirs.csv")
+
+    res = client.get(
+        "/api/v1/records/category-counts", headers=headers, params={"clubId": club_id}
+    )
+
+    assert res.status_code == 200, res.text
+    assert res.json()["data"] == {
+        "all": 3,
+        "byCategory": {
+            "RULES": 2,
+            "EVENT_HISTORY": 0,
+            "LEDGER": 1,
+            "RECEIPT": 0,
+            "ETC": 0,
+        },
+    }
+
+
+async def test_동아리원이_아니면_분류별_건수를_볼_수_없다(
+    client: TestClient, app_db: None
+) -> None:
+    _, club_id = _owner_with_club(client)
+    outsider_headers = _login(client, "rec-count-outsider")
+
+    res = client.get(
+        "/api/v1/records/category-counts",
+        headers=outsider_headers,
+        params={"clubId": club_id},
+    )
+
+    assert res.status_code == 403
+    assert res.json()["error"]["code"] == "FORBIDDEN"
+
+
 async def test_원본_다운로드는_같은_동아리만_허용(client: TestClient, app_db: None, tmp_path, monkeypatch) -> None:
     from app.core.config import get_settings
     monkeypatch.setenv("STORAGE_DIR", str(tmp_path))
