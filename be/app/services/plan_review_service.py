@@ -17,13 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.util import identity_key
 
 from app import ai
-from app.ai.planning_catalog import (
-    PLANNING_STEP_ACTORS,
-    PLANNING_STEP_NAMES,
-    PLANNING_STEP_PHASES,
-)
+from app.ai.features.planning.generation.catalog import BY_CODE
+from app.ai.planning_catalog import PLANNING_STEP_NAMES
 from app.core.enums import ActionType, EventStatus, PlanReviewStatus, StepCode
-from app.core.exceptions import EventStateConflict, VersionConflict
+from app.core.exceptions import EventNotPlanning, PlanNotGenerated, VersionConflict
 from app.models.events import Action, Event, PlanReview, Step
 
 
@@ -134,7 +131,7 @@ def _text(value: Any) -> str | None:
 def _phase_sequences(codes: list[StepCode]) -> dict:
     sequences: dict = {}
     for code in codes:
-        sequences.setdefault(PLANNING_STEP_PHASES[code], []).append(code)
+        sequences.setdefault(BY_CODE[code].phase, []).append(code)
     return sequences
 
 
@@ -196,8 +193,8 @@ def build_review_request(
         ai.ReviewStep(
             code=code,
             name=PLANNING_STEP_NAMES[code],
-            phase=PLANNING_STEP_PHASES[code],
-            actor=PLANNING_STEP_ACTORS[code],
+            phase=BY_CODE[code].phase,
+            actor=BY_CODE[code].actor,
             starts_at=_dt(step["starts_at"]),
             deadline=_dt(step["deadline"]),
             actions=tuple(
@@ -364,12 +361,12 @@ async def request_review(session: AsyncSession, *, event: Event, expected_revisi
         )
     ).one()
     if locked.status != EventStatus.PLANNING:
-        raise EventStateConflict("계획 중인 행사만 검토할 수 있어요.")
+        raise EventNotPlanning()
     if locked.plan_revision != expected_revision:
         raise VersionConflict()
     row = await _lock_review(session, event_id)
     if row is None:
-        raise EventStateConflict("초안을 만든 뒤 검토할 수 있어요.")
+        raise PlanNotGenerated()
 
     # 생성 직후 그대로인 계획은 검토할 게 없다 — 직접 호출돼도 AI를 부르지 않는다.
     if row.status == PlanReviewStatus.NOT_REQUESTED and expected_revision == row.generated_revision:

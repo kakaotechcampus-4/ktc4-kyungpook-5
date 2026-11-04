@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = "20261101_plan_review"
-down_revision = "20261030_action_version"
+down_revision = "20261103_operation_cases"
 branch_labels = None
 depends_on = None
 

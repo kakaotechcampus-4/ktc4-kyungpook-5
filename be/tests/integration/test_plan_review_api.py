@@ -62,7 +62,9 @@ def _generated_event(
         assert steps.status_code == 200, steps.text
         step_id = steps.json()["data"][0]["id"]
         patched = client.patch(
-            f"/api/v1/steps/{step_id}", headers=headers, json={"deadline": "2027-05-01T09:00:00Z"}
+            f"/api/v1/steps/{step_id}",
+            headers=headers,
+            json={"expectedVersion": 1, "deadline": "2027-05-01T09:00:00Z"},
         )
         assert patched.status_code == 200, patched.text
     return headers, event_id
@@ -169,7 +171,7 @@ async def test_초안_전에는_검토할_수_없다(
 
     res = _post_review(client, headers, event_id, 0)
     assert res.status_code == 409, res.text
-    assert res.json()["error"]["code"] == "EVENT_STATE_CONFLICT"
+    assert res.json()["error"]["code"] == "PLAN_NOT_GENERATED"
     assert calls == []
 
 
@@ -183,7 +185,7 @@ async def test_계획_중이_아니면_409(
     res = _post_review(client, headers, event_id, 0)
 
     assert res.status_code == 409, res.text
-    assert res.json()["error"]["code"] == "EVENT_STATE_CONFLICT"
+    assert res.json()["error"]["code"] == "EVENT_NOT_PLANNING"
     assert calls == []
 
 

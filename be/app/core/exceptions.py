@@ -201,6 +201,16 @@ class EventNotPlanning(ApiError):
         super().__init__("계획 중인 행사에서만 할 수 있습니다.")
 
 
+class PlanNotGenerated(ApiError):
+    """계획 초안을 만들기 전이라 검토 기준이 없을 때 (#177)."""
+
+    status_code = 409
+    code = "PLAN_NOT_GENERATED"
+
+    def __init__(self) -> None:
+        super().__init__("초안을 만든 뒤 검토할 수 있어요.")
+
+
 class EventNotOnGoing(ApiError):
     """승인·거절·실행 완료·단계 완료는 계획을 확정한 뒤(운영 중)에만 한다 (#177)."""
 

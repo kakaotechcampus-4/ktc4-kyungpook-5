@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 from app.core.enums import EventStatus, PlanReviewStatus, StepCode
 from app.db import session as db_session
+from app.models.clubs import Member
 from app.models.events import Event, PlanReview, Step
 from app.services import event_service, plan_review_service
 from tests.integration.event_seed import add_action, add_event, add_step, owner_with_club
@@ -136,7 +137,7 @@ async def test_단계_구성이_바뀌면_버전이_오른다(client: TestClient
     res = client.patch(
         f"/api/v1/events/{event_id}/plan/steps",
         headers=headers,
-        json={"codes": ["RESEARCH_VENUE", "COLLECT_FEES"]},
+        json={"codes": ["RESEARCH_VENUE", "COLLECT_FEES"], "expectedRevision": 0},
     )
 
     assert res.status_code == 200, res.text
@@ -148,7 +149,9 @@ async def test_같은_구성을_저장하면_오르지_않는다(client: TestCli
     event_id, _step_id, _action_id = await _planning_event_with_steps(club_id)
 
     res = client.patch(
-        f"/api/v1/events/{event_id}/plan/steps", headers=headers, json={"codes": ["RESEARCH_VENUE"]}
+        f"/api/v1/events/{event_id}/plan/steps",
+        headers=headers,
+        json={"codes": ["RESEARCH_VENUE"], "expectedRevision": 0},
     )
 
     assert res.status_code == 200, res.text
@@ -160,7 +163,9 @@ async def test_단계_일정이_바뀌면_버전이_오른다(client: TestClient
     event_id, step_id, _action_id = await _planning_event_with_steps(club_id)
 
     res = client.patch(
-        f"/api/v1/steps/{step_id}", headers=headers, json={"deadline": "2027-05-01T09:00:00Z"}
+        f"/api/v1/steps/{step_id}",
+        headers=headers,
+        json={"expectedVersion": 1, "deadline": "2027-05-01T09:00:00Z"},
     )
 
     assert res.status_code == 200, res.text
@@ -172,8 +177,8 @@ async def test_같은_일정이면_오르지_않는다(client: TestClient, app_d
     event_id, step_id, _action_id = await _planning_event_with_steps(club_id)
     body = {"deadline": "2027-05-01T09:00:00Z"}
 
-    client.patch(f"/api/v1/steps/{step_id}", headers=headers, json=body)
-    res = client.patch(f"/api/v1/steps/{step_id}", headers=headers, json=body)
+    client.patch(f"/api/v1/steps/{step_id}", headers=headers, json={"expectedVersion": 1, **body})
+    res = client.patch(f"/api/v1/steps/{step_id}", headers=headers, json={"expectedVersion": 2, **body})
 
     assert res.status_code == 200, res.text
     assert await _revision(event_id) == 1
@@ -223,7 +228,9 @@ async def test_운영_중_수정은_버전을_올리지_않는다(client: TestCl
     step_id = await add_step(event_id, 1)
 
     res = client.patch(
-        f"/api/v1/steps/{step_id}", headers=headers, json={"deadline": "2027-05-01T09:00:00Z"}
+        f"/api/v1/steps/{step_id}",
+        headers=headers,
+        json={"expectedVersion": 1, "deadline": "2027-05-01T09:00:00Z"},
     )
 
     assert res.status_code == 200, res.text
@@ -233,6 +240,8 @@ async def test_운영_중_수정은_버전을_올리지_않는다(client: TestCl
 async def test_동시_저장에도_버전을_잃지_않는다(client: TestClient, app_db: None) -> None:
     _headers, club_id = owner_with_club(client)
     event_id = await add_event(club_id, status=EventStatus.PLANNING)
+    async with db_session.get_sessionmaker()() as session:
+        member_id = await session.scalar(select(Member.id).where(Member.club_id == club_id))
     first_id = await add_step(event_id, 1, code=StepCode.RESEARCH_VENUE)
     second_id = await add_step(event_id, 2, code=StepCode.COLLECT_FEES)
 
@@ -240,7 +249,8 @@ async def test_동시_저장에도_버전을_잃지_않는다(client: TestClient
         async with db_session.get_sessionmaker()() as session:
             step = await session.get(Step, step_id)
             await event_service.update_step(
-                session, step=step, starts_at=None, deadline=deadline, fields={"deadline"}
+                session, step=step, starts_at=None, deadline=deadline, fields={"deadline"},
+                expected_version=1, member_id=member_id,
             )
 
     await asyncio.gather(
@@ -270,3 +280,26 @@ async def test_검토_상태_저장은_events_modified_at을_바꾸지_않는다
     review = await _review(event_id)
     assert review.generated_revision == 3
     assert review.baseline["steps"][0]["code"] == "RESEARCH_VENUE"
+
+
+async def test_단계_구성_스냅샷이_계획_버전을_함께_준다(client: TestClient, app_db: None) -> None:
+    # 단계 수정 화면은 이 값을 들고 있다가, 저장 뒤 값이 커졌을 때만 검토를 요청한다.
+    headers, club_id = owner_with_club(client)
+    event_id, _step_id, _action_id = await _planning_event_with_steps(club_id)
+    url = f"/api/v1/events/{event_id}/plan/steps"
+
+    before = client.get(f"{url}/snapshot", headers=headers).json()["data"]
+    client.patch(url, headers=headers, json={"codes": ["RESEARCH_VENUE"], "expectedRevision": 0})
+    unchanged = client.get(f"{url}/snapshot", headers=headers).json()["data"]
+    client.patch(
+        url,
+        headers=headers,
+        json={"codes": ["RESEARCH_VENUE", "COLLECT_FEES"], "expectedRevision": unchanged["baseRevision"]},
+    )
+    changed = client.get(f"{url}/snapshot", headers=headers).json()["data"]
+
+    assert before["planRevision"] == 0
+    # 바뀐 게 없는 저장은 동시 수정 버전만 올리고 계획 버전은 그대로다.
+    assert unchanged["baseRevision"] == before["baseRevision"] + 1
+    assert unchanged["planRevision"] == 0
+    assert changed["planRevision"] == 1

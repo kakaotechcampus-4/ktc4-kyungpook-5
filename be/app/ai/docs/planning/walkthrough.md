@@ -971,7 +971,8 @@ history_usage = PlanningHistoryUsage.from_count(len(state.payload.history))
 생성된 계획에서 운영진이 "수요 조사"를 빼고 「단계 수정」에서 저장하면 검토가 자동으로 이어지는 예시다(카드에는 「검토 받기」·「다시 시도」·「다시 검토」 버튼이 있다). 인원은 "대략 30명"으로 잠정이다. 평가 케이스 `survey_removed`와 같은 입력이다.
 
 ```text
-FE: 「단계 수정」 저장 → POST /api/v1/events/{id}/plan/review {expectedRevision}
+FE: 「단계 수정」 저장(PATCH /plan/steps) → 저장 뒤 GET /plan/steps/snapshot의 planRevision이
+    편집을 시작할 때 본 값보다 커졌을 때만 → POST /api/v1/events/{id}/plan/review {expectedRevision}
   → plan_review_service.request_review()
      · 행사·검토 행을 잠그고 버전 확인(다르면 409), 같은 버전을 이미 끝냈으면 AI를 다시 부르지 않음
      · build_review_request(draft, today, current, baseline, ai_excluded)
