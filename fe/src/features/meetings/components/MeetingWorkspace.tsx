@@ -13,6 +13,7 @@ import { meetingAudioVisible, meetingToriVisible } from '../timeline'
 import { MicControls } from '../audio'
 import { Timeline } from './Timeline'
 import { Suggestions, ConfirmedTasks } from './Suggestions'
+import { MeetingReviewPanel } from './MeetingReviewPanel'
 const EMPTY: never[] = []
 const statusLabel = {
   RECORDING: '진행 중',
@@ -165,6 +166,17 @@ export function MeetingWorkspace({
         <div className="space-y-6">
           {meeting && (
             <>
+              {meeting.status === 'COMPLETED' && (
+                <MeetingReviewPanel
+                  review={data.review.data}
+                  onStart={() => data.startReview.mutate()}
+                  onSubmit={() => data.submitReview.mutate()}
+                  onSaveNames={(version, names) => data.updateReviewSpeakers.mutate({ version, names })}
+                  onDraft={(version) => data.createReviewDraft.mutate(version)}
+                  busy={data.startReview.isPending || data.submitReview.isPending || data.updateReviewSpeakers.isPending || data.createReviewDraft.isPending}
+                  error={data.review.error || data.startReview.error || data.submitReview.error || data.updateReviewSpeakers.error || data.createReviewDraft.error}
+                />
+              )}
               <Card className="p-5">
                 <p className="text-caption text-mute">회의 ID: {meeting.id}</p>
                 <p className="mt-2">

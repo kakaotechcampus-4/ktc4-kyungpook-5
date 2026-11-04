@@ -7,3 +7,25 @@ export type Decision = S['ContextDecisionOut']
 export type Suggestion = S['TaskSuggestionOut']
 export type Job = S['AgentJobOut']
 export type TimelineEntry = { type: 'transcript'; id: string } | { type: 'decision'; id: string }
+
+export type MeetingReview = {
+  id: string
+  meetingId: string
+  jobId: string
+  status: string
+  version: number
+  errorCode: string | null
+  speakers: { label: string; name: string | null }[]
+  segments: {
+    segmentId: string
+    seq: number
+    text: string
+    startMs: number | null
+    endMs: number | null
+    speakerLabel: string | null
+  }[]
+  draft: {
+    summary: { text: string; evidenceSegmentIds: string[] }[]
+    tasks: { title: string; suggestedAssignee: string | null; evidenceSegmentIds: string[] }[]
+  } | null
+}
