@@ -49,7 +49,7 @@ def prepare(fixture_path, session_id, rounds, warmup, interval):
 
 def execution_metadata(mode, settings):
     from app.ai.llm import DEFAULT_MAX_RETRIES
-    from app.ai.features.planning.generation.model import PLAN_MAX_OUTPUT_TOKENS
+    from app.ai.features.planning.generation.model import PLAN_MAX_OUTPUT_TOKENS, PLAN_REASONING
     sources = [AI_DIR / name for name in ('__init__.py', 'contracts.py', 'facade.py', 'ports.py',
                                         'config.py', 'llm.py', 'errors.py', 'planning_catalog.py')
                if (AI_DIR / name).exists()]
@@ -65,7 +65,9 @@ def execution_metadata(mode, settings):
         source_sha256={str(path.relative_to(AI_DIR)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources},
         # AISettings 전체를 dump하지 않는다. 주소, 키, 헤더는 기록 대상이 아니다.
         model=settings.model if settings else None,
-        model_options=dict(temperature='not_set', reasoning='not_set', sdk_max_retries=DEFAULT_MAX_RETRIES,
+        # 추론 깊이는 대화 모델은 미지정(공급자 기본값), 생성 모델은 PLAN_REASONING이다(#264).
+        model_options=dict(temperature='not_set', reasoning=dict(agent='not_set', generation=PLAN_REASONING),
+                           sdk_max_retries=DEFAULT_MAX_RETRIES,
                            request_timeout_seconds=settings.request_timeout_seconds if settings else None,
                            generation_max_tokens=PLAN_MAX_OUTPUT_TOKENS, generation_streaming=True) if settings else None,
         coverage=dict(timing='public_function_with_nested_spans', stage_timings=OBSERVATION_SCOPE,
