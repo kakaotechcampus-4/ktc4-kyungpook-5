@@ -13,24 +13,34 @@ import {
   recordErrorMessage,
   RECORD_STATUS,
 } from '@/features/records/presentation'
-import type { ClubRecord, RecordCategory } from '@/features/records/types'
+import type { ClubRecord, RecordCategory, RecordFilter } from '@/features/records/types'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 import { Input } from '@/shared/ui/Input'
 
-const FILTERS: Array<{ value: RecordCategory | 'ALL'; label: string }> = [
+const FILTERS: Array<{ value: RecordFilter; label: string }> = [
   { value: 'ALL', label: '전체' },
   ...RECORD_CATEGORIES,
 ]
 
-function RecordStatusRow({ clubId, record }: { clubId: string; record: ClubRecord }) {
-  const detail = useRecordDetail(clubId, record.id)
+function RecordStatusRow({
+  clubId,
+  record,
+  listUpdatedAt,
+}: {
+  clubId: string
+  record: ClubRecord
+  listUpdatedAt: number
+}) {
+  const detail = useRecordDetail(clubId, record.id, record.parseStatus)
   const retryIndex = useRetryRecordIndex(clubId, record.id)
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState(false)
-  const current = detail.data ?? record
+  // 상세와 목록 중 더 최근에 받은 쪽을 보여 준다. 예전에 받아 둔 상세가 새 목록 상태를 덮지 않고,
+  // 「상태 다시 확인」·폴링으로 새로 받은 상세는 바로 보인다.
+  const current = detail.data && detail.dataUpdatedAt > listUpdatedAt ? detail.data : record
   const status = RECORD_STATUS[current.parseStatus]
 
   return (
@@ -116,17 +126,13 @@ export function RecordsPanel({ clubId, title = '회의 자료' }: { clubId: stri
 
 function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) {
   const [page, setPage] = useState(1)
-  const [filter, setFilter] = useState<RecordCategory | 'ALL'>('ALL')
+  const [filter, setFilter] = useState<RecordFilter>('ALL')
   const { records, upload, refresh } = useRecordUploads(
     clubId,
     page,
     filter === 'ALL' ? undefined : filter,
   )
-  // FILTERS 순서대로의 건수. 0번이 전체라 제목에도 쓴다.
-  const counts = useRecordCounts(
-    clubId,
-    FILTERS.map(({ value }) => (value === 'ALL' ? undefined : value)),
-  )
+  const counts = useRecordCounts(clubId)
   const rows = records.data?.data
   const totalCount = records.data?.meta?.totalCount ?? rows?.length ?? 0
   const pageCount = Math.max(1, Math.ceil(totalCount / RECORD_PAGE_SIZE))
@@ -149,7 +155,8 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
     try {
       await upload.mutateAsync({ category, file })
       // 다른 분류를 보고 있으면 방금 올린 자료가 안 보여 실패한 줄 안다. 전체로 돌린다.
-      if (filter !== category) setFilter('ALL')
+      // 올리는 동안 칩을 바꿨을 수 있어 지금 고른 분류와 비교한다.
+      setFilter((current) => (current === category ? current : 'ALL'))
       setPage(1)
       setFile(null)
       setFileInputKey((value) => value + 1)
@@ -216,7 +223,7 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
       <div className="mt-[20px] border-t border-line pt-[16px]">
         <div className="flex items-center justify-between gap-[10px]">
           <h3 className="text-[12px] font-bold text-ink2">
-            팀 자료 {counts[0] === undefined ? '' : `${counts[0]}건`}
+            팀 자료 {counts.ALL === undefined ? '' : `${counts.ALL}건`}
           </h3>
           <Button
             variant="ghost"
@@ -232,7 +239,7 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
           aria-label="자료 분류로 보기"
           className="mt-[10px] flex flex-wrap gap-[6px]"
         >
-          {FILTERS.map(({ value, label }, index) => (
+          {FILTERS.map(({ value, label }) => (
             <button
               key={value}
               type="button"
@@ -240,6 +247,8 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
               onClick={() => {
                 setFilter(value)
                 setPage(1)
+                // 「아래에서 처리 결과를 확인」 안내가 올린 자료가 없는 목록 위에 남지 않게 한다.
+                if (upload.isSuccess) upload.reset()
               }}
               className={cn(
                 'rounded-[8px] border px-[11px] py-[6px] text-[12px]',
@@ -248,7 +257,14 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
                   : 'border-soft bg-card font-medium text-ink2 hover:bg-bg',
               )}
             >
-              {label} {counts[index]}
+              {label}
+              {counts[value] !== undefined && (
+                <>
+                  {' '}
+                  {counts[value]}
+                  <span className="sr-only">건</span>
+                </>
+              )}
             </button>
           ))}
         </div>
@@ -265,7 +281,12 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
         {rows && rows.length > 0 ? (
           <ul className="mt-[6px]" aria-live="polite">
             {rows.map((record) => (
-              <RecordStatusRow key={record.id} clubId={clubId} record={record} />
+              <RecordStatusRow
+                key={record.id}
+                clubId={clubId}
+                record={record}
+                listUpdatedAt={records.dataUpdatedAt}
+              />
             ))}
           </ul>
         ) : records.isSuccess ? (
