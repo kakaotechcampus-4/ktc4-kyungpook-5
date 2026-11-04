@@ -7,6 +7,7 @@
 대조 사례 하나만 더 잴 때는 --rounds 0 --no-warmup --control-ids date_resume --controls 10처럼 쓴다.
 본측정의 성공 판정·구간 시간·토큰 기록은 #263 측정기(measure_attempt)를, 대조 사례는 #205 검사기를 그대로 쓴다.
 요청마다 이번 턴의 응답별 Tool 이름(`tool_batches`)을 함께 남겨 두 Tool을 한 응답에 담았는지 본다.
+대조 사례는 응답별 Tool 인자·실행 결과(`tool_trace`), 최종 답변, 날짜 주제 처리(`dates_handling`)도 남긴다(#274).
 
   .venv/bin/python -m app.ai.scripts.compare_parallel_tool_calls --output-dir <작업 트리 밖 폴더> --session-id s1
 """
@@ -64,6 +65,59 @@ def turn_tools(request_data, result):
         status=offer['status'], basis_matches_draft=offer['basis_draft'] == payload['basis_draft']))
 
 
+def tool_trace(request_data, result):
+    """이번 턴의 응답별 Tool 요청(이름·인자)과 그 실행 결과, 토리의 최종 답변(#274).
+
+    응답 하나가 목록 하나다. 예:
+      [[{name: update_event_conditions, args: {changes: [...], resume_topics: [...]}, status: applied}],
+       [{name: update_generation_offer, args: {action: defer, ...}, status: applied}]]
+    실행 결과는 Tool 메시지를 tool_call_id로 짝지어 붙인다. 짝이 없으면 status는 None이다.
+    """
+    if not result:
+        return dict(tool_trace=None, reply=None)
+    before = len(request_data['resume_state']['payload']['history'])
+    added = result['next_state']['payload']['history'][before:]
+    outcomes = {}
+    for message in added:
+        if message['role'] != 'tool':
+            continue
+        try:
+            content = json.loads(message['content'])
+        except (TypeError, json.JSONDecodeError):
+            content = {}
+        outcomes[message['tool_call_id']] = dict(status=content.get('status'), reason=content.get('reason'))
+    trace = [[dict(name=call['name'], args=call['args'],
+                   **outcomes.get(call['id'], dict(status=None, reason=None)))
+              for call in message['tool_calls']]
+             for message in added if message.get('tool_calls')]
+    return dict(tool_trace=trace, reply=result['view']['reply'])
+
+
+def topic_handling(trace, topic='dates'):
+    """조건 변경 Tool이 이번 턴에 한 주제를 어떻게 다뤘는지 한 단어로 나눈다(#274).
+
+    resumed          resume_topics에 넣었고 적용됐다
+    resume_rejected  resume_topics에 넣었지만 그 요청이 거절됐다 (재시도에서 다시 넣었으면 resumed)
+    deferred         defer_topics에 넣었다 ("다시 얘기하자"를 "나중에"로 읽은 경우)
+    omitted          조건 변경 Tool을 불렀지만 이 주제를 resume/defer 어디에도 넣지 않았다
+    no_condition_call 조건 변경 Tool을 부르지 않았다
+    """
+    if trace is None:
+        return None
+    calls = [call for batch in trace for call in batch if call['name'] == nodes.TOOL_NAME]
+    if not calls:
+        return 'no_condition_call'
+    def mentions(call, key):
+        return any(item.get('topic') == topic for item in call['args'].get(key) or [])
+    if any(mentions(call, 'resume_topics') and call['status'] != 'rejected' for call in calls):
+        return 'resumed'
+    if any(mentions(call, 'resume_topics') for call in calls):
+        return 'resume_rejected'
+    if any(mentions(call, 'defer_topics') for call in calls):
+        return 'deferred'
+    return 'omitted'
+
+
 def summarize(rows):
     """변형별 집계. 본측정은 #263 집계(summarize_group)에 Tool 묶음 비율을, 대조 사례는 통과 수를 더한다."""
     latency, controls = {}, {}
@@ -84,7 +138,12 @@ def summarize(rows):
             controls[variant][case.id] = dict(
                 started=len(chosen), passed=sum(row['passed'] for row in chosen),
                 failed_checks=dict(Counter(key for row in chosen for key, ok in row.get('checks', {}).items() if not ok)),
-                errors=dict(Counter(row['error'] for row in chosen if row.get('error'))))
+                errors=dict(Counter(row['error'] for row in chosen if row.get('error'))),
+                # 통과/실패별로 날짜 주제를 어떻게 다뤘는지. 실패가 빠뜨림인지 다른 해석인지 여기서 본다(#274).
+                dates_handling={outcome: dict(Counter(row['dates_handling'] for row in chosen
+                                                      if row['passed'] == (outcome == 'passed')
+                                                      and 'dates_handling' in row))
+                                for outcome in ('passed', 'failed')})
     return dict(latency=latency, controls=controls)
 
 
@@ -136,14 +195,17 @@ async def run_session(output_dir: Path, *, session_id, rounds=10, controls=1, in
                             raise asyncio.CancelledError
                         measured.update(turn_tools(request_data, measured.get('result')))
                     else:
-                        measured = await measure_control(controls_by_id[case_id], request)
+                        measured = await measure_control(controls_by_id[case_id], request, keep_result=True)
+                        # 통과/실패만으로는 원인을 못 본다. 응답별 Tool 인자와 날짜 주제 처리를 남긴다(#274).
+                        measured.update(tool_trace(request_data, measured.get('result')))
+                        measured['dates_handling'] = topic_handling(measured['tool_trace'])
                 row = dict(event='finished', finished_at=now(), **identity, **measured)
                 append_event(stream, row)
                 rows.append(row)
                 report['finished'] = len(rows)
                 write_manifest(output_dir, report)
                 print(json.dumps(dict(**identity, outcome=row.get('outcome'), passed=row.get('passed'),
-                                      tools=row.get('tool_batches'),
+                                      tools=row.get('tool_batches'), dates=row.get('dates_handling'),
                                       seconds=round(row['ai_request_ms'] / 1000, 2)), ensure_ascii=False), flush=True)
                 if index + 1 < len(plan):
                     await sleep(interval)

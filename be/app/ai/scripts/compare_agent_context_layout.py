@@ -59,8 +59,11 @@ def schedule(rounds, controls):
     return plan
 
 
-async def measure_control(case, request):
-    """보류 경계 사례 한 건. 성공 판정은 #205 검사기(inspect_boundary)를 그대로 쓴다."""
+async def measure_control(case, request, *, keep_result=False):
+    """보류 경계 사례 한 건. 성공 판정은 #205 검사기(inspect_boundary)를 그대로 쓴다.
+
+    keep_result=True면 공개 결과 전체(`result`)도 남긴다. 실패한 응답의 Tool 인자를 보려면 필요하다(#274).
+    """
     before = request.model_dump_json()
     row = dict(passed=False)
     with capture_request(time.perf_counter_ns) as trace:
@@ -78,6 +81,8 @@ async def measure_control(case, request):
         row.update(inspect_boundary(request, result, case))
         row['checks']['request_unchanged'] = request.model_dump_json() == before
         row['passed'] = all(row['checks'].values())
+        if keep_result:
+            row['result'] = result.model_dump(mode='json')
     return row
 
 
