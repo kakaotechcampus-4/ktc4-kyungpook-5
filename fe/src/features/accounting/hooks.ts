@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createExpense, getExpenses } from './api'
+import { createExpense, getExpenses, getReceiptImports, retryReceiptImport } from './api'
 import type { CreateExpenseInput } from './types'
 import { ApiError } from '@/shared/api/types'
 
@@ -29,4 +29,22 @@ export function expenseFormErrorMessage(error: unknown): string {
     if (error.code === 'UNAUTHORIZED') return '로그인이 만료됐어요. 다시 로그인해 주세요.'
   }
   return '지출을 등록하지 못했어요. 잠시 뒤 다시 시도해 주세요.'
+}
+
+export function useReceiptImports(clubId: string) {
+  return useQuery({
+    queryKey: ['accounting', clubId, 'receipt-imports'],
+    queryFn: () => getReceiptImports(clubId),
+    enabled: Boolean(clubId),
+    retry: false,
+    refetchInterval: (query) => query.state.data?.data.some((item) => item.status === 'PROCESSING') ? 5000 : false,
+  })
+}
+
+export function useRetryReceiptImport(clubId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => retryReceiptImport(clubId, id),
+    onSettled: () => client.invalidateQueries({ queryKey: ['accounting', clubId, 'receipt-imports'] }),
+  })
 }
