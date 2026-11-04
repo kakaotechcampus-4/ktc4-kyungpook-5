@@ -3,11 +3,13 @@
 Jev는 학습하지 않고 바로 쓰는 판단 모델이다. 요청 형식이 Laya와 같아서(state + questions, noul 확률)
 luna·Laya와 같은 문항을 같은 입력 글과 같은 판단 질문으로 잰다. 키가 필요해 CI에서 돌리지 않는다.
 
-    cd be && uv run python app/ai/scripts/check_jev_judge.py [--eval-set [--holdout]] \\
+    cd be && uv run python app/ai/scripts/check_jev_judge.py [--eval-set [--holdout | --split holdout2]] \\
         [--threshold 0.5] [--sweep 0.1 0.2 ...] [--luna luna결과.json] [--repeat 3] [--limit 5] [--json 결과.json]
 
 - 입력 글은 build_judge_input, 질문은 questions.py의 record_lookup이다. Laya 측정(check_laya_judge.py)과 같다.
   질문 문구를 바꾸면 이전 측정과 비교할 수 없으므로 QUESTIONS_VERSION을 올린다
+- 문구 후보는 코드를 바꾸지 않고 --questions <파일>로 잰다. 파일은 {"version": "...", "questions": {"record_lookup": {...}}}이고,
+  결과의 questions_version에 파일의 version이 남는다
 - 응답의 noul(조회가 필요할 확률)이 임계값(--threshold) 이상이면 조회로 본다. Jev는 확률을 소수 둘째 자리까지 준다
 - 임계값 표(--sweep, 기본 0.01~0.99를 0.01 간격)는 개발용으로만 만든다. 임계값은 개발용에서 고르고
   홀드아웃은 고른 값을 확인하는 데만 쓴다
@@ -101,7 +103,7 @@ def _judge(client: JevClient, state: str, questions: dict) -> dict:
 def run(args, client: JevClient, git: dict) -> dict:
     path, key, groups, requests = eval_items(args)
     items = [(row, build_judge_input(request)) for row, request in requests][: args.limit]
-    questions = judge_questions()
+    questions = args.questions_body or judge_questions()
 
     passes = []
     for n in range(args.repeat):
@@ -131,8 +133,10 @@ def run(args, client: JevClient, git: dict) -> dict:
         })
 
     caught = luna_caught(args.luna) if args.luna else None
-    sweep_records = [r for r in records if r.get("split") != "holdout"]
-    sweep = threshold_sweep(sweep_records, args.sweep)
+    # 임계값 표는 개발용으로만 만든다. 홀드아웃(holdout·holdout2)은 고른 값을 확인하는 데만 쓴다
+    sweep_records = [r for r in records if r.get("split", "dev") == "dev"]
+    # --split holdout2처럼 개발용이 없으면 표를 만들지 않는다
+    sweep = threshold_sweep(sweep_records, args.sweep) if sweep_records else []
     if caught is not None:
         for row in sweep:
             row["luna_caught_missed"] = luna_missed(sweep_records, caught, row["threshold"])["missed"]
@@ -151,7 +155,7 @@ def run(args, client: JevClient, git: dict) -> dict:
             **git,
             "model": client.model,
             "served_models": sorted({o["served_model"] for o in done if o.get("served_model")}),
-            "questions_version": QUESTIONS_VERSION,
+            "questions_version": args.questions_version or QUESTIONS_VERSION,
             "threshold": args.threshold,
             "luna": str(args.luna) if args.luna else None,
             "eval": path.name,
@@ -207,11 +211,18 @@ def main() -> int:
     parser.add_argument("--luna", type=Path, help="같은 문항을 잰 luna 결과. luna가 잡은 조회 중 놓친 것을 센다")
     parser.add_argument("--env-file", type=Path, default=Path(".env"), help="JEV_BASE_URL·JEV_API_KEY를 읽을 파일")
     parser.add_argument("--json", type=Path, help="결과를 저장할 파일")
+    parser.add_argument("--questions", type=Path, help="질문 문구 후보 파일. 없으면 questions.py의 지금 문구")
     args = parser.parse_args()
+    args.questions_body = args.questions_version = None
+    if args.questions:
+        candidate = json.loads(args.questions.read_text(encoding="utf-8"))
+        if set(candidate.get("questions", {})) != {RECORD_LOOKUP} or not candidate.get("version"):
+            parser.error("--questions 파일에는 version과 record_lookup 질문 하나만 둔다")
+        args.questions_body, args.questions_version = candidate["questions"], candidate["version"]
     if args.eval_set and args.set:
         parser.error("--eval-set에는 --set을 함께 쓸 수 없다")
-    if args.holdout and not args.eval_set:
-        parser.error("--holdout은 --eval-set과 함께 쓴다")
+    if (args.holdout or args.split) and not args.eval_set:
+        parser.error("--holdout·--split은 --eval-set과 함께 쓴다")
     if not 0 <= args.threshold <= 1 or not all(0 <= t <= 1 for t in args.sweep):
         parser.error("임계값은 0과 1 사이다")
     args.sweep = tuple(sorted(set(args.sweep)))

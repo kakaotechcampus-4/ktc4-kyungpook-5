@@ -173,10 +173,11 @@ function Conversation({
                       : '대화를 이어서 필요한 정보를 확인해 주세요.'}
             </p>
             <Button
-              disabled={!eventId || live.busy || !readiness?.canGenerate}
+              loading={live.busy}
+              disabled={!eventId || !readiness?.canGenerate}
               onClick={() => void live.generate()}
             >
-              {live.busy ? '처리 중…' : '현재 조건으로 초안 생성'}
+              {live.busy ? '초안을 만드는 중…' : '현재 조건으로 초안 생성'}
             </Button>
             {screen && <StepSummaryLine summary={screen.summary} steps={steps} edited={false} />}
             {screen?.warnings.map((warning, index) => (

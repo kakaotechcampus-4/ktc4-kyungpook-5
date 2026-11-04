@@ -1,0 +1,949 @@
+{
+  "fixture_version": 1,
+  "provenance": "합성 워크숍. 공개 함수에 대화 응답만 주입해 작성. 멘토 이력 아님.",
+  "actual_provider_calls": 0,
+  "reference_date": "2026-11-03",
+  "timezone": "Asia/Seoul",
+  "direct_request": "최신 조건으로 초안 만들어줘.",
+  "cases": [
+    {
+      "id": "current_offer",
+      "resume_state": {
+        "schema_version": 1,
+        "club_id": "synthetic-239-club",
+        "event_id": "synthetic-239-event",
+        "conversation_id": "synthetic-239-conversation",
+        "payload": {
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "WORKSHOP",
+              "headcount": 30,
+              "fee_per_person": 30000,
+              "start_date": "2026-11-07",
+              "end_date": "2026-11-07",
+              "location": "가평 펜션",
+              "budget_total": null
+            },
+            "condition_meta": {
+              "event_type": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "headcount": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "fee_per_person": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "location": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "start_date": {
+                "status": "tentative",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "end_date": {
+                "status": "tentative",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              }
+            },
+            "deferred_topics": []
+          },
+          "history": [
+            {
+              "role": "user",
+              "id": "fixture-initial",
+              "content": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.",
+              "tool_calls": [],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "assistant",
+              "id": "cd3a62c9-7720-4382-b95a-f85492e07b96",
+              "content": "",
+              "tool_calls": [
+                {
+                  "id": "fixture-set",
+                  "name": "update_event_conditions",
+                  "args": {
+                    "changes": [
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "event_type",
+                          "value": "WORKSHOP"
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "headcount",
+                          "value": 30
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "fee_per_person",
+                          "value": 30000
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "location",
+                          "value": "가평 펜션"
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "start_date",
+                          "value": "2026-11-07"
+                        },
+                        "status": "tentative",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "end_date",
+                          "value": "2026-11-07"
+                        },
+                        "status": "tentative",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "fixture-offer",
+                  "name": "update_generation_offer",
+                  "args": {
+                    "action": "offer",
+                    "reason": "현재 워크숍 조건으로 준비 순서 초안을 제안해요."
+                  }
+                }
+              ],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "tool",
+              "id": "8d2c1ac6-f93c-4c76-931f-b99828b5ab9c",
+              "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"WORKSHOP\",\"headcount\":30,\"fee_per_person\":30000,\"start_date\":\"2026-11-07\",\"end_date\":\"2026-11-07\",\"location\":\"가평 펜션\",\"budget_total\":null},\"condition_meta\":{\"event_type\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"location\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"start_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"end_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"event_type\",\"headcount\",\"fee_per_person\",\"location\",\"start_date\",\"end_date\"],\"reason\":null}",
+              "tool_calls": [],
+              "name": "update_event_conditions",
+              "tool_call_id": "fixture-set",
+              "tool_status": "success"
+            },
+            {
+              "role": "tool",
+              "id": "ad264be3-3f73-4f1c-a0a9-bb99831e0e69",
+              "content": "{\"status\":\"applied\",\"offer\":{\"id\":\"4eaaa175-c045-4d69-a7fd-08c7e617dc93\",\"status\":\"pending\",\"summary\":\"현재 워크숍 조건으로 준비 순서 초안을 제안해요.\",\"basis_draft\":{\"conditions\":{\"title\":null,\"event_type\":\"WORKSHOP\",\"headcount\":30,\"fee_per_person\":30000,\"start_date\":\"2026-11-07\",\"end_date\":\"2026-11-07\",\"location\":\"가평 펜션\",\"budget_total\":null},\"condition_meta\":{\"event_type\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"location\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"start_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"end_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}}},\"deferred_topics\":[]}},\"reason\":null}",
+              "tool_calls": [],
+              "name": "update_generation_offer",
+              "tool_call_id": "fixture-offer",
+              "tool_status": "success"
+            },
+            {
+              "role": "assistant",
+              "id": "8a8040fe-689c-42d5-96fe-f9cb7292bfbf",
+              "content": "30명·참가비 30000원·가평 펜션·11월 7일 잠정 일정으로 초안을 만들까요?",
+              "tool_calls": [],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            }
+          ],
+          "generation": {
+            "offer": {
+              "id": "4eaaa175-c045-4d69-a7fd-08c7e617dc93",
+              "status": "pending",
+              "summary": "현재 워크숍 조건으로 준비 순서 초안을 제안해요.",
+              "basis_draft": {
+                "conditions": {
+                  "title": null,
+                  "event_type": "WORKSHOP",
+                  "headcount": 30,
+                  "fee_per_person": 30000,
+                  "start_date": "2026-11-07",
+                  "end_date": "2026-11-07",
+                  "location": "가평 펜션",
+                  "budget_total": null
+                },
+                "condition_meta": {
+                  "event_type": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "headcount": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "fee_per_person": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "location": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "start_date": {
+                    "status": "tentative",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "end_date": {
+                    "status": "tentative",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  }
+                },
+                "deferred_topics": []
+              }
+            },
+            "preview": null,
+            "condition_change_pending": false,
+            "pending_condition_fields": []
+          }
+        }
+      }
+    },
+    {
+      "id": "changed_headcount",
+      "resume_state": {
+        "schema_version": 1,
+        "club_id": "synthetic-239-club",
+        "event_id": "synthetic-239-event",
+        "conversation_id": "synthetic-239-conversation",
+        "payload": {
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "WORKSHOP",
+              "headcount": 40,
+              "fee_per_person": 30000,
+              "start_date": "2026-11-07",
+              "end_date": "2026-11-07",
+              "location": "가평 펜션",
+              "budget_total": null
+            },
+            "condition_meta": {
+              "event_type": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "headcount": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-headcount",
+                  "quote": "인원을 40명으로 바꿔줘."
+                }
+              },
+              "fee_per_person": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "location": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "start_date": {
+                "status": "tentative",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "end_date": {
+                "status": "tentative",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              }
+            },
+            "deferred_topics": []
+          },
+          "history": [
+            {
+              "role": "user",
+              "id": "fixture-initial",
+              "content": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.",
+              "tool_calls": [],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "assistant",
+              "id": "cd3a62c9-7720-4382-b95a-f85492e07b96",
+              "content": "",
+              "tool_calls": [
+                {
+                  "id": "fixture-set",
+                  "name": "update_event_conditions",
+                  "args": {
+                    "changes": [
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "event_type",
+                          "value": "WORKSHOP"
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "headcount",
+                          "value": 30
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "fee_per_person",
+                          "value": 30000
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "location",
+                          "value": "가평 펜션"
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "start_date",
+                          "value": "2026-11-07"
+                        },
+                        "status": "tentative",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "end_date",
+                          "value": "2026-11-07"
+                        },
+                        "status": "tentative",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "fixture-offer",
+                  "name": "update_generation_offer",
+                  "args": {
+                    "action": "offer",
+                    "reason": "현재 워크숍 조건으로 준비 순서 초안을 제안해요."
+                  }
+                }
+              ],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "tool",
+              "id": "8d2c1ac6-f93c-4c76-931f-b99828b5ab9c",
+              "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"WORKSHOP\",\"headcount\":30,\"fee_per_person\":30000,\"start_date\":\"2026-11-07\",\"end_date\":\"2026-11-07\",\"location\":\"가평 펜션\",\"budget_total\":null},\"condition_meta\":{\"event_type\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"location\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"start_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"end_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"event_type\",\"headcount\",\"fee_per_person\",\"location\",\"start_date\",\"end_date\"],\"reason\":null}",
+              "tool_calls": [],
+              "name": "update_event_conditions",
+              "tool_call_id": "fixture-set",
+              "tool_status": "success"
+            },
+            {
+              "role": "tool",
+              "id": "ad264be3-3f73-4f1c-a0a9-bb99831e0e69",
+              "content": "{\"status\":\"applied\",\"offer\":{\"id\":\"4eaaa175-c045-4d69-a7fd-08c7e617dc93\",\"status\":\"pending\",\"summary\":\"현재 워크숍 조건으로 준비 순서 초안을 제안해요.\",\"basis_draft\":{\"conditions\":{\"title\":null,\"event_type\":\"WORKSHOP\",\"headcount\":30,\"fee_per_person\":30000,\"start_date\":\"2026-11-07\",\"end_date\":\"2026-11-07\",\"location\":\"가평 펜션\",\"budget_total\":null},\"condition_meta\":{\"event_type\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"location\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"start_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"end_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}}},\"deferred_topics\":[]}},\"reason\":null}",
+              "tool_calls": [],
+              "name": "update_generation_offer",
+              "tool_call_id": "fixture-offer",
+              "tool_status": "success"
+            },
+            {
+              "role": "assistant",
+              "id": "8a8040fe-689c-42d5-96fe-f9cb7292bfbf",
+              "content": "30명·참가비 30000원·가평 펜션·11월 7일 잠정 일정으로 초안을 만들까요?",
+              "tool_calls": [],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "user",
+              "id": "fixture-headcount",
+              "content": "인원을 40명으로 바꿔줘.",
+              "tool_calls": [],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "assistant",
+              "id": "4dd5b20a-e166-479a-bb95-52e2414b1fa3",
+              "content": "",
+              "tool_calls": [
+                {
+                  "id": "fixture-change-headcount",
+                  "name": "update_event_conditions",
+                  "args": {
+                    "changes": [
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "headcount",
+                          "value": 40
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-headcount",
+                          "quote": "인원을 40명으로 바꿔줘."
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "tool",
+              "id": "755fb356-1e2f-48c9-8a2a-0c89ff6ea121",
+              "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"WORKSHOP\",\"headcount\":40,\"fee_per_person\":30000,\"start_date\":\"2026-11-07\",\"end_date\":\"2026-11-07\",\"location\":\"가평 펜션\",\"budget_total\":null},\"condition_meta\":{\"event_type\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-headcount\",\"quote\":\"인원을 40명으로 바꿔줘.\"}},\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"location\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"start_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"end_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"headcount\"],\"reason\":null}",
+              "tool_calls": [],
+              "name": "update_event_conditions",
+              "tool_call_id": "fixture-change-headcount",
+              "tool_status": "success"
+            },
+            {
+              "role": "assistant",
+              "id": "2df4534b-70c8-4bff-8a50-165731743626",
+              "content": "인원을 40명으로 바꿨어요. 다른 조건은 유지했어요.",
+              "tool_calls": [],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            }
+          ],
+          "generation": {
+            "offer": {
+              "id": "4eaaa175-c045-4d69-a7fd-08c7e617dc93",
+              "status": "pending",
+              "summary": "현재 워크숍 조건으로 준비 순서 초안을 제안해요.",
+              "basis_draft": {
+                "conditions": {
+                  "title": null,
+                  "event_type": "WORKSHOP",
+                  "headcount": 30,
+                  "fee_per_person": 30000,
+                  "start_date": "2026-11-07",
+                  "end_date": "2026-11-07",
+                  "location": "가평 펜션",
+                  "budget_total": null
+                },
+                "condition_meta": {
+                  "event_type": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "headcount": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "fee_per_person": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "location": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "start_date": {
+                    "status": "tentative",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "end_date": {
+                    "status": "tentative",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  }
+                },
+                "deferred_topics": []
+              }
+            },
+            "preview": null,
+            "condition_change_pending": false,
+            "pending_condition_fields": []
+          }
+        }
+      }
+    },
+    {
+      "id": "specified_dates",
+      "resume_state": {
+        "schema_version": 1,
+        "club_id": "synthetic-239-club",
+        "event_id": "synthetic-239-event",
+        "conversation_id": "synthetic-239-conversation",
+        "payload": {
+          "basis_draft": {
+            "conditions": {
+              "title": null,
+              "event_type": "WORKSHOP",
+              "headcount": 30,
+              "fee_per_person": 30000,
+              "start_date": "2026-11-07",
+              "end_date": "2026-11-07",
+              "location": "가평 펜션",
+              "budget_total": null
+            },
+            "condition_meta": {
+              "event_type": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "headcount": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "fee_per_person": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "location": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-initial",
+                  "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                }
+              },
+              "start_date": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-dates",
+                  "quote": "일정은 같은 2026년 11월 7일 당일로 확정해줘."
+                }
+              },
+              "end_date": {
+                "status": "specified",
+                "evidence": {
+                  "message_id": "fixture-dates",
+                  "quote": "일정은 같은 2026년 11월 7일 당일로 확정해줘."
+                }
+              }
+            },
+            "deferred_topics": []
+          },
+          "history": [
+            {
+              "role": "user",
+              "id": "fixture-initial",
+              "content": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.",
+              "tool_calls": [],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "assistant",
+              "id": "cd3a62c9-7720-4382-b95a-f85492e07b96",
+              "content": "",
+              "tool_calls": [
+                {
+                  "id": "fixture-set",
+                  "name": "update_event_conditions",
+                  "args": {
+                    "changes": [
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "event_type",
+                          "value": "WORKSHOP"
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "headcount",
+                          "value": 30
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "fee_per_person",
+                          "value": 30000
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "location",
+                          "value": "가평 펜션"
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "start_date",
+                          "value": "2026-11-07"
+                        },
+                        "status": "tentative",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "end_date",
+                          "value": "2026-11-07"
+                        },
+                        "status": "tentative",
+                        "evidence": {
+                          "message_id": "fixture-initial",
+                          "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "fixture-offer",
+                  "name": "update_generation_offer",
+                  "args": {
+                    "action": "offer",
+                    "reason": "현재 워크숍 조건으로 준비 순서 초안을 제안해요."
+                  }
+                }
+              ],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "tool",
+              "id": "8d2c1ac6-f93c-4c76-931f-b99828b5ab9c",
+              "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"WORKSHOP\",\"headcount\":30,\"fee_per_person\":30000,\"start_date\":\"2026-11-07\",\"end_date\":\"2026-11-07\",\"location\":\"가평 펜션\",\"budget_total\":null},\"condition_meta\":{\"event_type\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"location\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"start_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"end_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"event_type\",\"headcount\",\"fee_per_person\",\"location\",\"start_date\",\"end_date\"],\"reason\":null}",
+              "tool_calls": [],
+              "name": "update_event_conditions",
+              "tool_call_id": "fixture-set",
+              "tool_status": "success"
+            },
+            {
+              "role": "tool",
+              "id": "ad264be3-3f73-4f1c-a0a9-bb99831e0e69",
+              "content": "{\"status\":\"applied\",\"offer\":{\"id\":\"4eaaa175-c045-4d69-a7fd-08c7e617dc93\",\"status\":\"pending\",\"summary\":\"현재 워크숍 조건으로 준비 순서 초안을 제안해요.\",\"basis_draft\":{\"conditions\":{\"title\":null,\"event_type\":\"WORKSHOP\",\"headcount\":30,\"fee_per_person\":30000,\"start_date\":\"2026-11-07\",\"end_date\":\"2026-11-07\",\"location\":\"가평 펜션\",\"budget_total\":null},\"condition_meta\":{\"event_type\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"location\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"start_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"end_date\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}}},\"deferred_topics\":[]}},\"reason\":null}",
+              "tool_calls": [],
+              "name": "update_generation_offer",
+              "tool_call_id": "fixture-offer",
+              "tool_status": "success"
+            },
+            {
+              "role": "assistant",
+              "id": "8a8040fe-689c-42d5-96fe-f9cb7292bfbf",
+              "content": "30명·참가비 30000원·가평 펜션·11월 7일 잠정 일정으로 초안을 만들까요?",
+              "tool_calls": [],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "user",
+              "id": "fixture-dates",
+              "content": "일정은 같은 2026년 11월 7일 당일로 확정해줘.",
+              "tool_calls": [],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "assistant",
+              "id": "c0817493-3c65-476a-9a05-e512c1e819d3",
+              "content": "",
+              "tool_calls": [
+                {
+                  "id": "fixture-specify-dates",
+                  "name": "update_event_conditions",
+                  "args": {
+                    "changes": [
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "start_date",
+                          "value": "2026-11-07"
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-dates",
+                          "quote": "일정은 같은 2026년 11월 7일 당일로 확정해줘."
+                        }
+                      },
+                      {
+                        "op": "SET",
+                        "change": {
+                          "field": "end_date",
+                          "value": "2026-11-07"
+                        },
+                        "status": "specified",
+                        "evidence": {
+                          "message_id": "fixture-dates",
+                          "quote": "일정은 같은 2026년 11월 7일 당일로 확정해줘."
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            },
+            {
+              "role": "tool",
+              "id": "4c474189-4615-4aa3-b874-dec713269dee",
+              "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"WORKSHOP\",\"headcount\":30,\"fee_per_person\":30000,\"start_date\":\"2026-11-07\",\"end_date\":\"2026-11-07\",\"location\":\"가평 펜션\",\"budget_total\":null},\"condition_meta\":{\"event_type\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"location\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-initial\",\"quote\":\"워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘.\"}},\"start_date\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-dates\",\"quote\":\"일정은 같은 2026년 11월 7일 당일로 확정해줘.\"}},\"end_date\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"fixture-dates\",\"quote\":\"일정은 같은 2026년 11월 7일 당일로 확정해줘.\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"start_date\",\"end_date\"],\"reason\":null}",
+              "tool_calls": [],
+              "name": "update_event_conditions",
+              "tool_call_id": "fixture-specify-dates",
+              "tool_status": "success"
+            },
+            {
+              "role": "assistant",
+              "id": "30464969-3d4c-4bbc-9958-0b532d30f761",
+              "content": "일정은 11월 7일 당일로 명시했어요. 다른 조건은 유지했어요.",
+              "tool_calls": [],
+              "name": null,
+              "tool_call_id": null,
+              "tool_status": null
+            }
+          ],
+          "generation": {
+            "offer": {
+              "id": "4eaaa175-c045-4d69-a7fd-08c7e617dc93",
+              "status": "pending",
+              "summary": "현재 워크숍 조건으로 준비 순서 초안을 제안해요.",
+              "basis_draft": {
+                "conditions": {
+                  "title": null,
+                  "event_type": "WORKSHOP",
+                  "headcount": 30,
+                  "fee_per_person": 30000,
+                  "start_date": "2026-11-07",
+                  "end_date": "2026-11-07",
+                  "location": "가평 펜션",
+                  "budget_total": null
+                },
+                "condition_meta": {
+                  "event_type": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "headcount": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "fee_per_person": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "location": {
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "start_date": {
+                    "status": "tentative",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  },
+                  "end_date": {
+                    "status": "tentative",
+                    "evidence": {
+                      "message_id": "fixture-initial",
+                      "quote": "워크숍이고 인원은 30명, 참가비는 30000원, 장소는 가평 펜션이야. 일정은 일단 2026년 11월 7일 당일로 잡자. 이 조건으로 초안을 만들지 물어봐 줘."
+                    }
+                  }
+                },
+                "deferred_topics": []
+              }
+            },
+            "preview": null,
+            "condition_change_pending": false,
+            "pending_condition_fields": []
+          }
+        }
+      }
+    }
+  ]
+}
