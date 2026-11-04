@@ -1,7 +1,7 @@
 """영수 내역 기록 API의 응답 계약과 실제 동작 테스트 (#133).
 
 accounting.curl.sh A01~A09가 실제 DB로 끝까지 도는지 확인한다. CSV 파싱은
-결정론적 코드, 영수증 이미지는 더미 OCR(services/receipt_ocr_stub.py)이다.
+결정론적 코드이며, 영수증 AI는 테스트에서 고정 응답으로 대체한다.
 """
 
 import uuid
@@ -188,6 +188,13 @@ async def test_영수증_이미지는_검수_초안을_만들고_수정_후_확�
     assert draft.json()["data"]["version"] == 2
     assert draft.json()["data"]["expenseRows"][0]["merchant"] == "진짜 가게"
 
+    from app.models.accounting import ReceiptImport, ReceiptImportRow
+    async with get_sessionmaker()() as session:
+        stored = await session.get(ReceiptImport, import_id)
+        row = await session.scalar(select(ReceiptImportRow).where(ReceiptImportRow.receipt_import_id == import_id))
+        assert stored.extraction_result['rows'][0]['amount'] == 1000
+        assert row.raw_fields['amount'] == 1000 and row.amount == 12345
+
     confirm = client.post(
         f"/api/v1/clubs/{club_id}/receipt-imports/{import_id}/confirm",
         headers=headers,
@@ -350,3 +357,21 @@ async def test_concurrent_ocr_confirm_creates_one_expense(client, app_db, monkey
     responses = await asyncio.gather(*(asyncio.to_thread(client.post, path, headers=headers, json={'expectedVersion':1}) for _ in range(2)))
     assert sorted(response.status_code for response in responses) == [200, 409]
     assert len(client.get(f'/api/v1/clubs/{club_id}/expenses', headers=headers).json()['data']) == 1
+
+
+@pytest.mark.parametrize('field,value', [('amount', 2147483648), ('merchant', 'x' * 201), ('category', 'x' * 51)])
+async def test_ocr_oversized_result_fails_without_stuck_processing(client, app_db, monkeypatch, field, value):
+    values = dict(spent_at=date(2026, 11, 4), merchant='가게', amount=1000, category=None, description=None)
+    values[field] = value
+    async def fake_ocr(request):
+        return ai.ExtractReceiptResult(rows=(ai.ExtractedReceiptRow(**values),))
+    monkeypatch.setattr(ai, 'extract_receipt', fake_ocr)
+    token, club_id = _owner_with_club(client)
+    headers = {'Authorization': f'Bearer {token}'}
+    base = f'/api/v1/clubs/{club_id}/receipt-imports'
+    upload = client.post(base, headers=headers, data={'type':'RECEIPT_IMAGE'}, files={'file':('receipt.jpg', b'\xff\xd8\xff\xe0fake', 'image/jpeg')})
+    assert upload.status_code == 202, upload.text
+    item = upload.json()['data']
+    assert item['status'] == 'FAILED' and item['error']['reason'] == 'OCR_INVALID_RESULT'
+    assert client.get(f"{base}/{item['id']}", headers=headers).json()['data']['status'] == 'FAILED'
+    assert client.get(f'/api/v1/clubs/{club_id}/expenses', headers=headers).json()['data'] == []

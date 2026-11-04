@@ -1,13 +1,12 @@
 """영수 내역 기록 도메인 오케스트레이션 (#133).
 
-CSV는 결정론적으로 파싱하고, 영수증 이미지는 더미 OCR(services/receipt_ocr_stub.py)로
-초안을 만든다. 이미지 OCR은 agent_jobs 작업으로 기록하지만 실제 작업 큐가 없어
-둘 다 요청 안에서 즉시 처리한다. 나중에 큐로 옮겨도 라우터 계약은 그대로 쓸 수
-있게 서비스 함수 경계를 나눠둔다.
+CSV는 결정론적으로 파싱하고 영수증 이미지는 AI로 검수 초안을 만든다.
+OCR 대기 중에는 DB 잠금을 반환하며, 명시적 확정 전에는 지출을 만들지 않는다.
 """
 
 from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo
+from pydantic import ValidationError
 
 from app import ai
 
@@ -270,10 +269,17 @@ async def _run_receipt_ocr(session, club_id, import_id, job_id, file_name, mime_
             raise ai.AIConfigError("receipt extraction unavailable")
         result = await ai.extract_receipt(ai.ExtractReceiptRequest(
             file_name=file_name, mime_type=mime_type, image_bytes=content))
+        # Model output must fit the same DB bounds as a user's draft edit.
+        for row in result.rows:
+            ExpenseRowDraftIn(merchant=row.merchant, amount=row.amount, category=row.category)
         error = None if result.rows else "OCR_NO_READABLE_RECEIPT"
     except ai.AIConfigError:
         result, error = None, "OCR_NOT_CONFIGURED"
     except ai.AIError:
+        result, error = None, "OCR_UNAVAILABLE"
+    except ValidationError:
+        result, error = None, "OCR_INVALID_RESULT"
+    except Exception:
         result, error = None, "OCR_UNAVAILABLE"
     item = await session.scalar(select(ReceiptImport).where(
         ReceiptImport.id == import_id, ReceiptImport.club_id == club_id).with_for_update().execution_options(populate_existing=True))
@@ -288,10 +294,12 @@ async def _run_receipt_ocr(session, club_id, import_id, job_id, file_name, mime_
         item.error = {"reason": error, "message": "영수증을 읽지 못했습니다. 다시 시도해 주세요."}
         agent_job_service.fail(session, job, {"code": error})
     else:
+        item.extraction_result = result.model_dump(mode="json")
         for row_no, row in enumerate(result.rows, 1):
             spent_at = datetime.combine(row.spent_at, time.min, ZoneInfo("Asia/Seoul")) if row.spent_at else None
             session.add(ReceiptImportRow(receipt_import_id=item.id, row_no=row_no, spent_at=spent_at,
-                merchant=row.merchant, amount=row.amount, category=row.category, description=row.description))
+                merchant=row.merchant, amount=row.amount, category=row.category, description=row.description,
+                raw_fields=row.model_dump(mode="json")))
         item.status = ReceiptImportStatus.NEEDS_REVIEW
         item.error = None
         agent_job_service.succeed(session, job, {"receiptImportId": item.id})
