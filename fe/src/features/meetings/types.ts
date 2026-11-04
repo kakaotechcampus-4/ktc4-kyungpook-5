@@ -6,4 +6,3 @@ export type TranscriptList = S['TranscriptListOut']
 export type Decision = S['ContextDecisionOut']
 export type Suggestion = S['TaskSuggestionOut']
 export type Job = S['AgentJobOut']
-export type TimelineEntry = { type: 'transcript'; id: string } | { type: 'decision'; id: string }

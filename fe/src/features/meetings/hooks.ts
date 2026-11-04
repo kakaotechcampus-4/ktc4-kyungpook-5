@@ -1,14 +1,8 @@
-import {
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-  type Query,
-} from '@tanstack/react-query'
-import { useEffect, useMemo, useRef } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { meetingsApi } from './api'
 import { sourceOf } from './timeline'
-import type { Job, Meeting, Transcript } from './types'
+import type { Meeting } from './types'
 export function useMeetingData(clubId: string, meetingId: string | undefined) {
   const client = useQueryClient()
   const meeting = useQuery({
@@ -75,13 +69,17 @@ export function useMeetingData(clubId: string, meetingId: string | undefined) {
       ) ?? [],
     [suggestions.data, decisions.data, transcripts.data],
   )
-  const refresh = () =>
-    Promise.all([
-      client.invalidateQueries({ queryKey: ['meeting', clubId, meetingId] }),
-      client.invalidateQueries({ queryKey: ['transcripts', clubId, meetingId] }),
-      client.invalidateQueries({ queryKey: ['decisions', clubId, meetingId] }),
-      client.invalidateQueries({ queryKey: ['suggestions', clubId, meetingId] }),
-    ])
+  // Stable so memoised columns do not re-render on every audio level update.
+  const refresh = useCallback(
+    () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: ['meeting', clubId, meetingId] }),
+        client.invalidateQueries({ queryKey: ['transcripts', clubId, meetingId] }),
+        client.invalidateQueries({ queryKey: ['decisions', clubId, meetingId] }),
+        client.invalidateQueries({ queryKey: ['suggestions', clubId, meetingId] }),
+      ]),
+    [client, clubId, meetingId],
+  )
   const finish = useMutation({
     mutationFn: () => meetingsApi.finish(meetingId!),
     onSuccess: refresh,
@@ -105,19 +103,8 @@ export function useMeetings(clubId: string, status?: Meeting['status']) {
   })
 }
 export function useCreateMeeting(clubId: string) {
-  return useMutation({ mutationFn: (title: string) => meetingsApi.create(clubId, title) })
-}
-export function useDecisionJobs(transcripts: Transcript[]) {
-  return useQueries({
-    queries: transcripts
-      .filter((t) => t.final && t.decisionJobId)
-      .map((t) => ({
-        queryKey: ['decision-job', t.decisionJobId],
-        queryFn: () => meetingsApi.job(t.decisionJobId!),
-        refetchInterval: (query: Query<Job>) =>
-          query.state.data?.status === 'SUCCEEDED' || query.state.data?.status === 'FAILED'
-            ? false
-            : 3000,
-      })),
+  return useMutation({
+    mutationFn: ({ title, eventId }: { title: string; eventId: string | null }) =>
+      meetingsApi.create(clubId, title, eventId),
   })
 }

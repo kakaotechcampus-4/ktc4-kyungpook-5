@@ -1,47 +1,115 @@
-import { useState, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Link, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
-import { Input } from '@/shared/ui/Input'
-import { Chip } from '@/shared/ui/Chip'
-import { useCreateMeeting, useMeetingData } from '../hooks'
+import { useMeetingData } from '../hooks'
+import { useMeetingAudio } from '../audio'
+import { useRecordingLock } from '@/shared/lib/recordingLock'
 import { MeetingList } from './MeetingList'
-import { MeetingToriPanel } from './MeetingToriPanel'
-import type { AudioPhase } from '../audio/useMeetingAudio'
+import { MeetingStart, type MeetingEventOption } from './MeetingStart'
+import { MeetingBanner, MeetingHeader, StatusPill } from './MeetingHeader'
+import { ToriColumn, TranscriptColumn } from './MeetingColumns'
 import { meetingError } from '../errors'
-import { meetingAudioVisible, meetingToriVisible } from '../timeline'
-import { MicControls } from '../audio'
-import { Timeline } from './Timeline'
-import { Suggestions, ConfirmedTasks } from './Suggestions'
+import {
+  clockTime,
+  extractionFailed,
+  meetingAnswers,
+  meetingView,
+  recordedClock,
+} from '../timeline'
+import { CandidatesModal, ConfirmedTasks } from './Suggestions'
+import { MeetingEnded } from './MeetingEnded'
+import { EndMeetingModal, LeaveMeetingModal } from './MeetingConfirm'
 const EMPTY: never[] = []
-const statusLabel = {
-  RECORDING: '진행 중',
-  FINALIZING: '마지막 전사 처리 중',
-  COMPLETED: '종료 · 저장 완료',
-  FAILED: '처리 실패',
+const SILENCE_MS = 10_000
+// 입력이 사실상 0(음소거·고장)일 때만 알린다. 잡음 억제가 켜진 조용한 방도 0은 아니다.
+const SILENT_LEVEL = 0.001
+
+function useNow(active: boolean) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!active) return
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [active])
+  return now
 }
+
 export function MeetingWorkspace({
   clubId,
   meetingId,
   highlightTaskId,
-  records,
+  events,
   notifications,
 }: {
   clubId: string
   meetingId?: string
   highlightTaskId?: string
-  records: ReactNode
+  events: MeetingEventOption[]
   notifications: ReactNode
 }) {
-  const [audioActive, setAudioActive] = useState(false)
-  const [audioPhase, setAudioPhase] = useState<AudioPhase>('idle')
-  const [title, setTitle] = useState('')
-  const [consent, setConsent] = useState(false)
-  const [resumeId, setResumeId] = useState('')
+  const location = useLocation()
   const navigate = useNavigate()
-  const create = useCreateMeeting(clubId)
   const data = useMeetingData(clubId, meetingId)
   const meeting = data.meeting.data
+  const [justEnded, setJustEnded] = useState(false)
+  const [hiddenWarning, setHiddenWarning] = useState<string | null>(null)
+  const [candidatesOpen, setCandidatesOpen] = useState(false)
+  const [endOpen, setEndOpen] = useState(false)
+  const audio = useMeetingAudio({
+    meetingId: meetingId ?? '',
+    onCompleted: () => setJustEnded(true),
+    onRefresh: () => void data.refresh(),
+  })
+  const view = meeting ? meetingView(meeting.status, audio.phase, justEnded) : null
+  const live = view === 'connecting' || view === 'recording' || view === 'paused'
+  const now = useNow(live || view === 'finalizing' || view === 'stopped' || view === 'dropped')
+  const [lastSoundAt, setLastSoundAt] = useState(() => Date.now())
+  useEffect(() => setLastSoundAt(Date.now()), [audio.phase])
+  useEffect(() => {
+    if (audio.inputLevel <= SILENT_LEVEL) return
+    const at = Date.now()
+    // At most once a second, so speech does not add a render per level update.
+    setLastSoundAt((previous) => (at - previous > 1000 ? at : previous))
+  }, [audio.inputLevel])
+  const transcripts = data.transcripts.data?.items ?? EMPTY
+  const decisions = data.decisions.data ?? EMPTY
+  const answers = useMemo(() => meetingAnswers(transcripts, decisions), [transcripts, decisions])
+
+  // Leaving the page stops the microphone, so ask first (in-app links) or let the
+  // browser warn (reload, tab close).
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      live && currentLocation.pathname !== nextLocation.pathname,
+  )
+  const guardUnload = live || view === 'finalizing'
+  useEffect(() => {
+    if (!guardUnload) return
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [guardUnload])
+  // Switching club remounts this screen and would cut the recording without asking.
+  const setRecording = useRecordingLock((state) => state.setRecording)
+  useEffect(() => {
+    setRecording(guardUnload)
+    return () => setRecording(false)
+  }, [guardUnload, setRecording])
+
+  // The start card navigates here with autoStart; start, then drop the flag so a reload
+  // never tries to restart a meeting that already has audio. No once-only ref: StrictMode
+  // cancels the first start, and start() itself ignores a second call while busy.
+  const autoStart = (location.state as { autoStart?: boolean } | null)?.autoStart === true
+  const startAudio = audio.start
+  useEffect(() => {
+    if (!autoStart || meeting?.status !== 'RECORDING') return
+    navigate(location.pathname, { replace: true })
+    void startAudio()
+  }, [autoStart, meeting?.status, navigate, location.pathname, startAudio])
+
   if (meeting && meeting.clubId !== clubId)
     return (
       <Card className="space-y-3 p-6">
@@ -55,197 +123,318 @@ export function MeetingWorkspace({
         </Link>
       </Card>
     )
-  return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-h1">{meeting?.title || '회의'}</h1>
-          <p className="mt-2 text-ink2">회의를 듣고 자료와 다음 할 일을 함께 챙깁니다.</p>
+  if (!meetingId)
+    return (
+      <div className="mx-auto max-w-[1040px] space-y-6">
+        <h1 className="text-h1">회의</h1>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] xl:grid-cols-[minmax(0,1fr)_400px]">
+          <MeetingStart clubId={clubId} events={events} />
+          <MeetingList clubId={clubId} />
         </div>
-        {meeting && (
-          <div className="flex items-center gap-3">
-            <Chip tone={meeting.status === 'FAILED' && !audioActive ? 'failed' : 'neutral'}>
-              {audioActive && (meeting.status === 'COMPLETED' || meeting.status === 'FAILED')
-                ? '마지막 응답 확인 중'
-                : statusLabel[meeting.status]}
-            </Chip>
-            <Button variant="secondary" onClick={() => void data.refresh()}>
-              새로고침
-            </Button>
-            {!audioActive && (
-              <Link to="/meetings" className="text-caption underline">
-                새 회의
-              </Link>
-            )}
-          </div>
-        )}
+        <div className="grid items-start gap-6 border-t border-line pt-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] xl:grid-cols-[minmax(0,1fr)_400px]">
+          <ConfirmedTasks clubId={clubId} highlightTaskId={highlightTaskId} />
+          {notifications}
+        </div>
       </div>
-      {meeting && meetingToriVisible(meeting.status, audioActive) ? (
-        <MeetingToriPanel
-          meeting={meeting}
-          phase={audioPhase}
-          audioActive={audioActive}
-          transcripts={data.transcripts.data?.items ?? EMPTY}
-          decisions={data.decisions.data ?? EMPTY}
-          loading={data.transcripts.isPending || data.decisions.isPending}
-          error={data.transcripts.isError || data.decisions.isError}
-          onRefresh={() => void data.refresh()}
+    )
+  if (data.meeting.isError && !meeting)
+    return (
+      <div className="mx-auto max-w-[1240px]">
+        <MeetingBanner
+          tone="failed"
+          title="회의를 열지 못했어요"
+          action={
+            <Button variant="secondary" size="sm" onClick={() => void data.refresh()}>
+              다시 확인
+            </Button>
+          }
+        >
+          {meetingError(data.meeting.error)}
+        </MeetingBanner>
+      </div>
+    )
+  if (!meeting || !view)
+    return (
+      <p role="status" className="text-caption text-mute">
+        회의를 불러오는 중이에요.
+      </p>
+    )
+
+  const ended = view === 'ended' || view === 'record' || view === 'failed'
+  const when = meeting.startedAt
+    ? ended && meeting.endedAt
+      ? `${clockTime(meeting.startedAt)} – ${clockTime(meeting.endedAt)}`
+      : `${clockTime(meeting.startedAt)} 시작`
+    : '시작 전'
+  const heard = transcripts.filter((t) => t.final).length
+  const meta = `${when} · 후보 ${data.suggestions.length}건 · 토리 ${answers.length}번`
+  const candidates = (
+    <CandidatesModal
+      open={candidatesOpen}
+      onClose={() => setCandidatesOpen(false)}
+      clubId={clubId}
+      suggestions={data.suggestions}
+      onSaved={() => void data.refresh()}
+    />
+  )
+  if (view === 'ended')
+    return (
+      <>
+        <MeetingEnded
+          summary={`${meeting.title || '회의'} · ${when} · 들은 말 ${heard}개 · 토리 ${answers.length}번`}
+          suggestions={data.suggestions}
+          suggestionsError={data.suggestionsQuery.isError}
+          extractionFailed={extractionFailed(decisions)}
+          onRetry={() => void data.refresh()}
+          onOpenCandidates={() => setCandidatesOpen(true)}
+          onOpenRecord={() => setJustEnded(false)}
         />
-      ) : !meetingId || meeting ? (
-        <MeetingList clubId={clubId} selectedId={meetingId} />
-      ) : null}
-      {!meetingId && (
-        <Card className="p-6">
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (consent)
-                create.mutate(title.trim() || '회의', {
-                  onSuccess: (m) => navigate(`/meetings/${encodeURIComponent(m.id)}`),
-                })
-            }}
+        {candidates}
+      </>
+    )
+  const openCandidates = data.suggestions.length > 0 && (
+    <Button onClick={() => setCandidatesOpen(true)}>후보 확인하기</Button>
+  )
+  const time = recordedClock(audio.recordedMs)
+  const silent = view === 'recording' && now - lastSoundAt > SILENCE_MS
+  const finish = () => data.finish.mutate(undefined, { onSuccess: () => setJustEnded(true) })
+  const askToEnd = () => setEndOpen(true)
+  const endMeeting = () => {
+    setEndOpen(false)
+    if (view === 'recording' || view === 'paused') void audio.stop()
+    else finish()
+  }
+
+  const pills = {
+    connecting: <StatusPill kind="connecting">연결하는 중</StatusPill>,
+    recording: (
+      <>
+        <StatusPill kind="recording">
+          녹음 중 <span className="tabular-nums">{time}</span>
+        </StatusPill>
+        {silent && (
+          <StatusPill kind="silent">소리가 들리지 않아요 · 마이크를 확인해 주세요</StatusPill>
+        )}
+      </>
+    ),
+    paused: (
+      <StatusPill kind="paused">
+        일시정지 <span className="tabular-nums">{time}</span>
+      </StatusPill>
+    ),
+    stopped: <StatusPill kind="off">마이크 꺼짐</StatusPill>,
+    dropped: <StatusPill kind="off">마이크 꺼짐</StatusPill>,
+    finalizing: (
+      <StatusPill kind="finalizing">
+        마무리하는 중{audio.recordedMs > 0 ? ` · ${time} 녹음` : ''}
+      </StatusPill>
+    ),
+    ended: <StatusPill kind="ended">끝남</StatusPill>,
+    record: <StatusPill kind="ended">끝남</StatusPill>,
+    failed: <StatusPill kind="failed">마무리하지 못했어요 · 저장된 내용은 남아 있어요</StatusPill>,
+  }[view]
+
+  const actions = {
+    connecting: (
+      <Button variant="secondary" onClick={audio.abort}>
+        시작 취소
+      </Button>
+    ),
+    recording: (
+      <>
+        <Button variant="secondary" onClick={audio.pause}>
+          일시정지
+        </Button>
+        <Button onClick={askToEnd}>회의 끝내기</Button>
+      </>
+    ),
+    paused: (
+      <>
+        <Button onClick={audio.resume}>다시 녹음</Button>
+        <Button variant="secondary" onClick={askToEnd}>
+          회의 끝내기
+        </Button>
+      </>
+    ),
+    stopped: (
+      <>
+        {!transcripts.length && (
+          <Button variant="secondary" onClick={() => void audio.start()}>
+            녹음 시작
+          </Button>
+        )}
+        <Button disabled={data.finish.isPending} onClick={askToEnd}>
+          회의 끝내기
+        </Button>
+      </>
+    ),
+    dropped: audio.sentFrames === 0 && (
+      <Button variant="secondary" disabled={data.finish.isPending} onClick={askToEnd}>
+        회의 끝내기
+      </Button>
+    ),
+    finalizing: audio.phase === 'idle' && (
+      <Button variant="secondary" onClick={() => void data.refresh()}>
+        다시 확인
+      </Button>
+    ),
+    ended: null,
+    record: openCandidates,
+    failed: (
+      <>
+        <Button variant="secondary" onClick={() => void data.refresh()}>
+          다시 확인
+        </Button>
+        {openCandidates}
+      </>
+    ),
+  }[view]
+
+  const audioError = audio.phase === 'error' ? audio.error : null
+  const banners = (
+    <>
+      {view === 'paused' && (
+        <MeetingBanner tone="pending">! 일시정지한 동안 한 말은 기록되지 않아요.</MeetingBanner>
+      )}
+      {view === 'stopped' && (
+        <MeetingBanner tone="pending">
+          {transcripts.length
+            ? '! 이 회의는 녹음이 멈춰서 더 녹음할 수 없어요. 계속하려면 새 회의를 시작해 주세요.'
+            : '! 아직 녹음하지 않은 회의예요.'}
+        </MeetingBanner>
+      )}
+      {view === 'dropped' &&
+        (audio.sentFrames === 0 ? (
+          <MeetingBanner
+            tone="failed"
+            title="녹음을 시작하지 못했어요"
+            action={
+              <Button size="sm" onClick={() => void audio.start()}>
+                다시 시도
+              </Button>
+            }
           >
-            <Input
-              label="회의 이름"
-              placeholder="예: 가을 워크숍 준비 회의"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-              />
-              참여자에게 녹음과 전사 저장을 알리고 동의를 확인했습니다.
-            </label>
-            <Button type="submit" disabled={!consent || create.isPending}>
-              {create.isPending ? '회의 만드는 중…' : '회의 만들기'}
-            </Button>
-            {create.error && (
-              <p role="alert" className="text-failed">
-                {meetingError(create.error)}
-              </p>
-            )}
-          </form>
-          <form
-            className="mt-6 flex flex-wrap items-end gap-3 border-t border-line pt-5"
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (resumeId.trim()) navigate(`/meetings/${encodeURIComponent(resumeId.trim())}`)
-            }}
+            {audioError}
+          </MeetingBanner>
+        ) : (
+          <MeetingBanner
+            tone="failed"
+            title="연결이 끊겨 녹음이 멈췄어요"
+            action={
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={data.finish.isPending}
+                onClick={askToEnd}
+              >
+                회의 끝내기
+              </Button>
+            }
           >
-            <div className="min-w-0 flex-1">
-              <Input
-                label="이전 회의 ID로 열기"
-                value={resumeId}
-                onChange={(e) => setResumeId(e.target.value)}
-              />
-            </div>
-            <Button type="submit" variant="secondary" disabled={!resumeId.trim()}>
-              회의 열기
-            </Button>
-          </form>
-        </Card>
+            지금까지 들은 말은 저장했어요. 이 회의는 더 녹음할 수 없어서, 계속하려면 새 회의를
+            시작해 주세요.
+          </MeetingBanner>
+        ))}
+      {view === 'finalizing' && (
+        <MeetingBanner tone="info">마지막 말을 정리하는 동안 이 화면을 닫지 마세요.</MeetingBanner>
+      )}
+      {view === 'failed' && audioError && (
+        <MeetingBanner tone="failed" title="마무리하지 못했어요">
+          {audioError}
+        </MeetingBanner>
+      )}
+      {(view === 'recording' || view === 'paused') &&
+        audio.error &&
+        audio.error !== hiddenWarning && (
+          <MeetingBanner
+            tone="pending"
+            action={
+              <button
+                type="button"
+                aria-label="안내 닫기"
+                onClick={() => setHiddenWarning(audio.error)}
+                className="rounded-[8px] px-2 py-1 hover:bg-card"
+              >
+                ✕
+              </button>
+            }
+          >
+            {audio.error}
+          </MeetingBanner>
+        )}
+      {view === 'recording' && audio.noiseSuppression === false && (
+        <MeetingBanner tone="pending">
+          이 브라우저에서 마이크 잡음 억제가 꺼져 있어요. 조용한 곳에서 녹음해 주세요.
+        </MeetingBanner>
       )}
       {data.meeting.isError && (
-        <Card className="p-5 text-failed" role="alert">
+        <MeetingBanner
+          tone="failed"
+          title="회의 정보를 새로 불러오지 못했어요"
+          action={
+            <Button variant="secondary" size="sm" onClick={() => void data.refresh()}>
+              다시 확인
+            </Button>
+          }
+        >
           {meetingError(data.meeting.error)}
-          <Button variant="secondary" className="ml-3" onClick={() => void data.refresh()}>
-            다시 확인
-          </Button>
-        </Card>
+        </MeetingBanner>
       )}
-      {meetingId && data.meeting.isPending && <p>회의 불러오는 중…</p>}
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
-        <div className="space-y-6">
-          {meeting && (
-            <>
-              <Card className="p-5">
-                <p className="text-caption text-mute">회의 ID: {meeting.id}</p>
-                <p className="mt-2">
-                  확정 전사만 표시합니다. 음성 전송과 마지막 전사 처리 상태를 확인해 주세요.
-                </p>
-                {meetingAudioVisible(meeting.status, audioActive) && (
-                  <div className="mt-4">
-                    <MicControls
-                      meetingId={meeting.id}
-                      onCompleted={() => void data.refresh()}
-                      onRefresh={() => void data.refresh()}
-                      onActiveChange={setAudioActive}
-                      onPhaseChange={setAudioPhase}
-                    />
-                  </div>
-                )}
-                {meeting.status === 'RECORDING' && !audioActive && (
-                  <div className="mt-3 flex flex-wrap gap-3">
-                    <Button
-                      variant="secondary"
-                      disabled={data.finish.isPending}
-                      onClick={() => data.finish.mutate()}
-                    >
-                      마이크 없이 회의 종료
-                    </Button>
-                  </div>
-                )}
-                {data.finish.error && (
-                  <p role="alert" className="mt-2 text-failed">
-                    {meetingError(data.finish.error)}
-                  </p>
-                )}
-              </Card>
-              {(data.transcripts.isError || data.decisions.isError) && (
-                <p className="text-failed" role="alert">
-                  전사 또는 자료 답변을 갱신하지 못했습니다. 기존 내용은 유지됩니다.{' '}
-                  <Button variant="secondary" onClick={() => void data.refresh()}>
-                    다시 조회
-                  </Button>
-                </p>
-              )}
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-h2">전사와 자료 답변</h2>
-                <a
-                  href="#meeting-suggestions"
-                  className="text-caption font-semibold text-blue-700 underline underline-offset-4 xl:hidden"
-                >
-                  일정·할 일 후보 보기
-                </a>
-              </div>
-              <Timeline
-                key={meeting.id}
-                transcripts={data.transcripts.data?.items ?? EMPTY}
-                decisions={data.decisions.data ?? EMPTY}
-                startedAt={meeting.startedAt}
-                onRefresh={() => void data.refresh()}
-              />
-            </>
-          )}
-          {records}
-          <ConfirmedTasks clubId={clubId} highlightTaskId={highlightTaskId} />
+      {data.finish.error && (
+        <MeetingBanner tone="failed">{meetingError(data.finish.error)}</MeetingBanner>
+      )}
+    </>
+  )
+
+  return (
+    <>
+      <div className="mx-auto flex max-w-[1240px] flex-col gap-4 lg:h-[calc(100dvh-72px)]">
+        <MeetingHeader
+          title={meeting.title || '회의'}
+          pills={pills}
+          meta={meta}
+          actions={actions}
+        />
+        {banners}
+        <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
+          <TranscriptColumn
+            className="max-h-[60vh] lg:max-h-none"
+            transcripts={transcripts}
+            decisions={decisions}
+            startedAt={meeting.startedAt}
+            live={live}
+            countLabel={ended ? `들은 말 ${heard}개` : undefined}
+          />
+          <ToriColumn
+            className="max-h-[70vh] lg:max-h-none"
+            transcripts={transcripts}
+            decisions={decisions}
+            startedAt={meeting.startedAt}
+            ongoing={!ended}
+            now={now}
+            loading={data.transcripts.isPending || data.decisions.isPending}
+            error={data.transcripts.isError || data.decisions.isError}
+            onRefresh={data.refresh}
+          />
         </div>
-        <aside id="meeting-suggestions" className="scroll-mt-24 space-y-6">
-          {meeting && (
-            <>
-              {data.suggestionsQuery.isError && (
-                <p role="alert" className="text-failed">
-                  후보 목록을 확인하지 못했습니다. {meetingError(data.suggestionsQuery.error)}
-                </p>
-              )}
-              {data.suggestionsQuery.isPending ? (
-                <p role="status">후보 목록을 불러오는 중입니다…</p>
-              ) : !data.suggestionsQuery.isError ? (
-                <Suggestions
-                  clubId={clubId}
-                  suggestions={data.suggestions}
-                  onSaved={() => void data.refresh()}
-                />
-              ) : null}
-            </>
-          )}
-          {notifications}
-        </aside>
       </div>
-    </div>
+      {candidates}
+      <EndMeetingModal
+        open={endOpen}
+        subtitle={`${meeting.title || '회의'}${audio.recordedMs > 0 ? ` · ${time} 녹음` : ''} · 들은 말 ${heard}개`}
+        heard={heard}
+        answered={answers.length}
+        recording={view === 'recording' || view === 'paused'}
+        busy={data.finish.isPending}
+        onClose={() => setEndOpen(false)}
+        onConfirm={endMeeting}
+      />
+      <LeaveMeetingModal
+        open={blocker.state === 'blocked'}
+        subtitle={`${meeting.title || '회의'} · ${time} 녹음 중`}
+        onStay={() => blocker.reset?.()}
+        onLeave={() => blocker.proceed?.()}
+      />
+    </>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useMe, useLogout } from '@/features/auth/hooks'
 import { useAuthStore } from '@/shared/auth/store'
+import { useRecordingLock } from '@/shared/lib/recordingLock'
 import { Avatar } from '@/shared/ui/Avatar'
 import { Button } from '@/shared/ui/Button'
 import { Modal } from '@/shared/ui/Modal'
@@ -16,6 +17,7 @@ export function AppLayout() {
   const { pathname } = useLocation()
   useMe()
   const { me, clubId, selectClub } = useAuthStore()
+  const recording = useRecordingLock((state) => state.recording)
   const logout = useLogout()
   const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -56,6 +58,8 @@ export function AppLayout() {
         <span className="mb-2 block">선택 소속</span>
         <select
           aria-label="선택 소속"
+          aria-describedby={recording ? 'club-locked' : undefined}
+          disabled={recording}
           value={clubId ?? ''}
           onChange={(event) => {
             if (event.target.value === NEW_CLUB) {
@@ -67,12 +71,17 @@ export function AppLayout() {
             setDrawerOpen(false)
             navigate(pathname === '/records' || pathname === '/accounting' ? pathname : '/dashboard')
           }}
-          className="w-full min-w-0 rounded-lg border border-line bg-card px-2 py-2 text-ink2"
+          className="w-full min-w-0 rounded-lg border border-line bg-card px-2 py-2 text-ink2 disabled:opacity-60"
         >
           <option value="" disabled>소속 선택</option>
           {me.clubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}
           <option value={NEW_CLUB}>+ 새 동아리 만들기</option>
         </select>
+        {recording && (
+          <span id="club-locked" className="mt-2 block text-[12px] font-medium text-[#aebbd0]">
+            녹음을 끝낸 뒤 바꿀 수 있어요
+          </span>
+        )}
       </label>
       <Link to="/mypage" onClick={() => setDrawerOpen(false)} className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 text-[#e1e8f1] focus-visible:outline-2 focus-visible:outline-white">
         <Avatar name={me.email} size={30} />

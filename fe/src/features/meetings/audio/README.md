@@ -1,6 +1,6 @@
 # 회의 연속 음성 adapter
 
-`MicControls`는 `meetingId`, `onCompleted`, `onRefresh`를 받는다. `onActiveChange`는 음성 연결 준비부터 최종 처리까지 true이므로 부모의 별도 HTTP 종료 버튼을 잠그는 데 사용한다. `onAudioGap({startMs,endMs})`는 인식하지 못한 구간을 타임라인에 남기는 콜백이다.
+`useMeetingAudio`는 `meetingId`, `onCompleted`, `onRefresh`를 받고 `start`·`pause`·`resume`·`stop`·`abort`와 `phase`·`recordedMs`를 돌려준다. 회의 화면(`MeetingWorkspace`)이 직접 쓴다. `onActiveChange`는 음성 연결 준비부터 최종 처리까지 true다. `onAudioGap({startMs,endMs})`는 인식하지 못한 구간을 알리는 콜백이다. 일시정지는 마이크 트랙만 꺼서(`track.enabled = false`) 무음 프레임을 계속 보내므로 프레임 시각이 끊기지 않는다.
 
 1. 사용자 클릭 후 WS `/api/v1/meetings/{id}/stream?token=opaque` 연결.
 2. `start {format:'pcm_s16le',sampleRate:16000,channels:1}` 전송.
