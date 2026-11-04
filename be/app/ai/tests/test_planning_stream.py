@@ -2,6 +2,8 @@
 import asyncio
 from copy import deepcopy
 
+import httpx
+import openai
 import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
 from functools import partial
@@ -133,6 +135,9 @@ def test_tool_only_has_no_reply_or_reset():
     ([done('incomplete')], ai.AIInvalidResponseError),
     ([done('incomplete', incomplete_details={'reason': 'max_output_tokens'})], ai.AIOutputLimitError),
     ([RuntimeError('internal')], RuntimeError),
+    # 응답 도중 공급자 error 이벤트: SDK는 HTTP 상태 없는 APIError를 낸다.
+    ([openai.APIError('server_error', request=httpx.Request('POST', 'https://model.test'), body=None)],
+     ai.AIRetryableError),
 ])
 def test_unfinished_stream_resets_and_closes(tail, error):
     out = Output()

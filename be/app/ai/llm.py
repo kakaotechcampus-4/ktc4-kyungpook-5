@@ -258,6 +258,10 @@ async def astream_with_tools(
             converted = _convert_api_error(error)
             if converted is not None:
                 raise converted from error
+        elif isinstance(error, openai.APIError):
+            # 응답 도중 공급자가 error 이벤트를 보내면 SDK는 HTTP 상태가 없는 APIError를 낸다.
+            # 일반 호출이라면 5xx로 왔을 공급자 쪽 실패이므로 재시도 안내 대상으로 본다.
+            raise AIRetryableError("모델 응답 스트림이 공급자 오류로 끝났습니다") from error
         raise
 
 
