@@ -1,4 +1,6 @@
 // P1 오른쪽: 대화에서 정해진 것이 쌓이는 자리. 여섯 항목으로 고정이라 화면이 흔들리지 않는다.
+import { useEffect, useState } from 'react'
+import { flashLeft, type FactFlash } from '@/features/planning/factFlash'
 import type {
   GenerationBlockReason,
   GenerationReadiness,
@@ -52,6 +54,21 @@ interface PlanFactsProps {
   unavailable?: boolean
   hideNext?: boolean
   onNext: () => void
+  // 방금 저장된 대화로 바뀐 칸(#300). 그 칸만 옅은 파란 배경이 잠시 켜졌다 사라진다.
+  flash?: FactFlash | null
+}
+
+// 강조가 켜져 있는 동안의 값. 남은 시간이 지나면 비워 다시 그릴 때 지난 강조가 켜지지 않게 한다.
+function useActiveFlash(flash: FactFlash | null | undefined): FactFlash | null {
+  const [active, setActive] = useState<FactFlash | null>(null)
+  useEffect(() => {
+    const left = flashLeft(flash, Date.now())
+    if (!flash || !left) return
+    setActive(flash)
+    const timer = setTimeout(() => setActive((now) => (now === flash ? null : now)), left)
+    return () => clearTimeout(timer)
+  }, [flash])
+  return active
 }
 
 export function PlanFacts({
@@ -61,53 +78,72 @@ export function PlanFacts({
   unavailable = false,
   hideNext = false,
   onNext,
+  flash,
 }: PlanFactsProps) {
   const { canGenerate, reasons } = readiness ?? localReadiness(facts)
+  const active = useActiveFlash(flash)
 
   return (
     <div className="flex w-full min-w-0 shrink-0 flex-col gap-[16px]">
       <Card className="flex flex-col gap-[16px] px-[22px] pt-[20px] pb-[22px]">
         <h2 className="text-h2 text-ink">지금까지 정한 것</h2>
 
-        {PLAN_FACT_KEYS.map((key) => {
-          const fact = facts[key]
-          const status = fact?.status ?? '미정'
-          const settled = status === '확정' || status === '잠정'
-          return (
-            <div key={key} className="flex flex-col gap-[4px]">
-              <div className="flex items-center justify-between gap-[12px]">
-                <span className="flex items-center gap-[9px]">
-                  <Mark status={status} />
-                  <span className="text-[12px] text-ink2">{key}</span>
-                </span>
-                <span className="flex min-w-0 items-center gap-[6px]">
+        {/* 줄마다 위아래 5px을 둬 강조 배경이 글자에 붙지 않게 하고, 그만큼 줄 간격과 바깥 여백을 줄여
+            강조가 없을 때의 간격은 예전(16px)과 같다. */}
+        <div className="-my-[5px] flex flex-col gap-[6px]">
+          {PLAN_FACT_KEYS.map((key) => {
+            const fact = facts[key]
+            const status = fact?.status ?? '미정'
+            const settled = status === '확정' || status === '잠정'
+            const flashing = active?.keys.includes(key)
+            return (
+              <div key={key} className="relative flex flex-col gap-[4px] py-[5px]">
+                {/* 바뀐 칸 강조. 카드 안쪽 여백까지 살짝 넓혀 줄 전체가 한 칸으로 보이게 한다.
+                  at이 바뀌면 새로 그려 같은 칸이 연달아 바뀌어도 처음부터 다시 켜진다.
+                  움직임 줄이기면 사라지는 움직임 없이 그 시간 동안 색만 두었다가 끈다. */}
+                {flashing && (
                   <span
-                    className={cn(
-                      'truncate text-[12.5px]',
-                      settled ? 'font-bold text-ink' : 'text-mute',
-                    )}
-                  >
-                    {fact?.value ?? (status === '나중에' ? '나중에 정해요' : '아직이에요')}
+                    key={active!.at}
+                    aria-hidden
+                    className="pointer-events-none absolute inset-y-0 -inset-x-[10px] rounded-[8px] bg-blue-100 animate-fact-flash motion-reduce:animate-none"
+                  />
+                )}
+                <div className="relative flex items-center justify-between gap-[12px]">
+                  <span className="flex items-center gap-[9px]">
+                    <Mark status={status} />
+                    <span className="text-[12px] text-ink2">{key}</span>
                   </span>
-                  {status === '잠정' && (
-                    <Chip tone="approved" size="sm">
-                      잠정
-                    </Chip>
-                  )}
-                  {status === '나중에' && (
-                    <Chip tone="neutral" size="sm">
-                      나중에
-                    </Chip>
-                  )}
-                </span>
+                  <span className="flex min-w-0 items-center gap-[6px]">
+                    <span
+                      className={cn(
+                        'truncate text-[12.5px]',
+                        settled ? 'font-bold text-ink' : 'text-mute',
+                      )}
+                    >
+                      {fact?.value ?? (status === '나중에' ? '나중에 정해요' : '아직이에요')}
+                    </span>
+                    {status === '잠정' && (
+                      <Chip tone="approved" size="sm">
+                        잠정
+                      </Chip>
+                    )}
+                    {status === '나중에' && (
+                      <Chip tone="neutral" size="sm">
+                        나중에
+                      </Chip>
+                    )}
+                  </span>
+                </div>
+                {/* 잠정으로 본 근거. 운영진이 「내가 그렇게 말했나」를 바로 확인할 수 있게 둔다. */}
+                {status === '잠정' && fact?.quote && (
+                  <p className="relative pl-[27px] text-[11px] leading-[16px] text-mute">
+                    「{fact.quote}」
+                  </p>
+                )}
               </div>
-              {/* 잠정으로 본 근거. 운영진이 「내가 그렇게 말했나」를 바로 확인할 수 있게 둔다. */}
-              {status === '잠정' && fact?.quote && (
-                <p className="pl-[27px] text-[11px] leading-[16px] text-mute">「{fact.quote}」</p>
-              )}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </Card>
 
       {reference && <ToriNote title="참고한 과거 기록">{reference}</ToriNote>}

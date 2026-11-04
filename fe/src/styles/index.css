@@ -71,6 +71,9 @@
   --animate-fade-in: fade-in 150ms ease-out both;
   /* 결과 없이 끝난 진행 줄(거절·같은 값)이 조용히 사라진다. 시간은 turn.ts의 LINE_EXIT_MS와 맞춘다. */
   --animate-line-out: line-out 180ms ease-in forwards;
+  /* 조건 패널의 바뀐 칸 강조(#300). 저장이 끝난 순간 옅은 파란 배경으로 켜져 잠시 머문 뒤 사라진다.
+     시간은 factFlash.ts의 FACT_FLASH_MS와 맞춘다. 움직임 줄이기면 쓰는 쪽에서 끄고 색만 그 시간 동안 둔다. */
+  --animate-fact-flash: fact-flash 1500ms ease-out both;
 
   /* 입력 중 점 세 개가 차례로 떠올랐다 내려온다. */
   @keyframes typing-dot {
@@ -109,6 +112,15 @@
   }
   @keyframes fade-in {
     from {
+      opacity: 0;
+    }
+  }
+  @keyframes fact-flash {
+    0%,
+    25% {
+      opacity: 1;
+    }
+    100% {
       opacity: 0;
     }
   }
