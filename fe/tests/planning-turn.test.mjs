@@ -78,3 +78,57 @@ test('답변이 저장되지 않은 턴의 작업 줄은 다음 턴 답변에 �
     [undefined, undefined, undefined],
   )
 })
+
+test('조건 반영 시작 줄은 같은 자리에서 완료 줄로 바뀐다', async () => {
+  const { upsertProgress, finishedLines } = await load()
+  let lines = []
+  lines = upsertProgress(lines, {
+    ...line('c1', 'running', '조건을 반영하고 있어요'),
+    kind: 'condition_started',
+  })
+  lines = upsertProgress(lines, line('s1', 'running', '지난 행사 기록을 찾고 있어요'))
+  lines = upsertProgress(lines, {
+    ...line('c1', 'completed', "행사 이름 '2026년 MT' 반영했어요"),
+    kind: 'condition_applied',
+  })
+  assert.deepEqual(
+    Array.from(lines, (l) => [l.operationId, l.status]),
+    [
+      ['c1', 'completed'],
+      ['s1', 'running'],
+    ],
+  )
+  // 답변 위에 남기는 줄은 끝난 것만이다.
+  assert.deepEqual(
+    Array.from(finishedLines(lines), (l) => l.operationId),
+    ['c1'],
+  )
+})
+
+test('거절·같은 값(skipped)은 진행 중 줄을 지우고, 지울 줄이 없으면 새로 붙이지 않는다', async () => {
+  const { upsertProgress, dropProgress, finishedLines } = await load()
+  let lines = [line('c1', 'running', '조건을 반영하고 있어요'), line('s1', 'completed')]
+  lines = upsertProgress(lines, line('c1', 'skipped', '바뀐 조건이 없어요'))
+  // 사라지는 움직임 동안은 같은 자리에 skipped로 남는다. 답변 위에는 남기지 않는다.
+  assert.deepEqual(
+    Array.from(lines, (l) => [l.operationId, l.status]),
+    [
+      ['c1', 'skipped'],
+      ['s1', 'completed'],
+    ],
+  )
+  assert.deepEqual(
+    Array.from(finishedLines(lines), (l) => l.operationId),
+    ['s1'],
+  )
+  lines = dropProgress(lines, 'c1')
+  assert.deepEqual(
+    Array.from(lines, (l) => l.operationId),
+    ['s1'],
+  )
+  // 재접속으로 줄을 비운 뒤 온 skipped는 무시한다.
+  assert.deepEqual(
+    Array.from(upsertProgress([], line('c9', 'skipped')), (l) => l.operationId),
+    [],
+  )
+})

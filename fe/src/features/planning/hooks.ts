@@ -11,7 +11,14 @@ import { PartialPlanSaveError } from './errors'
 import type { ChatMessage, PlanFacts, PlanProgress } from './types'
 import type { PlanStreamHandlers } from './stream'
 import { FIRST_MESSAGE } from './mock'
-import { attachReceipts, upsertProgress, type TurnReceipt } from './turn'
+import {
+  attachReceipts,
+  dropProgress,
+  finishedLines,
+  LINE_EXIT_MS,
+  upsertProgress,
+  type TurnReceipt,
+} from './turn'
 import { ApiError } from '@/shared/api/types'
 import type { components } from '@/shared/api/schema'
 
@@ -108,6 +115,12 @@ export function usePlanningChat(
     onProgress: (event) => {
       turnLines.current = upsertProgress(turnLines.current, event)
       setProgress(turnLines.current)
+      // 거절·같은 값이면 진행 중 줄이 사라지는 움직임(PlanChat의 line-out)을 보인 뒤 목록에서 뺀다.
+      if (event.status === 'skipped')
+        setTimeout(() => {
+          turnLines.current = dropProgress(turnLines.current, event.operationId)
+          setProgress(turnLines.current)
+        }, LINE_EXIT_MS)
     },
     onReply: setPendingReply,
     onReconnect: () => {
@@ -195,7 +208,7 @@ export function usePlanningChat(
       succeeded = true
       // 저장된 대화를 다시 불러오기 전에 작업 줄을 먼저 넣어 둔다. 그래야 임시 표시가
       // 저장된 답변으로 바뀌는 같은 화면 갱신에서 작업 줄이 답변 위에 그대로 남는다.
-      const lines = turnLines.current.filter((line) => line.status !== 'running')
+      const lines = finishedLines(turnLines.current)
       if (lines.length)
         queryClient.setQueryData<TurnReceipt[]>(
           receiptsKey(userId, clubId, eventId),
@@ -206,9 +219,7 @@ export function usePlanningChat(
         // 저장된 대화를 먼저 받아 두면 넘어가자마자 그 대화를 그려,
         // 임시 말풍선 → "불러오는 중" 카드 → 저장된 대화로 깜빡이지 않는다.
         // 실패해도 넘어간 화면이 직접 다시 불러오므로 여기서는 오류로 보지 않는다.
-        await queryClient
-          .fetchQuery(snapshotQuery(userId, clubId, eventId))
-          .catch(() => undefined)
+        await queryClient.fetchQuery(snapshotQuery(userId, clubId, eventId)).catch(() => undefined)
       } else {
         const updated = await snapshot.refetch()
         if (updated.isError)

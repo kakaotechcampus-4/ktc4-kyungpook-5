@@ -47,7 +47,8 @@ function CheckIcon({ className }: { className?: string }) {
 // 점이 체크로 바뀔 때 줄이 흔들리지 않는다. 진행 중임은 점이 아니라 글자 디밍이 알린다(#290).
 // live면 받는 중인 응답이라 체크가 제자리에서 나타난다. 저장된 대화로 바뀐 뒤에는 다시 움직이지 않는다.
 function ProgressIcon({ status, live }: { status: PlanProgress['status']; live: boolean }) {
-  if (status === 'running')
+  // skipped는 진행 중 줄이 사라지는 중이라 같은 점을 유지한다.
+  if (status === 'running' || status === 'skipped')
     return (
       <span aria-hidden className="mt-[2px] flex size-[14px] shrink-0 items-center justify-center">
         <span className="size-[6px] rounded-full bg-blue-400" />
@@ -89,7 +90,10 @@ function TurnLines({
             'flex items-start gap-[7px] text-[12px] leading-[18px]',
             'transition-colors duration-200 ease-out motion-reduce:transition-none',
             line.status === 'failed' ? 'text-failed' : settled ? 'text-mute' : 'text-ink2',
-            live && 'animate-turn-in motion-reduce:animate-none',
+            // 결과 없이 끝난 줄(거절·같은 값)은 조용히 사라진다. 이유는 토리 답변이 설명한다.
+            line.status === 'skipped'
+              ? 'animate-line-out overflow-hidden motion-reduce:animate-none'
+              : live && 'animate-turn-in motion-reduce:animate-none',
           )}
         >
           <ProgressIcon status={line.status} live={live} />
@@ -328,7 +332,8 @@ export function PlanChat({
           {notice ||
             (pendingReply
               ? '토리가 답변을 쓰고 있어요…'
-              : (progress.at(-1)?.text ?? '토리가 답변을 준비하고 있어요…'))}
+              : (progress.filter((line) => line.status !== 'skipped').at(-1)?.text ??
+                '토리가 답변을 준비하고 있어요…'))}
         </p>
       )}
       {error && (
