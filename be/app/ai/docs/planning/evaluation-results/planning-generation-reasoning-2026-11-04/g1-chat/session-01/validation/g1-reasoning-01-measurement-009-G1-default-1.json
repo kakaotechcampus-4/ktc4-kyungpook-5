@@ -1,0 +1,242 @@
+{
+  "artifact_version": 1,
+  "scope": "synthetic_planning_validation",
+  "run_id": "g1-reasoning-01",
+  "request_id": "g1-reasoning-01-measurement-009-G1-default",
+  "route": "chat",
+  "generation_attempt": 1,
+  "generation_span_id": 2,
+  "validation_span_id": 5,
+  "captured_at": "2026-11-04T14:09:20.372211+09:00",
+  "model": "gpt-5.6-luna",
+  "agent_prompt_version": "planning-agent-v8",
+  "generation_prompt_version": "planning-generation-v1",
+  "source": {
+    "commit": "7652a904490803a4148c273a74ebbf929fa90456",
+    "sha256": {
+      "features/planning/generation/graph.py": "c9c19c89c078968d11afb121de15a46f2c918fe7bc96f92c3a1ac194cca1d112",
+      "features/planning/generation/validation.py": "d473ab9aea7528abbf73dc3b8b174e6d5c22f08b8fd53e4d595a6890f1079e01",
+      "features/planning/generation/schemas.py": "78c19e499702e2aec6ea55c8da85e8c1b2507c13331182816b0bc7a7dd886253",
+      "features/planning/generation/catalog.py": "f100ef03fd8ed059edf8a74f58c5200cd2316590f1454852eacb2a0caaf0c7d5",
+      "contracts.py": "af92fab0ac1fec0c71853a79af113855550194544b6e185ba0b92a8894bd87fc",
+      "planning_catalog.py": "79a09450a2a26a149faf28a82a9b6bacd08a55551898701eab5f7d187db4ded0",
+      "errors.py": "68d223bf71b58a42c786ee3a9e63322827b81cb41bc6a9e5f47870c426dab296"
+    }
+  },
+  "input": {
+    "basis_draft": {
+      "conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": 25000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "condition_meta": {},
+      "deferred_topics": [
+        "dates",
+        "location"
+      ]
+    },
+    "trigger": {
+      "source": "chat",
+      "request_id": "g1-reasoning-01-measurement-009-G1-default-user",
+      "quote": "응, 만들어줘."
+    },
+    "reference_date": "2026-10-28",
+    "timezone": "Asia/Seoul",
+    "reference_facts": []
+  },
+  "composition": {
+    "steps": [
+      {
+        "code": "ASSIGN_ROLES",
+        "purpose": "행사 준비와 당일 운영에 필요한 업무 범위를 나누기 위한 초기 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "RESEARCH_VENUE",
+        "purpose": "50명 규모의 MT에 적합한 장소와 교통 조건을 비교하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "DEMAND_SURVEY",
+        "purpose": "참가 의향과 일정·장소 선호 등 세부 수요를 확인해 준비 조건을 구체화하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "사전 수요 조사 안내",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "RECRUIT_NOTICE",
+        "purpose": "행사 조건과 참가 신청 방법을 안내해 실제 참가자를 모집하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "참가 모집 안내",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "CHECK_RESPONSES",
+        "purpose": "모집 및 조사 응답을 확인해 예상 참가 인원과 요구사항을 파악하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "응답 확인 안내",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "CONFIRM_DETAILS",
+        "purpose": "응답 결과를 바탕으로 참가 인원, 행사 일정, 장소 등 미정 조건을 확정하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "BOOK_VENUE",
+        "purpose": "장소와 일정이 정해진 뒤 행사 장소를 예약하고 관련 계약·지급 절차를 진행하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "CONTRACT",
+            "title": "장소 예약 계약 검토",
+            "due_date": null
+          },
+          {
+            "type": "TRANSFER",
+            "title": "장소 예약 관련 지급 검토",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "COLLECT_FEES",
+        "purpose": "확정된 참가자에게 1인 25,000원의 참가비 납부 절차를 안내하고 수금하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "참가비 납부 안내",
+            "due_date": null
+          },
+          {
+            "type": "EXTERNAL_SEND",
+            "title": "참가비 수금 처리",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "PRE_EVENT_NOTICE",
+        "purpose": "행사 전 확정된 일정, 장소, 준비사항을 참가자에게 안내하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "행사 전 준비사항 안내",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "EVENT_DAY",
+        "purpose": "확정된 일정과 장소에서 MT를 운영하고 참가자와 현장 진행을 관리하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "SETTLE_EXPENSES",
+        "purpose": "행사 종료 후 발생한 지출을 확인하고 참가비 및 관련 비용을 정산하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "EXPENSE",
+            "title": "행사 지출 정산",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "REFUND_FEES",
+        "purpose": "환불 대상이나 미사용 참가비가 발생하는 경우 참가비를 반환하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "TRANSFER",
+            "title": "참가비 환급 처리",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "RECORD_FEEDBACK",
+        "purpose": "행사 후 참가자 의견과 운영상 개선사항을 기록하기 위한 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      }
+    ],
+    "excluded_steps": [],
+    "assumptions": [
+      {
+        "content": "일반적인 MT 준비 절차에 따라 역할 배치, 수요 확인, 모집, 장소 예약, 참가비 수금, 사전 안내, 행사 운영, 정산 및 피드백 순서로 구성했습니다.",
+        "fact_ids": []
+      },
+      {
+        "content": "참가비 25,000원은 참가자별 기준 금액으로 유지하며, 총수입이나 지출·환급 금액은 산정하지 않았습니다.",
+        "fact_ids": [
+          "f1"
+        ]
+      }
+    ],
+    "open_questions": [
+      "행사 시작일과 종료일은 언제인가요?",
+      "행사 장소와 이동 범위는 어떻게 정할까요?",
+      "행사 제목 또는 공식 명칭이 필요한가요?",
+      "예산 총액과 장소·교통·식사 등 주요 지출 기준이 있나요?",
+      "환불 기준과 참가비 납부 마감 기준을 정할까요?"
+    ],
+    "warnings": [
+      "행사 시작일과 종료일이 미정이므로 모든 단계와 행동의 일정을 제안하지 않았습니다.",
+      "날짜가 정해진 뒤 장소 조사, 모집·응답 확인, 예약, 참가비 수금, 사전 안내에 필요한 준비 기간을 역산해야 합니다.",
+      "장소 비용과 기타 지출 견적, 총예산이 미정이므로 예약 가능 여부와 참가비만으로 충당 가능한지는 판단할 수 없습니다."
+    ]
+  },
+  "violation": {
+    "rule": "unknown_fact_id",
+    "path": "/assumptions/1/fact_ids/0",
+    "step_code": null,
+    "action_index": null,
+    "expected": [],
+    "actual": "f1",
+    "timezone": null
+  },
+  "input_sha256": "ac1dadc66bc52c3b09f2812ca12348ec9f42d00df80e4e4e314ce8ac68b2d296",
+  "composition_sha256": "2a20b30821dea25df13c68332a0aa22a0715de8b9927d5a1e9695a136a6c0c45"
+}
