@@ -42,6 +42,9 @@ def test_schedule_alternates_variant_order():
     assert [item[4] for item in plan if item[:2] == ('measurement', 1)] == ['single', 'multi']
     assert [item[4] for item in plan if item[:2] == ('measurement', 2)] == ['multi', 'single']
     assert len([item for item in plan if item[0] == 'control']) == 2 * len(compare.CONTROLS)
+    only = compare.schedule(rounds=0, controls=2, warmup=False, control_ids=['date_resume'])
+    assert only == [('control', 1, 'boundary', 'date_resume', 'single'), ('control', 1, 'boundary', 'date_resume', 'multi'),
+                    ('control', 2, 'boundary', 'date_resume', 'multi'), ('control', 2, 'boundary', 'date_resume', 'single')]
 
 
 def test_records_tool_batches_per_response_and_restores_setting(tmp_path, fixed_models, monkeypatch):

@@ -4,6 +4,7 @@
   준비 실행   C2를 single·multi로 한 번씩(집계 제외)
   본측정     라운드마다 single·multi 순서를 뒤집어 C2를 잰다
   대조 사례   #205의 보류 경계 사례를 single·multi로 --controls회씩(보류·조건 품질 확인용)
+대조 사례 하나만 더 잴 때는 --rounds 0 --no-warmup --control-ids date_resume --controls 10처럼 쓴다.
 본측정의 성공 판정·구간 시간·토큰 기록은 #263 측정기(measure_attempt)를, 대조 사례는 #205 검사기를 그대로 쓴다.
 요청마다 이번 턴의 응답별 Tool 이름(`tool_batches`)을 함께 남겨 두 Tool을 한 응답에 담았는지 본다.
 
@@ -33,15 +34,16 @@ VARIANTS = ('single', 'multi')
 SETTINGS = dict(single=False, multi=True)
 
 
-def schedule(rounds, controls):
+def schedule(rounds, controls, *, warmup=True, control_ids=None):
     """(phase, round, kind, case_id, variant) 목록. 순서 효과를 줄이려고 라운드마다 변형 순서를 뒤집는다."""
-    plan = [('warmup', 0, 'latency', CASE_ID, variant) for variant in VARIANTS]
+    chosen = [case for case in CONTROLS if control_ids is None or case.id in control_ids]
+    plan = [('warmup', 0, 'latency', CASE_ID, variant) for variant in VARIANTS] if warmup else []
     for number in range(1, rounds + 1):
         variants = VARIANTS if number % 2 else tuple(reversed(VARIANTS))
         plan += [('measurement', number, 'latency', CASE_ID, variant) for variant in variants]
     for number in range(1, controls + 1):
         variants = VARIANTS if number % 2 else tuple(reversed(VARIANTS))
-        plan += [('control', number, 'boundary', case.id, variant) for case in CONTROLS for variant in variants]
+        plan += [('control', number, 'boundary', case.id, variant) for case in chosen for variant in variants]
     return plan
 
 
@@ -87,14 +89,14 @@ def summarize(rows):
 
 
 async def run_session(output_dir: Path, *, session_id, rounds=10, controls=1, interval=1.0,
-                      settings=None, sleep=asyncio.sleep):
+                      warmup=True, control_ids=None, settings=None, sleep=asyncio.sleep):
     fixture = load_fixture()
     if settings is None:
         settings = AISettings()
         settings.require_api()
     case = next(item for item in fixture.cases if item.id == CASE_ID)
     controls_by_id = {item.id: item for item in CONTROLS}
-    plan = schedule(rounds, controls)
+    plan = schedule(rounds, controls, warmup=warmup, control_ids=control_ids)
     report = dict(
         report_version=1, session_id=session_id, status='running', started_at=now(),
         purpose='#265 한 응답의 Tool 개수 single/multi 번갈아 비교', variants=dict(
@@ -105,8 +107,8 @@ async def run_session(output_dir: Path, *, session_id, rounds=10, controls=1, in
         fixture_sha256=hashlib.sha256(DEFAULT_FIXTURE.read_bytes()).hexdigest(),
         prompt_sha256=hashlib.sha256(nodes.PROMPT.encode()).hexdigest(),
         script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-        profile=dict(rounds=rounds, controls=controls, interval_seconds=interval, concurrency=1,
-                     case_ids=[CASE_ID], control_ids=[item.id for item in CONTROLS]),
+        profile=dict(rounds=rounds, controls=controls, interval_seconds=interval, concurrency=1, warmup=warmup,
+                     case_ids=[CASE_ID], control_ids=sorted({item[3] for item in plan if item[0] == 'control'})),
         environment=execution_metadata('real_model', settings),
         planned=len(plan), finished=0,
     )
@@ -165,12 +167,15 @@ def main():
     parser.add_argument('--rounds', type=int, default=10)
     parser.add_argument('--controls', type=int, default=1)
     parser.add_argument('--interval-seconds', type=float, default=1.0)
+    parser.add_argument('--no-warmup', action='store_true')
+    parser.add_argument('--control-ids', nargs='+', choices=[case.id for case in CONTROLS])
     args = parser.parse_args()
-    if args.rounds < 1 or args.controls < 0:
-        parser.error('rounds는 1 이상, controls는 0 이상이어야 합니다')
+    if args.rounds < 0 or args.controls < 0 or args.rounds + args.controls == 0:
+        parser.error('rounds와 controls는 0 이상이고, 둘 중 하나는 1 이상이어야 합니다')
     try:
         report = asyncio.run(run_session(args.output_dir, session_id=args.session_id, rounds=args.rounds,
-                                         controls=args.controls, interval=args.interval_seconds))
+                                         controls=args.controls, interval=args.interval_seconds,
+                                         warmup=not args.no_warmup, control_ids=args.control_ids))
     except (KeyboardInterrupt, asyncio.CancelledError):
         print('측정을 중단했습니다. 기록과 세션 상태를 확인해 주세요.')
         return 130
