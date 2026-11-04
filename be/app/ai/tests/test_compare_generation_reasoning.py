@@ -4,8 +4,13 @@ import asyncio
 import json
 from types import SimpleNamespace
 
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+
+from app.ai.features.planning.agent import graph as agent_graph
+from app.ai.features.planning.agent.nodes import GENERATE_TOOL_NAME
 from app.ai.features.planning.generation import model as generation_model
 from app.ai.scripts import compare_generation_reasoning as compare
+from app.ai.scripts.planning_latency_inputs import load_fixture
 from app.ai.tests.test_plan_generation_graph import composition
 
 SETTINGS = SimpleNamespace(model='fixed-model', request_timeout_seconds=60)
@@ -74,3 +79,28 @@ def test_session_sends_variant_setting_and_records_violation_rule(tmp_path, monk
     assert summary['low']['violations'] == {'dates_when_unknown': 2}
     assert summary['low']['success_step_count'] == dict(n=0, median=None, min=None, max=None)
     assert report['environment']['model_options']['reasoning'] == dict(default=None, low={'effort': 'low'})
+
+
+def test_chat_case_goes_through_agent_and_same_generation_setting(tmp_path, monkeypatch):
+    """G1은 대화 모델이 생성 Tool을 고른 뒤 같은 생성 경로(build_plan_model)를 탄다."""
+    built = fixed_generation(monkeypatch)
+    offer_id = load_fixture().resume_state.payload.generation.offer.id
+
+    async def agent(messages, **kwargs):
+        latest = next(m for m in reversed(messages) if not isinstance(m, SystemMessage))
+        if isinstance(latest, HumanMessage) and latest.content == '응, 만들어줘.':
+            return AIMessage(content='', tool_calls=[dict(id='generate-1', name=GENERATE_TOOL_NAME,
+                                                          args=dict(quote=latest.content, offer_id=offer_id))])
+        return AIMessage(content='초안을 만들었어요.')
+
+    monkeypatch.setattr(agent_graph, 'call_agent_model', agent)
+    output = tmp_path / 'out'
+    report = asyncio.run(compare.run_session(output, session_id='t', case_id='G1', rounds=1, interval=0,
+                                             settings=SETTINGS))
+    finished = [row for row in events(output) if row['event'] == 'finished']
+    assert report['profile']['case_id'] == 'G1' and [row['case_id'] for row in finished] == ['G1'] * 4
+    assert [model.reasoning for model in built] == [None, {'effort': 'low'}, None, {'effort': 'low'}]
+    stages = {span['stage'] for row in finished for span in row['observation']['spans']}
+    assert {'agent_model', 'generation_model'} <= stages
+    assert [row['outcome'] for row in finished] == ['success', 'failed', 'success', 'failed']
+    assert report['summary']['low']['violations'] == {'dates_when_unknown': 1}
