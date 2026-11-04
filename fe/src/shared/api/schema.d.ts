@@ -425,6 +425,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/records/category-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Count Records By Category */
+        get: operations["count_records_by_category_api_v1_records_category_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/records": {
         parameters: {
             query?: never;
@@ -2247,6 +2264,12 @@ export interface components {
             /** Meta */
             meta?: null;
         };
+        /** Envelope[RecordCategoryCountsOut] */
+        Envelope_RecordCategoryCountsOut_: {
+            data: components["schemas"]["RecordCategoryCountsOut"];
+            /** Meta */
+            meta?: null;
+        };
         /** Envelope[RecordDetailOut] */
         Envelope_RecordDetailOut_: {
             data: components["schemas"]["RecordDetailOut"];
@@ -3305,6 +3328,15 @@ export interface components {
          * @enum {string}
          */
         RecordCategory: "LEDGER" | "ETC" | "RULES" | "EVENT_HISTORY" | "RECEIPT";
+        /** RecordCategoryCountsOut */
+        RecordCategoryCountsOut: {
+            /** All */
+            all: number;
+            /** Bycategory */
+            byCategory: {
+                [key: string]: number;
+            };
+        };
         /** RecordDetailOut */
         RecordDetailOut: {
             /** Id */
@@ -5052,6 +5084,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecordSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    count_records_by_category_api_v1_records_category_counts_get: {
+        parameters: {
+            query: {
+                clubId: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RecordCategoryCountsOut_"];
                 };
             };
             /** @description Validation Error */

@@ -11,7 +11,13 @@ from app.core.exceptions import ValidationFailed
 from app.db.session import get_session
 from app.models.auth import Account
 from app.schemas.common import Envelope, PageMeta
-from app.schemas.records import RecordDetailOut, RecordListResponse, RecordOut, RecordSearchResponse
+from app.schemas.records import (
+    RecordCategoryCountsOut,
+    RecordDetailOut,
+    RecordListResponse,
+    RecordOut,
+    RecordSearchResponse,
+)
 from app.services import record_service, record_discovery_service
 from app.infra.storage import read_file
 
@@ -35,6 +41,20 @@ async def search_records(
         session, club_id=club_id, query=query, page=page, size=size
     )
     return RecordSearchResponse(data=data, meta=PageMeta(page=page, size=size, total_count=total))
+
+
+# /{record_id}보다 먼저 둬야 category-counts가 자료 id로 잡히지 않는다.
+@router.get("/category-counts", response_model=Envelope[RecordCategoryCountsOut])
+async def count_records_by_category(
+    club_id: str = Query(..., alias="clubId"),
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[RecordCategoryCountsOut]:
+    await ensure_member(session, club_id=club_id, account=account)
+    counts = await record_service.count_records_by_category(session, club_id=club_id)
+    return Envelope(
+        data=RecordCategoryCountsOut(all=sum(counts.values()), by_category=counts)
+    )
 
 
 @router.get("", response_model=RecordListResponse)
