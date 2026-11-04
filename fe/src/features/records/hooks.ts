@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getRecord,
   getRecords,
@@ -10,16 +10,18 @@ import type { RecordCategory, UploadRecordInput } from '@/features/records/types
 
 const listKey = (clubId: string) => ['records', clubId, 'list'] as const
 
-// 실제 API의 업로드/목록 결과만 표시한다. 실패를 예시 결과로 바꾸지 않는다.
 // 분류는 listKey 뒤에 붙여, 업로드 뒤 listKey 무효화가 모든 분류 목록에 닿게 한다.
+const listQuery = (clubId: string, page: number, category?: RecordCategory) => ({
+  queryKey: [...listKey(clubId), category ?? 'ALL', page] as const,
+  queryFn: () => getRecords(clubId, page, category),
+  enabled: Boolean(clubId),
+  retry: false,
+})
+
+// 실제 API의 업로드/목록 결과만 표시한다. 실패를 예시 결과로 바꾸지 않는다.
 export function useRecordUploads(clubId: string, page: number, category?: RecordCategory) {
   const queryClient = useQueryClient()
-  const records = useQuery({
-    queryKey: [...listKey(clubId), category ?? 'ALL', page],
-    queryFn: () => getRecords(clubId, page, category),
-    enabled: Boolean(clubId),
-    retry: false,
-  })
+  const records = useQuery(listQuery(clubId, page, category))
   const upload = useMutation({
     mutationFn: (input: Omit<UploadRecordInput, 'clubId'>) => uploadRecord({ ...input, clubId }),
     onSuccess: () => {
@@ -28,6 +30,15 @@ export function useRecordUploads(clubId: string, page: number, category?: Record
   })
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['records', clubId] })
   return { records, upload, refresh }
+}
+
+// 칩 건수. 분류마다 1페이지를 받아 totalCount를 읽는다. 목록과 같은 키라 칩을 바꾸면 캐시로 바로 뜬다.
+// ponytail: 분류 수만큼 요청한다(지금 6번). 분류가 늘면 BE에 분류별 건수 API를 요청한다.
+export function useRecordCounts(clubId: string, categories: Array<RecordCategory | undefined>) {
+  return useQueries({
+    queries: categories.map((category) => listQuery(clubId, 1, category)),
+    combine: (results) => results.map((result) => result.data?.meta?.totalCount),
+  })
 }
 
 export function useRetryRecordIndex(clubId: string, recordId: string) {
