@@ -2,6 +2,8 @@
 
 관련 [#265](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/265)(상위 [#262](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/262)), AI-PLAN-01.
 
+> 이후: 아래 보류 재개 실패는 [#274](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/274)에서 모호한 문장을 "나중에"로 읽은 것으로 확인했고, 분명한 재개·정정이 같아 켰다([원인과 재판정](../planning-date-resume-cause-2026-11-04/README.md)). 이 기록의 값은 그대로 둔다.
+
 토리 대화 모델이 한 번 답할 때 Tool을 하나만 고르게 한 설정(`single`, 지금까지)과 여러 개를 함께 고르게 한 설정(`multi`)을 같은 실행 안에서 번갈아 쟀다.
 
 ```text
