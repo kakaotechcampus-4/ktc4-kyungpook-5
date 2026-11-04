@@ -1,7 +1,7 @@
 """회의 후 화자 검토의 저장·복원. 외부 처리와 트랜잭션을 분리한다."""
 from pathlib import Path
 from typing import Protocol
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app import ai
 from app.core.enums import AgentJobKind, MeetingStatus
@@ -39,7 +39,7 @@ async def start(session: AsyncSession, *, meeting: Meeting, member_id: str) -> M
 
 
 async def get(session: AsyncSession, meeting_id: str, *, lock: bool = False) -> MeetingReview | None:
-    stmt = select(MeetingReview).where(MeetingReview.meeting_id == meeting_id)
+    stmt = select(MeetingReview).where(or_(MeetingReview.meeting_id == meeting_id, MeetingReview.id == meeting_id))
     if lock:
         stmt = stmt.with_for_update().execution_options(populate_existing=True)
     return await session.scalar(stmt)

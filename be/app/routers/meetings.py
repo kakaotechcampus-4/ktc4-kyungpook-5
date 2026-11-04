@@ -5,6 +5,8 @@ WS PCM 연속 음성은 BE VAD·실제 STT를 거쳐 확정 전사·AI로 연결
 """
 
 from datetime import UTC, datetime
+import tempfile
+from pathlib import Path
 
 from fastapi import (
     APIRouter,
@@ -30,6 +32,7 @@ from app.core.enums import MeetingStatus
 from app.core.exceptions import Forbidden
 from app.db.session import get_session, get_sessionmaker
 from app.infra.stt import SttError, WhisperStt, pcm_to_wav
+from app.infra.diarization import PyannoteDiarization
 from app.models.auth import Account
 from app.models.clubs import Member
 from app.models.meetings import Meeting, MeetingAudioChunk, TranscriptSegment
@@ -97,6 +100,50 @@ async def create_review_draft(meeting_id: str, body: ReviewDraftIn,
     review = await meeting_review_service.generate_draft(session, review, body.expected_version)
     return Envelope(data=await meeting_review_service.output(session, review))
 
+
+
+
+async def _review_wav(session: AsyncSession, meeting_id: str):
+    from app.infra.meeting_audio import assemble_meeting_wav
+    from app.infra.storage import read_file
+    from starlette.concurrency import run_in_threadpool
+    rows = await meeting_review_service.audio_snapshot(session, meeting_id)
+    temp = tempfile.NamedTemporaryFile(prefix='meeting-review-', suffix='.wav', delete=False)
+    temp.close(); path = Path(temp.name)
+    try:
+        chunks = [(start, end, await run_in_threadpool(read_file, key)) for start, end, key in rows if key]
+        duration = await run_in_threadpool(assemble_meeting_wav, chunks, path.open('wb'))
+        return path, duration
+    except Exception:
+        path.unlink(missing_ok=True); raise
+
+@router.post('/api/v1/meetings/{meeting_id}/review/submit', response_model=Envelope[MeetingReviewOut], status_code=202)
+async def submit_review_diarization(meeting_id: str, account: Account = Depends(get_current_account), session: AsyncSession = Depends(get_session)):
+    meeting = await _review_meeting(session, meeting_id, account)
+    review = await meeting_review_service.get(session, meeting.id, lock=False)
+    if review is None:
+        raise meeting_review_service.ReviewConflict('먼저 회의 검토를 시작해 주세요.')
+    if review.status != 'QUEUED':
+        return Envelope(data=await meeting_review_service.output(session, review))
+    path, _duration = await _review_wav(session, meeting.id)
+    try:
+        provider = PyannoteDiarization(get_settings().pyannote_api_key.get_secret_value(), get_settings().pyannote_model, get_settings().pyannote_timeout_seconds)
+        review = await meeting_review_service.submit_diarization(session, review.id, wav_path=path, provider=provider)
+    finally:
+        path.unlink(missing_ok=True)
+    return Envelope(data=await meeting_review_service.output(session, review))
+
+@router.post('/api/v1/meetings/{meeting_id}/review/poll', response_model=Envelope[MeetingReviewOut], status_code=200)
+async def poll_review_diarization(meeting_id: str, account: Account = Depends(get_current_account), session: AsyncSession = Depends(get_session)):
+    meeting = await _review_meeting(session, meeting_id, account)
+    review = await meeting_review_service.get(session, meeting.id)
+    if review is None:
+        raise meeting_review_service.ReviewConflict()
+    rows = await meeting_review_service.audio_snapshot(session, meeting.id)
+    duration = max((end for _start, end, _key in rows), default=0)
+    provider = PyannoteDiarization(get_settings().pyannote_api_key.get_secret_value(), get_settings().pyannote_model, get_settings().pyannote_timeout_seconds)
+    review = await meeting_review_service.poll_diarization(session, review.id, duration_ms=duration, provider=provider)
+    return Envelope(data=await meeting_review_service.output(session, review))
 
 def _meeting_out(meeting: Meeting) -> MeetingOut:
     return MeetingOut(
