@@ -782,7 +782,7 @@ with trace.span(stage, **details) as item:
 }
 ```
 
-새 `report_version=2`의 finished 이벤트에는 `observation.spans`와 `model_call_attempts`가 들어간다. 메시지 본문이나 공급자 예외 원문은 구간에 복사하지 않는다. 모델 메시지 text 길이와 개수는 숫자로 남기지만 Tool 스키마를 포함한 전체 입력 토큰 수는 아니다.
+새 `report_version=2`의 finished 이벤트에는 `observation.spans`와 `model_call_attempts`가 들어간다. 메시지 본문이나 공급자 예외 원문은 구간에 복사하지 않는다. 모델 메시지 text 길이와 개수는 숫자로 남기지만 Tool 스키마를 포함한 전체 입력 토큰 수는 아니다. 전체 입력·출력 토큰은 #263부터 모델 구간의 `usage`(입력, 출력, 그중 추론, 캐시 입력)에 따로 남는다. 측정 세션에만 등록한 LangChain 콜백이 모델 호출이 끝날 때 열린 구간에 붙이며, 못 받은 경우는 0이 아니라 `usage_missing`에 이유를 남긴다([토큰 사용량 관측](latency-baseline.md#토큰-사용량-관측의-구현-범위)).
 
 집계기는 시간이 부모/요청 범위 안에 있는지, 자식과 부모의 유형이 맞는지, 호출 수가 실제 구간 수와 일치하는지 확인한다. 그런 뒤 `groups.measurement.G1.observation`에 구간별 요약을 붙인다.
 

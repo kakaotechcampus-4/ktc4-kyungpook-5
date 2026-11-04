@@ -70,8 +70,9 @@ def execution_metadata(mode, settings):
                            generation_max_tokens=PLAN_MAX_OUTPUT_TOKENS, generation_streaming=True) if settings else None,
         coverage=dict(timing='public_function_with_nested_spans', stage_timings=OBSERVATION_SCOPE,
                       model_call_attempts='wrapped_invoker_attempts',
-                      http_attempts=None, token_usage=None, model_input_chars=None,
-                      unavailable_reason='SDK 내부 HTTP 시도와 토큰은 미관측. 구간의 메시지 문자 수는 text만 포함'),
+                      http_attempts=None, token_usage='langchain_usage_metadata_last_response', model_input_chars=None,
+                      unavailable_reason='SDK 내부 HTTP 시도는 미관측. 토큰은 재시도 중 마지막 응답의 값. '
+                                         '구간의 메시지 문자 수는 text만 포함'),
     )
 
 

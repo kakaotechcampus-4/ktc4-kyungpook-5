@@ -6,6 +6,7 @@ from functools import partial
 from threading import Event
 
 import pytest
+from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 
 from app.ai import AITimeoutError, AIOutputLimitError, chat_planning, generate_planning_preview
@@ -15,8 +16,23 @@ from app.ai.features.planning.agent.nodes import GENERATE_TOOL_NAME
 from app.ai.features.planning.generation import graph as generation_graph, model as generation_model
 from app.ai.scripts.measure_planning_latency import measure_attempt
 from app.ai.scripts.planning_latency_inputs import load_fixture, make_request
-from app.ai.scripts.planning_latency_observation import CURRENT_TRACE, capture_request, install_observers, validate_observation
+from app.ai.scripts.planning_latency_observation import (
+    CURRENT_TRACE, USAGE_RECORDER, capture_request, install_observers, validate_observation,
+)
 from app.ai.tests.test_plan_generation_graph import composition
+
+# LangChain usage_metadata 형식의 가짜 값. 실제 측정값이 아니다.
+AGENT_USAGE = dict(input_tokens=1000, output_tokens=120, total_tokens=1120,
+                   input_token_details=dict(cache_read=0), output_token_details=dict(reasoning=80))
+GENERATION_USAGE = dict(input_tokens=3000, output_tokens=5000, total_tokens=8000,
+                        input_token_details=dict(cache_read=1024), output_token_details=dict(reasoning=3000))
+RECORDED_AGENT = dict(input_tokens=1000, output_tokens=120, reasoning_tokens=80, cached_input_tokens=0)
+RECORDED_GENERATION = dict(input_tokens=3000, output_tokens=5000, reasoning_tokens=3000, cached_input_tokens=1024)
+
+
+async def through_model(messages, response):
+    """가짜 모델을 LangChain 실행으로 돌려 실제와 같이 on_llm_end 콜백이 불리게 한다."""
+    return await GenericFakeChatModel(messages=iter([response])).ainvoke(messages)
 
 
 class Clock:
@@ -30,7 +46,8 @@ class Clock:
         self.value += int(milliseconds * 1_000_000)
 
 
-def configure(monkeypatch, clock, *, generations=None, retry=False, agent_error=None, use_default=False):
+def configure(monkeypatch, clock, *, generations=None, retry=False, agent_error=None, use_default=False,
+              usage=False):
     fixture = load_fixture()
     calls = []
     outputs = iter(generations if generations is not None else [composition()])
@@ -47,10 +64,15 @@ def configure(monkeypatch, clock, *, generations=None, retry=False, agent_error=
             clock.advance(10)
             raise agent_error
         response = next(responses)
+        if usage:
+            response = await through_model(args[0], response.model_copy(update=dict(usage_metadata=AGENT_USAGE)))
         clock.advance(10 if response.tool_calls else 5)
         return response
 
     async def generate(messages, schema, **kwargs):
+        if usage:
+            # 실제 생성처럼 응답을 받은 뒤에 형식·한도 오류가 날 수 있으므로 모델 실행을 먼저 한다.
+            await through_model(messages, AIMessage(content='{}', usage_metadata=GENERATION_USAGE))
         clock.advance(30)
         calls.append(schema)
         value = next(outputs)
@@ -264,3 +286,105 @@ def test_snapshot_freezes_request_end_even_if_worker_finishes_later():
     assert not observed['complete']
     assert observed['spans'][0]['end_ms'] is None
     validate_observation(observed, 5, allow_pending=True)
+
+
+# --- #263 토큰 사용량 ---------------------------------------------------------
+
+def model_spans(result):
+    return [item for item in result['observation']['spans'] if item['stage'] in ('agent_model', 'generation_model')]
+
+
+def test_model_spans_record_token_usage_from_langchain_callback(monkeypatch):
+    """대화 모델 2번(생성 Tool 선택·설명)과 생성 모델 1번에 각각 토큰이 붙는다."""
+    clock = Clock()
+    fixture, _ = configure(monkeypatch, clock, usage=True)
+    result = measured(fixture, clock)
+    assert result['outcome'] == 'success' and result['observation']['version'] == 2
+    assert [(item['stage'], item['usage'], item['usage_missing']) for item in model_spans(result)] == [
+        ('agent_model', RECORDED_AGENT, None),
+        ('generation_model', RECORDED_GENERATION, None),
+        ('agent_model', RECORDED_AGENT, None),
+    ]
+    # 시간 구간은 토큰 기록 전과 같다.
+    assert result['ai_request_ms'] == 47
+    validate_observation(result['observation'], result['ai_request_ms'])
+
+
+def test_button_generation_records_usage_without_agent_model(monkeypatch):
+    clock = Clock()
+    fixture, _ = configure(monkeypatch, clock, usage=True)
+    result = measured(fixture, clock, 'G2')
+    assert [(item['stage'], item['usage']) for item in model_spans(result)] == [('generation_model', RECORDED_GENERATION)]
+
+
+def test_output_limit_failure_keeps_usage_of_received_response(monkeypatch):
+    """응답을 받은 뒤 한도에서 실패한 호출도 쓴 토큰이 남는다. 실패라고 0으로 만들지 않는다."""
+    clock = Clock()
+    fixture, _ = configure(monkeypatch, clock, generations=[AIOutputLimitError('private-provider')], usage=True)
+    result = measured(fixture, clock)
+    generation = next(item for item in model_spans(result) if item['stage'] == 'generation_model')
+    assert generation['outcome'] == 'error' and generation['failure_code'] == 'output_limit'
+    assert generation['usage'] == RECORDED_GENERATION and generation['usage_missing'] is None
+    validate_observation(result['observation'], result['ai_request_ms'])
+
+
+def test_missing_usage_has_reason_instead_of_zero(monkeypatch):
+    """모델 실행을 거치지 않은 응답은 not_reported, 응답 없이 실패한 호출은 no_response다."""
+    clock = Clock()
+    fixture, _ = configure(monkeypatch, clock, generations=[AITimeoutError('private-provider')])
+    result = measured(fixture, clock)
+    assert [(item['stage'], item['usage'], item['usage_missing']) for item in model_spans(result)] == [
+        ('agent_model', None, 'not_reported'),
+        ('generation_model', None, 'no_response'),
+        ('agent_model', None, 'not_reported'),
+    ]
+    validate_observation(result['observation'], result['ai_request_ms'])
+
+
+def test_usage_recorder_is_only_active_inside_observer_session(monkeypatch):
+    assert USAGE_RECORDER.get() is None
+    with install_observers():
+        assert USAGE_RECORDER.get() is not None
+        # 요청 기록 밖의 모델 실행은 아무 구간도 바꾸지 않고 그대로 끝난다.
+        reply = asyncio.run(through_model([], AIMessage(content='ok', usage_metadata=AGENT_USAGE)))
+        assert reply.text == 'ok'
+    assert USAGE_RECORDER.get() is None
+
+
+def observed_span(**changes):
+    span = dict(id=1, parent_id=None, stage='agent_model', start_ms=0, end_ms=5, duration_ms=5, outcome='ok',
+                failure_code=None, error_type=None, input_message_count=1, message_text_chars=1,
+                usage=dict(RECORDED_AGENT), usage_missing=None)
+    span.update(changes)
+    return dict(version=2, scope='planning_function_wrappers_v1', spans=[span], complete=span['outcome'] != 'running',
+                model_call_attempts=dict(agent_model=1, generation_model=0))
+
+
+def test_legacy_observation_without_usage_is_still_valid():
+    legacy = observed_span()
+    legacy['version'] = 1
+    for key in ('usage', 'usage_missing'):
+        legacy['spans'][0].pop(key)
+    validate_observation(legacy, 5)
+
+
+@pytest.mark.parametrize('observation', [
+    # 형식 1에 토큰 칸이 섞이면 옛 기록과 새 기록을 구분할 수 없다.
+    {**observed_span(), 'version': 1},
+    # 형식 2인데 토큰 칸이 없다.
+    observed_span(usage=None, usage_missing=None),
+    # 추론 토큰은 출력 토큰의 일부이므로 더 클 수 없다.
+    observed_span(usage=dict(RECORDED_AGENT, reasoning_tokens=121)),
+    observed_span(usage=dict(RECORDED_AGENT, cached_input_tokens=1001)),
+    # 입력·출력은 반드시 있어야 하고, 정해진 네 칸만 쓴다.
+    observed_span(usage=dict(RECORDED_AGENT, output_tokens=None)),
+    observed_span(usage=dict(RECORDED_AGENT, total_tokens=1120)),
+    # 값이 있는데 이유도 있거나, 이유가 구간 결과와 맞지 않는다.
+    observed_span(usage_missing='not_reported'),
+    observed_span(usage=None, usage_missing='no_response'),
+    # 요청 종료 때 끝나지 않은 호출에 토큰을 남기지 않는다.
+    observed_span(outcome='running', end_ms=None, duration_ms=None),
+])
+def test_invalid_usage_is_rejected(observation):
+    with pytest.raises(ValueError):
+        validate_observation(observation, 5, allow_pending=True)
