@@ -31,6 +31,25 @@ def test_recent_without_verified_full_order_is_partial():
     assert '가장 최근인지 확인하지 못했어요' in result.answer
 
 
+def test_unknown_actual_count_is_not_replaced_with_expected():
+    result = ai.answer_meeting_event_facts(ai.MeetingEventFactsRequest(
+        scope='selected', fields=('actual_headcount',),
+        events=(event(actual_headcount=None),), complete=True,
+    ))
+    assert result.status == 'partial'
+    assert '실제 참가 인원: 미확인' in result.answer
+    assert '40' not in result.answer
+
+
+def test_verified_recent_result_is_answered():
+    result = ai.answer_meeting_event_facts(ai.MeetingEventFactsRequest(
+        scope='recent', fields=('status',), events=(event(),),
+        complete=True, latest_verified=True,
+    ))
+    assert result.status == 'answered'
+    assert result.event_ids == ('evt-1',)
+
+
 def test_incomplete_empty_scope_is_unavailable_and_complete_empty_is_not_found():
     unavailable = ai.answer_meeting_event_facts(ai.MeetingEventFactsRequest(
         scope='current', fields=('status',), events=(), complete=False,
