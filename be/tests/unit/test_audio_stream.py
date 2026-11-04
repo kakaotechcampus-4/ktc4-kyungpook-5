@@ -272,6 +272,7 @@ async def test_disconnect_still_finishes_running_decisions() -> None:
 @pytest.mark.parametrize("invalid, code", [
     ([{"type": "websocket.receive", "bytes": pcm(100)}], "AUDIO_METADATA_REQUIRED"),
     ([msg({"type": "audio", "audioSeq": 2, "startMs": 0, "endMs": 100})], "AUDIO_SEQUENCE_GAP"),
+    ([*frame(1, 0, 100), msg({"type": "audio", "audioSeq": 1, "startMs": 100, "endMs": 200})], "AUDIO_SEQUENCE_GAP"),
     ([msg({"type": "audio", "audioSeq": 1, "startMs": 10, "endMs": 110})], "AUDIO_SEQUENCE_GAP"),
     ([msg({"type": "audio", "audioSeq": 1, "startMs": 0, "endMs": 100}), {"type": "websocket.receive", "bytes": pcm(50)}], "AUDIO_SIZE_MISMATCH"),
     ([msg({"type": "end", "lastAudioSeq": 1})], "AUDIO_END_MISMATCH"),
