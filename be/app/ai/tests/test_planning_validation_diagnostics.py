@@ -4,7 +4,7 @@ import asyncio
 from functools import partial
 import json
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from pydantic import ValidationError
 import pytest
 
@@ -20,6 +20,11 @@ from app.ai.scripts.replay_planning_validation import replay_file
 from app.ai.scripts.planning_latency_observation import install_observers
 from app.ai.tests.test_plan_generation_graph import composition, Model
 from app.ai.tests.test_plan_validation_details import examples
+
+
+def last_turn(messages):
+    """실행 문맥(시스템 메시지)이 맨 끝에 붙어도(planning-agent-v8, #269) 마지막 대화 메시지를 본다."""
+    return next(m for m in reversed(messages) if not isinstance(m, SystemMessage))
 
 
 def button_request(internal):
@@ -89,8 +94,8 @@ def retry_models(monkeypatch, request, answers):
 
     async def agent(messages, **kwargs):
         nonlocal count
-        if isinstance(messages[-1], ToolMessage):
-            status = json.loads(messages[-1].content).get('status')
+        if isinstance(last_turn(messages), ToolMessage):
+            status = json.loads(last_turn(messages).content).get('status')
             if status == 'generated' or count >= len(answers):
                 return AIMessage(content='실제 결과를 확인해 주세요.')
         count += 1
