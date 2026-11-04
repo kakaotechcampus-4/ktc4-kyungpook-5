@@ -268,7 +268,10 @@ async def test_ws_extraction_only_failure_still_completes_meeting(client: TestCl
     # 추출 실패는 작업의 기능별 실패로 남는다
     job = client.get(f"/api/v1/agent-jobs/{judgment['jobId']}", headers=headers).json()["data"]
     assert job["status"] == "FAILED"
-    assert [feature["tool"] for feature in job["error"]["features"]] == ["tasks.extract"]
+    tools = [feature["tool"] for feature in job["error"]["features"]]
+    assert "tasks.extract" in tools
+    # Event facts lookup runs alongside task extraction for meeting context.
+    assert "event.lookup" in tools
 
 
 async def test_ws_judge_failure_still_fails_meeting(client: TestClient, audio_db: None, monkeypatch: pytest.MonkeyPatch) -> None:
