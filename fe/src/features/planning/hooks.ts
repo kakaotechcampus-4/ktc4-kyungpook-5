@@ -20,7 +20,9 @@ import {
   type TurnLine,
   type TurnReceipt,
 } from './turn'
+import { changedFacts, type FactFlash } from './factFlash'
 import { ApiError } from '@/shared/api/types'
+import { formatCurrency, formatDateRange } from '@/shared/lib/format'
 import type { components } from '@/shared/api/schema'
 
 type S = components['schemas']
@@ -33,13 +35,45 @@ const fields = [
   ['startDate', '일정'],
   ['location', '장소'],
 ] as const
+const metaOf = (draft: Draft, field: string) =>
+  draft.conditionMeta[field] ??
+  draft.conditionMeta[field.replace(/[A-Z]/g, (x) => `_${x.toLowerCase()}`)]
+// 「일정」 칸은 시작일과 종료일을 함께 보인다(#300). "12/5 – 12/6", 하루면 "12/5", 종료일만 있으면 "~ 12/6".
+function schedule(draft: Draft) {
+  const { startDate, endDate } = draft.conditions
+  if (!startDate && !endDate) return null
+  return startDate
+    ? formatDateRange(startDate, endDate ?? null)
+    : `~ ${formatDateRange(endDate!, null)}`
+}
+// 패널 값은 대화의 작업 줄과 같은 모양으로 읽힌다(AI progress.py의 _shown과 맞춤, #300).
+//   headcount 35 → "35명", feePerPerson 0 → "무료", 20000 → "1인 20,000원", eventType WELCOME → "개총·신환회"
+const EVENT_TYPES: Record<string, string> = {
+  MT: 'MT',
+  WELCOME: '개총·신환회',
+  PICNIC: '피크닉',
+  ACADEMIC: '학술행사',
+  WORKSHOP: '워크샵',
+  ETC: '기타',
+}
+function shown(field: (typeof fields)[number][0], value: string | number): string {
+  if (field === 'headcount') return `${Number(value).toLocaleString('ko-KR')}명`
+  if (field === 'feePerPerson')
+    return Number(value) === 0 ? '무료' : `1인 ${formatCurrency(Number(value))}`
+  if (field === 'eventType') return EVENT_TYPES[value] ?? String(value)
+  return String(value)
+}
 function toFacts(draft: Draft): PlanFacts {
   const result: PlanFacts = {}
   for (const [field, label] of fields) {
-    const value = draft.conditions[field]
+    const value = field === 'startDate' ? schedule(draft) : draft.conditions[field]
+    // 일정은 시작일·종료일 중 하나라도 잠정이면 잠정이다.
     const meta =
-      draft.conditionMeta[field] ??
-      draft.conditionMeta[field.replace(/[A-Z]/g, (x) => `_${x.toLowerCase()}`)]
+      field === 'startDate'
+        ? ([metaOf(draft, 'startDate'), metaOf(draft, 'endDate')].find(
+            (m) => m?.status === 'tentative',
+          ) ?? metaOf(draft, 'startDate'))
+        : metaOf(draft, field)
     const topic =
       field === 'startDate' ? 'dates' : field.replace(/[A-Z]/g, (x) => `_${x.toLowerCase()}`)
     if ((value === null || value === undefined) && draft.deferredTopics.includes(topic)) {
@@ -47,7 +81,7 @@ function toFacts(draft: Draft): PlanFacts {
     } else if (value !== null && value !== undefined)
       result[label] = {
         status: meta?.status === 'tentative' ? '잠정' : '확정',
-        value: String(value),
+        value: shown(field, value),
         quote: meta?.evidenceQuote,
       }
   }
@@ -71,6 +105,11 @@ function snapshotQuery(userId: string | undefined, clubId: string | null, eventI
 }
 function receiptsKey(userId: string | undefined, clubId: string | null, eventId: string | null) {
   return ['planning', 'receipts', userId, clubId, eventId]
+}
+// 조건 패널의 바뀐 칸 강조. 새 계획은 첫 답변 뒤 화면이 새 주소로 넘어가며 패널이 새로 그려지므로
+// 작업 줄처럼 화면 상태가 아니라 계획별 캐시에 둔다.
+function flashKey(userId: string | undefined, clubId: string | null, eventId: string | null) {
+  return ['planning', 'fact-flash', userId, clubId, eventId]
 }
 export function usePlanningDrafts(clubId: string | null, userId: string | undefined) {
   return useQuery({
@@ -160,6 +199,13 @@ export function usePlanningChat(
     receipts.data ?? [],
   )
   const messages = [FIRST_MESSAGE, ...storedMessages]
+  const flash = useQuery({
+    queryKey: flashKey(userId, clubId, selectedId),
+    queryFn: () => null as FactFlash | null,
+    enabled: !!selectedId,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
   // 저장된 대화에 이번 턴이 들어오면 임시 표시는 같은 화면 갱신에서 숨긴다.
   // 임시 표시를 지우는 일과 다시 불러온 대화를 그리는 일이 따로 일어나도 두 번 보이지 않는다.
   const turnSaved = pendingBase !== null && storedMessages.length > pendingBase
@@ -210,6 +256,17 @@ export function usePlanningChat(
       )
       setView(result)
       succeeded = true
+      // 저장이 끝난(done) 결과와 보낼 때 패널을 비교해 바뀐 칸만 강조한다.
+      // 기존 계획은 setView로 패널이 바로 바뀌므로 지금 켠다. 새 계획은 넘어간 화면이 그릴 때 켜지도록
+      // 저장된 대화를 받아 둔 뒤 켠다(아래).
+      const flashed = changedFacts(facts, toFacts(result.draft))
+      const startFlash = () =>
+        flashed.length &&
+        queryClient.setQueryData<FactFlash>(flashKey(userId, clubId, eventId), {
+          at: Date.now(),
+          keys: flashed,
+        })
+      if (selectedId) startFlash()
       // 저장된 대화를 다시 불러오기 전에 작업 줄을 먼저 넣어 둔다. 그래야 임시 표시가
       // 저장된 답변으로 바뀌는 같은 화면 갱신에서 작업 줄이 답변 위에 그대로 남는다.
       const lines = finishedLines(turnLines.current)
@@ -224,6 +281,7 @@ export function usePlanningChat(
         // 임시 말풍선 → "불러오는 중" 카드 → 저장된 대화로 깜빡이지 않는다.
         // 실패해도 넘어간 화면이 직접 다시 불러오므로 여기서는 오류로 보지 않는다.
         await queryClient.fetchQuery(snapshotQuery(userId, clubId, eventId)).catch(() => undefined)
+        startFlash()
       } else {
         const updated = await snapshot.refetch()
         if (updated.isError)
@@ -285,6 +343,7 @@ export function usePlanningChat(
   return {
     messages,
     facts,
+    factFlash: flash.data ?? null,
     busy: sending || generating,
     generating,
     error,

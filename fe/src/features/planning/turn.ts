@@ -59,8 +59,11 @@ export function dropSkipped(lines: TurnLine[]): TurnLine[] {
 }
 
 // 답변 위에 남길 줄. 끝나지 않았거나(running) 결과가 없는(skipped) 줄은 남기지 않는다.
+// 기록 없음(empty)은 토리가 실제로 찾아본 일이라 남긴다.
 export function finishedLines(lines: TurnLine[]): TurnLine[] {
-  return lines.filter((line) => line.status === 'completed' || line.status === 'failed')
+  return lines.filter(
+    (line) => line.status === 'completed' || line.status === 'empty' || line.status === 'failed',
+  )
 }
 
 // 이번 화면에서 끝난 턴의 작업 줄. base는 보낼 때 저장돼 있던 대화 수다.

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 FIELD_LABELS = {
     "title": "행사 이름", "event_type": "행사 종류", "headcount": "예상 인원",
-    "fee_per_person": "참가비", "start_date": "시작일", "end_date": "종료일",
+    "fee_per_person": "참가비", "start_date": "일정", "end_date": "일정",
     "location": "장소", "budget_total": "총예산",
 }
 EVENT_TYPES = {
@@ -87,35 +87,71 @@ def _shown(field: str, value) -> str:
     return f"‘{value}’"
 
 
+def _period(start: date | None, end: date | None) -> str:
+    """행사 기간을 한 덩어리로 적는다. 같은 해·같은 달이면 뒤쪽을 줄인다.
+
+    (12/5, 12/6) → '2026년 12월 5일~6일', (12/31, 1/2) → '2026년 12월 31일~2027년 1월 2일',
+    (12/5, None) → '2026년 12월 5일', (None, None) → '미정'.
+    """
+    if start is None and end is None:
+        return "미정"
+    if start is None:
+        return f"~{_shown('end_date', end)}"
+    if end is None or end == start:
+        return _shown("start_date", start)
+    if end.year != start.year:
+        tail = _shown("end_date", end)
+    elif end.month != start.month:
+        tail = f"{end.month}월 {end.day}일"
+    else:
+        tail = f"{end.day}일"
+    return f"{_shown('start_date', start)}~{tail}"
+
+
 def condition_progress(operation_id: str, result: ConditionUpdateResult) -> PlanningProgress | None:
     """검증된 조건 변경을 '항목 값 반영했어요' 한 줄로 만든다(#290).
 
-    "인원 40명, 12월 5일부터로 해 줘" → "예상 인원 40명 · 시작일 2026년 12월 5일 반영했어요".
+    "인원 40명, 12월 5일부터 6일까지로 해 줘" → "예상 인원 40명 · 일정 2026년 12월 5일~6일 반영했어요".
     바뀐 항목이 여럿이어도 값을 모두 적는다. 처음 정한 값과 바꾼 값을 구분할 정보가 없으므로
     '변경'이 아니라 '반영'이라고 쓰고, 이전 값은 화면의 조건 패널이 보여 준다.
     """
     if result.status != "applied" or not result.changed_fields:
         return None
+    conditions = result.draft.conditions
     items = []
     for field in result.changed_fields:
-        value = getattr(result.draft.conditions, field)
-        meta = result.draft.condition_meta.get(field)
-        tentative = " (잠정)" if value is not None and meta and meta.status == "tentative" else ""
-        items.append(f"{FIELD_LABELS[field]} {_shown(field, value)}{tentative}")
+        # 시작일·종료일은 패널의 「일정」 한 칸이라 한 항목으로 묶는다(#300). 둘 다 바뀌어도 한 번만 적는다.
+        if field in ("start_date", "end_date"):
+            if any(item.startswith("일정 ") for item in items):
+                continue
+            fields = ("start_date", "end_date")
+            shown = _period(conditions.start_date, conditions.end_date)
+        else:
+            fields = (field,)
+            shown = _shown(field, getattr(conditions, field))
+        tentative = " (잠정)" if any(
+            getattr(conditions, f) is not None
+            and (meta := result.draft.condition_meta.get(f)) and meta.status == "tentative"
+            for f in fields) else ""
+        items.append(f"{FIELD_LABELS[field]} {shown}{tentative}")
     return PlanningProgress(operation_id=operation_id, kind="condition_applied",
                             status="completed", text=f"{' · '.join(items)} 반영했어요")
 
 
 def search_finished(operation_id: str, result: RecordLookupResult) -> PlanningProgress | None:
+    """검색 결과를 세 가지로 나눈다(#300).
+
+    찾음 → completed(초록 체크), 자료 없음 → empty(회색 대시), 검색 실패 → failed.
+    자료 없음은 검색이 정상으로 끝난 것이라 실패로 보이지 않게 하고, '찾았다'로도 읽히지 않게 한다.
+    """
     if result.status == "rejected":
         return None
-    text = {
-        "available": "참고할 기록을 찾았어요",
-        "not_found": "맞는 기록을 찾지 못했어요",
-        "failed": "기록을 검색하지 못했어요",
+    status, text = {
+        "available": ("completed", "참고할 기록을 찾았어요"),
+        "not_found": ("empty", "맞는 기록이 없었어요"),
+        "failed": ("failed", "기록을 검색하지 못했어요"),
     }[result.status]
-    return PlanningProgress(operation_id=operation_id, kind="search_finished",
-                            status="failed" if result.status == "failed" else "completed", text=text)
+    return PlanningProgress(operation_id=operation_id, kind="search_finished", status=status, text=text)
 
 
 def generation_finished(operation_id: str, result: PlanGenerationResult) -> PlanningProgress:

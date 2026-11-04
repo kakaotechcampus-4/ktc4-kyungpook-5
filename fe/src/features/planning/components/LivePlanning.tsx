@@ -15,6 +15,7 @@ import type { components } from '@/shared/api/schema'
 import { useAuthStore } from '@/shared/auth/store'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
+import { formatDateTime } from '@/shared/lib/format'
 
 type S = components['schemas']
 
@@ -124,7 +125,6 @@ function Conversation({
   const screen = live.snapshot.data?.screen
   // 단계 수정 화면에서 저장한 구성이 있으면 그걸 반영해 보여준다(#213 전까지 로컬).
   const steps = live.snapshot.data?.steps ?? []
-  const lookup = live.view?.recordLookup
   const readiness = live.view?.generationReadiness ?? screen?.generationReadiness ?? null
   const lastMessage = live.snapshot.data?.messages.at(-1)
   return (
@@ -155,29 +155,26 @@ function Conversation({
               마지막 답변에 대한 질문을 받지 못했어요. 연결 상태를 확인해 주세요.
             </p>
           )}
-          {lookup && (
-            <p role="status" className="text-mute">
-              {lookup.status === 'available'
-                ? '관련 자료를 참고했어요.'
-                : lookup.status === 'not_found'
-                  ? '관련 자료를 찾지 못했어요.'
-                  : lookup.status === 'failed'
-                    ? '자료 검색에 실패했어요.'
-                    : '자료 조회를 진행하지 못했어요.'}
-            </p>
-          )}
+          {/* 대화로 정한 조건이 먼저, 그 조건으로 만드는 초안이 아래다(#300).
+              기록 검색 결과는 대화의 작업 줄이 알려 주므로 여기 따로 적지 않는다. */}
+          <PlanFacts
+            facts={live.facts}
+            flash={live.factFlash}
+            readiness={{ canGenerate: false, reasons: [] }}
+            hideNext
+            onNext={() => {}}
+          />
           <Card className="space-y-4 p-5">
             <h2 className="text-h2">계획 초안</h2>
-            <p className="text-mute">
-              생성하면 기존 초안 단계가 새 결과로 바뀝니다. 행사 시작이나 발송은 진행되지 않아요.
-            </p>
             <p role="status" className="text-ink2">
               {!eventId
-                ? '먼저 어떤 행사를 준비하는지 알려 주세요.'
+                ? '어떤 행사를 준비하는지 알려 주시면 초안을 만들 수 있어요.'
                 : !readiness
                   ? '진행 가능 상태를 확인하지 못했어요. 대화를 이어가거나 다시 불러와 주세요.'
                   : readiness.canGenerate
-                    ? '초안을 만들 준비가 됐어요. 아래 버튼을 눌러 진행해 주세요.'
+                    ? steps.length
+                      ? '다시 만들면 지금 단계가 새 결과로 바뀌어요.'
+                      : '지금 조건으로 초안을 만들 수 있어요. 행사 시작이나 발송은 하지 않아요.'
                     : readiness.reasons.length
                       ? readiness.reasons
                           .map((reason) => REASONS[reason] ?? '추가 정보를 확인해 주세요.')
@@ -190,9 +187,15 @@ function Conversation({
               disabled={!eventId || !readiness?.canGenerate || live.busy}
               onClick={() => void live.generate()}
             >
-              {live.generating ? '초안을 만드는 중…' : '현재 조건으로 초안 생성'}
+              {live.generating
+                ? '초안을 만드는 중…'
+                : steps.length
+                  ? '지금 조건으로 다시 만들기'
+                  : '지금 조건으로 초안 만들기'}
             </Button>
-            {screen && <StepSummaryLine summary={screen.summary} steps={steps} edited={false} />}
+            {screen && steps.length > 0 && (
+              <StepSummaryLine summary={screen.summary} steps={steps} edited={false} />
+            )}
             {/* 생성 때 낸 주의사항은 계획을 고친 뒤엔 낡은 정보라 숨긴다. 대신 아래 검토 카드가 안내한다. */}
             {screen &&
               showGenerationWarnings(screen.planRevision, screen.review ?? null) &&
@@ -201,36 +204,28 @@ function Conversation({
                   {warning}
                 </p>
               ))}
-            {steps.length > 0 ? (
+            {steps.length > 0 && (
               <ol className="space-y-2">
                 {steps.map((step) => (
-                  <li key={step.id} className="rounded bg-bg p-3">
+                  <li key={step.id} className="flex flex-col gap-[2px] rounded bg-bg p-3">
                     <strong>
                       {step.stepOrder}. {step.name}
-                    </strong>{' '}
-                    ·{' '}
-                    {step.actor === 'AI'
-                      ? 'AI 실행'
-                      : step.actor === 'APPROVAL_REQUIRED'
-                        ? '승인 필요'
-                        : '직접 수행'}{' '}
-                    ·{' '}
-                    {step.deadline ? new Date(step.deadline).toLocaleString('ko-KR') : '기한 미정'}
+                    </strong>
+                    <span className="text-label text-mute">
+                      {step.actor === 'AI'
+                        ? 'AI 실행'
+                        : step.actor === 'APPROVAL_REQUIRED'
+                          ? '승인 필요'
+                          : '직접 수행'}{' '}
+                      · {step.deadline ? `${formatDateTime(step.deadline)}까지` : '기한 미정'}
+                    </span>
                   </li>
                 ))}
               </ol>
-            ) : (
-              <p className="text-mute">아직 생성된 단계가 없어요.</p>
             )}
             <PlanHandoff eventId={eventId} hasSteps={steps.length > 0} />
           </Card>
           {eventId && screen && <PlanReview eventId={eventId} screen={screen} />}
-          <PlanFacts
-            facts={live.facts}
-            readiness={{ canGenerate: false, reasons: [] }}
-            hideNext
-            onNext={() => {}}
-          />
         </div>
       </div>
     </>
@@ -280,9 +275,6 @@ function PlanHandoff({ eventId, hasSteps }: { eventId: string | null; hasSteps: 
           </Button>
         </div>
       )}
-      <p className="text-mute">
-        단계 수정과 시작은 행사 계획에 저장됩니다.
-      </p>
     </div>
   )
 }
