@@ -1,0 +1,1486 @@
+{
+  "state": "COMPLETED",
+  "started_at": "2026-11-04T04:44:42.406557+00:00",
+  "model": "gpt-5.6-luna",
+  "reasoning": "provider default",
+  "prompt_version": "planning-agent-v8",
+  "with_records": false,
+  "embedding_model": null,
+  "review_status": "AI가 작성한 소규모 합성 초안, 사람의 정답 검수 전",
+  "reference_date": "2026-10-24",
+  "git_commit": "a03a73f0ed907bb5721c909b8bbe60624f7c4934",
+  "git_dirty": false,
+  "sha256": {
+    "features/planning/agent/generation_tools.py": "0a586b5750d93f86678464a80b2529d4b31dce3aeb9b5843416247321d669bdd",
+    "features/planning/agent/graph.py": "83292a96948abb8a37edb94948c855e503a0b054ea9c02ecbc3f19d04b879b88",
+    "features/planning/agent/nodes.py": "976db5df47a550f1521f60eb57a088a343d095f0734e2d10381ecfc608f49921",
+    "features/planning/agent/record_tool.py": "49c78509084ac094835d7b08a00e8b94bd701767b9796a7f45e621b85dd7e587",
+    "features/planning/agent/schemas.py": "98a149880147d89b018ca3aed23f3f6e6fedcdbaee0892d0a2699b07e687199d",
+    "features/planning/agent/state.py": "9bb22837b9f662ef8e1d8b398fd398ee2032bc5fcd6f75718f5d24130df07180",
+    "features/planning/agent/tools.py": "a7af857e94efc4619a9a021dbb57b2a59ae4f6672a66648daf869aa733fc2c6a",
+    "features/planning/agent/prompts/chat.md": "76ca3203e1f5ad89ed0b6300dd9d4beab7b5dbf6ed2588b3fbc5e721e09be412",
+    "llm.py": "47e55dbcb69ce4ea9cc887b3e5e5857a3f5368f178aed53d3f4a4916ab468e6b",
+    "tests/fixtures/eval/planning_agent.json": "89f344e3f36931a4ed69e42fa0ab4ab1c3c11637e37303233bbcf6c573435c68",
+    "scripts/eval_planning_agent.py": "2c457f0d668a758f87721ebd1ce9e37d27d8175de9a4e2418f517d2728a4e45b"
+  },
+  "turns": [
+    {
+      "dialog": "tentative-explain",
+      "turn": 1,
+      "text": "날짜는 아직 확실하진 않아. 일단 인원은 대략 50명, 인당 25,000원정도르르 생각하고 있어",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": 25000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "날짜는 아직 확실하진 않아. 일단 인원은 대략 50명, 인당 25,000원정도르르 생각하고 있어",
+        "updates": {
+          "headcount": 50,
+          "fee_per_person": 25000
+        },
+        "meta": {
+          "headcount": "tentative",
+          "fee_per_person": "tentative"
+        },
+        "deferred": [
+          "dates"
+        ],
+        "tool": "yes"
+      },
+      "reply": "인원은 약 50명, 참가비는 1인당 25,000원으로 잠정 반영했어요. 날짜는 아직 미정인 상태로 두겠습니다.\n\nMT 일정은 언제쯤으로 생각하고 계세요?",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 50,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {
+          "headcount": {
+            "status": "tentative",
+            "evidence": {
+              "message_id": "tentative-explain-user-0",
+              "quote": "일단 인원은 대략 50명"
+            }
+          },
+          "fee_per_person": {
+            "status": "tentative",
+            "evidence": {
+              "message_id": "tentative-explain-user-0",
+              "quote": "인당 25,000원정도르르 생각하고 있어"
+            }
+          }
+        },
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_BRcka9NJ7zHsClofxQuv3u8l",
+          "name": "update_event_conditions",
+          "result": {
+            "status": "applied",
+            "draft": {
+              "conditions": {
+                "title": null,
+                "event_type": "MT",
+                "headcount": 50,
+                "fee_per_person": 25000,
+                "start_date": null,
+                "end_date": null,
+                "location": null,
+                "budget_total": null
+              },
+              "condition_meta": {
+                "headcount": {
+                  "status": "tentative",
+                  "evidence": {
+                    "message_id": "tentative-explain-user-0",
+                    "quote": "일단 인원은 대략 50명"
+                  }
+                },
+                "fee_per_person": {
+                  "status": "tentative",
+                  "evidence": {
+                    "message_id": "tentative-explain-user-0",
+                    "quote": "인당 25,000원정도르르 생각하고 있어"
+                  }
+                }
+              },
+              "deferred_topics": []
+            },
+            "changed_fields": [
+              "headcount",
+              "fee_per_person"
+            ],
+            "reason": null
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_01d81fc61a0c55fe006aeab83b62d087d2be7380da00e1fda0",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rg9CUctKBMwxuDKDd99xly6MhTcat5GE5RYbKchMlvSkzbt7-mrR9KZ7aEUcc4s_E_kh6KBcAX1yxkf0DmBXH40nBHdF2v26diJsQYbUXdFVwcx7U0EELizpXToKwSBbt5U8za40BEmp77E6z5uV8Jv2HBKqHWQSWmw5e8wCJkzMAEXfbXVTqi6fqFaUASaH3i836AvCzsjZkqvGnt1pj7SNegxz8iUSRa0vSPGrYsND9OvOSCpHSrxoJKWwDswDBMjHwA_hZnsTmQ5Yc35js4ZldL9pY440cl_YPBpZ5IJxQjreyhAfK8wizi0KQRYuw2opm1lgMqnAngbz6MJohGQl0IGVcmzW8adaJI6o_4e7FjgmaS0Rp0o2I7wFYQaYpHDgkJO8tGxOdBRz8NlP1Wqt04HtJiuRIf1sJnN_Rr8c9Arne7qIZQobbe321xjLZKjarLPkLgjH8sLT8x0b37ohpTKlXZ90CR2Rwhmp1dpW8LTK13Hez2yhvScfE3q8VZvrcUFvqyXxFEn7VfKai_sZBQyeWh6m1EyE5CAflDCfzS3RdUULjzvWsThgcjEItW9We6QZ9QI7u0WtUi2p598pqC0oy5Uy14OaDpcQnRW_lXCy0rAHXB29uLga9OsKxo2XDXRJqfVn9ND5dm_j4eSf4rwGYc0incIMXG9me8DbzulEJGbxqeKj8RCm92xRdfvCI4lofRJyE7LuaQsPqpGQiCxghfVJYDWsrN85fArsUjFRo-54bf7Oww5qV3IJ3YRoWON_A1kov7Pg7k4a_zVyegTMru0tnhFRXgoqW80CbLRKQLlXLb8YEjA-OI21u27VijTOp9wHiQ1ZGIzPFmw6jPrhVr5CS5htTO7sriwtSQEtka9Av9rbtwbG3VV8x-77Cus-VsiXbnvNmtZc0uguSNYpRwsil9VOMiIyV1wIJ6eMb_R4jUiksxsBrD1ptXOYb82jAfT8SW7Hnt4lc6Qkx2wTnN1DWZsjsnej6hT4HO3kdJ8vq1eXXnIbSBsRFnFSQtnjy9WvwK9LzpOYhD3FRIhkzHl7xBnYzksnsoxCmOzkm1uOH3VAvtR5DehW2S8pvkqbA7_KokNj-_FDLkUNfdXOP8OX8NQzJIDHxVS1QDoyrU_edP3j3814P9nDgVlofStfkGJhy8p-YyMB-F7cSEd4pW44hCmmxb93-qhqYzaj1m8v8mqhig7LSyiXzgPgVgfAX20N522tlL0T7ytXBcTArtXmc1_FoG6LuZ3R1Pgak8Ukbdc2ZKOGVUB--8ntUuoBRKRfoaxMylTKfibNwljL_fy6adMXIvP35UG33Z9bEcLTfWCt0T-KvQZk6b8pfrvSnwxrK7CIQS4T9Kt2YUExpxE9in1irrMNnnQ68V5Ndvx3tTJdKrkL-3wesvxAVTw9bRBTf5BJAb0gL-9uycDGkMAA2d20Ma83497v5Y0O2vOWI9pobMb3mqS_wRQv6gzZeC5G3jcs2_0EYtiQfJNmiuM3QwHcnEg1CpJwe9bcwntMCQU7x67KYPf1P5vBZT7btto8VbctTYdxTswSjMz7x66N8V_vuWDREbfc4eVZH4uGFj7ytrXTNQu91HZgAQ9Np66jPGdMkI-6Zu9_b2P8U0GypgdG02Fj9lVhSElya5YIqKjjmm4hMT2OABlGDNKta4ibcYLuGqwzlTb3LNWTu42fwtEN3eKThfAfamkeGv3nv0NcwYeqUHap-4AQZ6bgT2gu4MO6DkNtOQdvYPZjxhv8QAHCJfB6_QDiEf9xOOB9jSOA6kjyYqOt8dtOj78Jw3MBDd7jxMcM2KypUS4IvjDejkC3i4uBKxxT14dvgKflldQTRy39lMl8AVJ77ydMv7nobha9XWkG-gYFqqaMYHs9sOBORSBClTeGyRZ-qUpvR7qEmcr6bSB10Nd87IHYgZfxHzXUEFIlPEAEbE98IwvFfsYSzW-KOk1XeGdMIxZrvKSOVQ-j8MDMLYkb13RWTx0TKwmIqyxUlSAH__DDII27qCw5E-8pKrtCaB3nTDC8rOEjiKDGfp-OpRe-oGCL7MihmHQofJVa3hrkdB5e4AuNFKC5RI1we0SYGnAhayfP7sWWk53RP9YSb34Yf45sgZOGHEen6BUKTajutoMg99u4UQ6WI03TNLy-ix-CY3uMXhgMFMU9QFuyC6yQwTA6SVERrqBAnkhEFBH2WT0M8lr6k5XD_mjKkWWnPWhGRlCZs_pwFkURxwNez-DGLodW9qGAs6CMYI9XEnt9ykemnsrozp1KU5ZWZrPI-FZy9xfv-0-gQ2ZUo0fz7tXQAxBj86ZxaT_kVSrw_TBDvJPY4hLrVtBzZIM1C3kNZTQKK7jI3FUO9kmifYxVuqTe-s6Fa4t3QF0Po8I6GMJGny8lSctxbknvjc0Z7Guasy_zDnoi9_Npg3w-LJyO6ahfsjouNQeHxYAaM_YTBCz_iwJqbikuKHfJHJzwPhtcS3zRxRrToKifBm5JEbf6QNJWptcbS5w4ioAKCFYTKujB1C_MDUgYvjQ6JFhTCSaWWiuTQxo7G4btqAwL5WrctgvxMFnuRavC-1aJdAfjIQRxi9yE8IPGGGaWt-VaTfl3g2VR5sVrfbrGcdJHqBBsJpBp1g-kM2xOR9xRpoUUO8w9ZiBb70ZhQ72KoyHOjUqYupnhuFfxCVcpWGZGJe5PkWyj7LGtv4QAW_48nZyLQZDRsjG_0SkvSLp2Dc55gm1UZNACHwxnbJqXKe9T_TE64GjL3-gm6TOoKv-tLt5dgpb7Q04ufKTOM872YVvYAXv6bk="
+            },
+            {
+              "arguments": "{\"changes\":[{\"op\":\"SET\",\"change\":{\"field\":\"headcount\",\"value\":50},\"status\":\"tentative\",\"evidence\":{\"message_id\":\"tentative-explain-user-0\",\"quote\":\"일단 인원은 대략 50명\"}},{\"op\":\"SET\",\"change\":{\"field\":\"fee_per_person\",\"value\":25000},\"status\":\"tentative\",\"evidence\":{\"message_id\":\"tentative-explain-user-0\",\"quote\":\"인당 25,000원정도르르 생각하고 있어\"}}],\"defer_topics\":[],\"resume_topics\":[]}",
+              "call_id": "call_BRcka9NJ7zHsClofxQuv3u8l",
+              "name": "update_event_conditions",
+              "type": "function_call",
+              "id": "fc_01d81fc61a0c55fe006aeab83c88e087d2b744b86a28e1903c",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "update_event_conditions",
+              "args": {
+                "changes": [
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "headcount",
+                      "value": 50
+                    },
+                    "status": "tentative",
+                    "evidence": {
+                      "message_id": "tentative-explain-user-0",
+                      "quote": "일단 인원은 대략 50명"
+                    }
+                  },
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "fee_per_person",
+                      "value": 25000
+                    },
+                    "status": "tentative",
+                    "evidence": {
+                      "message_id": "tentative-explain-user-0",
+                      "quote": "인당 25,000원정도르르 생각하고 있어"
+                    }
+                  }
+                ],
+                "defer_topics": [],
+                "resume_topics": []
+              },
+              "id": "call_BRcka9NJ7zHsClofxQuv3u8l",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":50,\"fee_per_person\":25000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{\"headcount\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"tentative-explain-user-0\",\"quote\":\"일단 인원은 대략 50명\"}},\"fee_per_person\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"tentative-explain-user-0\",\"quote\":\"인당 25,000원정도르르 생각하고 있어\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"headcount\",\"fee_per_person\"],\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "type": "text",
+              "text": "인원은 약 50명, 참가비는 1인당 25,000원으로 잠정 반영했어요. 날짜는 아직 미정인 상태로 두겠습니다.\n\nMT 일정은 언제쯤으로 생각하고 계세요?",
+              "annotations": [],
+              "id": "msg_01d81fc61a0c55fe006aeab83f289c87d29f14f924f40359cf",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": null,
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": false,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": false,
+      "model_calls": 2,
+      "http_calls": 2,
+      "embedding_http": 0,
+      "limit_reached": false,
+      "ms": 5855
+    },
+    {
+      "dialog": "tentative-explain",
+      "turn": 2,
+      "text": "왜 반영이 안됐을까?",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": 25000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "왜 반영이 안됐을까?",
+        "updates": {},
+        "meta": {
+          "headcount": "tentative",
+          "fee_per_person": "tentative"
+        },
+        "deferred": [
+          "dates"
+        ],
+        "tool": "no"
+      },
+      "reply": "반영이 안 된 게 아니라, **인원 약 50명과 참가비 25,000원은 정상 반영됐어요.**  \n다만 날짜는 구체적인 날짜가 없어서 아직 `미정`으로 남아 있습니다. 현재 초안에는 다음처럼 들어가 있어요.\n\n- 예상 인원: 약 50명(잠정)\n- 참가비: 1인당 25,000원(잠정)\n- 날짜: 미정",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 50,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {
+          "headcount": {
+            "status": "tentative",
+            "evidence": {
+              "message_id": "tentative-explain-user-0",
+              "quote": "일단 인원은 대략 50명"
+            }
+          },
+          "fee_per_person": {
+            "status": "tentative",
+            "evidence": {
+              "message_id": "tentative-explain-user-0",
+              "quote": "인당 25,000원정도르르 생각하고 있어"
+            }
+          }
+        },
+        "deferred_topics": []
+      },
+      "executions": [],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_01d81fc61a0c55fe006aeab841c7dc87d29912da914ae6847f",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rhDRwVX8Fk9Zaweti4fs-9grnQXaJdE9Ecb4iDXQR3enpufbTzhVhDsFq5HwCcM8rbwWC_VxVDJYdEkplJdmsI-dR1hI0tK1tV2M_hrlj4ID90T6PTPFs1rE6Pj0PtH_GzMFQ6dD3hhLSPsW1CG1PqQkxvdmgq81tIngAOGeGMWJaa8MhwVl_eZq5cfZ7GwQL71-yKF1yOoQYe80J_-Ckz9fHAp4Ls5r9qVxhX3ZLjNu2GZGsbzcwYQD36TcZF0u745weqeyAr-oiAd0KYGEGu03-cd2LUDFNb2bEGfzKuK0STDvH3X9JmnnA0UZ8GTc_mwyvQ6_aREaiOMVDHLBJl3TzyZdn6RyWsRvXFMlpfqzEaXDNFCdwidfY9BiivCAh8rYMLwJbPD1LnCp4-0OMSiCI5-ElVgXIZ5EwN5TvnDcyaubhnjYIQmqUvxKhlvsmlGezYnl0eSYrfvUNC8VJ5kSMSLmsIk1bislShWl4g2dejYaI405s4debS14g3tDAXOUZClkPOghlM7Wm0NqTmD2dDPp6YOLM9EFQ9ZIa3RZS3TeLNZvyuJy-Ll3ItN9vG1hd4y2KInsJgtGf0HVL5zxw4yVHyMIcVOSZ3_Ldu3-GYqiVdfQcHo5YNUnFfSGoAkqk5ao_PBF37JLtMATgkkP1XIHOW5SnbPw5uDNw10_cRtXOFQmYOP-gidLQ6klvxjAieZKo5nVj6ykTqmdZLhhAsOrD9xmc0qtLaquYcuFGXqouDWuUvIm42RGm4GlufT5VujxB7tA1P1zgBoS4TfOv2_UlPWzSXAamK79w5nu2M5qzx-7oPd25do3wJGrWu3Cn5IYwznvmttEhJ44djrOq1VJEklZzjZKVt5Z8qTyn8WRTUDz4eTIZhtI-yAYhf7Oo3QBu8cVxxj7NsaeAAh0LHcbOpQVbaLYfTjOTlsuBAFLfMUV50PO3AZyC--VP1YimNnOH8Kunen3YaCdvW4RBTT5uVt03AXa5CxZK9Qjpe5CPVcppCaPRHbjVskwdlA606f2cTBCxUKBqRx8mhwzT_eSkZMtlqXj1pYPJ0BcKP26Xy7AdUD4ptBGeqCC-oWbxFDPWMBZMpTazZ-RhYm3ONf3Rd2pPhtq9XmTRROG0rTuaMi0qoxdUekIZS6qfqoLe5Pp9F4HqWbG7CetGKgU8XqHowCW9q_r2Ezcnh8ttOcJTYBOCZmNaOBOZZQgZxi6b4k42tTFa2UtLmR25Q-BI_HdGVWBnDAQ6bJPxtbpFvaCZ4mRDICbDLcJ_Q-vXZdDr75h1WJDYnRlxMsq8W6Chaj-Q8gOXlw1uNRdq880PvlNHpzLVvG764GNAbytR7dM64J1AXlpF3PDiIpYZhAvEmNZaeiFJ-5b4S1Vjqg9V1qRWrD2mEzuvG9Ywq1oBz1_Lmc5AN9vG36Wfg55Kk1KR3LU-chr-KjeK8FX9ch7UMySsLD7UeyS8YO_1_yZ6l-br48crl_xgtC7KA8IJJwQ3v-96SkCCQB76uSlYDcchDTUJ7KkzkgOnsj8S41rj7zrX7ADGbizyOGLL87G2fdUHBQj0Lo1VDWV1NDnSXJZEjquYJD0tAV8t3GeNB3dFW72VvWeyb1NjUJ4HUl1JMahUnHK3y28mEmt6e8QMs0yzYiATS54KgucfdKiMkz72EAgt54zA94X6mo3wiTVlyWmhrqAZPz0aNqxk_XJAB6qp-pdlIwAT5l-mzYoXrbG43rdGHUlZtDuF2EeVFlIp8smt2Ho9fB3GxInuYX3LkUpxKViXdjAFtSMQi0vEmo0nWFEpK8YCQgGKqBu3YjA0iHzYBVreKEorD5rNjb4-3fLLicHJA5BDDfAWR0h9pdOvddNAscf_RXQAa_UeP4pIwWq6-rV983NQZtTt25GlX5Abx-6JKLQC11xsLxQt0pU-XdJMLOlM5fCRqs8dXJl0St1F03gRKfQMfVc4UtRGrssbk5gdRUAT3t_Z0Ix9hmJUl4"
+            },
+            {
+              "type": "text",
+              "text": "반영이 안 된 게 아니라, **인원 약 50명과 참가비 25,000원은 정상 반영됐어요.**  \n다만 날짜는 구체적인 날짜가 없어서 아직 `미정`으로 남아 있습니다. 현재 초안에는 다음처럼 들어가 있어요.\n\n- 예상 인원: 약 50명(잠정)\n- 참가비: 1인당 25,000원(잠정)\n- 날짜: 미정",
+              "annotations": [],
+              "id": "msg_01d81fc61a0c55fe006aeab842526487d2b6d67d14975974c0",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": null,
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": false,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": false,
+      "model_calls": 1,
+      "http_calls": 1,
+      "embedding_http": 0,
+      "limit_reached": false,
+      "ms": 3778
+    },
+    {
+      "dialog": "tentative-explain",
+      "turn": 3,
+      "text": "인원은 50명으로 정할게.",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": 25000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "인원은 50명으로 정할게.",
+        "updates": {},
+        "meta": {
+          "headcount": "specified",
+          "fee_per_person": "tentative"
+        },
+        "deferred": [
+          "dates"
+        ],
+        "tool": "yes"
+      },
+      "reply": "인원은 **50명으로 확정 반영**했어요. 참가비 25,000원은 아직 잠정이고, 날짜와 장소는 미정입니다.",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 50,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {
+          "headcount": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "tentative-explain-user-2",
+              "quote": "인원은 50명으로 정할게."
+            }
+          },
+          "fee_per_person": {
+            "status": "tentative",
+            "evidence": {
+              "message_id": "tentative-explain-user-0",
+              "quote": "인당 25,000원정도르르 생각하고 있어"
+            }
+          }
+        },
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_qiep4qSCr0C3y3m7kJ0OgSIe",
+          "name": "update_event_conditions",
+          "result": {
+            "status": "applied",
+            "draft": {
+              "conditions": {
+                "title": null,
+                "event_type": "MT",
+                "headcount": 50,
+                "fee_per_person": 25000,
+                "start_date": null,
+                "end_date": null,
+                "location": null,
+                "budget_total": null
+              },
+              "condition_meta": {
+                "headcount": {
+                  "status": "specified",
+                  "evidence": {
+                    "message_id": "tentative-explain-user-2",
+                    "quote": "인원은 50명으로 정할게."
+                  }
+                },
+                "fee_per_person": {
+                  "status": "tentative",
+                  "evidence": {
+                    "message_id": "tentative-explain-user-0",
+                    "quote": "인당 25,000원정도르르 생각하고 있어"
+                  }
+                }
+              },
+              "deferred_topics": []
+            },
+            "changed_fields": [
+              "headcount"
+            ],
+            "reason": null
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_01d81fc61a0c55fe006aeab844f3ac87d2aa6d15265d513d30",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rhHR8lDqHNOYdhopKE6y0h50ymGAVbQUfWXWHIETpgQAE15rKQj5p9wagmax7ut7Y0uq7a9YaWD6IPGEQKe9Qg3JrSE8EkripvQMeRyQIW4Nq2O_4uapL1i53GX1aLHfKcGvtyLcr1QFKM-Pgt9BEyvBd8lRm2rcsiZWLYWw_ZNFi1dL_fP5ThAC79woEYUV_xP4pewEtmwC7BlD7NnL6Lo-tAPm8OR-wKremTQrWxIOiTTWLUPsddpF-7xWls6bcednTl9HYgJsv2DqbP83fs4XF8UEy8Qc_WoOgkHRcDPQ0QHmNCv1J-3yLPKjdIR9Mvqr3mI392778nQ7LraOWpF4IYh4q6jATlE_8xyy8zrex2uh7t1rXF3QLp0s-AYjPHOyEno6rLfxKrV6tOmG4y8r5bRcKoTtu1Si7pZ8d_uf1uFE7iFRcU3aL_uRxuv7mLy-2QtPoQVL3_QNbm03pwiK8_m5PQHbLvYXIEEg6g7gGoTiFoKCUcV43TF6ge7RH3vNEduVh-2voBIUMVmgQ-8Ll3ra1TpqJiETh3u3wk6cjQL8w1h1jc1l-tPCFP-T8pbiijm3l8TxulE6uHq9gXIyJqKtEb85qb2kj-1QAJl8YgWqpFQ0aTBkfs9Gq_4Hw6286we5SYRGOkUvG9ecvkEgLYANBLhy5kt-b2iByh0GTZvq3hoD_Z8K3AHjf8oStQxP8dU8vwfDVapDvotXlKqgO2sP2o_ofQOvvMCGU-f9wE0PzOsNzvEZZzkxrAmXkLcNmvbx-aw37E3gLoj2sAMzkP9_YHXa4wfFBpofBcpErarccXNspZYkN2K9-8pED4ul2QR6m2rV72MDkeMeFnfEb_Jx8PMiLoDO1FeIWfLeskxWV9uENwXCdaPG5pKgw-j7MreJJT7OeIV5uYxGkm9cClUuzTQDQSSIBFBiwPjRnzMLn6iKFirS5cT_sT9oTC4HuiNbJDPrTB41vABBoPhuvbuRqVeXEtdAxTfj65af6sQGNhVXz_VbZJiGmt_u8dLMQTLyCpSX-r8Ef_DMGlu8mCcBNzbWsLhbm_vUiYVFFxHnSHIClMyqe5kPxysKS3gQ8_SAIDuLogEOeAfQ5_siPuOuAJxJyRT8_8VvDKmysWmp-3Pr1nq6pqlPgQfQdJObo6C0iJNgIea-HatkSV9rSrBXYOFUSm5TOBDo3ePzFjFNxUgm1Q4Nn7cuNFlNOQ47CziVyCtEkDl-1BwyYEnyLIfXOl35aRWB-_UOC0Xv2uMMeHnIbERM_gd32Tzcq3DmDk40AyO1rwXdi1dG3c5Hn6Onmci55-HOlpvz_7Dk_iuIh3F0xlCHaLDiI_CVaPw06dg3-QjJBntM2exNuzCm6TNUfDbdQTxgn39FhfncjeJ0NdpUfGnRkVQVSPtvYZ9K5EvTPUnA4fTkSUbZBdxkDqjfA12wD2yKky_NpYBcsBa30Tj1T-qU8r8h_WF-oVaCaWHvNBD1K3dLptBpY_NE_6TNBlVGiPGjPtCMbrJSEgw8ZhvisXgWUJMrCW9TCo5YOBKHKhhyk3nsfesD_z0xpbuMcB4RjgENxT3IK2iFpUTsJ65yZ3iWwk2ZlESpw07qROp9PUQ_EqVO7SA124ZaHQyTq03CcDnNO1xTuxFVrvVKnsCCxUIRArD8jwHXFFhNFG_9lKTjZQoDuxH-ZZZiNWarc4qSbLSXJfjA1ArbP8vTYyyRm7ghHfX-z9Kd3dI_CCpwO4x2uUYGUQ0TqEYl9joIc2auAYkBG5HpaklG2sadvdL5_o64kXxSQuOqyqCiVkWlatht-zE_J1hGo0TNmMpO2-CzKeEoJUVPGtfnkIZn0gSH7UFBtxeCcaQNoTSyrxmfMEZJTbLp8JaVxAMqdgYX5KIgccpTmpO_BF7NEZT89HMRhX5YZOd4Min2Bwb9lKmuhfXaSVSwQrl-iasvkR35FxBtFFZnSMNs1UtGPW9zg4uCXTZXO_IylamtrIQZNq8fJ7swh18hCGlC162PhoWmYNXpwKfPqLUE3wBVN5dm2UC5GczZw74G0k2sPPizTNH_HSuWCjUt-n0MhrT27bsuurAfO4QkI1KYH9ycBj-fLn_BmcVuxeWvvNCs58qz2uUOdJRjinLdwh2vdBpP8LoeA5CVTEYvfuCMYosxqoBeR_w1eFN46VgZr3K4pd-qzS7sdv1oZDLWvp4-8OYH51F-2GqWBfT8YcNueoZMsjwwsrbame8rt7XNhZqsTLs8CMB1SEQXa4FYCCC7THjQ70JPScIF4N94SqLKvdTos-kSkPrGMSWyJ2UkeChvSFKRoFXCXIioD5fZ7eh1---brdMKXoN97WccS-VsAybvVdfbo5zlaD4UfLp13o-5SzKFKqS1XfI_mx0ALCtU2x4UQvDuhTgGLQH4A3T0asklQTYT9znR_XaD0TCi48w1espcEubDzYbpmh01suixlXHxELmbVuT6MrBpmOXD2WwhBQbx8aZc2yqfHfoqcTgpMxxM2gNHDsRmZN5sncZpUFNQBEaPXccjnpmN9tbDZtsfeCSNZU2JDFyK2m3vjczhHbAEvQa77YugrgcgevW5uBNEPuWEJQMjcof85tywTtCflMnyxLTs8eGR0V0kZc2X37D0Xhj7OzhByiDdVf6TqhOgbG6g2koZGX6WZIXtXjqxgzkqtLT3W19qTdRVEvLfbO3EHCpT8gNBfpEuja_L9o1NsAO3261bctvhkhOnTn8phGDx_PkjfcSzBIYsrljWdAauU0G1_dEQTjn1ecuXQr3KbzujZCVnIkv67oH7RTBwvETCt3dSjeZv1Pr_rmu8XG0EEYEJ7ap40Q6eMm_nvNnA3uz-jUJzLXBcHVJoqnNCUZlT1cFg42zQ27rwHVWxU3J7MEbjUJcXMPbRaVjE1yPk_kAJhi5qT8amYUzU9pa-zB2KHfpaepu6oocbaQgZOWKWpT72o4iWWAY5oosMtT66LoYi6JzQuN6s0v14msWi2EuWQxN1QKHxMlOrJkpjNfL_el58tnId48eJ-MEqGlvwPpD6-nNw7RsOHeQKRmwJK5TJ8Wg9XGYE_pHV7KkGgeoURvkW6D4TSDF4LBzHV_geXGz8c5ftC-KjP05OSlV32wKUmnh3Dz6O85aQV1b5BDAzBuHjl4HGp0DHVjHXhe1d81r2fu_JyJcXq80I6ng-tvDwUV3V-cmxN-CBTl9jL1kHeqvTe46N1NuQ9W3xQ9n3-B2ojX7UfaKowNwkbnvGzVNh-8TXJO0ddq0WWy776fVFC8_B-TwLWvCvEThhBqMhvOfQ5KiJg5hMS_WRLUEbqtNbCYDEJ12zg6OpGti0Up8"
+            },
+            {
+              "arguments": "{\"changes\":[{\"op\":\"SET\",\"change\":{\"field\":\"headcount\",\"value\":50},\"status\":\"specified\",\"evidence\":{\"message_id\":\"tentative-explain-user-2\",\"quote\":\"인원은 50명으로 정할게.\"}}],\"defer_topics\":[],\"resume_topics\":[]}",
+              "call_id": "call_qiep4qSCr0C3y3m7kJ0OgSIe",
+              "name": "update_event_conditions",
+              "type": "function_call",
+              "id": "fc_01d81fc61a0c55fe006aeab84647f087d2acf11c9fbcb442db",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "update_event_conditions",
+              "args": {
+                "changes": [
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "headcount",
+                      "value": 50
+                    },
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "tentative-explain-user-2",
+                      "quote": "인원은 50명으로 정할게."
+                    }
+                  }
+                ],
+                "defer_topics": [],
+                "resume_topics": []
+              },
+              "id": "call_qiep4qSCr0C3y3m7kJ0OgSIe",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":50,\"fee_per_person\":25000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"tentative-explain-user-2\",\"quote\":\"인원은 50명으로 정할게.\"}},\"fee_per_person\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"tentative-explain-user-0\",\"quote\":\"인당 25,000원정도르르 생각하고 있어\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"headcount\"],\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "type": "text",
+              "text": "인원은 **50명으로 확정 반영**했어요. 참가비 25,000원은 아직 잠정이고, 날짜와 장소는 미정입니다.",
+              "annotations": [],
+              "id": "msg_01d81fc61a0c55fe006aeab8488d9c87d2884903e6c6a8d5f6",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": null,
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": false,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": false,
+      "model_calls": 2,
+      "http_calls": 2,
+      "embedding_http": 0,
+      "limit_reached": false,
+      "ms": 5641
+    },
+    {
+      "dialog": "advice-accept",
+      "turn": 1,
+      "text": "참가비 3만 원이면 어때?",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": null,
+        "fee_per_person": 25000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "참가비 3만 원이면 어때?",
+        "updates": {},
+        "tool": "no"
+      },
+      "reply": "3만 원이면 2만 5천 원보다 행사비를 넉넉히 확보할 수 있어 식사·대관·기념품 등을 구성하기 좋습니다. 다만 학생들에겐 부담이 될 수 있으니, 예상 지출 내역과 환급 여부를 함께 안내하면 납득하기 쉬워요.\n\n참가자 부담을 줄이는 게 우선이면 2만 5천 원, 행사 구성을 여유 있게 가져가려면 3만 원이 괜찮겠습니다.",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "executions": [],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0ee2108f3e9d421c006aeab84a958087d2a71180e241f50cb6",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rhN9fsAVScrcSlgqhdesxH7MLa6fmf8UJjieIPnRKV0lq0uTJgxRhWi2TBlxjjmlUSUQ38Y1oDhwfkPni3WR_UwOpHsGdX4Jc61ScJdyJamP8HxemP_uGht3IBqiZ3zBR8e_nmDJc2CGezCVW2RRUtbNSm3vCx3vOu60c6nAe9sFyRuiUr0GfkkucJ3X0bzindsMNMlS1ropQW_taMzYeAKKKjioM9HrG7hbQ5ofHM_wyN7vzhITa606K4Q9_zX35WGwsmEcSv6x5i_13N1QXDBaRI_TAyzQnGOttUtk6BPf6U4XZEnbgdQpP8dFBaeY-cS7qIQxG4vg3L_qqjXBkx9zcI9YEQmehrrCuxr8UcIOeRfi1zmhnoR_YEPPlwwJq6uVDDXHuP1KlEb5JgHwQPn5mORtPsxDNTwnfIzAw2Z-VKsFY2gOoVL1ds5ARlMG5GFusGQgmNJOC-B7dJxzbOXYtTs022P480WPPSwi-npoSUTmWMUleuJgUpYxFtahwcwNcd4ynwqomocQ0REGl_Ulr3up97c2slDRuPdnnaLXQbTUtFfNzudCLnqF8oMkuGp5CIOfcb9ktyj7nN_N827YwK1Q6-tofYnrHuFHUmZKCCJP9t9lnC0B9gELg4MRjWsxdBOUAPEM52yZX2zccO3ZL45sDQ9hdr9dCp6oxokwqZcbPyas5cF2cSC3UbXvuyOzHN2-FWePBgj6LqLfIur2GqdE1s9vwADplRno6TBAvOhQZ9HRQeJdOkXQ3NgrH1OWS3z4yt6Rpw1mcRcoAtk7Y8sOiNVtsB3cglEePsmtG95ACyCfRgng4oPEGMdm27fbIVIyzvml4hyyW3ajGF89mePTX-rv2pYhNEY7l6fJE_QPSa7klvVV90c5wvaPLDarID5EyY5c0zsfQa7Z4ZJKNtfIVgDWoXSeNDslrHQ-KOWa2vSTvj0uetIiTSL25vD4DMurUrsvcOzjtjxvImWsHI2ElF0X4Yqiy1ZmYzg18F2lDbAGja8YjBcJXKiFK8Dlu48GKH97_yZIDWL3hGTVsEgK1-NwURcxspFpr7R3-lnvNY0OPwLe74Ll8hwBw6QNJCgYkhqXtZcJ-lCtNweupnVhtsoPU54KDBLwtDNFcTp64ew8e6u12ngijQyhqst984Q5S_gwGPj4eJHgSgkrxXNHnBIbJ3yzHKPNu6j39Nn30gR1GLMkGus-sasEmE_EeCKuGanO6pntEU11sZIsrghu01Xk375UNyTqmL7qa9DP-P1KIsynt36kXqKPXNX-CrZC2do1PCqyhjyrvGlCCsLuLGsbP4h9ZYqyHmklPYhkp1r8Wj-7CY9eQgV_B7ZkiPPHj2J_drUhkP4f7y6j7XpwSa9zSqfhjJMiOIfOmlKPzlXahMnoG_Bzl3DcK3cHs7qlE6fmNt0kCCy9yjvWReDeBHKtqpBaASwgMjvvRSMYrmxgSSCPvmYXWqjBwkKo9J8-XM4mPE1RZQ-knz4Uw6H_jJnLUK9EURk8kPNTd_Sb4Mo7O6w-3nkJwJhxVYR4a-Ode1rv3bbq2eX-UQoWDeQkfi1NtsvnZjK9nIzI6YkHPo2y__JODozkU-6zg1ziuShTfFEDhG1bdaD5X3REyHQ_MK5pQgmHMdrmHBqcYE5oUf4fxFDQkiFS7C4B5zlIzgzvhaXjNI5YLXpxXZd-vHfiuwVRNUBCStV3f5hyqxi5sx4VsmhLCqUxSdhCJIVFGT5JkasrBfgS0gRzPIeXokxiMRqM_lktJlzuVNRujGD-15QoIHAlHEyTnAHyOE76oTfVFRradBDtEbynIYJs4z6KK2G-X_wIfQE2WFWW9R5dtISACCaWXpW1wWAgHnBGan36flDoBr0fIVyDYNmKMenw3bwkUGy9sVVlo-rkaSzbcmliQ5-cA_YBe5MCDrXMiXQrkmsc4DYT3GJ2aJQbhhOfX3gy-lzCml1Z-yx1H0w4Ii628ho1tixxI3RV_VJOxmklMjM-GYWjYg_b85Dpq_4DXQQHs-BFjIhw_Mtu3H_qS5Sh26ekVlVJjKn_adVqVNm0ZTcpLRLE8icygL0vK8bRwLgehfBat0WdnkzocX8r0ZcCdDQDUDZFDcp692MrYFFXbxHJZatkWqmJ2JUXL7PjNMiBnMfVKpICSRINCm7BbEbg5o5wCeRRPO274n5KAfCUtFSvvJquSNMCD0jR5Zv2_BXad8dJNJvaMMjcq0NpNFMvPXD6Xyd6UFd2I6xFDD_qt31V3ZWv9WReJg-7O6yV50nsTfcnjxZIPBFMuRR3a2CsfBrsOrPqoIVmPs9sFWSzveSH9kZzdOUHOEzM3cQ2SFALAdqGmr4kN2prRDN7j21fW0sapZR3hqkYcwlPumEBl7cs8UgV-5ATCVfEch7xGD_vCeiLD-FDkUmn056Vk_ikVELO_dcGpu5LMLUr0SLvCIvT3U0r4dnnfuT7hPN_twD-KUo4tO13H6_FNw="
+            },
+            {
+              "type": "text",
+              "text": "3만 원이면 2만 5천 원보다 행사비를 넉넉히 확보할 수 있어 식사·대관·기념품 등을 구성하기 좋습니다. 다만 학생들에겐 부담이 될 수 있으니, 예상 지출 내역과 환급 여부를 함께 안내하면 납득하기 쉬워요.\n\n참가자 부담을 줄이는 게 우선이면 2만 5천 원, 행사 구성을 여유 있게 가져가려면 3만 원이 괜찮겠습니다.",
+              "annotations": [],
+              "id": "msg_0ee2108f3e9d421c006aeab84b8b4c87d29928502f05d4c71d",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": null,
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 1,
+      "http_calls": 1,
+      "embedding_http": 0,
+      "limit_reached": false,
+      "ms": 3721
+    },
+    {
+      "dialog": "advice-accept",
+      "turn": 2,
+      "text": "일단 그렇게 잡자.",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": null,
+        "fee_per_person": 30000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "일단 그렇게 잡자.",
+        "updates": {
+          "fee_per_person": 30000
+        },
+        "meta": {
+          "fee_per_person": "tentative"
+        },
+        "tool": "yes"
+      },
+      "reply": "참가비는 일단 3만 원으로 잡아둘게요.  \n일정은 언제쯤으로 생각하고 계세요? તારીખ?",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": 30000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {
+          "fee_per_person": {
+            "status": "tentative",
+            "evidence": {
+              "message_id": "advice-accept-user-1",
+              "quote": "일단 그렇게 잡자."
+            }
+          }
+        },
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_0KKldlBTRcx7QSpeaDWWi3Ly",
+          "name": "update_event_conditions",
+          "result": {
+            "status": "applied",
+            "draft": {
+              "conditions": {
+                "title": null,
+                "event_type": "MT",
+                "headcount": null,
+                "fee_per_person": 30000,
+                "start_date": null,
+                "end_date": null,
+                "location": null,
+                "budget_total": null
+              },
+              "condition_meta": {
+                "fee_per_person": {
+                  "status": "tentative",
+                  "evidence": {
+                    "message_id": "advice-accept-user-1",
+                    "quote": "일단 그렇게 잡자."
+                  }
+                }
+              },
+              "deferred_topics": []
+            },
+            "changed_fields": [
+              "fee_per_person"
+            ],
+            "reason": null
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0ee2108f3e9d421c006aeab84e4c1887d28d4b681f230fcf43",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rhPm29RodRPyrXVeWIxkhQe0nb2ibbIlByqG5a41DKi6fTwXEL1cBppQPMouELFNKP8sZGdz0F1kIB7jUGh7Rlat1xg1jtUbWHNoI3f1q0lPYscRU8lCUqZKC6y5GIiFjEDIMsLTUa9P5IJMY2T2QtefkZQlyEPvkwLXrcCsaBrdpTFkKxZpbprxK64MrZxU0Zevea7wxKwAdVkgCgd2yMkFnK47GS4Z-5Q7AgdLEbb18Rs8BgpuugwZ0ssOJR9R-ewPNNkuJAZwT8Yr_XUq7vY0Pg2LRjBoNABk3cislOtEtmJIQfjJ-MrGYvtniQhySNI-9BAiC415TFPxjArpVu3aZ0OeZ7ZTNPizzrwAHod_zMgz86lkx0oakkmHPJ64t1qZEKidDAs-6yd7kbU_0yqT9Npz-esyny6Af7a-Jd5C6hy43Lz_V1CxlUaIHFVLdLOLLc370V6bBkKf3ciAsdwZe_SmeHQ2egt0iP4yFt4rn2N3mb5HZQRw_9SRr6AoaYbFnj2zwSZheZNYvbrIDIfUbN4l-mm9BEGUWLkbX1dEu1Gow959dwmOE3pSjJBOGV5OIGo3_tseIPeRDbUecFSjL6J_TDJuDFjdXvTe11cX2BnBL_vlq-D30LlHv2kfR9TMvpOvqAQbR056Wy76NlFYGn3owV1OuGL8xN-Wxu3_6Yh-Fyff5jcknR7EtmEuw6ZXrD5ZVQm2r-3kfEkbgEEnqgOP7uyHtO6P_-X2kAfKBx7lJRiPW9nCBNxvJlujLX741dPyZL1Dor8DNM1nM6I2SGclfANwaMqGR_aXl25KNSb6-IBW0x4cgnsOYeh9yLOjn7jHEwi7fkVis8Lb4MNyyRjysBoGBoDG_0dIY7g_RHc_CZIL_5MfpCwN3qArHWhgjCekE9zp0YW_LbuiY3EfvSY5qlnnIrIc71nkj0QfuoLvKm1Sd63De9PQvBvWIQnNG3ePhyTMkMTxgzAO0l0S2hyE2d_GdYL9A_BiFLYn46mm-dY6fucSgZojtiN5gttzQJg1uxQo4NVVCOOSPlTH-QZadbFAn1P0JtGNSyAOUoUh0fCbQlV5VnuHSbXKMdNqGpIKlqMyxnnbAisweupSyREEpAsmHJJXxLdplfwHL3QZ7eEVF8OG161NsyNkkIeYz2W5f5fUDUPQIuvHJzTtr8KK8aQ6xoZVplR0sxfjtA9xuU7z6FNINzDhXeT5yA08JZmuHzDx8wJ_5eQ7FTcdMtcWqyk8j-H4N1gdVTt4Q6sQ12fAHC0A5E2ocCKDKcLUA94EduTjZyLanMcMJcou601jZ_75hHPXgzr2aOTNnZVcIVKKxCTqQivvaTyPR_M_da4VnoGhvPCwfuo_EasoxAAgtkIqFq0xVCCShhMno6XGo6KvNqWBFow6RhcTfH0UbXq71_umzp8ByVDz2gIR08ahImdWWihrsmOv-ads5zppDZ0d-tekuyewGCwW3qaOuPLFFgDpa3v7I3r7Eo0DYnO7JRLh99SM3rytjtReQYVa2awFLqGx6OZm6Hj88sTnO-8naLmZxMkNpeTEUsQEw-IBez7Wuhh_AWdnNMnPbd8K-4EidLlV4HzuIejNcRyNHyLmSjqcKo3uih4zsk_VFN0OMZc8MAN5ekKSORzSwJG8AIh-u2Zgunj7ZXEn3SF82zxebNuhVp6DwtFS8kR2lpcahNwIs0p_KPkx5oCIO3qxuf5h2i_bN5kWrT5yoSk1JkCmJx1uZvOejUzGKlf4dJVWuaMWINL9LbRpF5Rz9vJ-ZZ6CLPN8qAJPR5sw7-9vWMS55kYEuRJjA4x2oIBsfQB_R7k-_PL1iUYvFJdXyUYtcCA-x4Fmn8iNMEl2P3yNGQtAFhb8R4UG97VWIJ6kQizmOPkpC54ZoVFGPg-QjUbNjRLfPxXvtIp4ZpnxpEAnrQTuaTzCG7Zaf1TM_AuMYzhhTaiDDjxraRZs8On2BKy9zsWeYF_h4MkaP_y4A5h0Z2BOf9NQfiKu8WelWsvR_F1PKlfiJLQ7f6bYoy6ws8gii3BMROPv8fcJK-N9iAt34R-EY6Fv8prilTUTcOdhQ=="
+            },
+            {
+              "arguments": "{\"changes\":[{\"op\":\"SET\",\"change\":{\"field\":\"fee_per_person\",\"value\":30000},\"status\":\"tentative\",\"evidence\":{\"message_id\":\"advice-accept-user-1\",\"quote\":\"일단 그렇게 잡자.\"}}],\"defer_topics\":[],\"resume_topics\":[]}",
+              "call_id": "call_0KKldlBTRcx7QSpeaDWWi3Ly",
+              "name": "update_event_conditions",
+              "type": "function_call",
+              "id": "fc_0ee2108f3e9d421c006aeab84eece087d2a03585e3fb788eb7",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "update_event_conditions",
+              "args": {
+                "changes": [
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "fee_per_person",
+                      "value": 30000
+                    },
+                    "status": "tentative",
+                    "evidence": {
+                      "message_id": "advice-accept-user-1",
+                      "quote": "일단 그렇게 잡자."
+                    }
+                  }
+                ],
+                "defer_topics": [],
+                "resume_topics": []
+              },
+              "id": "call_0KKldlBTRcx7QSpeaDWWi3Ly",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":null,\"fee_per_person\":30000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{\"fee_per_person\":{\"status\":\"tentative\",\"evidence\":{\"message_id\":\"advice-accept-user-1\",\"quote\":\"일단 그렇게 잡자.\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"fee_per_person\"],\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "type": "text",
+              "text": "참가비는 일단 3만 원으로 잡아둘게요.  \n일정은 언제쯤으로 생각하고 계세요? તારીખ?",
+              "annotations": [],
+              "id": "msg_0ee2108f3e9d421c006aeab851133c87d2bc7b00079ffbe427",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": null,
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 2,
+      "http_calls": 2,
+      "embedding_http": 0,
+      "limit_reached": false,
+      "ms": 4664
+    },
+    {
+      "dialog": "dates-recover",
+      "turn": 1,
+      "text": "시작일을 2027년 4월 20일로 바꿔줘.",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": "2027-03-20",
+        "end_date": "2027-03-21",
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "시작일을 2027년 4월 20일로 바꿔줘.",
+        "updates": {},
+        "tool": "any"
+      },
+      "reply": "시작일 변경이 반영되지 않았어요. 현재 종료일이 **2027년 3월 21일**이라 시작일을 4월 20일로 바꾸면 날짜 순서가 맞지 않습니다. 종료일도 함께 변경할까요?",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": null,
+          "start_date": "2027-03-20",
+          "end_date": "2027-03-21",
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_BRdzkGBPBi2BPhPmtRZDdqMn",
+          "name": "update_event_conditions",
+          "result": {
+            "status": "rejected",
+            "draft": {
+              "conditions": {
+                "title": null,
+                "event_type": "MT",
+                "headcount": null,
+                "fee_per_person": null,
+                "start_date": "2027-03-20",
+                "end_date": "2027-03-21",
+                "location": null,
+                "budget_total": null
+              },
+              "condition_meta": {},
+              "deferred_topics": []
+            },
+            "changed_fields": [],
+            "reason": "종료일이 시작일보다 빨라요. 날짜를 다시 정해 주세요."
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0ed98e5c6ec8a8ec006aeab853275087d2ace4741d0793d435",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rhV2msD5vBZfxSemhZWAZ3SE4z-naRat0hYxmyl3xGJXtt_-AI-BaSDMWK0hVr6cr1Nnx3230PDUEM-RE5xmZCbD5_jgceF_S-dmqLZUbycto2MdDIMqA-B2KT_O1L3ehPvxGTAWVUoJGJy0YpVpvxGplrq4U2MDleix3Ow21lgjvhq3nx36Jhl6wMLBvK0HmEGXbRfAt2rR9nMswOvCLrvtu-MByzsbEtxUN4jYJ6rbM2-oOZ-NdUUglWviqQTHHZaDw0W5EuCD_C1bT0JRZlDmy1BrpUmmXfepOv6vq_KrmGSHYMNrrS3C4cCplkBkYB6g32EyUpG65tidgC2_--uKxC9LBIyOb2rbjEZAHAUVkEw2uVQ4hfsKH5RivyEhtWnVsU5tGcn5jaR4HDmvVNfNfbe2nJJk5zxwRT8pmouJgYwoW7IP3VqV4smYij_ZJwmNvDXbc1SXplb_7AsXckEKtXjNgQxJErZsOy-OBKCy81qjQiSa7GOtxhdXMUsRgJ5t4cjJEm1cNPugGlwWecV4Bpn3lr4ME4OL1gWkBZsgEDAZJNqvsFnn1A1TldQ651pjBrLDqmNsspoww7v0qIHvFq6QHw55EUXAhByDKj8GS8NWrmIrITSuAdnI_JgzTtaGqqSTdv82kTFCtfdFvcmbOG86kpAekWLrEkOYW8KJ9xXE9t0rEkd5y4CNiT9DqUssspex2RZfab7GV8yC6MX8NdeKWky4RKsEy5_n9iiZ8ksxHXAE8kFg89i7cEEWmeRUHGRvzYC_oSz7r6DG_C_GanaafV4DyQNyeBbgl6AkM3JdqRjf9yJL1SvyEA_uUIOMJnnWmV_YE4NhUOKLslVkeoxgccfelfUKWwQRmWtV4XhbmLwEfsMhgDQs3bBUaoQGwd85rdbF0ffNVud8agGMvqDkj1NK4dAvViqMLYw8tB7PHd3FZ-lfdFCEzGRxJ_Hw5t6OllvOTcrVP5CV9nHVuALtjZejOE8yuMRMmGQvJ-U_62VK0v7EineOIDGXAWRvKbmvUQvHkkW6VlDvkiznqFRAe9Hdh5h1GUBttInSurPvPatzz4V1w2PTJ1kRbp0UBY2SuwchrTXCFTITS4KBV_RRjYygNtqLnnHi_zC5YnXH3iwQJ6tmCjFD4mlkRXrY3A3NvMZqW0K8ZCU-QlWd0FK45vusBcixdocAbrbbw3JFUixBmD9mgZbj5LVWLlX95tVg6KEgcL0ntHQswb7eQ_3BFvEEHcKN8YbyWfVCAXAXiNhUxg_Udx1VkPZiXDe0hAYEPmY6-bbXLdLEvaTwmEfV9wyGejxIAkPjsUYRx8tn2Bi1WO62dNDhPte9HpLhlkVRwv_HdaN-mk7Q0GDjkTwrFLvQNYMeG0T-MIhaZUewhfwxz04XyIF-k40Vw3eMOJ9DFOcYjTF7tFLTJdobSagFlTXLjZpPWSepnnZkk5yRmWyzJeMearrr0BMFhveERBiYfSCUplH7dRf7LixHbsLnXVYDXMgwSRHtGIuIKP1HEmv-Wv3wS4dDKmHe3JRwlae2wjQLR3KVekEcfPB6DsMPe7KQXwfGW9N9i9UeoAYh8eYwyYB9PY8mfSqkW54ogeCsUTAVE1tMB8EzNbWi1hucqgsVFjxzZUEsLKY5HMRp5AOH7Q4UqqioO20zS94oX15Y_alHm4R7WyBcMoP4ABfzIBFfRGJ2SzujWWpqp60xbihe3pjCG3dE9fBYExQ5Q8CIxwS1Gnuqram4FLVT3YjtuXSNOJrhDvG0ahTbL-W8a2goVIBR9eAZTauBASdOGYrycTnvQjnjHOVndhpk_vhrhGYUdhd4pNsDzG_r27RJVAuathlj75ozyqg9AJSxprRx2-0iMYakdM_o_q5eNo9VRgsht9itU0QEu8m2jsp5RaOng9GFVcpWVUjmis2dHtaBGRfCkrzES6ZQmzHAIZaf9kD-ArD2jS9Ga3ci5LOuo8hgvpZPeMyLUl2RaqJ4lL7F_uOpREU8mHOfKDia_0RNRS9GzCdQxtZqwC0ODMT1UfsTfs1ofS4as-a_tn8mg3HsAxsNgjJgEYv7frP1SN-kAlZMlAuOOmOrc597ZT45ZsA1x67UVyxuo-Q93kdk4xyMNx_fdyfxaWm9mBwLI8M18xdpzkAxHUL4dvCwLlMpe1pLHXMNdOSV9m_g1vvonjv329RD6pwmu3JcyH4zmKiO1mB8mgbOd1jNpiySysiTn88HiPDQ5mTrJmgIXxx9J1GI5gVadAF_XBtn0H_jpVJPrdrMZwifXRHrMzTjKzQELVCJOaGdRwO9iumJ0ppldr8ifAUIjFOYY6jJI0H7Q=="
+            },
+            {
+              "arguments": "{\"changes\":[{\"op\":\"SET\",\"change\":{\"field\":\"start_date\",\"value\":\"2027-04-20\"},\"status\":\"specified\",\"evidence\":{\"message_id\":\"dates-recover-user-0\",\"quote\":\"시작일을 2027년 4월 20일로 바꿔줘.\"}}],\"defer_topics\":[],\"resume_topics\":[]}",
+              "call_id": "call_BRdzkGBPBi2BPhPmtRZDdqMn",
+              "name": "update_event_conditions",
+              "type": "function_call",
+              "id": "fc_0ed98e5c6ec8a8ec006aeab854076087d2aea80205117aa490",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "update_event_conditions",
+              "args": {
+                "changes": [
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "start_date",
+                      "value": "2027-04-20"
+                    },
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "dates-recover-user-0",
+                      "quote": "시작일을 2027년 4월 20일로 바꿔줘."
+                    }
+                  }
+                ],
+                "defer_topics": [],
+                "resume_topics": []
+              },
+              "id": "call_BRdzkGBPBi2BPhPmtRZDdqMn",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"rejected\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":null,\"fee_per_person\":null,\"start_date\":\"2027-03-20\",\"end_date\":\"2027-03-21\",\"location\":null,\"budget_total\":null},\"condition_meta\":{},\"deferred_topics\":[]},\"changed_fields\":[],\"reason\":\"종료일이 시작일보다 빨라요. 날짜를 다시 정해 주세요.\"}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0ed98e5c6ec8a8ec006aeab8575b3487d2b752d4a013bcc79d",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rhYExOEB-zf2KqAmATz6goWQX6RKnRroDwfLEea1NaT6IGuENsOczqv5lRnPWCVRCevhEJpC4ss5G9Itk2UM3NYwZoT5ff3qbn9NQJ5MDhFppHirUNjcHuv9yjEymosagvE2IMi7sUPPHew-OcnE7caVU4lq47X6EawwynZD7zbjBXj1sTROQg3Cer7Oy1ZW7lBs8BpsMREWbxl6ll_76SpAr6yGmSduzuzUwoY78IKOIx-6zx-FeTJPrAiQ7--lWM63I0UuWJwk4yuARarCk2ajc6TpfETHSPtQSgIWDLhTVgUGI2UQRjhOgjTK7r6EwH0hPD5PDWWnDb88Alr0dOFbBatxV4p8YgH-QLSEptlWW-suhgV_KKovLJAZKAmCXvqmtMLIDg9B0eqcdeDYkrxwWNGpbahd4ao7_uOjxktJ8D7IuyxNqeP2mOwopS4Qgz5T1zU5PeC04uNaTraP0_eNInrZe70lWFFWSM8uuQv0PCWKQzs4xghbVhT8PnE3qyvgwYYqg3MHXpTK-tEi4SpUkrS56M7XSgHqkEFcbkjGDX1n5FyQIfBMnHMFu0zk5y50M_4nrW-52ki1AcmNXQvSioyME3NnjHMcmBJpH8xy84SyrNZZVJ-mYPaO-QScdIr_I5vCqbl9gRBcVZYifSrczR1pwFzJZ9JTQ9XuDWo1FV08H4FgTSs9T6mvjZynb0GD_sauY1U9-826b_J5No2_DijHAndd03Fyo6hShP9P4MJoyuZWVKzTlAaN6c9_eMi4ylnU5uT7zHuNIbSeMYkHQFcX3rGOMufkAjVMf-rW01xFacmHRHKkx30Ne8p1Y42c_RMWGRehk4KEsUJ2ZhbFEUOln6FlM-YpfnZ0RWZYWi5-D-TTiWD-rpE6zxRR94SQOAs4H4xM9eATfy7HBXDzkROI1IV9bTr8Dnedu5wt962YCswJ7nQj1qffQJgLPTBULyDn_fszWMS-SxPdiJHnLvJKRLeWwinxC_XTQVDqFKcHcWDn5Xa0w4BAV65spSwWc6luSra0DL3kwLHWzh78OH7FVSGX5Js3Ra2JcuyERBn-EMnlwp2Sgmnvlmi0Q_y6VEMMA6KvMZz9jrBumKSIqpY3uq4Wv_EQBkH9k-On9dN0VKRtBmEhFNG1PipdbbIJOSm2EUTxv76fyjml2nYkaTH8Rgl3SS1Dlwo-SqlZFPjAS-ZKzAhQnZtxKJmIdKci48tocKbjN2nblOqQ6hgAgavaph3CJ9vI6C1Gwj9chMQ0nHpuRSbqfwQOtmoUzTUAgGqHId_dU_z6Ty4iEl4qUaziMKrr45ZjTrjIjf-CZt9DviYwzTw5nyAZ4rCEpUuj8cRFKWQbYpUWRDtIR_7ymCoKI5CHxB4wsgFBys596VWD7quD9RrGP4F2HpOHEDWYEqFISDhQ38hgfnWVyrvFM-aMxLlTt2Lxxn1Sk2ZSzOj4WRlPyL0Wo37oI0hhKokaTWcOpIce6imGf9K9vncgKs7SZgEfhw2pCdROF7gkqDNGETS6ik6tdggq6WID5jLA053VvVgV-lc4Il8L5YiZgO5ymuf4OdcnWrQjnorcFKpNbB2UVi90XfcbJJPIXVu3QJJZodzksYTh-eBgDDKTsjEpw5-j5rhljBB4RYahME3yPn7ydg6LEWg8z5s5JpAIkyLkn5i0SUbdJiDmM1l6g=="
+            },
+            {
+              "type": "text",
+              "text": "시작일 변경이 반영되지 않았어요. 현재 종료일이 **2027년 3월 21일**이라 시작일을 4월 20일로 바꾸면 날짜 순서가 맞지 않습니다. 종료일도 함께 변경할까요?",
+              "annotations": [],
+              "id": "msg_0ed98e5c6ec8a8ec006aeab857905c87d2a9244177f93cbc1b",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": null,
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 2,
+      "http_calls": 2,
+      "embedding_http": 0,
+      "limit_reached": false,
+      "ms": 6643
+    },
+    {
+      "dialog": "dates-recover",
+      "turn": 2,
+      "text": "그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘.",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": null,
+        "fee_per_person": null,
+        "start_date": "2027-04-20",
+        "end_date": "2027-04-21",
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘.",
+        "updates": {
+          "start_date": "2027-04-20",
+          "end_date": "2027-04-21"
+        },
+        "tool": "yes"
+      },
+      "reply": "네, 일정은 **2027년 4월 20일~21일**로 변경했어요.",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": null,
+          "start_date": "2027-04-20",
+          "end_date": "2027-04-21",
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {
+          "start_date": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "dates-recover-user-1",
+              "quote": "그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘."
+            }
+          },
+          "end_date": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "dates-recover-user-1",
+              "quote": "그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘."
+            }
+          }
+        },
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_Rx6OR6jUk1uwuSJDX3OmB860",
+          "name": "update_event_conditions",
+          "result": {
+            "status": "applied",
+            "draft": {
+              "conditions": {
+                "title": null,
+                "event_type": "MT",
+                "headcount": null,
+                "fee_per_person": null,
+                "start_date": "2027-04-20",
+                "end_date": "2027-04-21",
+                "location": null,
+                "budget_total": null
+              },
+              "condition_meta": {
+                "start_date": {
+                  "status": "specified",
+                  "evidence": {
+                    "message_id": "dates-recover-user-1",
+                    "quote": "그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘."
+                  }
+                },
+                "end_date": {
+                  "status": "specified",
+                  "evidence": {
+                    "message_id": "dates-recover-user-1",
+                    "quote": "그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘."
+                  }
+                }
+              },
+              "deferred_topics": []
+            },
+            "changed_fields": [
+              "start_date",
+              "end_date"
+            ],
+            "reason": null
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0ed98e5c6ec8a8ec006aeab859c42c87d2bb4a86d2737d09ad",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rhb7zhMiZ8IckanAK3V6Ccg-3Ino1XYJ1YK4Xyuk7ckkGVH7F38FqSCX_whw6FLCZise3rvPppqrAroATvNoM4x5Kfa0HPD-nDhMR2ok6Rr83-3kORO4z4qvIQ2K4af-EJR3UPWURNzhT8Z2UQvDEH0-QHo8hpHnC7vMauf4GTWtMX-oq1QtAvNzx5a9_cWnJTfYvqiowNTFvAJzhR16thLzJX4lRePeAqc0tX8ai3-8MxIf3gwL9hq15gCG-L3lCgeg7Rk25gfRbd_kVsiaSpZm4ucN1U1izzsMzk60gAGaXmE0phhqr9qb41HuJbBCNmB_9U9nITLY80VbmCToFHwmSUatmlXXTNk0zrKPUQ2dvRfG2TiQ5zXTDTFx14IJq8QTNJFpVP8hWLPlLEFNDSUnxaseb2dN_ahxwwoISp4N0gGyq4DrwawS1emUB4WG6bmq-bqNq27AUjtNhEpTOePO32sO5VQrgNv1DJacUmpTvRI8m45CpI1KP14BPnmIOSLZNRhELegmxR0tGeZGK7Mv2rPtsJDRgyXboXN2sV1PyLkoT3WEK_o76Lqj5YEFFdIDfUhTZnKN3lUgIqHb80FbY4Es20SMkbADh-MmsLGgsaUi-VDpHLlA0v4l1y6_XtBLieZRGP8hnGQGuVoQjDdakUQJr8DXA8zX1byXOesMrArSyUEu_oDbBjnwIde4XhiCXmAY877OfHmJHK_x0J9OhaSeyYjC57-WeM1G_rLlrJqjt16BAE_KzttPtGsUq_hdZ-z2hYNqA_pn8jUR5j22DmuRar2tDsDGdo6hbhJTXkFOA-8jExBT4fZ34ICP9Ai0ALKqJpi07tuR0rK-i9FWzAekx4JLLTjYYb2oAC8iHuc5au_vc6GngruD1PMipa9XMhdrG9YOt4-rxRlVPuABisCyeOIqqrNdZsMsOgjTOry9jlCuAU_n3q3dP9P84j8xkDgYV_ua-00L0fxh8lMTWCyjh_1nOjdvDhySYb00mefwOXpLXZ4Mx8_lNn-ScwN9aAv59xhbAh8BJUIIdNVpuLrjjqAVtGE0_Y557J2aEEOakSqJDtJNufFD-ClT9pbQK0Kh6zNEyoWCn0lR_mcyq5BS8cRRkTEZHqqdbETJ06GyWZJOxFwGM-Gn-rXZHfCMhEf1T1EjtRMY58SalJTyiS-gX2-uzstZu6DQjVjsN7dTbOQlBrXqz6G8zqSOuWbqCykT78jmznUiM6Hl8xyGs7EjsYvjbmJio7mfEtD49IEbthn5Rdg1y6szmJU0Igurkdg7weSKc7u1ginDhoUbBFY4bn-uJbZeQFuvKjOAmhOltMChYl1SiEGu7TULdiN787UFUgs59QgfJyEJB3o99CeKU1HyCFmOLe0a-LDUUnFeu3G57y2viUwO18xr2u7hXGVrnppWpHdSx1SArF4ZNeZWnn9YJt0-yjnicRUxIAkHE0B1BZJH_tCuKNblZkUvznqhj2cX1x9_SKlOSQ5sqY5bHtSPCPWLRgC5FWnC-W1dEFcWJRHwg-uej1LDDIB5Qrs9weMC9VwOYA6BnJsLnE9CnNmj345ZbuI-oIO5xeMsytDhsJOfkFC_B127kaW_5WUMg4UaDKNweDolVBbrKWC5j1wzjiBqpzypaCakSXMeadLSJqyiRp3oyG7dlGVbIw2cpbrPF0dHWc-5sxdwxpuqo02zAeZHk4yy3bJahXGC6LnDSFjKWTKqoLvqiIHobNsSDEVUGIL9xZVOY4dttyMnOFxC7-58zWsPTTiwVE_kDXIhW1jCQ1hUKnKasKvN6kd4q7nCa8Px4wNSxE_2D7CwS4Nz8oPicw4bCr3ri5rYnuM6-oXis1UYFzkdUpq"
+            },
+            {
+              "arguments": "{\"changes\":[{\"op\":\"SET\",\"change\":{\"field\":\"start_date\",\"value\":\"2027-04-20\"},\"status\":\"specified\",\"evidence\":{\"message_id\":\"dates-recover-user-1\",\"quote\":\"그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘.\"}},{\"op\":\"SET\",\"change\":{\"field\":\"end_date\",\"value\":\"2027-04-21\"},\"status\":\"specified\",\"evidence\":{\"message_id\":\"dates-recover-user-1\",\"quote\":\"그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘.\"}}],\"defer_topics\":[],\"resume_topics\":[]}",
+              "call_id": "call_Rx6OR6jUk1uwuSJDX3OmB860",
+              "name": "update_event_conditions",
+              "type": "function_call",
+              "id": "fc_0ed98e5c6ec8a8ec006aeab85a2cc487d2b4c15cb4f3cd628e",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "update_event_conditions",
+              "args": {
+                "changes": [
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "start_date",
+                      "value": "2027-04-20"
+                    },
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "dates-recover-user-1",
+                      "quote": "그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘."
+                    }
+                  },
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "end_date",
+                      "value": "2027-04-21"
+                    },
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "dates-recover-user-1",
+                      "quote": "그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘."
+                    }
+                  }
+                ],
+                "defer_topics": [],
+                "resume_topics": []
+              },
+              "id": "call_Rx6OR6jUk1uwuSJDX3OmB860",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":null,\"fee_per_person\":null,\"start_date\":\"2027-04-20\",\"end_date\":\"2027-04-21\",\"location\":null,\"budget_total\":null},\"condition_meta\":{\"start_date\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"dates-recover-user-1\",\"quote\":\"그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘.\"}},\"end_date\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"dates-recover-user-1\",\"quote\":\"그럼 2027년 4월 20일부터 21일까지로 둘 다 바꿔줘.\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"start_date\",\"end_date\"],\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "type": "text",
+              "text": "네, 일정은 **2027년 4월 20일~21일**로 변경했어요.",
+              "annotations": [],
+              "id": "msg_0ed98e5c6ec8a8ec006aeab85cb7e087d29ea35b77df27c4ee",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": null,
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 2,
+      "http_calls": 2,
+      "embedding_http": 0,
+      "limit_reached": false,
+      "ms": 4899
+    },
+    {
+      "dialog": "free-clear",
+      "turn": 1,
+      "text": "참가비는 무료로 하자.",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": 0,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "참가비는 무료로 하자.",
+        "updates": {
+          "fee_per_person": 0
+        },
+        "tool": "yes"
+      },
+      "reply": "참가비는 무료로 반영했어요. 일정은 언제로 잡을까요?",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 50,
+          "fee_per_person": 0,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {
+          "fee_per_person": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "free-clear-user-0",
+              "quote": "참가비는 무료로 하자."
+            }
+          }
+        },
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_Lta9nksiP2BKe5Jar4KO102X",
+          "name": "update_event_conditions",
+          "result": {
+            "status": "applied",
+            "draft": {
+              "conditions": {
+                "title": null,
+                "event_type": "MT",
+                "headcount": 50,
+                "fee_per_person": 0,
+                "start_date": null,
+                "end_date": null,
+                "location": null,
+                "budget_total": null
+              },
+              "condition_meta": {
+                "fee_per_person": {
+                  "status": "specified",
+                  "evidence": {
+                    "message_id": "free-clear-user-0",
+                    "quote": "참가비는 무료로 하자."
+                  }
+                }
+              },
+              "deferred_topics": []
+            },
+            "changed_fields": [
+              "fee_per_person"
+            ],
+            "reason": null
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0aa8521de3e3a8ef006aeab85e705087d2ae1b407491b7e814",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rhfDTpUkVmpxhgUFn--7mibd6MV7_i2vponNXJpYKW8o08lxfM4H82ZVC3t3q_8YHLYwJ7obuJJRQcljKZQP3sU3lVP9n-YWO96V29NCEKOTlBvTreRaUDtNKaDMKekGRjXXO-meggU38Drm6dMUvSKWm1ocWKrXE-Xfsro3A4FXX1qbctH7BCQH-I1K4RqgVauH4RGh1QVEUaFiLNKPsyGlZ4pGfetA8LqtTKzv7zSOPD99l2iKmeF5itLcx45wSordgL0TOGyAG4A8jlmzgJkjytYI4Cmi3yhTRYgdgXfAvNuyXZyFahA4nifL7fyn8NrTm7u_n1pcbi9k3iS8o41vR6uYNFI1Z8_uf18ZAKWvE2SSm9jqtx5tiRILE7s_uE-IoH2Q2O4pS12vdd4elovMt3C4aeyHA47KxggH0IM0z8i7SWDQMwbff90YCT7bSNxADCNrETjbQUD_WsgdeuWgMu94GuYxWhJi7G4K5DVLRSI0EX4Y-jmn-Qi_n_TEwvITPIG0XPRoToBxThpM1Vn214bTd_JqI5gj3T9GXwlEi0R-V5S2hgaSzgylw8Li6QUJp-ogtBLXGAwp_cO5NJ1DieXGuAeoHUNUcEKW9SZlSwFW9m3YNuRUtehzZ6jF9E3oyIe5gIq4qF-WSdV2AfZJXGSw_O4EXcG8uclmC4VqUyZgITFYqNknSFxmbSQiH_z51lnlJe9cJnERKoBddJobOcof3__SXoyGFBdKywC0q-2zwJb9uFhdUdzJ9iyJLg3zx_xFxHXth_YQLiN5-Utb4eYeCNYBesmRYwDgduK7iJP51tS6YJiY4xw5y2gsdbO6VnLDUOWvc1rtNesD6nlbLD5waVaK28UXtAvEhGTkusyqaCf4MWXZIzwRmwWM5vdqDeHigzORZAN6-x3SQBLtXX-ho_En-Qg4HEDQr08s7SUrul5-Ioz3Jaharx9UIQbAtwf9fS9aILNJrKudoev8n0zi0LHB52l6h-JiCDWs0j7-Pm9ezSMP-WRCyzeKh9nCQ3N_UIiUjoJUO3h0w2tX_imeimYNvX598cIWlKXL9tQRD36wn09JUnTuCyMTnkpWFKKtSpfmt0uKWxe5uGZi4se9pr05653bQr2Fcv2j6Kn2QmvDG9FKpxWCkx1pWfYJGyfz0wCY3kTasftmvLUEBukEz4tJI379mEHGaTCnpkBu7Lya5meCwjR2-wVuRZ6UXPQvVBYEn_XBEVv8v_nK3yOZRrUpiWfhc4JxbueACk_MD2ddyG0BvjNZeUWCB_851mD07GMdX62rp8jgWnoaNWnWsQpMqEFV253iKPVz_tOAg_ExFt_VDjBYkyVLwAaQOUq3-bOVAsA4GeVCbdQrTEmvubWdAWIVpn6nHFKE5UiZg-qJ5pFyGkNWaz8cqgs0_mQpE5L7t8gZmEHyO0pQk_jciOejqBBFEQuKXLoBYhNiJIRG2cVeXunmR_4ioDbqiMku1f3A2o7HE33yrlGVERsx6TocKH1_lNVVJ0lQS5SaJAGCsDdzX4ahZuOKBFTciSyeiIuuNnTIQo0QGzVrd9JeaybLRvy3bEOcCG5lN4M8BAPQfKyci7NYfNqd_tLygllOWrAUqbDHi3vXXGWiOqB5-LWiOz9nDdWFLK21_Qy6uTKHrdAcIhUE-EvB8rNWIkg5DqW9CH3GO7JTqU0sGetnMclRbJAcqPZi9w9t1dwOeBJcqrABAjJuZbucV_JbK6FLIx4huOtPOhHnw5L1UE85i5B4zMgilp8PeEvmgcK6CTTlakSKgI9aFKuosQvFhl2PUJnSR-mLNnIqyAhBYV7pGivuUFeeR0e_4mD6JI6qceRsaXn_YNygGJJh8yPsASqCMM2DqOyDehH6u-EHQId7bza8pt060HWz-goI_dREVkP5ozVxY0hgUA73XoOWJuj7RobS3QAOTHxIUm91Q=="
+            },
+            {
+              "arguments": "{\"changes\":[{\"op\":\"SET\",\"change\":{\"field\":\"fee_per_person\",\"value\":0},\"status\":\"specified\",\"evidence\":{\"message_id\":\"free-clear-user-0\",\"quote\":\"참가비는 무료로 하자.\"}}],\"defer_topics\":[],\"resume_topics\":[]}",
+              "call_id": "call_Lta9nksiP2BKe5Jar4KO102X",
+              "name": "update_event_conditions",
+              "type": "function_call",
+              "id": "fc_0aa8521de3e3a8ef006aeab85ef52487d2bef831d9049fdb07",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "update_event_conditions",
+              "args": {
+                "changes": [
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "fee_per_person",
+                      "value": 0
+                    },
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "free-clear-user-0",
+                      "quote": "참가비는 무료로 하자."
+                    }
+                  }
+                ],
+                "defer_topics": [],
+                "resume_topics": []
+              },
+              "id": "call_Lta9nksiP2BKe5Jar4KO102X",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":50,\"fee_per_person\":0,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"free-clear-user-0\",\"quote\":\"참가비는 무료로 하자.\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"fee_per_person\"],\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "type": "text",
+              "text": "참가비는 무료로 반영했어요. 일정은 언제로 잡을까요?",
+              "annotations": [],
+              "id": "msg_0aa8521de3e3a8ef006aeab8614be087d281d428fb9e163f35",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": null,
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 2,
+      "http_calls": 2,
+      "embedding_http": 0,
+      "limit_reached": false,
+      "ms": 4863
+    },
+    {
+      "dialog": "free-clear",
+      "turn": 2,
+      "text": "아니다. 참가비는 다시 미정으로 두자.",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "아니다. 참가비는 다시 미정으로 두자.",
+        "updates": {
+          "fee_per_person": null
+        },
+        "meta_absent": [
+          "fee_per_person"
+        ],
+        "tool": "yes"
+      },
+      "reply": "참가비는 다시 미정으로 둘게요. 일정은 언제로 잡을까요?",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 50,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_pvO1Hv3ncbHJsIGfsdIPiSxp",
+          "name": "update_event_conditions",
+          "result": {
+            "status": "applied",
+            "draft": {
+              "conditions": {
+                "title": null,
+                "event_type": "MT",
+                "headcount": 50,
+                "fee_per_person": null,
+                "start_date": null,
+                "end_date": null,
+                "location": null,
+                "budget_total": null
+              },
+              "condition_meta": {},
+              "deferred_topics": []
+            },
+            "changed_fields": [
+              "fee_per_person"
+            ],
+            "reason": null
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0aa8521de3e3a8ef006aeab86355e487d2902e8705757e62fe",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rhk0pTxNJC5xBNymyA8mxlMwvB-Hx7gWlwRhZp-Q940V6eEaowHi5N94kej7iEcmUqqtYzYpmXow55-NVLQZb1TLFwn8zkeXtStKScH4w-jRUI107Om2kV2gXPunzbuz_JvEnd0Ncpd-Da2_ID9uIZXqQIlTQMzNH9rHLNr0p4SDpahuecCNwriJJKDfX_erGz5TLw7e0K9T8b7oBPXcJU_SC5v1vhPB6kGxbt62s8SSqBhlNnTpZjWWfipW500Uwlfj369dgU_13eulkIZozhgtLmvnECrXBJv_vGqUDJXwO7VdXZe06t2aqglqbpf_jcQDrM9hwsa_mp8NLrI6iHSbZNIytzAQrI4MLk_86475eKb8A8fNqC2ncS0HA7Mj8BZAjjrrY7b7C-Elsc6Dr13DLut6G8QkV8AfH2t52ousPsMy7HmB30Nix9YDuc1SmpCQKOX8HmvC2GqNXYTRzAZ0iCUAzA2s_226zdkbrp2rOn1YzxXMOTJt2fXYRSdS5G3szMejBqVlcMedOGQuSL724aKo9b7VEwcRx8_hGiBH3cqC9u8rwVkIMPlVcL6pktvoUnlGT5fb-31_hQ0vRW0rkLvDjMmpaPZpXRdpd2QLnJwrhPo0wRA4MWRQSbtmWcmuJairoQfcS5LLylA2B7M_MofDkjyF8dDBQ5aEXVXDmXysKEmDocx6UxabxwUbSK2nMw0Lnygm-xEDnTP0p4MLLOaaCUdJvMSnxrjmsVtjF8HzCmfIff8lEZ47d-IkYknOJo3c0gvYjw_tgnnzpfmLWwV2FE4IJXmfyDzuftOcqsgE676nZAzwwLBGx3PDQzc42t-ANHvV00bclpAvgxjdGYoT0W6e5w74xjjLWq2PernZRnQZTAhK__TbA_ZhES5fZ7wL7OUuSP8gJPepe4M239Q7fGMNrC8IBUsoaZjzYtVEMsYb5IQLt95S6oR_aERyxqRW9yffhO0DV__LFBOAen4hWIUVFZa8dPXMM8e-T9OSXpVEPNNthr6dFeDQocS0EpmBs3h2yEKJbgzDacMpwVBkAd38b6lXVuB6QLDw-IlHbfltrnXuUaxBbVCyLmnb-MtBJ3VV-ybXMbXRYDiAdS2kuAEn4antduch5mXWkNeBfhn_2YuycIsujtcYX2qC__lUzFlg-4MykuJ2nz588P_6C5gsdBo0pU7wSQwNM_Kgh4dB5TNQSbjtCmCRMvYfuBlMPM3C-JyrA-DcHFscqEySN3HbZ9WaDg513wXlWSGl-CE6NrQIJ6O50zKaH9MzAa9Cb1EIK3ExaNPYl5dQXQdTM_gPLsFvOAntnYynXKh3CqrpOnElvlZH2LDxiJ6-AdyxrzAmWINPTJusTHHtqjQ38pbVQwDu70RT4TddCTaQx121vOQHCWdcOyYEvp37fMqJ87wUornVSQWT3X-KjuYfnACG1jB20yVAXEKUVBNUx1Ycru-0GBZWWpowg1g5CADn3hh8rLGZg3QgPLs5-ICkbWzXKc_775LK2DnS_y3ZEcQPYtTHRZ8spHIVbBv7Nnbx_S_6eQnzVZ3jknTawV8zYFZwq2AA65c7WE21kNe2c9HRNKigImdUghe_j9X"
+            },
+            {
+              "arguments": "{\"changes\":[{\"op\":\"CLEAR\",\"field\":\"fee_per_person\",\"evidence\":{\"message_id\":\"free-clear-user-1\",\"quote\":\"참가비는 다시 미정으로 두자.\"}}],\"defer_topics\":[],\"resume_topics\":[]}",
+              "call_id": "call_pvO1Hv3ncbHJsIGfsdIPiSxp",
+              "name": "update_event_conditions",
+              "type": "function_call",
+              "id": "fc_0aa8521de3e3a8ef006aeab863894087d2a733fa88144adb34",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "update_event_conditions",
+              "args": {
+                "changes": [
+                  {
+                    "op": "CLEAR",
+                    "field": "fee_per_person",
+                    "evidence": {
+                      "message_id": "free-clear-user-1",
+                      "quote": "참가비는 다시 미정으로 두자."
+                    }
+                  }
+                ],
+                "defer_topics": [],
+                "resume_topics": []
+              },
+              "id": "call_pvO1Hv3ncbHJsIGfsdIPiSxp",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":50,\"fee_per_person\":null,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{},\"deferred_topics\":[]},\"changed_fields\":[\"fee_per_person\"],\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "type": "text",
+              "text": "참가비는 다시 미정으로 둘게요. 일정은 언제로 잡을까요?",
+              "annotations": [],
+              "id": "msg_0aa8521de3e3a8ef006aeab865e74887d2b71687083de7e1bc",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": null,
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 2,
+      "http_calls": 2,
+      "embedding_http": 0,
+      "limit_reached": false,
+      "ms": 8854
+    },
+    {
+      "dialog": "free-clear",
+      "turn": 3,
+      "text": "고마워. 나중에 이어서 하자.",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "고마워. 나중에 이어서 하자.",
+        "updates": {},
+        "tool": "no"
+      },
+      "reply": "네, 좋아요. 나중에 이어서 정해봐요!",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 50,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "executions": [],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0aa8521de3e3a8ef006aeab86c96a887d2b7f89ea00e8d0168",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rhtuCDjn065k1e_fYrcZL06QHloy_lfvgtpxIY6eQcXb9Joj4Iumv4FqrmDtGI1ZbPMEvxrtT3kFQk1wqnu74n6fsFc-tg9tScnqRh8iDAOk7Zhn0nKmSLFhXWZ7YjLVEXdMz4b4GKPONrpBUji4y0boaL0OizsWv-fnVKY-rQ3EYHb_jzJ-A1_zkRxBAN8OMjEcHQSlanuDRw_X8PR8Ou8sA3a9s6l9AO2ODFjFzFD8eibWhpjz8lk52XsxJtsxi7h748ZZmSoWJlSu4R6iFMc2dLxFD5YN8m4b6D_AyskGG_GRuYQEpcsfLH7BNrasSMOuLgsgolVqZjtqEPfoAV9ABG1y1CpsU0pyDXfQNcKNAm5cQo72WgHzHNu6OVrXMoD2ZE4ZzpRGRzgTeKY6ouBUxehJoqy-CPPQHkIym-z87mtaTzrACng58twog8ZMEcH14oD3kpHIl1ftcEGfN5EqRRzpJ8WzxLgqW6WnuCFlee4UcXWSEM9JL50FPOQQZqzI6FbY04SnH2AeoK_otpEOV6fkyAcDqwiIAXaKYIFTD4YuIAwEKrx8BHxofhvYS-FWo4fLRkCdGlm5zeoBbVxnmn2U0WRj0_mdlP5PItozIvjwcmig9c1c6aE9enLy5vfM9VlELpRo23dWfGGfjpRuLgzeKLBZMPi_2T3b0nnX6TGyvw2aTHl-K_eDYQBmyKuPncUS77B-x6eklqKaEDlYVNlCKGSPQmeKeOZ-wnx7JXyqmjiQq4gma-Qq_rtyTsewT_jDGq-2yDX4w1pHjjFmJUw4RQ9kFswwBVk42-JDQd4YYPs1BSYV2IWOS1VcGwGs_IV2_a5ul1uKZyqvv_RFq1t26J7niGdAufTD8vS5UWMAbmfXgRGiCHyz1cwvd56ijQVk5jLAXS1KCurWwCr3B1jYM8nhrxP4b4ZQVdXUpsJcY2jvqioZJ_kCdOuCXKsq3wQz1y66zoL7ivT3PKnhYE1IlrCQMCvmglwjg-oMvN7SBoyvfDx6UruSWNn66EM2yznhaFfByGewIn7tYIxW5BysNRPfoGZj2oQtmnf2v25DAGmpkAZa42E55vDfKCRvvEW02G2Di5nmS_JpwUIfthE85BnOxYt6RO8kXkJ4uBIexjVEc8Ux96QsdufHKqOP3K2kyJZZqclhQdmKyg5Lu4lLo2ro2-xc3qzimJa5Yjz1m9orJIhesA-28xAdtjKgkj5JTCmSs9-_D3JkLyFBfshtPdH_NndtIMuWA28WKaQUtqreR-x_oflOpAZcnnBEjB27elbRHJED_Vrhhtbaehqea69mE_S2qIW8GjZ2xnUtsmWOB50i4w1GNDx3ebJ7eCzxfJbYjzhEQ5ltRWaRbkxvmW6AIphdTaHhUQ-BuFP4GR443NTEJcz6sKxErNxUUYZKg2_OxJGL2YGj89D3V9qsCkrW2jsrPS_HCgupWWfZ1F8LEeB_N18xx0DvTq6-IpnOmIikDayO2JuiccXjmU5Ju1v_xPwIoHhNBSHgJiED2H0DR7aQov-92JBk3wd6gfIcDbof60gAizA34CX8Ox_JzeS9QXY23LqL8PD7GCzkUdxGfqCLl6tkgLnj4rND-0ec6bPflAccEUgITEpLfI5ZxrMljH9Z-zemyQXh6MSzxHe70Hph8gkGTzZoIKf_-EAEL61lTDflfdLpDrKg7t6cVn3vq-aVPnWlGnrBNgnXWkCsKZut_cZkEppWbvLcsERS393j7OGYsNHOjTOOsK1dNGEfWQC3ynOEYAvc929g-sMHfClx7_cvg9kH35i"
+            },
+            {
+              "type": "text",
+              "text": "네, 좋아요. 나중에 이어서 정해봐요!",
+              "annotations": [],
+              "id": "msg_0aa8521de3e3a8ef006aeab86cdb5087d28fdc6c9c009bd3c1",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": null,
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 1,
+      "http_calls": 1,
+      "embedding_http": 0,
+      "limit_reached": false,
+      "ms": 2559
+    }
+  ],
+  "http_calls": 17,
+  "embedding_http": 0,
+  "summary": {
+    "turns": 10,
+    "passed": 7,
+    "median_ms": 4881.0,
+    "max_ms": 8854,
+    "model_calls": 17
+  }
+}
