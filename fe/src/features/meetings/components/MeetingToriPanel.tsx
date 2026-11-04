@@ -164,7 +164,7 @@ export function MeetingToriPanel({
               <ul className="mt-2 space-y-1" aria-label="답변 출처">
                 {decision.citations.map((citation, i) => (
                   <li className="text-caption text-mute" key={i}>
-                    출처 · {value(citation.fileName) || value(citation.title) || '등록 자료'}{' '}
+                    {citation.type === 'event' ? '행사' : '출처'} · {value(citation.fileName) || value(citation.title) || '등록 자료'}{' '}
                     {value((citation.location as Record<string, unknown> | null)?.label)}
                   </li>
                 ))}

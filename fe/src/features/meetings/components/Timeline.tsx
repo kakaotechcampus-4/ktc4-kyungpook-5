@@ -66,7 +66,7 @@ export function Timeline({
           >
             <div className="flex items-center gap-2 text-caption font-bold text-blue-700">
               <Tori size={24} />
-              <span>토리 · 자료 답변</span>
+              <span>토리 · 답변</span>
             </div>
             <p className="mt-2 whitespace-pre-wrap leading-6">
               {d.kind === 'NOT_FOUND'
@@ -78,7 +78,7 @@ export function Timeline({
                 {d.citations.map((c, i) => (
                   <li key={i} className="rounded-lg bg-card p-3 text-caption">
                     <strong className="break-words">
-                      {str(c.fileName) || str(c.title) || '등록 자료'}
+                      {c.type === 'event' ? '행사 · ' : ''}{str(c.fileName) || str(c.title) || '등록 자료'}
                     </strong>
                     <p>{str((c.location as Record<string, unknown> | null)?.label)}</p>
                     <p className="mt-1 whitespace-pre-wrap break-words text-ink2">{str(c.text)}</p>
