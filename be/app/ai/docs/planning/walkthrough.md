@@ -1,5 +1,27 @@
 # 행사계획 코드 따라가기
 
+## 처리 중 진행 알림 (#266, #279)
+
+BE가 `chat_planning(request, progress=port)` 또는
+`generate_planning_preview(request, progress=port)`를 호출하면 실제 작업에 맞춰
+`port.progress(PlanningProgress)`가 실행된다. 포트를 생략하면 기존 호출 방식을 유지한다.
+이 단계는 AI 알림만 연결하며 제품 SSE·애니메이션·답변 스트리밍은 후속이다.
+
+예: “예상 인원을 60명으로 바꾸고 초안 만들어줘”:
+
+1. `agent/tools.py`가 조건을 검증한 뒤 `nodes.tools_node`가
+   `condition_applied/completed`와 “예상 인원을 60명으로 변경했어요”를 보낸다.
+2. `generation/entrypoints.generate_with_context`는 생성 차단과 성공 결과 재사용을 확인한다.
+   실제 생성이 필요할 때만 `generation_started/running`을 보낸다.
+3. 생성 및 기준 조건 검증 후 같은 `operation_id`로 `generation_finished`를 보낸다.
+   성공은 `completed`, 실패는 `failed`이며 기존 반환 결과는 유지한다.
+4. 기존 Agent 답변 작성 → 상태 직렬화 → 공개 결과 반환을 거친다. 저장은 여전히 BE가 맡는다.
+
+`progress.py`의 순수 함수가 검증 결과로 문구를 만들며, `notify`가 알림 포트의 일반 오류를
+원문 없이 기록한다. 검색은 실제 호출 직전에 시작을 알리고 자료 없음과 실패를 구분한다.
+진행 이벤트는 대화 이력이나 다음 상태 JSON에 넣지 않는다. 단위 테스트는
+`tests/test_planning_progress.py`에서 이벤트 순서·거절·재사용·알림 실패와 결과 보존을 확인한다.
+
 현재 흐름은 `agent/`와 `generation/`을 따른다. 이전 `turn_*`, `lookup.py`, `records.py`, `questions.py`, 조건 추출 `nodes.py`는 [features/planning/legacy](../../features/planning/legacy/README.md)에 있다. 공유 조건 값과 `PlanningMessage`는 `planning/schemas.py`에 남겼으며 현재 코드가 legacy 타입을 가져오지 않는다.
 
 #184에서 공개 함수로 실제 모델을 확인했다. 25,000원 → 30,000원 상담(값 유지) → JSON 저장/복원 → “일단 그렇게 잡자”(30,000원 잠정 반영) → 권유 수락 생성 순서다. [실측 결과](evaluation.md#공개-함수-실제-모델-연결-검증-184-2026-10-25)와 [BE 저장 예시](p1-public-contract.md#13-be-호출과-저장-순서-184)를 함께 읽으면 호출부터 저장까지 연결된다.

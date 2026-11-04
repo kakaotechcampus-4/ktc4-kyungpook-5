@@ -4,6 +4,7 @@ from functools import partial
 
 from langchain_core.messages import HumanMessage
 from langgraph.graph import END, START, StateGraph
+from ....ports import PlanningProgressPort
 
 from .nodes import MAX_TOOL_CALLS, PROMPT_VERSION, AgentInvoker, agent_node, call_agent_model, tools_node
 from .schemas import PlanningAgentState, PlanningAgentTurnInput, PlanningAgentTurnResult
@@ -13,12 +14,13 @@ from ..generation.offers import same_basis
 
 
 def build_planning_graph(request: PlanningAgentTurnInput, *, invoke: AgentInvoker | None = None,
-                         search: RecordSearcher | None = None, generate: PlanGenerator | None = None):
+                         search: RecordSearcher | None = None, generate: PlanGenerator | None = None,
+                         progress: PlanningProgressPort | None = None):
     invoke = invoke or partial(call_agent_model, search_enabled=search is not None, generation_enabled=generate is not None)
     graph = StateGraph(PlanningAgentState)
     graph.add_node("agent", partial(agent_node, request=request, invoke=invoke, search_available=search is not None,
                                     generation_available=generate is not None))
-    graph.add_node("tools", partial(tools_node, request=request, search=search, generate=generate))
+    graph.add_node("tools", partial(tools_node, request=request, search=search, generate=generate, progress=progress))
     graph.add_edge(START, "agent")
     # 자연어 답변이면 종료하고, Tool 요청이면 실행 결과를 다시 읽는다.
     graph.add_conditional_edges("agent", lambda state: "tools" if state["messages"][-1].tool_calls else END)
@@ -30,6 +32,7 @@ async def run_planning_agent_turn(
     request: PlanningAgentTurnInput, *, invoke: AgentInvoker | None = None,
     search: RecordSearcher | None = None,
     generate: PlanGenerator | None = None,
+    progress: PlanningProgressPort | None = None,
 ) -> PlanningAgentTurnResult:
     """체크포인트·DB 없이 호출자가 전달한 상태로 한 턴을 실행한다."""
     # LangGraph가 메시지 ID를 보완해도 입력 이력·초안은 바뀌지 않도록 복사한다.
@@ -40,7 +43,7 @@ async def run_planning_agent_turn(
         record_lookup=None,
         generation=request.generation.model_copy(deep=True), generation_result=None, generation_model_calls=0,
     )
-    result = await build_planning_graph(request, invoke=invoke, search=search, generate=generate).ainvoke(
+    result = await build_planning_graph(request, invoke=invoke, search=search, generate=generate, progress=progress).ainvoke(
         state, {"recursion_limit": 2 * MAX_TOOL_CALLS + 5},
     )
     return PlanningAgentTurnResult(
