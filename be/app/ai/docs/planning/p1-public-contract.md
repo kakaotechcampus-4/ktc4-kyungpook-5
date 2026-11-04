@@ -13,7 +13,7 @@
 `chat_planning`과 `generate_planning_preview`는 선택적인 `progress: PlanningProgressPort | None`
 인자를 받는다. 포트의 `async progress(event: PlanningProgress)`는 화면용 진행 상태만 전달한다.
 공개 이벤트는 `contracts.py`, 포트는 `ports.py`에 정의하고 `app.ai`에서 재공개한다.
-반환값·저장 JSON 형식은 유지한다. 제품 SSE는 후속 단계다.
+반환값·저장 JSON 형식은 유지한다. BE의 SSE 경로(`/plan/chat/stream`, `/plan/generate/stream`)가 포트를 큐에 연결해 이벤트로 보낸다(#284, [BE README](../../../../README.md#p1-진행답변-스트리밍-sse-266-284)). 제품 FE 표시는 후속 단계다.
 
 ### 답변 조각 전달 (#280)
 

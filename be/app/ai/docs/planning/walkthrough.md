@@ -5,7 +5,7 @@
 BE가 `chat_planning(request, progress=port)` 또는
 `generate_planning_preview(request, progress=port)`를 호출하면 실제 작업에 맞춰
 `port.progress(PlanningProgress)`가 실행된다. 포트를 생략하면 기존 호출 방식을 유지한다.
-AI 진행·답변 조각 알림까지 연결하며 제품 SSE·애니메이션은 후속이다.
+BE의 SSE 경로(`services/planning_stream.py`, #284)가 이 알림을 `progress`·`reply_delta` 이벤트로 보낸다. 제품 FE 표시·애니메이션은 후속이다.
 
 예: “예상 인원을 60명으로 바꾸고 초안 만들어줘”:
 
