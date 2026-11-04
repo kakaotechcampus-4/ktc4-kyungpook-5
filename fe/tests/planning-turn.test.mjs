@@ -140,7 +140,7 @@ test('거절된 조건을 다시 시도하면 처음 줄의 자리를 이어 써
   let lines = []
   lines = upsertProgress(lines, line('s1', 'running', '지난 행사 기록을 찾고 있어요'))
   lines = upsertProgress(lines, cond('c1', 'running', '조건을 반영하고 있어요'))
-  lines = upsertProgress(lines, line('s1', 'completed', '맞는 기록을 찾지 못했어요'))
+  lines = upsertProgress(lines, line('s1', 'empty', '맞는 기록이 없었어요'))
   lines = upsertProgress(lines, {
     ...line('c1', 'skipped', '바뀐 조건이 없어요'),
     kind: 'condition_applied',
@@ -154,12 +154,22 @@ test('거절된 조건을 다시 시도하면 처음 줄의 자리를 이어 써
   assert.deepEqual(
     Array.from(lines, (l) => [l.slot ?? l.operationId, l.operationId, l.status]),
     [
-      ['s1', 's1', 'completed'],
+      ['s1', 's1', 'empty'],
       ['c1', 'c2', 'completed'],
     ],
   )
   assert.deepEqual(
     Array.from(finishedLines(lines), (l) => l.text),
-    ['맞는 기록을 찾지 못했어요', '참가비 1인 20,000원 반영했어요'],
+    ['맞는 기록이 없었어요', '참가비 1인 20,000원 반영했어요'],
+  )
+})
+
+test('기록 없음(empty) 줄은 실패가 아니라 끝난 작업으로 답변 위에 남는다', async () => {
+  const { upsertProgress, finishedLines } = await load()
+  let lines = upsertProgress([], line('s1', 'running', '지난 행사 기록을 찾고 있어요'))
+  lines = upsertProgress(lines, line('s1', 'empty', '맞는 기록이 없었어요'))
+  assert.deepEqual(
+    Array.from(finishedLines(lines), (item) => [item.status, item.text]),
+    [['empty', '맞는 기록이 없었어요']],
   )
 })

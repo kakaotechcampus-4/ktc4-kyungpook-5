@@ -44,7 +44,7 @@ function CheckIcon({ className }: { className?: string }) {
   )
 }
 
-// 진행 중은 작은 점, 완료는 초록 체크, 실패는 느낌표. 셋 다 같은 14px 자리를 써서
+// 진행 중은 작은 점, 완료는 초록 체크, 기록 없음은 회색 대시, 실패는 느낌표. 모두 같은 14px 자리를 써서
 // 점이 체크로 바뀔 때 줄이 흔들리지 않는다. 진행 중임은 점이 아니라 글자 디밍이 알린다(#290).
 // live면 받는 중인 응답이라 체크가 제자리에서 나타난다. 저장된 대화로 바뀐 뒤에는 다시 움직이지 않는다.
 function ProgressIcon({ status, live }: { status: PlanProgress['status']; live: boolean }) {
@@ -60,6 +60,22 @@ function ProgressIcon({ status, live }: { status: PlanProgress['status']; live: 
       <CheckIcon
         className={cn('mt-[2px]', live && 'animate-check-in motion-reduce:animate-none')}
       />
+    )
+  // 기록 없음(#300): 검색은 정상으로 끝났으니 실패 표시가 아니고, 찾았다는 체크도 아니다.
+  if (status === 'empty')
+    return (
+      <svg
+        aria-hidden
+        viewBox="0 0 16 16"
+        className={cn(
+          'mt-[2px] size-[14px] shrink-0 text-mute',
+          live && 'animate-check-in motion-reduce:animate-none',
+        )}
+        fill="none"
+      >
+        <circle cx="8" cy="8" r="7" fill="currentColor" opacity="0.15" />
+        <path d="M5 8h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
     )
   return (
     <span aria-hidden className="w-[14px] shrink-0 text-center font-bold text-failed">
@@ -90,7 +106,11 @@ function TurnLines({
             // 문구가 길어 두 줄이 되면 아이콘은 첫 줄 높이에 맞춘다(아이콘 쪽 mt).
             'flex items-start gap-[7px] text-[12px] leading-[18px]',
             'transition-colors duration-200 ease-out motion-reduce:transition-none',
-            line.status === 'failed' ? 'text-failed' : settled ? 'text-mute' : 'text-ink2',
+            line.status === 'failed'
+              ? 'text-failed'
+              : settled || line.status === 'empty'
+                ? 'text-mute'
+                : 'text-ink2',
             // 결과 없이 끝난 줄(거절·같은 값)은 답변이 시작되면 조용히 사라진다. 이유는 답변이 설명한다.
             // 그 전까지는 다시 시도될 수 있어 진행 중 줄처럼 보인다(turn.ts upsertProgress).
             line.status === 'skipped' && settled
@@ -125,7 +145,10 @@ function TurnLines({
 const FOLD_DELAY_MS = 400
 
 function Receipt({ lines }: { lines: PlanProgress[] }) {
-  const foldable = lines.length > 1 && lines.every((line) => line.status === 'completed')
+  // 기록 없음(empty)은 실패가 아니라 접어도 된다.
+  const foldable =
+    lines.length > 1 &&
+    lines.every((line) => line.status === 'completed' || line.status === 'empty')
   // fresh: 막 저장돼 펼친 채 보이는 중 → folded: 접힘 → open: 사용자가 펼침
   const [state, setState] = useState<'fresh' | 'folded' | 'open'>('fresh')
   useEffect(() => {
