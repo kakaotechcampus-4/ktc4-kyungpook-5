@@ -6,6 +6,8 @@ export interface ChatMessage {
   text: string
   // 토리가 묻고 바로 고를 수 있게 주는 답. 마지막 말풍선에만 남는다.
   quickReplies?: string[]
+  // 이 답변을 쓰기 전에 끝낸 작업 줄(#290). 이번 화면에서만 있고 저장되지 않는다.
+  receipt?: PlanProgress[]
 }
 
 // SSE progress 이벤트(#285, BE PlanProgressOut). 저장되지 않는 임시 작업 상태다.

@@ -30,7 +30,7 @@ function ProgressIcon({ status }: { status: PlanProgress['status'] }) {
       <svg
         aria-hidden
         viewBox="0 0 16 16"
-        className="size-[14px] shrink-0 animate-spin text-blue-600 motion-reduce:animate-none"
+        className="mt-[2px] size-[14px] shrink-0 animate-spin text-blue-600 motion-reduce:animate-none"
         fill="none"
       >
         <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" opacity="0.25" />
@@ -39,7 +39,12 @@ function ProgressIcon({ status }: { status: PlanProgress['status'] }) {
     )
   if (status === 'completed')
     return (
-      <svg aria-hidden viewBox="0 0 16 16" className="size-[14px] shrink-0 text-done" fill="none">
+      <svg
+        aria-hidden
+        viewBox="0 0 16 16"
+        className="mt-[2px] size-[14px] shrink-0 text-done"
+        fill="none"
+      >
         <circle cx="8" cy="8" r="7" fill="currentColor" opacity="0.15" />
         <path
           d="M4.5 8.2 7 10.6l4.5-5"
@@ -56,6 +61,32 @@ function ProgressIcon({ status }: { status: PlanProgress['status'] }) {
     </span>
   )
 }
+
+// 토리 응답 안의 작업 줄(#290). 답변이 나오기 전에는 지금 하는 일로 또렷하게,
+// 답변이 시작되면 그 답변의 근거로 한 단계 옅게 보인다. 끝난 뒤에도 답변 위에 남는다.
+function TurnLines({ lines, settled }: { lines: PlanProgress[]; settled: boolean }) {
+  return (
+    <ul aria-label="토리가 처리한 작업" className="flex flex-col gap-[4px] pt-[8px]">
+      {lines.map((line) => (
+        <li
+          key={line.operationId}
+          className={cn(
+            // 문구가 길어 두 줄이 되면 아이콘은 첫 줄 높이에 맞춘다(아이콘 쪽 mt).
+            'flex items-start gap-[7px] text-[12px] leading-[18px]',
+            'transition-colors duration-200 ease-out motion-reduce:transition-none',
+            line.status === 'failed' ? 'text-failed' : settled ? 'text-mute' : 'text-ink2',
+          )}
+        >
+          <ProgressIcon status={line.status} />
+          <span>{line.text}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const TORI_BUBBLE =
+  'rounded-[12px] border border-line bg-bg px-[15px] py-[12px] text-[12.5px] leading-[19px] whitespace-pre-wrap text-ink'
 
 export function PlanChat({
   messages,
@@ -117,9 +148,10 @@ export function PlanChat({
             <div key={message.id} className="flex flex-col gap-[9px]">
               <div className="flex items-start gap-[10px]">
                 <Tori size={26} className="mt-[4px] shrink-0" />
-                <p className="rounded-[12px] border border-line bg-bg px-[15px] py-[12px] text-[12.5px] leading-[19px] whitespace-pre-wrap text-ink">
-                  {message.text}
-                </p>
+                <div className="flex min-w-0 flex-col items-start gap-[8px]">
+                  {message.receipt && <TurnLines lines={message.receipt} settled />}
+                  <p className={TORI_BUBBLE}>{message.text}</p>
+                </div>
               </div>
               {message.id === lastToriId && message.quickReplies && (
                 <div className="flex flex-wrap gap-[8px] pl-[36px]">
@@ -154,28 +186,14 @@ export function PlanChat({
             {pendingText}
           </p>
         )}
-        {busy && progress.length > 0 && (
-          <ul aria-label="처리 단계" className="flex flex-col gap-[6px] pl-[36px]">
-            {progress.map((line) => (
-              <li
-                key={line.operationId}
-                className={cn(
-                  'flex items-center gap-[8px] text-[12px] leading-[18px]',
-                  line.status === 'failed' ? 'text-failed' : 'text-ink2',
-                )}
-              >
-                <ProgressIcon status={line.status} />
-                <span>{line.text}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {busy && pendingReply && (
+        {/* 받는 중인 토리 응답. 저장된 응답(위)과 같은 구조라, 저장된 대화로 바뀌어도 자리가 그대로다. */}
+        {busy && (progress.length > 0 || pendingReply) && (
           <div className="flex items-start gap-[10px]">
             <Tori size={26} className="mt-[4px] shrink-0" />
-            <p className="rounded-[12px] border border-line bg-bg px-[15px] py-[12px] text-[12.5px] leading-[19px] whitespace-pre-wrap text-ink">
-              {pendingReply}
-            </p>
+            <div className="flex min-w-0 flex-col items-start gap-[8px]">
+              {progress.length > 0 && <TurnLines lines={progress} settled={!!pendingReply} />}
+              {pendingReply && <p className={TORI_BUBBLE}>{pendingReply}</p>}
+            </div>
           </div>
         )}
       </div>
