@@ -48,11 +48,11 @@ def test_schedule_alternates_variant_order():
 
 
 def test_records_tool_batches_per_response_and_restores_setting(tmp_path, fixed_models, monkeypatch):
-    seen = c2_model(monkeypatch)
+    original, seen = nodes.PARALLEL_TOOL_CALLS, c2_model(monkeypatch)
     report = asyncio.run(compare.run_session(tmp_path / 'out', session_id='t', rounds=2, controls=0,
                                              interval=0, settings=SETTINGS))
     assert report['status'] == 'completed' and report['finished'] == 6
-    assert nodes.PARALLEL_TOOL_CALLS is True and {False, True} <= set(seen)
+    assert nodes.PARALLEL_TOOL_CALLS is original and {False, True} <= set(seen)  # 요청이 끝나면 코드의 값으로 돌아온다.
     latency = report['summary']['latency']
     for variant, calls, batches in (('single', 3, 'update_event_conditions | update_generation_offer'),
                                     ('multi', 2, 'update_event_conditions+update_generation_offer')):

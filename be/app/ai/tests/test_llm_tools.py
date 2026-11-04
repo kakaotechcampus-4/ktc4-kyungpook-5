@@ -35,14 +35,17 @@ def test_binding_controls_tool_choice_and_disables_parallel_calls_by_default(all
     assert model.kwargs == {"parallel_tool_calls":False,"tool_choice":choice}
 
 
-def test_planning_agent_allows_several_tool_calls_in_one_response(monkeypatch):
-    # 행사계획 Agent만 켠다(#265). 실행 순서는 tools_node가 보장한다.
+@pytest.mark.parametrize("enabled", [False, True])
+def test_planning_agent_passes_its_parallel_setting(monkeypatch, enabled):
+    # 행사계획 Agent는 PARALLEL_TOOL_CALLS 한 곳의 값을 보낸다. 지금은 False다(#265에서 미채택).
     from app.ai.features.planning.agent import nodes
+    assert nodes.PARALLEL_TOOL_CALLS is False
     model = StubModel(AIMessage(content="안녕하세요"))
+    monkeypatch.setattr(nodes, "PARALLEL_TOOL_CALLS", enabled)
     monkeypatch.setattr(nodes, "ainvoke_with_tools",
                         lambda messages, **kwargs: ainvoke_with_tools(messages, model=model, **kwargs))
     asyncio.run(nodes.call_agent_model([], allow_tools=True))
-    assert model.kwargs == {"parallel_tool_calls":True,"tool_choice":"auto"}
+    assert model.kwargs == {"parallel_tool_calls":enabled,"tool_choice":"auto"}
 
 
 def test_api_timeout_uses_common_error_without_raw_details():
