@@ -37,9 +37,9 @@ def test_binding_controls_tool_choice_and_disables_parallel_calls_by_default(all
 
 @pytest.mark.parametrize("enabled", [False, True])
 def test_planning_agent_passes_its_parallel_setting(monkeypatch, enabled):
-    # 행사계획 Agent는 PARALLEL_TOOL_CALLS 한 곳의 값을 보낸다. 지금은 False다(#265에서 미채택).
+    # 행사계획 Agent는 PARALLEL_TOOL_CALLS 한 곳의 값을 보낸다. 지금은 True다(#274에서 채택).
     from app.ai.features.planning.agent import nodes
-    assert nodes.PARALLEL_TOOL_CALLS is False
+    assert nodes.PARALLEL_TOOL_CALLS is True
     model = StubModel(AIMessage(content="안녕하세요"))
     monkeypatch.setattr(nodes, "PARALLEL_TOOL_CALLS", enabled)
     monkeypatch.setattr(nodes, "ainvoke_with_tools",
