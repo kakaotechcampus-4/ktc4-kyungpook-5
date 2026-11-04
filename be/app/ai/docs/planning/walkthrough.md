@@ -11,8 +11,11 @@ BE의 SSE 경로(`services/planning_stream.py`, #284)가 이 알림을 `progress
 
 예: “예상 인원을 60명으로 바꾸고 초안 만들어줘”:
 
-1. `agent/tools.py`가 조건을 검증한 뒤 `nodes.tools_node`가
+1. 모델이 조건 변경 Tool을 쓰기 시작하면(첫 조각) `call_agent_model`이
+   `condition_started/running`과 “조건을 반영하고 있어요”를 보낸다(#297).
+   `agent/tools.py`가 조건을 검증한 뒤 `nodes.tools_node`가 같은 Tool 호출 ID로
    `condition_applied/completed`와 “예상 인원 60명 반영했어요”를 보낸다.
+   거절·같은 값이면 `condition_applied/skipped`를 보내 화면이 진행 중 줄을 지운다.
 2. `generation/entrypoints.generate_with_context`는 생성 차단과 성공 결과 재사용을 확인한다.
    실제 생성이 필요할 때만 `generation_started/running`을 보낸다.
 3. 생성 및 기준 조건 검증 후 같은 `operation_id`로 `generation_finished`를 보낸다.
@@ -29,7 +32,8 @@ BE의 SSE 경로(`services/planning_stream.py`, #284)가 이 알림을 `progress
 `agent.graph`는 기존처럼 최종 상태를 반환한다. 선택적 포트가 있으면 `call_agent_model`이
 `llm.astream_with_tools`를 호출한다. 포트가 없으면 `ainvoke_with_tools`를 유지한다.
 
-“인원을 60명으로 바꿔줘” → 첫 호출의 Tool 조각을 온전히 조립·검증 → 조건 변경 실행 →
+“인원을 60명으로 바꿔줘” → 첫 호출의 Tool 첫 조각에서 시작 알림(`ReplyStream`의 `on_tool_start`) →
+Tool 조각을 온전히 조립·검증 → 조건 변경 실행 →
 진행 완료 알림 → 다음 호출의 final_answer 블록을 `reply_delta`로 전달 → SDK 메시지 조립 →
 기존 `capture_turn_state`로 저장 상태 반환 순서다. Tool은 미완성 조각으로 실행하지 않는다.
 

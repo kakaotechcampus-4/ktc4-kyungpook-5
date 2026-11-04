@@ -48,7 +48,8 @@ FE 후속이며, AI 독립 테스트 UI를 제품에서 import하지 않습니�
 
 ```text
 "인원 60명으로 바꿔줘"
-event: progress     data: {"operationId":"call_1","kind":"condition_applied","status":"completed","text":"예상 인원을 60명으로 변경했어요"}
+event: progress     data: {"operationId":"call_1","kind":"condition_started","status":"running","text":"조건을 반영하고 있어요"}
+event: progress     data: {"operationId":"call_1","kind":"condition_applied","status":"completed","text":"예상 인원 60명 반영했어요"}
 event: reply_delta  data: {"text":"예상 인원을 "}
 event: reply_delta  data: {"text":"60명으로 바꿨어요."}
 event: done         data: {...기존 /plan/chat 응답의 data와 같은 PlanViewOut...}

@@ -1,0 +1,340 @@
+{
+  "model": "gpt-5.6-luna",
+  "commit": "40ac9051f9544c78534f69df9151814b59ced0d9",
+  "rounds": 3,
+  "attempts": [
+    {
+      "case": "A 이름",
+      "round": 1,
+      "error": null,
+      "events": [
+        {
+          "ms": 1184,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 2283,
+          "kind": "tool_first_chunk",
+          "name": "update_event_conditions",
+          "id": "call_EQ2R7a2y19GAsZyG51V0MRyM"
+        },
+        {
+          "ms": 4269,
+          "kind": "progress",
+          "progress_kind": "condition_applied",
+          "status": "completed",
+          "id": "call_EQ2R7a2y19GAsZyG51V0MRyM",
+          "text": "행사 이름 ‘2026년 MT’ 반영했어요"
+        },
+        {
+          "ms": 5079,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 5528,
+          "kind": "reply_first_delta"
+        },
+        {
+          "ms": 6497,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "case": "B 인원",
+      "round": 1,
+      "error": null,
+      "events": [
+        {
+          "ms": 1048,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 1897,
+          "kind": "tool_first_chunk",
+          "name": "update_event_conditions",
+          "id": "call_jrIfb5j5dRXqiS7CmcsBbB1v"
+        },
+        {
+          "ms": 3188,
+          "kind": "progress",
+          "progress_kind": "condition_applied",
+          "status": "completed",
+          "id": "call_jrIfb5j5dRXqiS7CmcsBbB1v",
+          "text": "예상 인원 35명 반영했어요"
+        },
+        {
+          "ms": 4075,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 4506,
+          "kind": "reply_first_delta"
+        },
+        {
+          "ms": 5405,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "case": "C 인원+일정",
+      "round": 1,
+      "error": null,
+      "events": [
+        {
+          "ms": 727,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 1966,
+          "kind": "tool_first_chunk",
+          "name": "update_event_conditions",
+          "id": "call_kvyeSz4QVEmFwUWcclX5ooTR"
+        },
+        {
+          "ms": 4053,
+          "kind": "progress",
+          "progress_kind": "condition_applied",
+          "status": "completed",
+          "id": "call_kvyeSz4QVEmFwUWcclX5ooTR",
+          "text": "예상 인원 40명 · 시작일 2026년 12월 5일 · 종료일 2026년 12월 6일 반영했어요"
+        },
+        {
+          "ms": 4929,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 5399,
+          "kind": "reply_first_delta"
+        },
+        {
+          "ms": 6481,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "case": "A 이름",
+      "round": 2,
+      "error": null,
+      "events": [
+        {
+          "ms": 974,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 1948,
+          "kind": "tool_first_chunk",
+          "name": "update_event_conditions",
+          "id": "call_SaOQVmInBkYu2ws9tbpdAoOw"
+        },
+        {
+          "ms": 3178,
+          "kind": "progress",
+          "progress_kind": "condition_applied",
+          "status": "completed",
+          "id": "call_SaOQVmInBkYu2ws9tbpdAoOw",
+          "text": "행사 이름 ‘2026년 MT’ 반영했어요"
+        },
+        {
+          "ms": 4047,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 4486,
+          "kind": "reply_first_delta"
+        },
+        {
+          "ms": 5263,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "case": "B 인원",
+      "round": 2,
+      "error": null,
+      "events": [
+        {
+          "ms": 1316,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 1904,
+          "kind": "tool_first_chunk",
+          "name": "update_event_conditions",
+          "id": "call_hmtZqfNkQvTbyaO2YQT9muLF"
+        },
+        {
+          "ms": 3689,
+          "kind": "progress",
+          "progress_kind": "condition_applied",
+          "status": "completed",
+          "id": "call_hmtZqfNkQvTbyaO2YQT9muLF",
+          "text": "예상 인원 35명 반영했어요"
+        },
+        {
+          "ms": 4469,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 4899,
+          "kind": "reply_first_delta"
+        },
+        {
+          "ms": 5672,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "case": "C 인원+일정",
+      "round": 2,
+      "error": null,
+      "events": [
+        {
+          "ms": 743,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 2320,
+          "kind": "tool_first_chunk",
+          "name": "update_event_conditions",
+          "id": "call_pKwlMBm0KJgrYh9waSPcBEpR"
+        },
+        {
+          "ms": 4294,
+          "kind": "progress",
+          "progress_kind": "condition_applied",
+          "status": "completed",
+          "id": "call_pKwlMBm0KJgrYh9waSPcBEpR",
+          "text": "예상 인원 40명 · 시작일 2026년 12월 5일 · 종료일 2026년 12월 6일 반영했어요"
+        },
+        {
+          "ms": 5079,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 5487,
+          "kind": "reply_first_delta"
+        },
+        {
+          "ms": 6371,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "case": "A 이름",
+      "round": 3,
+      "error": null,
+      "events": [
+        {
+          "ms": 908,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 1996,
+          "kind": "tool_first_chunk",
+          "name": "update_event_conditions",
+          "id": "call_oiTni3TiKKHknd6wXrVDXrnt"
+        },
+        {
+          "ms": 3153,
+          "kind": "progress",
+          "progress_kind": "condition_applied",
+          "status": "completed",
+          "id": "call_oiTni3TiKKHknd6wXrVDXrnt",
+          "text": "행사 이름 ‘2026년 MT’ 반영했어요"
+        },
+        {
+          "ms": 4615,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 4975,
+          "kind": "reply_first_delta"
+        },
+        {
+          "ms": 5987,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "case": "B 인원",
+      "round": 3,
+      "error": null,
+      "events": [
+        {
+          "ms": 867,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 1806,
+          "kind": "tool_first_chunk",
+          "name": "update_event_conditions",
+          "id": "call_mamoqyUzzQa4qRP5iOjS9boS"
+        },
+        {
+          "ms": 3125,
+          "kind": "progress",
+          "progress_kind": "condition_applied",
+          "status": "completed",
+          "id": "call_mamoqyUzzQa4qRP5iOjS9boS",
+          "text": "예상 인원 35명 반영했어요"
+        },
+        {
+          "ms": 4114,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 4533,
+          "kind": "reply_first_delta"
+        },
+        {
+          "ms": 5246,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "case": "C 인원+일정",
+      "round": 3,
+      "error": null,
+      "events": [
+        {
+          "ms": 825,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 2070,
+          "kind": "tool_first_chunk",
+          "name": "update_event_conditions",
+          "id": "call_7FqxMiUVCoMZyq1isr2Qz6P1"
+        },
+        {
+          "ms": 4330,
+          "kind": "progress",
+          "progress_kind": "condition_applied",
+          "status": "completed",
+          "id": "call_7FqxMiUVCoMZyq1isr2Qz6P1",
+          "text": "예상 인원 40명 · 시작일 2026년 12월 5일 · 종료일 2026년 12월 6일 반영했어요"
+        },
+        {
+          "ms": 5157,
+          "kind": "model_first_chunk"
+        },
+        {
+          "ms": 5574,
+          "kind": "reply_first_delta"
+        },
+        {
+          "ms": 6523,
+          "kind": "end"
+        }
+      ]
+    }
+  ]
+}
