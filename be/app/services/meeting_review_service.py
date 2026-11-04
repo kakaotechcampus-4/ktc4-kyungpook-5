@@ -93,12 +93,16 @@ async def output(session: AsyncSession, review: MeetingReview) -> dict:
         TranscriptSegment.meeting_id == review.meeting_id, TranscriptSegment.is_final.is_(True)
     ).order_by(TranscriptSegment.seq)))
     mappings = review.speaker_mappings or {}
+    speakers = []
+    for label in sorted({turn['speaker_label'] for turn in review.turns or []}):
+        speaker = {'label': label, 'name': (review.speaker_names or {}).get(label)}
+        mapping = mappings.get(label) or {}
+        if mapping.get('memberId') is not None:
+            speaker.update(memberId=mapping['memberId'], confirmed=bool(mapping.get('confirmed', False)))
+        speakers.append(speaker)
     return {'id': review.id, 'meetingId': review.meeting_id, 'jobId': review.job_id,
             'status': review.status, 'version': review.version, 'errorCode': review.error_code,
-            'speakers': [{'label': label, 'name': (review.speaker_names or {}).get(label),
-                          'memberId': mappings.get(label, {}).get('memberId'),
-                          'confirmed': bool(mappings.get(label, {}).get('confirmed', False))}
-                         for label in sorted({turn['speaker_label'] for turn in review.turns or []})],
+            'speakers': speakers,
             'segments': align_segments(segments, review.turns or []), 'draft': review.draft}
 
 
