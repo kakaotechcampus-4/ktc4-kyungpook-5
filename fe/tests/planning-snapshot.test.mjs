@@ -16,6 +16,8 @@ test('planning snapshot obtains the steps and revision together', async () => {
     exports,
     require(name) {
       if (name === '@/shared/api/client') return { apiGet: async (url) => { requests.push(url); return snapshot } }
+      // 계획 스트림(#285)은 이 테스트가 부르지 않는다. import만 통과시킨다.
+      if (name === './stream') return { streamPlan: async () => { throw new Error('not used') } }
       throw new Error(`Unexpected module: ${name}`)
     },
   })

@@ -38,7 +38,7 @@ BE의 SSE 경로(`services/planning_stream.py`, #284)가 이 알림을 `progress
 invoke/stream 공통으로 최종 답변을 선택하며 원본 content는 이력에 남긴다.
 
 실제 공급자 8회 관찰과 한계는 [스트림 형태 확인](evaluation-results/planning-stream-probe-2026-11-04/README.md),
-고정 응답 검증은 `tests/test_planning_stream.py`에 있다. 아직 제품 화면에서 보이는 상태는 아니다.
+고정 응답 검증은 `tests/test_planning_stream.py`에 있다. 제품 화면 연결은 #285에서 했다(맨 위 절 참고).
 
 현재 흐름은 `agent/`와 `generation/`을 따른다. 이전 `turn_*`, `lookup.py`, `records.py`, `questions.py`, 조건 추출 `nodes.py`는 [features/planning/legacy](../../features/planning/legacy/README.md)에 있다. 공유 조건 값과 `PlanningMessage`는 `planning/schemas.py`에 남겼으며 현재 코드가 legacy 타입을 가져오지 않는다.
 

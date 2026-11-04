@@ -1,5 +1,11 @@
 import { useRef, useState } from 'react'
-import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useIsMutating,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { planningApi } from './api'
 import { PartialPlanSaveError } from './errors'
 import type { ChatMessage, PlanFacts, PlanProgress } from './types'
@@ -38,6 +44,22 @@ function toFacts(draft: Draft): PlanFacts {
   }
   return result
 }
+// 대화 화면이 쓰는 저장 상태 묶음(조건·대화·단계). 새 계획을 만든 직후 미리 받아 둘 때도
+// 같은 키·같은 요청을 써야 화면이 넘어가자마자 이 값을 그대로 쓴다.
+function snapshotQuery(userId: string | undefined, clubId: string | null, eventId: string | null) {
+  return queryOptions({
+    queryKey: ['planning', 'snapshot', userId, clubId, eventId],
+    queryFn: async () => {
+      const [screen, messages, steps] = await Promise.all([
+        planningApi.get(eventId!),
+        planningApi.messages(eventId!),
+        planningApi.steps(eventId!),
+      ])
+      return { screen, messages, steps }
+    },
+    retry: false,
+  })
+}
 export function usePlanningDrafts(clubId: string | null, userId: string | undefined) {
   return useQuery({
     queryKey: ['planning', 'drafts', userId, clubId],
@@ -61,8 +83,11 @@ export function usePlanningChat(
   const [pendingText, setPendingText] = useState('')
   const [pendingReply, setPendingReply] = useState('')
   const [notice, setNotice] = useState('')
+  // 보낼 때 저장돼 있던 대화 수. 다시 불러온 대화가 이보다 많으면 이번 턴이 저장된 것이다.
+  const [pendingBase, setPendingBase] = useState<number | null>(null)
   const locked = useRef(false)
   const clearPending = () => {
+    setPendingBase(null)
     setProgress([])
     setPendingText('')
     setPendingReply('')
@@ -82,30 +107,22 @@ export function usePlanningChat(
     },
   }
   const snapshot = useQuery({
-    queryKey: ['planning', 'snapshot', userId, clubId, selectedId],
+    ...snapshotQuery(userId, clubId, selectedId),
     enabled: !!clubId && !!selectedId,
-    retry: false,
     // 서버가 검토 중이면 결과가 나올 때까지 짧게 다시 불러온다.
     refetchInterval: (q) => (q.state.data?.screen.review?.status === 'REVIEWING' ? 2000 : false),
-    queryFn: async () => {
-      const [screen, messages, steps] = await Promise.all([
-        planningApi.get(selectedId!),
-        planningApi.messages(selectedId!),
-        planningApi.steps(selectedId!),
-      ])
-      return { screen, messages, steps }
-    },
   })
   const refresh = () =>
-    queryClient.invalidateQueries({
-      queryKey: ['planning', 'snapshot', userId, clubId, selectedId],
-    })
+    queryClient.invalidateQueries({ queryKey: snapshotQuery(userId, clubId, selectedId).queryKey })
   const storedMessages: ChatMessage[] = (snapshot.data?.messages ?? []).map((m) => ({
     id: m.id,
     from: m.role === 'USER' ? '나' : '토리',
     text: m.content,
   }))
   const messages = [FIRST_MESSAGE, ...storedMessages]
+  // 저장된 대화에 이번 턴이 들어오면 임시 표시는 같은 화면 갱신에서 숨긴다.
+  // 임시 표시를 지우는 일과 다시 불러온 대화를 그리는 일이 따로 일어나도 두 번 보이지 않는다.
+  const turnSaved = pendingBase !== null && storedMessages.length > pendingBase
   const screen = snapshot.data?.screen
   const currentView = view && view.baseRevision >= (screen?.baseRevision ?? 0) ? view : null
   const revision = currentView?.baseRevision ?? screen?.baseRevision ?? 0
@@ -137,6 +154,7 @@ export function usePlanningChat(
     setError('')
     clearPending()
     setPendingText(text)
+    setPendingBase(storedMessages.length)
     let eventId = selectedId
     const id = crypto.randomUUID()
     let succeeded = false
@@ -151,7 +169,15 @@ export function usePlanningChat(
       )
       setView(result)
       succeeded = true
-      if (selectedId) {
+      if (!selectedId) {
+        // 새 계획: 끝나면 화면이 이 계획 주소로 넘어가며 대화 영역을 새로 그린다.
+        // 저장된 대화를 먼저 받아 두면 넘어가자마자 그 대화를 그려,
+        // 임시 말풍선 → "불러오는 중" 카드 → 저장된 대화로 깜빡이지 않는다.
+        // 실패해도 넘어간 화면이 직접 다시 불러오므로 여기서는 오류로 보지 않는다.
+        await queryClient
+          .fetchQuery(snapshotQuery(userId, clubId, eventId))
+          .catch(() => undefined)
+      } else {
         const updated = await snapshot.refetch()
         if (updated.isError)
           setError('답변은 처리됐지만 대화 이력을 불러오지 못했어요. 다시 확인해 주세요.')
@@ -170,11 +196,17 @@ export function usePlanningChat(
       if (selectedId) void snapshot.refetch()
       return false
     } finally {
-      clearPending()
       locked.current = false
-      setBusy(false)
       void queryClient.invalidateQueries({ queryKey: ['planning', 'drafts', userId, clubId] })
-      if (eventId && !selectedId) onCreated(eventId, succeeded ? undefined : text)
+      if (eventId && !selectedId) {
+        // 새 계획은 이 대화 영역이 새 주소의 영역으로 바뀐다. 주소 이동은 다음 화면 갱신에서
+        // 반영되므로, 여기서 임시 표시를 먼저 지우면 그 사이 한 번 빈 대화가 보인다.
+        // 바뀔 때까지 그대로 두고 새 영역이 저장된 대화를 그린다.
+        onCreated(eventId, succeeded ? undefined : text)
+      } else {
+        clearPending()
+        setBusy(false)
+      }
     }
   }
   const generate = async () => {
@@ -213,9 +245,9 @@ export function usePlanningChat(
     snapshot,
     view: currentView,
     revision,
-    progress,
-    pendingText,
-    pendingReply,
+    progress: turnSaved ? [] : progress,
+    pendingText: turnSaved ? '' : pendingText,
+    pendingReply: turnSaved ? '' : pendingReply,
     notice,
   }
 }
