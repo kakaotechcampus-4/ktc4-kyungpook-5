@@ -1,0 +1,296 @@
+{
+  "artifact_version": 1,
+  "scope": "synthetic_planning_validation",
+  "run_id": "step-codes-02",
+  "request_id": "step-codes-02-measurement-001-G1-v1",
+  "route": "chat",
+  "generation_attempt": 1,
+  "generation_span_id": 2,
+  "validation_span_id": 5,
+  "captured_at": "2026-11-04T15:49:36.330246+09:00",
+  "model": "gpt-5.6-luna",
+  "agent_prompt_version": "planning-agent-v8",
+  "generation_prompt_version": "planning-generation-v1",
+  "source": {
+    "commit": "7d9bb964285b98f5cdeac937735e7bfb8ae7dec9",
+    "sha256": {
+      "features/planning/generation/graph.py": "6674d696b5e135ae70e76b2f582b3ed5612093c7dec29d94d5917beeb4172b26",
+      "features/planning/generation/validation.py": "d473ab9aea7528abbf73dc3b8b174e6d5c22f08b8fd53e4d595a6890f1079e01",
+      "features/planning/generation/schemas.py": "599103cb7affd1f7d20f95ea8fcb79f9757e390027962fe51c7a5b9f30c0a504",
+      "features/planning/generation/catalog.py": "f100ef03fd8ed059edf8a74f58c5200cd2316590f1454852eacb2a0caaf0c7d5",
+      "contracts.py": "af92fab0ac1fec0c71853a79af113855550194544b6e185ba0b92a8894bd87fc",
+      "planning_catalog.py": "79a09450a2a26a149faf28a82a9b6bacd08a55551898701eab5f7d187db4ded0",
+      "errors.py": "68d223bf71b58a42c786ee3a9e63322827b81cb41bc6a9e5f47870c426dab296"
+    }
+  },
+  "input": {
+    "basis_draft": {
+      "conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": 25000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "condition_meta": {},
+      "deferred_topics": [
+        "dates",
+        "location"
+      ]
+    },
+    "trigger": {
+      "source": "chat",
+      "request_id": "step-codes-02-measurement-001-G1-v1-user",
+      "quote": "응, 만들어줘."
+    },
+    "reference_date": "2026-10-28",
+    "timezone": "Asia/Seoul",
+    "reference_facts": []
+  },
+  "composition": {
+    "steps": [
+      {
+        "code": "ASSIGN_ROLES",
+        "purpose": "행사 준비와 진행에 필요한 역할과 담당 범위를 정하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "RESEARCH_VENUE",
+        "purpose": "50명 규모의 MT에 적합한 장소와 교통 조건을 검토하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "DEMAND_SURVEY",
+        "purpose": "참가자의 일정과 선호를 확인하여 날짜·장소 및 세부 준비의 기초 자료를 얻기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "사전 수요 조사 진행",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "RECRUIT_NOTICE",
+        "purpose": "행사 참여 의사를 모집하고 참가비 및 기본 행사 조건을 안내하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "참가 모집 공지",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "CHECK_RESPONSES",
+        "purpose": "모집 및 수요 조사 응답을 확인하여 참여 인원과 요구사항을 파악하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "응답 확인 안내",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "CONFIRM_DETAILS",
+        "purpose": "응답을 바탕으로 행사 인원과 일정 등 주요 조건을 확정하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "BOOK_VENUE",
+        "purpose": "확정된 조건에 맞는 장소를 예약하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "CONTRACT",
+            "title": "장소 예약 계약 검토",
+            "due_date": null
+          },
+          {
+            "type": "TRANSFER",
+            "title": "장소 예약 관련 이체 검토",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "COLLECT_FEES",
+        "purpose": "참가자에게 정해진 참가비를 수금하고 수금 현황을 관리하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "참가비 수금 안내",
+            "due_date": null
+          },
+          {
+            "type": "EXTERNAL_SEND",
+            "title": "참가비 수금 요청",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "PRE_EVENT_NOTICE",
+        "purpose": "확정된 행사 일정, 장소 및 참가 관련 준비사항을 사전에 안내하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "행사 전 안내",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "EVENT_DAY",
+        "purpose": "행사 당일 운영과 참가자 안내를 진행하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "SETTLE_EXPENSES",
+        "purpose": "행사 종료 후 발생한 지출을 확인하고 정산하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "EXPENSE",
+            "title": "행사 지출 정산",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "REFUND_FEES",
+        "purpose": "환급 대상이 발생할 경우 참가비를 반환하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "TRANSFER",
+            "title": "참가비 환급 검토",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "RECORD_FEEDBACK",
+        "purpose": "행사 후 참가자 의견과 운영 결과를 기록하여 이후 행사 준비에 참고하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      }
+    ],
+    "excluded_steps": [
+      {
+        "code": "CANCEL_NOTIFY_PARTICIPANTS",
+        "reason": "현재 조건에는 행사 취소 상황이 없어 취소 안내 단계는 제외합니다."
+      },
+      {
+        "code": "CANCEL_VENUE",
+        "reason": "현재 조건에는 행사 취소 상황이 없어 장소 취소 단계는 제외합니다."
+      },
+      {
+        "code": "CANCEL_REFUND",
+        "reason": "현재 조건에는 행사 취소 상황이 없어 취소에 따른 환급 단계는 제외합니다."
+      },
+      {
+        "code": "CANCEL_RECORD",
+        "reason": "현재 조건에는 행사 취소 상황이 없어 취소 기록 단계는 제외합니다."
+      }
+    ],
+    "assumptions": [
+      {
+        "content": "행사 유형은 MT이며 예상 인원은 50명으로 유지합니다.",
+        "fact_ids": []
+      },
+      {
+        "content": "참가비는 1인당 25,000원으로 유지하며 총액은 산출하지 않습니다.",
+        "fact_ids": []
+      }
+    ],
+    "open_questions": [
+      "행사 시작일과 종료일은 언제인가요?",
+      "행사 장소 또는 희망 지역은 어디인가요?",
+      "행사 제목과 세부 프로그램을 정할 필요가 있나요?",
+      "장소·교통·식사·숙박 등 MT 운영 범위를 어디까지 포함할까요?",
+      "참가비에 포함되는 항목과 별도 부담 항목은 무엇인가요?"
+    ],
+    "warnings": [
+      "행사 시작일과 종료일이 미정이므로 모든 단계와 행동의 일정은 제안하지 않았습니다.",
+      "장소가 미정이므로 장소 조사와 예약 이후의 세부 준비 일정을 확정할 수 없습니다.",
+      "참가비 수금, 장소 예약, 지출 정산 및 환급의 실제 금액과 실행 여부는 추후 조건과 승인에 따라 정해야 합니다."
+    ]
+  },
+  "violation": {
+    "rule": "catalog_partition",
+    "path": "",
+    "step_code": null,
+    "action_index": null,
+    "expected": {
+      "catalog_codes": [
+        "ASSIGN_ROLES",
+        "BOOK_VENUE",
+        "CHECK_RESPONSES",
+        "COLLECT_FEES",
+        "CONFIRM_DETAILS",
+        "DEMAND_SURVEY",
+        "EVENT_DAY",
+        "PRE_EVENT_NOTICE",
+        "RECORD_FEEDBACK",
+        "RECRUIT_NOTICE",
+        "REFUND_FEES",
+        "RESEARCH_VENUE",
+        "SETTLE_EXPENSES"
+      ],
+      "each_code_once": true
+    },
+    "actual": {
+      "included": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_VENUE",
+        "CANCEL_REFUND",
+        "CANCEL_RECORD"
+      ]
+    },
+    "timezone": null
+  },
+  "input_sha256": "13ed58e676255074b756009b8f0e7bfd01d56f4afa4ef6a0862af4d0da051984",
+  "composition_sha256": "bb64a1137ed655aa9ad7b4f8d665c765959b0efb4a41dbcac8543a3aee17af4b"
+}
