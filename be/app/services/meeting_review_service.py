@@ -18,6 +18,14 @@ class ReviewConflict(ApiError):
         super().__init__(message)
 
 
+class DiarizationUnavailable(ApiError):
+    status_code = 503
+    code = 'DIARIZATION_UNAVAILABLE'
+
+    def __init__(self, message='화자분리 서비스를 사용할 수 없어요. 원래 전사는 유지됩니다.'):
+        super().__init__(message)
+
+
 class DiarizationProvider(Protocol):
     async def submit(self, wav_path: Path) -> str: ...
     async def result(self, job_id: str, *, duration_ms: int) -> list[dict] | None: ...
