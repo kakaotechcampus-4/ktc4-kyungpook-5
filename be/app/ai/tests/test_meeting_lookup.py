@@ -18,6 +18,7 @@ from app.ai.features.meeting.nodes import judge_utterance
 from app.ai.features.meeting.schemas import (
     QueryOutput,
     JudgeUtteranceRequest,
+    MeetingSearchRequest,
     MeetingUtterance,
 )
 from app.ai.features.retrieval.memory_port import InMemoryRecordSearch, StoredRecord
@@ -309,6 +310,35 @@ def test_최근_답변은_전체_최신성을_단정하지_않는다(monkeypatch
     answer = asyncio.run(RecordsLookup(_port()).answer(request, ()))
     assert '검색된 자료 기준' in answer.answer and '전체 자료에서 가장 최근인지 확인하지 못했어요' in answer.answer
     assert answer.sources == (REPORT,)
+
+
+def test_검색어에서_최근이_빠져도_원발화로_최신_한계를_표시한다(monkeypatch):
+    from app.ai.features.meeting import lookup as meeting_lookup
+    async def assess(request, chunks, *, invoke):
+        return RecordSearchResult(facts=(RecordFact(content='2026 가을 교류회 실제 참가자 48명', sources=(REPORT,)),))
+    monkeypatch.setattr(meeting_lookup, 'assess_chunks', assess)
+    request = MeetingSearchRequest(
+        club_id=CLUB, query='행사 참가 인원', today='2026-11-03',
+        original_question='가장 최근 행사 참가 인원은?',
+    )
+    answer = asyncio.run(RecordsLookup(_port()).answer(request, ()))
+    assert '전체 자료에서 가장 최근인지 확인하지 못했어요' in answer.answer
+
+
+def test_검색어에서_최근이_빠져도_원발화로_참가_본문을_보충한다(monkeypatch):
+    from app.ai.features.meeting import lookup as meeting_lookup
+    from app.ai.ports import RetrievedChunk
+    seen = []
+    async def find(request, *, port, embed):
+        seen.append(request.limit)
+        return tuple(RetrievedChunk(text=text, source=REPORT, category=RecordCategory.ETC, score=.5)
+                     for text in ('제목', '개요', '예산', '일정', '홍보', '실제 참가 인원 48명'))
+    monkeypatch.setattr(meeting_lookup, 'find_chunks', find)
+    request = MeetingSearchRequest(club_id=CLUB, query='행사 참가 인원', today='2026-11-03',
+                                   original_question='가장 최근 행사 참가 인원은?')
+    result = asyncio.run(RecordsLookup(_port()).search(request))
+    assert seen == [20]
+    assert any(chunk.text == '실제 참가 인원 48명' for chunk in result)
 
 
 def test_회고_검색은_다른_연도에_원래_상위_결과를_잃지_않는다(monkeypatch):

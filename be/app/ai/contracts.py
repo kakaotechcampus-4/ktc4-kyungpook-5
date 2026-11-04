@@ -328,6 +328,39 @@ Headcount = Annotated[int, Field(strict=True, ge=1)]
 Won = Annotated[int, Field(strict=True, ge=0)]
 
 
+# 영수증 이미지 추출 계약
+
+class ExtractReceiptRequest(ContractModel):
+    """BE가 검증한 이미지 한 장을 검토용 추출에 넘기는 요청."""
+
+    file_name: NonBlankStr = Field(max_length=255)
+    mime_type: NonBlankStr = Field(max_length=100)
+    image_bytes: bytes = Field(min_length=1)
+
+    @field_validator("mime_type")
+    @classmethod
+    def image_mime_type(cls, value: str) -> str:
+        if not value.lower().startswith("image/"):
+            raise ValueError("이미지 MIME type이 필요합니다")
+        return value
+
+
+class ExtractedReceiptRow(ContractModel):
+    """읽힌 지출 한 건. 근거 없는 값은 None으로 둔다."""
+
+    spent_at: CalendarDate | None
+    merchant: NonBlankStr | None
+    amount: Won | None
+    category: NonBlankStr | None
+    description: NonBlankStr | None
+
+
+class ExtractReceiptResult(ContractModel):
+    """빈 rows는 읽을 수 없음이고, 호출 오류는 AIError로 구분한다."""
+
+    rows: tuple[ExtractedReceiptRow, ...]
+
+
 class PlanningConditions(ContractModel):
     """사용자가 정한 행사 조건의 불변 스냅샷. None은 미정, 0원은 무료다.
 

@@ -30,6 +30,11 @@ MEETING_ASSESS_PROMPT_VERSION = f"{ASSESS_EVIDENCE_PROMPT_VERSION}+meeting-asses
 _MEETING_ASSESS_PROMPT = (Path(__file__).parent / "prompts" / "assess.md").read_text(encoding="utf-8")
 
 
+def _question_text(request: RecordSearchRequest) -> str:
+    # 검색어 재작성에서 빠진 질문 의도도 보존한다.
+    return f"{request.query} {getattr(request, 'original_question', '')}"
+
+
 @lru_cache(maxsize=1)
 def get_assess_model() -> ChatOpenAI:
     """회의의 근거 판단용 모델. 판단과 같이 실시간 호출이라 추론을 끈다.
@@ -67,8 +72,9 @@ class RecordsLookup:
     async def search(self, request: RecordSearchRequest) -> tuple[RetrievedChunk, ...]:
         # 이 두 질문은 의미 검색이 제목만 우선하는 사례가 있어 후보 안의 본문을 먼저 본다.
         query = request.query
-        recap = '회고' in query
-        latest_attendance = ('최근' in query or '마지막' in query) and '참가' in query and '인원' in query
+        question = _question_text(request)
+        recap = '회고' in question
+        latest_attendance = ('최근' in question or '마지막' in question) and '참가' in question and '인원' in question
         if not (recap or latest_attendance):
             return await find_chunks(request, port=self._records, embed=self._embed)
         candidates = await find_chunks(request.model_copy(update={'limit': max(request.limit, 20)}),
@@ -106,7 +112,7 @@ class RecordsLookup:
 
         result = await assess_chunks(request, chunks, invoke=invoke)
         answer = to_meeting_answer(result)
-        if answer is not None and ('최근' in request.query or '마지막' in request.query):
+        if answer is not None and ('최근' in _question_text(request) or '마지막' in _question_text(request)):
             return answer.model_copy(update={'answer': '검색된 자료 기준이며 전체 자료에서 가장 최근인지 확인하지 못했어요.\n' + answer.answer})
         return answer
 

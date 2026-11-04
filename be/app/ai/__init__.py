@@ -30,6 +30,8 @@ from .errors import (
     AITimeoutError,
 )
 from .facade import index_record, judge_utterance, search_related_records
+from .facade import extract_receipt
+from .contracts import ExtractedReceiptRow, ExtractReceiptRequest, ExtractReceiptResult
 from .features.meeting.context import MEETING_CONTEXT_UTTERANCES
 from .features.meeting.schemas import (
     JudgeTrace,
@@ -54,6 +56,10 @@ __all__ = (
     "IndexedChunk",
     "RecordBlock",
     "SourceLocation",
+    "extract_receipt",
+    "ExtractReceiptRequest",
+    "ExtractReceiptResult",
+    "ExtractedReceiptRow",
     # 회의 발화 처리. #113에서 BE와 합의하기 전의 초안이라 바뀔 수 있다 (docs/contracts.md)
     "judge_utterance",
     "JudgeUtteranceRequest",
