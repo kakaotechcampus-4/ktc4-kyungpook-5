@@ -42,7 +42,7 @@ export function useDemo() {
   return useSearchParams()[0].has('demo')
 }
 
-export function useEvents(status?: EventStatus) {
+export function useEvents(status?: EventStatus, enabled = true) {
   const demo = useDemo()
   const clubId = useAuthStore((state) => state.clubId)
   const userId = useAuthStore((state) => state.me?.id)
@@ -52,7 +52,7 @@ export function useEvents(status?: EventStatus) {
       demo
         ? DEMO_EVENTS.filter((e) => !status || e.status === status)
         : await getEvents(clubId!, status),
-    enabled: demo || Boolean(clubId),
+    enabled: enabled && (demo || Boolean(clubId)),
     retry: false,
   })
 }

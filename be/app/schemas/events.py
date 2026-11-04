@@ -460,6 +460,21 @@ class HistoryUsageOut(CamelModel):
     near_limit: bool
 
 
+class PlanProgressOut(CamelModel):
+    """SSE progress 이벤트(#284). 저장되지 않는 임시 작업 상태이며 DB 저장 완료가 아니다.
+
+    같은 operationId의 running 줄을 completed/failed 줄로 바꿔 표시한다.
+    """
+
+    operation_id: str
+    kind: Literal[
+        "condition_applied", "search_started", "search_finished",
+        "generation_started", "generation_finished",
+    ]
+    status: Literal["running", "completed", "failed"]
+    text: str
+
+
 class PlanViewOut(CamelModel):
     reply: str | None
     draft: PlanDraftOut

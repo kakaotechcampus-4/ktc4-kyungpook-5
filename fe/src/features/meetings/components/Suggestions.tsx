@@ -1,7 +1,8 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
+import { Modal } from '@/shared/ui/Modal'
 import { Chip } from '@/shared/ui/Chip'
 import { Input, Textarea } from '@/shared/ui/Input'
 import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
@@ -374,11 +375,15 @@ function ReviewFields({
     </form>
   )
 }
-export function Suggestions({
+export function CandidatesModal({
+  open,
+  onClose,
   clubId,
   suggestions,
   onSaved,
 }: {
+  open: boolean
+  onClose: () => void
   clubId: string
   suggestions: Suggestion[]
   onSaved: () => void
@@ -386,37 +391,61 @@ export function Suggestions({
   const confirmed = useQuery({
     queryKey: ['confirmed', clubId],
     queryFn: () => confirmedApi.list(clubId),
+    enabled: open,
   })
+  // undefined until the user toggles: the first candidate starts open even though the
+  // modal is mounted before the candidates load.
+  const [openId, setOpenId] = useState<string | null | undefined>(undefined)
+  const shownId = openId === undefined ? suggestions[0]?.id : openId
   return (
-    <section className="space-y-4" aria-label="일정·할 일 후보">
-      <h2 className="text-h2">
-        확인할 일정·할 일{' '}
-        <span className="text-caption font-medium text-mute">{suggestions.length}건</span>
-      </h2>
-      <p className="text-caption text-ink2">
-        내용과 시각, 실제 수신 계정을 확인한 뒤 저장·예약합니다.
-      </p>
-      {!suggestions.length && (
-        <Card className="p-5 text-mute">
-          아직 확인할 후보가 없습니다. 자료 조회 결과와 별도로 표시됩니다.
-        </Card>
-      )}
-      {suggestions.map((s) => (
-        <Card key={`${s.id}:${s.version}`} className="min-w-0 p-4 sm:p-5">
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-            <h3 className="min-w-0 flex-1 break-words text-h3 leading-6">{s.title}</h3>
-            <Chip>{s.status === 'ACCEPTED' ? '수락 기록' : '검토 후보'}</Chip>
-          </div>
-          {confirmed.data?.some((item) => item.suggestionId === s.id) ? (
-            <p className="text-ink2">
-              확정 항목이 저장됐습니다. 아래에서 실제 예약 상태와 변경·취소를 확인해 주세요.
-            </p>
-          ) : (
-            <ReviewFields clubId={clubId} suggestion={s} onSaved={onSaved} />
-          )}
-        </Card>
-      ))}
-    </section>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="일정·할 일 후보 확인"
+      chip={<Chip tone="approved">{suggestions.length}건</Chip>}
+      subtitle="저장한 후보만 일정과 알림이 돼요."
+      footerNote="다시 열면 이어서 확인할 수 있어요."
+      footer={
+        <Button variant="secondary" onClick={onClose}>
+          닫기
+        </Button>
+      }
+      width={600}
+    >
+      {!suggestions.length && <p className="text-mute">회의에서 나온 일정·할 일이 없어요.</p>}
+      {suggestions.map((s) => {
+        const saved = confirmed.data?.some((item) => item.suggestionId === s.id)
+        const expanded = shownId === s.id
+        return (
+          <section key={`${s.id}:${s.version}`} className="rounded-[12px] border border-line bg-bg">
+            <button
+              type="button"
+              aria-expanded={expanded}
+              onClick={() => setOpenId(expanded ? null : s.id)}
+              className="flex w-full flex-wrap items-center gap-3 px-4 py-3.5 text-left"
+            >
+              <Chip>{s.kind === 'SCHEDULE' ? '일정' : '할 일'}</Chip>
+              <span className="min-w-0 flex-1 break-words font-bold">{s.title}</span>
+              <span className="text-caption text-ink2">
+                {saved ? '저장함' : expanded ? '접기' : '펼쳐서 확인 ›'}
+              </span>
+            </button>
+            {expanded && (
+              <div className="border-t border-line bg-card px-4 py-4">
+                {saved ? (
+                  <p className="text-ink2">
+                    저장했어요. 바꾸거나 취소하려면 회의 첫 화면 아래 &lsquo;저장한 일정·알림
+                    예약&rsquo;을 열어 주세요.
+                  </p>
+                ) : (
+                  <ReviewFields clubId={clubId} suggestion={s} onSaved={onSaved} />
+                )}
+              </div>
+            )}
+          </section>
+        )
+      })}
+    </Modal>
   )
 }
 export function ConfirmedTasks({
@@ -438,6 +467,11 @@ export function ConfirmedTasks({
     queryFn: () => confirmedApi.get(clubId, highlightTaskId!),
     enabled: !!highlightTaskId,
   })
+  // A reminder link opens /meetings?taskId=…; the list sits below the start card.
+  useEffect(() => {
+    if (linked.data)
+      document.getElementById(`task-${linked.data.id}`)?.scrollIntoView({ block: 'center' })
+  }, [linked.data])
   const cancel = useMutation({
     mutationFn: (item: ConfirmedTask) => confirmedApi.cancel(clubId, item),
     onSuccess: () => client.invalidateQueries({ queryKey: ['confirmed', clubId] }),

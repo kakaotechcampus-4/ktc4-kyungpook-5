@@ -1,22 +1,15 @@
-import {
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-  type Query,
-} from '@tanstack/react-query'
-import { useEffect, useMemo, useRef } from 'react'
-import { ApiError } from '@/shared/api/types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { meetingsApi } from './api'
+import { ApiError } from '@/shared/api/types'
 import { sourceOf } from './timeline'
-import type { Job, Meeting, Transcript } from './types'
+import type { Meeting } from './types'
 export function useMeetingData(clubId: string, meetingId: string | undefined) {
   const client = useQueryClient()
   const meeting = useQuery({
     queryKey: ['meeting', clubId, meetingId],
     queryFn: () => meetingsApi.get(meetingId!),
     enabled: !!meetingId,
-    retry: false,
     refetchInterval: (q) =>
       q.state.data?.status === 'RECORDING' || q.state.data?.status === 'FINALIZING' ? 3000 : false,
   })
@@ -44,17 +37,14 @@ export function useMeetingData(clubId: string, meetingId: string | undefined) {
   const review = useQuery({
     queryKey: ['meeting-review', meetingId],
     queryFn: async () => {
-      try {
-        return await meetingsApi.getReview(meetingId!)
-      } catch (error) {
+      try { return await meetingsApi.getReview(meetingId!) } catch (error) {
         if (error instanceof ApiError && error.code === 'MEETING_REVIEW_CONFLICT') return undefined
         throw error
       }
     },
     enabled: !!meetingId && correctClub && meeting.data?.status === 'COMPLETED',
     retry: false,
-    refetchInterval: (q) =>
-      q.state.data?.status === 'PROCESSING' || q.state.data?.status === 'SUBMITTING' ? 4000 : false,
+    refetchInterval: (q) => q.state.data?.status === 'PROCESSING' || q.state.data?.status === 'SUBMITTING' ? 4000 : false,
   })
   const previousStatus = useRef<{
     meetingId: string | undefined
@@ -93,28 +83,25 @@ export function useMeetingData(clubId: string, meetingId: string | undefined) {
       ) ?? [],
     [suggestions.data, decisions.data, transcripts.data],
   )
-  const refresh = () =>
-    Promise.all([
-      client.invalidateQueries({ queryKey: ['meeting', clubId, meetingId] }),
-      client.invalidateQueries({ queryKey: ['transcripts', clubId, meetingId] }),
-      client.invalidateQueries({ queryKey: ['decisions', clubId, meetingId] }),
-      client.invalidateQueries({ queryKey: ['suggestions', clubId, meetingId] }),
-    ])
+  // Stable so memoised columns do not re-render on every audio level update.
+  const refresh = useCallback(
+    () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: ['meeting', clubId, meetingId] }),
+        client.invalidateQueries({ queryKey: ['transcripts', clubId, meetingId] }),
+        client.invalidateQueries({ queryKey: ['decisions', clubId, meetingId] }),
+        client.invalidateQueries({ queryKey: ['suggestions', clubId, meetingId] }),
+      ]),
+    [client, clubId, meetingId],
+  )
   const finish = useMutation({
     mutationFn: () => meetingsApi.finish(meetingId!),
     onSuccess: refresh,
   })
   const startReview = useMutation({ mutationFn: () => meetingsApi.review(meetingId!), onSuccess: refresh })
   const submitReview = useMutation({ mutationFn: () => meetingsApi.submitReview(meetingId!), onSuccess: refresh })
-  const updateReviewSpeakers = useMutation({
-    mutationFn: (input: { version: number; names: Record<string, string> }) =>
-      meetingsApi.updateReviewSpeakers(meetingId!, input.version, input.names),
-    onSuccess: refresh,
-  })
-  const createReviewDraft = useMutation({
-    mutationFn: (version: number) => meetingsApi.createReviewDraft(meetingId!, version),
-    onSuccess: refresh,
-  })
+  const updateReviewSpeakers = useMutation({ mutationFn: (input: { version: number; names: Record<string, string> }) => meetingsApi.updateReviewSpeakers(meetingId!, input.version, input.names), onSuccess: refresh })
+  const createReviewDraft = useMutation({ mutationFn: (version: number) => meetingsApi.createReviewDraft(meetingId!, version), onSuccess: refresh })
   return {
     meeting,
     transcripts,
@@ -139,19 +126,8 @@ export function useMeetings(clubId: string, status?: Meeting['status']) {
   })
 }
 export function useCreateMeeting(clubId: string) {
-  return useMutation({ mutationFn: (title: string) => meetingsApi.create(clubId, title) })
-}
-export function useDecisionJobs(transcripts: Transcript[]) {
-  return useQueries({
-    queries: transcripts
-      .filter((t) => t.final && t.decisionJobId)
-      .map((t) => ({
-        queryKey: ['decision-job', t.decisionJobId],
-        queryFn: () => meetingsApi.job(t.decisionJobId!),
-        refetchInterval: (query: Query<Job>) =>
-          query.state.data?.status === 'SUCCEEDED' || query.state.data?.status === 'FAILED'
-            ? false
-            : 3000,
-      })),
+  return useMutation({
+    mutationFn: ({ title, eventId }: { title: string; eventId: string | null }) =>
+      meetingsApi.create(clubId, title, eventId),
   })
 }

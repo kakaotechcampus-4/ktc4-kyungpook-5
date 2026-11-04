@@ -8,6 +8,7 @@ enum은 재공개하지 않는다. `app.core.enums`에서 가져온다.
 
 from .contracts import (
     IndexedChunk,
+    PlanningProgress,
     IndexRecordRequest,
     IndexRecordResult,
     RecordBlock,
@@ -51,9 +52,11 @@ from .features.meeting.event_intent import (
     MeetingEventIntent, MeetingEventIntentResult, classify_meeting_event_facts,
 )
 from .llm import EMBEDDING_DIMENSIONS
-from .ports import ChunkSearchQuery, RecordSearchPort, RetrievedChunk
+from .ports import ChunkSearchQuery, RecordSearchPort, RetrievedChunk, PlanningProgressPort
 
 __all__ = (
+    "PlanningProgress",
+    "PlanningProgressPort",
     # 기록 색인
     "index_record",
     "search_related_records",

@@ -4,11 +4,13 @@ import type { Decision, Job, Meeting, MeetingReview, Suggestion, TranscriptList 
 const id = encodeURIComponent
 type PageMeta = components['schemas']['PageMeta']
 export const meetingsApi = {
-  create: (clubId: string, title: string) =>
+  // Pressing start is the recording consent (#113); there is no separate checkbox.
+  create: (clubId: string, title: string, eventId: string | null) =>
     apiPost<Meeting>(`/clubs/${id(clubId)}/meetings`, {
       title,
       language: 'ko-KR',
       recordingConsentConfirmed: true,
+      eventId,
     }),
   get: (meetingId: string) => apiGet<Meeting>(`/meetings/${id(meetingId)}`),
   list: (clubId: string, status?: Meeting['status']) => {

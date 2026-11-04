@@ -1,0 +1,5254 @@
+{
+  "commit": "8c0c40ff78c6a6885dc6658a712963ce3a23127e",
+  "script_sha256": "bf6a64ef8a370397dc9aa578447818005d116619e9b76a363222cb90094cf25e",
+  "model": "gpt-5.6-luna",
+  "versions": {
+    "langgraph": "1.2.12",
+    "langchain-core": "1.6.3",
+    "langchain-openai": "1.6.2",
+    "openai": "3.16.2"
+  },
+  "max_retries": 0,
+  "attempts": [
+    {
+      "case": "C1",
+      "mode": "invoke",
+      "chunks": [],
+      "result": {
+        "blocks": [
+          {
+            "type": "reasoning",
+            "keys": [
+              "content",
+              "encrypted_content",
+              "id",
+              "summary",
+              "type"
+            ]
+          },
+          {
+            "type": "text",
+            "phase": "final_answer",
+            "keys": [
+              "annotations",
+              "id",
+              "phase",
+              "text",
+              "type"
+            ],
+            "text": "현재 정한 조건은 다음과 같아요.\n\n- 행사 유형: MT\n- 예상 인원: 50명\n- 참가비: 1인 25,000원\n- 날짜와 장소: 미정"
+          }
+        ],
+        "tool_count": 0,
+        "invalid_tool_count": 0,
+        "tool_names": [],
+        "tool_chunks": false,
+        "status": "completed",
+        "usage": {
+          "input_tokens": 4238,
+          "output_tokens": 107,
+          "total_tokens": 4345,
+          "input_token_details": {
+            "cache_creation": 3153,
+            "cache_read": 0
+          },
+          "output_token_details": {
+            "reasoning": 56
+          }
+        }
+      },
+      "elapsed_ms": 4457.89
+    },
+    {
+      "case": "C1",
+      "mode": "stream",
+      "chunks": [
+        {
+          "ms": 785.48,
+          "blocks": [],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1174.3,
+          "blocks": [
+            {
+              "type": "reasoning",
+              "index": 0,
+              "keys": [
+                "content",
+                "id",
+                "index",
+                "summary",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1611.02,
+          "blocks": [
+            {
+              "type": "reasoning",
+              "index": 0,
+              "keys": [
+                "encrypted_content",
+                "id",
+                "index",
+                "summary",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1611.99,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "phase": "final_answer",
+              "keys": [
+                "index",
+                "phase",
+                "text",
+                "type"
+              ],
+              "text": ""
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1715.9,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "현재"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1716.41,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 조건"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1716.82,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "은"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1717.41,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 다음"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1717.65,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "과"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1717.89,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 같"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1877.2,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "아요"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1877.82,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": ".\n\n"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1878.26,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "-"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1880.86,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 행사"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1881.28,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 유형"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1881.67,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": ":"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1882.08,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " MT"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1882.64,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "\n"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1883.15,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "-"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1883.65,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 예상"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1884.08,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 인"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1884.37,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "원"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1884.67,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": ":"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1885.29,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " "
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1885.63,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "50"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1885.99,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "명"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1886.28,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "\n"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1886.5,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "-"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1886.7,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 참가"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1886.9,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "비"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1887.1,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": ":"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1887.3,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " "
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1887.49,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "1"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1887.68,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "인"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1888.06,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " "
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1888.25,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "25"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1888.48,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": ","
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1888.68,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "000"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1888.9,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "원"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1889.23,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "\n"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1889.45,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "-"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1889.66,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 날짜"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1889.97,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "·"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1890.14,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "장"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1890.36,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "소"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1890.56,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": ":"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1906.91,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 미"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1907.24,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "정"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1907.87,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "\n"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1908.17,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "-"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1998.13,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 행사"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1999.0,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "명"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2041.08,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "·"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2046.0,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "총"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2050.35,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "예"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2067.72,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "산"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2087.87,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": ":"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2150.42,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 미"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2166.11,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "정"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2180.74,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "id",
+                "index",
+                "text",
+                "type"
+              ],
+              "text": ""
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2684.22,
+          "blocks": [],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": "completed",
+          "usage": {
+            "input_tokens": 3449,
+            "output_tokens": 105,
+            "total_tokens": 3554,
+            "input_token_details": {
+              "cache_creation": 0,
+              "cache_read": 3153
+            },
+            "output_token_details": {
+              "reasoning": 44
+            }
+          }
+        }
+      ],
+      "result": {
+        "blocks": [
+          {
+            "type": "reasoning",
+            "index": 0,
+            "keys": [
+              "content",
+              "encrypted_content",
+              "id",
+              "index",
+              "summary",
+              "type"
+            ]
+          },
+          {
+            "type": "text",
+            "index": 1,
+            "phase": "final_answer",
+            "keys": [
+              "id",
+              "index",
+              "phase",
+              "text",
+              "type"
+            ],
+            "text": "현재 조건은 다음과 같아요.\n\n- 행사 유형: MT\n- 예상 인원: 50명\n- 참가비: 1인 25,000원\n- 날짜·장소: 미정\n- 행사명·총예산: 미정"
+          }
+        ],
+        "tool_count": 0,
+        "invalid_tool_count": 0,
+        "tool_names": [],
+        "tool_chunks": false,
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3449,
+          "output_tokens": 105,
+          "total_tokens": 3554,
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 3153
+          },
+          "output_token_details": {
+            "reasoning": 44
+          }
+        }
+      },
+      "elapsed_ms": 2717.42
+    },
+    {
+      "case": "C2",
+      "mode": "stream",
+      "chunks": [
+        {
+          "ms": 745.65,
+          "blocks": [],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1152.13,
+          "blocks": [
+            {
+              "type": "reasoning",
+              "index": 0,
+              "keys": [
+                "content",
+                "id",
+                "index",
+                "summary",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2452.79,
+          "blocks": [
+            {
+              "type": "reasoning",
+              "index": 0,
+              "keys": [
+                "encrypted_content",
+                "id",
+                "index",
+                "summary",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2489.29,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 1,
+              "keys": [
+                "arguments",
+                "call_id",
+                "id",
+                "index",
+                "name",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 1,
+          "invalid_tool_count": 0,
+          "tool_names": [
+            "update_event_conditions"
+          ],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2502.47,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 1,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 1,
+          "invalid_tool_count": 0,
+          "tool_names": [
+            ""
+          ],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2512.19,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "call_id",
+                "id",
+                "index",
+                "name",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 1,
+          "invalid_tool_count": 0,
+          "tool_names": [
+            "update_generation_offer"
+          ],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2513.26,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 1,
+          "invalid_tool_count": 0,
+          "tool_names": [
+            ""
+          ],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 4498.59,
+          "blocks": [],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": "completed",
+          "usage": {
+            "input_tokens": 3514,
+            "output_tokens": 175,
+            "total_tokens": 3689,
+            "input_token_details": {
+              "cache_creation": 288,
+              "cache_read": 2858
+            },
+            "output_token_details": {
+              "reasoning": 22
+            }
+          }
+        }
+      ],
+      "result": {
+        "blocks": [
+          {
+            "type": "reasoning",
+            "index": 0,
+            "keys": [
+              "content",
+              "encrypted_content",
+              "id",
+              "index",
+              "summary",
+              "type"
+            ]
+          },
+          {
+            "type": "function_call",
+            "index": 1,
+            "keys": [
+              "arguments",
+              "call_id",
+              "id",
+              "index",
+              "name",
+              "type"
+            ]
+          },
+          {
+            "type": "function_call",
+            "index": 2,
+            "keys": [
+              "arguments",
+              "call_id",
+              "id",
+              "index",
+              "name",
+              "type"
+            ]
+          }
+        ],
+        "tool_count": 2,
+        "invalid_tool_count": 0,
+        "tool_names": [
+          "update_event_conditions",
+          "update_generation_offer"
+        ],
+        "tool_chunks": false,
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3514,
+          "output_tokens": 175,
+          "total_tokens": 3689,
+          "input_token_details": {
+            "cache_creation": 288,
+            "cache_read": 2858
+          },
+          "output_token_details": {
+            "reasoning": 22
+          }
+        }
+      },
+      "elapsed_ms": 4499.62
+    },
+    {
+      "case": "C2",
+      "mode": "invoke",
+      "chunks": [],
+      "result": {
+        "blocks": [
+          {
+            "type": "reasoning",
+            "keys": [
+              "content",
+              "encrypted_content",
+              "id",
+              "summary",
+              "type"
+            ]
+          },
+          {
+            "type": "function_call",
+            "keys": [
+              "arguments",
+              "call_id",
+              "id",
+              "name",
+              "status",
+              "type"
+            ]
+          },
+          {
+            "type": "function_call",
+            "keys": [
+              "arguments",
+              "call_id",
+              "id",
+              "name",
+              "status",
+              "type"
+            ]
+          }
+        ],
+        "tool_count": 2,
+        "invalid_tool_count": 0,
+        "tool_names": [
+          "update_event_conditions",
+          "update_generation_offer"
+        ],
+        "tool_chunks": false,
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3442,
+          "output_tokens": 185,
+          "total_tokens": 3627,
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 3146
+          },
+          "output_token_details": {
+            "reasoning": 33
+          }
+        }
+      },
+      "elapsed_ms": 3591.38
+    },
+    {
+      "case": "C2-after-tool",
+      "mode": "invoke",
+      "chunks": [],
+      "result": {
+        "blocks": [
+          {
+            "type": "function_call",
+            "keys": [
+              "arguments",
+              "call_id",
+              "id",
+              "name",
+              "status",
+              "type"
+            ]
+          }
+        ],
+        "tool_count": 1,
+        "invalid_tool_count": 0,
+        "tool_names": [
+          "update_generation_offer"
+        ],
+        "tool_chunks": false,
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3758,
+          "output_tokens": 76,
+          "total_tokens": 3834,
+          "input_token_details": {
+            "cache_creation": 209,
+            "cache_read": 3146
+          },
+          "output_token_details": {
+            "reasoning": 0
+          }
+        }
+      },
+      "elapsed_ms": 2258.58
+    },
+    {
+      "case": "C2-after-tool",
+      "mode": "stream",
+      "chunks": [
+        {
+          "ms": 1834.2,
+          "blocks": [],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1836.19,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "call_id",
+                "id",
+                "index",
+                "name",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 1,
+          "invalid_tool_count": 0,
+          "tool_names": [
+            "update_generation_offer"
+          ],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1836.62,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 1,
+          "invalid_tool_count": 0,
+          "tool_names": [
+            ""
+          ],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1837.04,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1837.35,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1837.57,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1837.88,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1838.14,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1838.45,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1838.75,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1839.16,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1839.42,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1839.69,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1839.95,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1840.23,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1840.46,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1840.69,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1841.12,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1841.37,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1841.63,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1841.93,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1842.41,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1842.75,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1843.01,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1844.33,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1844.6,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1845.49,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1845.74,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1846.13,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1847.02,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1849.99,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1850.2,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1850.45,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1851.65,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1854.6,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1854.82,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1855.05,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1857.09,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1858.48,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1858.75,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1859.11,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1859.43,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1859.78,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1860.0,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1860.25,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1860.6,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1860.94,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1861.3,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1862.17,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1862.43,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1862.77,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1863.06,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1863.94,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1864.21,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1864.78,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1865.81,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1866.07,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1867.25,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1867.54,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1867.88,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 0,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2321.19,
+          "blocks": [],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": "completed",
+          "usage": {
+            "input_tokens": 3705,
+            "output_tokens": 74,
+            "total_tokens": 3779,
+            "input_token_details": {
+              "cache_creation": 0,
+              "cache_read": 3355
+            },
+            "output_token_details": {
+              "reasoning": 0
+            }
+          }
+        }
+      ],
+      "result": {
+        "blocks": [
+          {
+            "type": "function_call",
+            "index": 0,
+            "keys": [
+              "arguments",
+              "call_id",
+              "id",
+              "index",
+              "name",
+              "type"
+            ]
+          }
+        ],
+        "tool_count": 1,
+        "invalid_tool_count": 0,
+        "tool_names": [
+          "update_generation_offer"
+        ],
+        "tool_chunks": false,
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3705,
+          "output_tokens": 74,
+          "total_tokens": 3779,
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 3355
+          },
+          "output_token_details": {
+            "reasoning": 0
+          }
+        }
+      },
+      "elapsed_ms": 2323.39
+    },
+    {
+      "case": "mixed",
+      "mode": "stream",
+      "chunks": [
+        {
+          "ms": 827.18,
+          "blocks": [],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1236.64,
+          "blocks": [
+            {
+              "type": "reasoning",
+              "index": 0,
+              "keys": [
+                "content",
+                "id",
+                "index",
+                "summary",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1763.05,
+          "blocks": [
+            {
+              "type": "reasoning",
+              "index": 0,
+              "keys": [
+                "encrypted_content",
+                "id",
+                "index",
+                "summary",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1764.43,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "phase": "commentary",
+              "keys": [
+                "index",
+                "phase",
+                "text",
+                "type"
+              ],
+              "text": ""
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1767.53,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "현재"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1775.22,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 예상"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1778.31,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 인"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1785.06,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "원"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1786.29,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " "
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 1800.28,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "50"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2064.88,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "명을"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2065.34,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " "
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2065.54,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "60"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2066.23,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "명"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2068.89,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "으로"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2069.04,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 변경"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2069.34,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "해"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2070.48,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": ","
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2071.11,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 준비"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2071.74,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 규모"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2072.47,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "와"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2073.17,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 비용"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2075.58,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 산"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2075.77,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "정"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2076.25,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "의"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2077.07,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 기준"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2079.5,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "을"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2080.85,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": " 맞"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2081.13,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "추"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2082.44,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "겠습니다"
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2083.26,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "index",
+                "text",
+                "type"
+              ],
+              "text": "."
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2167.19,
+          "blocks": [
+            {
+              "type": "text",
+              "index": 1,
+              "keys": [
+                "id",
+                "index",
+                "text",
+                "type"
+              ],
+              "text": ""
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2172.25,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "call_id",
+                "id",
+                "index",
+                "name",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 1,
+          "invalid_tool_count": 0,
+          "tool_names": [
+            "update_event_conditions"
+          ],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2172.49,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 1,
+          "invalid_tool_count": 0,
+          "tool_names": [
+            ""
+          ],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2180.65,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2192.51,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2193.93,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 1,
+          "invalid_tool_count": 0,
+          "tool_names": [
+            ""
+          ],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2204.03,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2217.86,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2221.79,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2225.29,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2234.48,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2241.75,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2243.09,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2245.92,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2368.01,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2368.96,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2369.82,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2370.4,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2370.89,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2371.5,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2371.76,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2372.07,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2372.64,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2373.03,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2374.41,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2375.08,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2375.59,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2376.15,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2377.9,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2378.38,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2378.93,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2379.59,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2380.15,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2380.91,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2381.88,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2386.05,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2386.36,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2388.73,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2396.18,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2405.4,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2469.81,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2470.07,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2470.29,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2470.62,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2471.36,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2472.94,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2473.2,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2473.67,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2475.19,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2475.94,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2477.38,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2478.84,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2480.5,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2485.99,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2506.34,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2509.1,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2510.45,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2515.91,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2519.43,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2521.14,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2541.29,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2555.77,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2557.29,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2557.8,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2563.39,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2576.18,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2578.0,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2591.71,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2593.31,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2603.28,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2604.59,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2614.96,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 2620.45,
+          "blocks": [
+            {
+              "type": "function_call",
+              "index": 2,
+              "keys": [
+                "arguments",
+                "index",
+                "type"
+              ]
+            }
+          ],
+          "tool_count": 0,
+          "invalid_tool_count": 1,
+          "tool_names": [],
+          "tool_chunks": true,
+          "status": null,
+          "usage": null
+        },
+        {
+          "ms": 3528.91,
+          "blocks": [],
+          "tool_count": 0,
+          "invalid_tool_count": 0,
+          "tool_names": [],
+          "tool_chunks": false,
+          "status": "completed",
+          "usage": {
+            "input_tokens": 3516,
+            "output_tokens": 177,
+            "total_tokens": 3693,
+            "input_token_details": {
+              "cache_creation": 289,
+              "cache_read": 2858
+            },
+            "output_token_details": {
+              "reasoning": 54
+            }
+          }
+        }
+      ],
+      "result": {
+        "blocks": [
+          {
+            "type": "reasoning",
+            "index": 0,
+            "keys": [
+              "content",
+              "encrypted_content",
+              "id",
+              "index",
+              "summary",
+              "type"
+            ]
+          },
+          {
+            "type": "text",
+            "index": 1,
+            "phase": "commentary",
+            "keys": [
+              "id",
+              "index",
+              "phase",
+              "text",
+              "type"
+            ],
+            "text": "현재 예상 인원 50명을 60명으로 변경해, 준비 규모와 비용 산정의 기준을 맞추겠습니다."
+          },
+          {
+            "type": "function_call",
+            "index": 2,
+            "keys": [
+              "arguments",
+              "call_id",
+              "id",
+              "index",
+              "name",
+              "type"
+            ]
+          }
+        ],
+        "tool_count": 1,
+        "invalid_tool_count": 0,
+        "tool_names": [
+          "update_event_conditions"
+        ],
+        "tool_chunks": false,
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3516,
+          "output_tokens": 177,
+          "total_tokens": 3693,
+          "input_token_details": {
+            "cache_creation": 289,
+            "cache_read": 2858
+          },
+          "output_token_details": {
+            "reasoning": 54
+          }
+        }
+      },
+      "elapsed_ms": 3568.32
+    },
+    {
+      "case": "mixed",
+      "mode": "invoke",
+      "chunks": [],
+      "result": {
+        "blocks": [
+          {
+            "type": "reasoning",
+            "keys": [
+              "content",
+              "encrypted_content",
+              "id",
+              "summary",
+              "type"
+            ]
+          },
+          {
+            "type": "text",
+            "phase": "commentary",
+            "keys": [
+              "annotations",
+              "id",
+              "phase",
+              "text",
+              "type"
+            ],
+            "text": "먼저 예상 인원만 50명에서 60명으로 수정해 현재 조건에 반영하겠습니다. 날짜·장소와 준비 순서 초안 생성 여부는 그대로 둘게요."
+          },
+          {
+            "type": "function_call",
+            "keys": [
+              "arguments",
+              "call_id",
+              "id",
+              "name",
+              "status",
+              "type"
+            ]
+          }
+        ],
+        "tool_count": 1,
+        "invalid_tool_count": 0,
+        "tool_names": [
+          "update_event_conditions"
+        ],
+        "tool_chunks": false,
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3443,
+          "output_tokens": 180,
+          "total_tokens": 3623,
+          "input_token_details": {
+            "cache_creation": 0,
+            "cache_read": 3147
+          },
+          "output_token_details": {
+            "reasoning": 42
+          }
+        }
+      },
+      "elapsed_ms": 3240.51
+    }
+  ]
+}

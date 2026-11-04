@@ -138,6 +138,10 @@ function Conversation({
             return success
           }}
           busy={live.busy}
+          pendingText={live.pendingText}
+          progress={live.progress}
+          pendingReply={live.pendingReply}
+          notice={live.notice}
           error={
             live.error ||
             (showFailure ? '이전 요청 결과를 확인해 주세요. 서버에 반영됐을 수 있어요.' : '')
@@ -180,12 +184,13 @@ function Conversation({
                           .join(' ')
                       : '대화를 이어서 필요한 정보를 확인해 주세요.'}
             </p>
+            {/* 채팅 답변을 기다리는 동안은 누를 수만 없게 하고, "만드는 중"은 이 버튼으로 생성할 때만 보인다. */}
             <Button
-              loading={live.busy}
-              disabled={!eventId || !readiness?.canGenerate}
+              loading={live.generating}
+              disabled={!eventId || !readiness?.canGenerate || live.busy}
               onClick={() => void live.generate()}
             >
-              {live.busy ? '초안을 만드는 중…' : '현재 조건으로 초안 생성'}
+              {live.generating ? '초안을 만드는 중…' : '현재 조건으로 초안 생성'}
             </Button>
             {screen && <StepSummaryLine summary={screen.summary} steps={steps} edited={false} />}
             {/* 생성 때 낸 주의사항은 계획을 고친 뒤엔 낡은 정보라 숨긴다. 대신 아래 검토 카드가 안내한다. */}

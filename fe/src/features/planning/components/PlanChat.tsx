@@ -1,6 +1,6 @@
 // P1 왼쪽: 토리와 주고받는 대화.
 import { useLayoutEffect, useRef, useState } from 'react'
-import type { ChatMessage } from '@/features/planning/types'
+import type { ChatMessage, PlanProgress } from '@/features/planning/types'
 import { isSendKey } from '@/features/planning/chatKey'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
@@ -16,13 +16,87 @@ interface PlanChatProps {
   initialDraft?: string
   busy?: boolean
   error?: string
+  // 스트림으로 받는 동안의 임시 표시(#285). 보낸 말, 진행 줄, 흘러나오는 토리 답변.
+  pendingText?: string
+  progress?: PlanProgress[]
+  pendingReply?: string
+  notice?: string
 }
+
+// 진행 중은 도는 원, 완료는 초록 체크, 실패는 느낌표. 움직임 줄이기 설정이면 돌지 않는다.
+function ProgressIcon({ status }: { status: PlanProgress['status'] }) {
+  if (status === 'running')
+    return (
+      <svg
+        aria-hidden
+        viewBox="0 0 16 16"
+        className="mt-[2px] size-[14px] shrink-0 animate-spin text-blue-600 motion-reduce:animate-none"
+        fill="none"
+      >
+        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" opacity="0.25" />
+        <path d="M8 2a6 6 0 0 1 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    )
+  if (status === 'completed')
+    return (
+      <svg
+        aria-hidden
+        viewBox="0 0 16 16"
+        className="mt-[2px] size-[14px] shrink-0 text-done"
+        fill="none"
+      >
+        <circle cx="8" cy="8" r="7" fill="currentColor" opacity="0.15" />
+        <path
+          d="M4.5 8.2 7 10.6l4.5-5"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    )
+  return (
+    <span aria-hidden className="w-[14px] shrink-0 text-center font-bold text-failed">
+      !
+    </span>
+  )
+}
+
+// 토리 응답 안의 작업 줄(#290). 답변이 나오기 전에는 지금 하는 일로 또렷하게,
+// 답변이 시작되면 그 답변의 근거로 한 단계 옅게 보인다. 끝난 뒤에도 답변 위에 남는다.
+function TurnLines({ lines, settled }: { lines: PlanProgress[]; settled: boolean }) {
+  return (
+    <ul aria-label="토리가 처리한 작업" className="flex flex-col gap-[4px] pt-[8px]">
+      {lines.map((line) => (
+        <li
+          key={line.operationId}
+          className={cn(
+            // 문구가 길어 두 줄이 되면 아이콘은 첫 줄 높이에 맞춘다(아이콘 쪽 mt).
+            'flex items-start gap-[7px] text-[12px] leading-[18px]',
+            'transition-colors duration-200 ease-out motion-reduce:transition-none',
+            line.status === 'failed' ? 'text-failed' : settled ? 'text-mute' : 'text-ink2',
+          )}
+        >
+          <ProgressIcon status={line.status} />
+          <span>{line.text}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const TORI_BUBBLE =
+  'rounded-[12px] border border-line bg-bg px-[15px] py-[12px] text-[12.5px] leading-[19px] whitespace-pre-wrap text-ink'
 
 export function PlanChat({
   messages,
   onSend,
   busy = false,
   error = '',
+  pendingText = '',
+  progress = [],
+  pendingReply = '',
+  notice = '',
   demo = false,
   persisted = false,
   initialDraft = '',
@@ -33,7 +107,7 @@ export function PlanChat({
   useLayoutEffect(() => {
     const panel = scrollRef.current
     if (panel && followEnd.current) panel.scrollTop = panel.scrollHeight
-  }, [messages])
+  }, [messages, pendingText, progress, pendingReply])
 
   const send = async (text: string) => {
     const trimmed = text.trim()
@@ -74,9 +148,10 @@ export function PlanChat({
             <div key={message.id} className="flex flex-col gap-[9px]">
               <div className="flex items-start gap-[10px]">
                 <Tori size={26} className="mt-[4px] shrink-0" />
-                <p className="rounded-[12px] border border-line bg-bg px-[15px] py-[12px] text-[12.5px] leading-[19px] whitespace-pre-wrap text-ink">
-                  {message.text}
-                </p>
+                <div className="flex min-w-0 flex-col items-start gap-[8px]">
+                  {message.receipt && <TurnLines lines={message.receipt} settled />}
+                  <p className={TORI_BUBBLE}>{message.text}</p>
+                </div>
               </div>
               {message.id === lastToriId && message.quickReplies && (
                 <div className="flex flex-wrap gap-[8px] pl-[36px]">
@@ -106,11 +181,37 @@ export function PlanChat({
             </p>
           ),
         )}
+        {busy && pendingText && (
+          <p className="ml-auto max-w-[70%] rounded-[12px] bg-blue-600 px-[15px] py-[12px] text-[12.5px] leading-[19px] font-medium whitespace-pre-wrap text-white opacity-80">
+            {pendingText}
+          </p>
+        )}
+        {/* 받는 중인 토리 응답. 저장된 응답(위)과 같은 구조라, 저장된 대화로 바뀌어도 자리가 그대로다. */}
+        {busy && (progress.length > 0 || pendingReply) && (
+          <div className="flex items-start gap-[10px]">
+            <Tori size={26} className="mt-[4px] shrink-0" />
+            <div className="flex min-w-0 flex-col items-start gap-[8px]">
+              {progress.length > 0 && <TurnLines lines={progress} settled={!!pendingReply} />}
+              {pendingReply && <p className={TORI_BUBBLE}>{pendingReply}</p>}
+            </div>
+          </div>
+        )}
       </div>
 
       {busy && (
-        <p role="status" className="px-[24px] text-mute">
-          토리가 답변을 준비하고 있어요…
+        // 화면 낭독기는 진행 줄 변화를 여기서 한 번에 듣는다. 답변 조각마다 읽지 않는다.
+        // 진행 줄·답변이 보이면 같은 글을 두 번 보이지 않게 화면에서는 숨긴다.
+        <p
+          role="status"
+          className={cn(
+            'px-[24px] text-mute',
+            !notice && (progress.length > 0 || pendingReply) && 'sr-only',
+          )}
+        >
+          {notice ||
+            (pendingReply
+              ? '토리가 답변을 쓰고 있어요…'
+              : progress.at(-1)?.text ?? '토리가 답변을 준비하고 있어요…')}
         </p>
       )}
       {error && (

@@ -40,6 +40,40 @@ FE 후속이며, AI 독립 테스트 UI를 제품에서 import하지 않습니�
 실패하므로, 적용 순서를 먼저 맞춥니다. 검색 연결만으로 전체 자료의 재색인이 필요한
 것은 아닙니다. 기존 자료의 `INDEXED`/`indexError`를 확인해 필요한 자료만 재시도합니다.
 
+## P1 진행·답변 스트리밍 SSE (#266, #284)
+
+`POST /api/v1/events/{id}/plan/chat/stream`과 `POST /api/v1/events/{id}/plan/generate/stream`은
+기존 `/plan/chat`, `/plan/generate`와 같은 본문·`Idempotency-Key`를 받고, 처리 중인 단계와
+토리 답변을 `text/event-stream`으로 차례로 보냅니다. 기존 JSON 경로는 그대로입니다.
+
+```text
+"인원 60명으로 바꿔줘"
+event: progress     data: {"operationId":"call_1","kind":"condition_applied","status":"completed","text":"예상 인원을 60명으로 변경했어요"}
+event: reply_delta  data: {"text":"예상 인원을 "}
+event: reply_delta  data: {"text":"60명으로 바꿨어요."}
+event: done         data: {...기존 /plan/chat 응답의 data와 같은 PlanViewOut...}
+```
+
+| 이벤트 | data | 뜻 |
+| --- | --- | --- |
+| `progress` | `operationId`, `kind`, `status`(running/completed/failed), `text` | 실제 Tool 결과로 만든 임시 작업 상태. 같은 `operationId`의 running 줄을 결과 줄로 바꿔 표시합니다. DB 저장 완료가 아닙니다 |
+| `reply_delta` | `text` | 토리 최종 답변의 다음 조각. 이어 붙여 표시합니다 |
+| `reply_reset` | `{}` | 지금까지 받은 답변 조각을 버립니다 |
+| `done` | `PlanViewOut` | 저장까지 끝난 결과. 마지막 이벤트입니다 |
+| `error` | `code`, `message` | 저장하지 않았습니다. 마지막 이벤트입니다. 받은 진행·답변 조각을 버리고 계획을 다시 불러옵니다 |
+
+- 권한·계획 단계·멱등 충돌·처리 중(`IDEMPOTENCY_IN_PROGRESS`)·`baseRevision` 불일치는
+  스트림을 열기 전에 기존과 같은 JSON 오류(4xx)로 응답합니다.
+- 15초 동안 보낼 이벤트가 없으면 `: heartbeat` 주석 줄을 보냅니다.
+- 연결이 끊겨도 서버 작업은 끝까지 진행해 저장합니다. 같은 `Idempotency-Key`·같은 본문으로
+  다시 요청하면 처리 중이면 409, 끝났으면 저장된 결과를 `done` 하나로 받습니다. 스트림과
+  JSON 경로는 같은 작업이라 멱등키를 공유합니다.
+- 제품 FE는 `fe/src/features/planning/stream.ts`가 받아 진행 줄·답변 조각을 표시하고, 끊기면 같은 키로
+  다시 요청합니다(#285).
+- 남은 한계: 턴 저장과 멱등 결과 저장이 따로 커밋됩니다. 그 사이 서버가 죽으면 키가 5분 동안
+  처리 중으로 남고 그 뒤 재실행은 `VERSION_CONFLICT`가 됩니다. 저장된 대화는 맞으므로 계획을
+  다시 불러오면 됩니다. 실행 중이던 작업은 서버 재시작 뒤 이어지지 않습니다.
+
 ## 기술 스택
 
 | 항목 | 선택 | 결정 이유 / 메모 |
@@ -117,6 +151,8 @@ be/
 │   │   ├── context_tools_stub.py   # 기록 검색·문장 생성·Discord 할 일 도출 더미
 │   │   ├── agent_job_service.py    # 작업 상태 전이 + mini 활동 이벤트 기록
 │   │   ├── activity_service.py     # mini snapshot·SSE 이벤트 조회
+│   │   ├── planning_service.py     # P1 대화·버튼 생성의 AI 호출·저장·멱등
+│   │   ├── planning_stream.py      # P1 대화·버튼 생성 SSE (진행·답변 조각, #284)
 │   │   ├── discord_service.py · task_service.py
 │   ├── infra/
 │   │   ├── s3.py

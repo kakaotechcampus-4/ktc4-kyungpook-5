@@ -6,6 +6,22 @@ export interface ChatMessage {
   text: string
   // 토리가 묻고 바로 고를 수 있게 주는 답. 마지막 말풍선에만 남는다.
   quickReplies?: string[]
+  // 이 답변을 쓰기 전에 끝낸 작업 줄(#290). 이번 화면에서만 있고 저장되지 않는다.
+  receipt?: PlanProgress[]
+}
+
+// SSE progress 이벤트(#285, BE PlanProgressOut). 저장되지 않는 임시 작업 상태다.
+// 같은 operationId의 running 줄은 completed/failed 줄로 바뀐다. DB 저장 완료는 done으로만 안다.
+export interface PlanProgress {
+  operationId: string
+  kind:
+    | 'condition_applied'
+    | 'search_started'
+    | 'search_finished'
+    | 'generation_started'
+    | 'generation_finished'
+  status: 'running' | 'completed' | 'failed'
+  text: string
 }
 
 // 큰 틀에서 정해야 하는 것. 여섯 개로 고정이라 화면이 흔들리지 않는다.

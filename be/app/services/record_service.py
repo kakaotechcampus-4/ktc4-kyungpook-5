@@ -197,3 +197,17 @@ async def list_records(
         .limit(size)
     )
     return list(rows), total or 0
+
+
+async def count_records_by_category(
+    session: AsyncSession, *, club_id: str
+) -> dict[RecordCategory, int]:
+    """분류마다 자료 건수를 센다. 자료가 없는 분류도 0으로 넣는다."""
+    rows = await session.execute(
+        select(Record.category, func.count())
+        .where(Record.club_id == club_id)
+        .group_by(Record.category)
+    )
+    counts = dict.fromkeys(RecordCategory, 0)
+    counts.update({category: count for category, count in rows.all()})
+    return counts

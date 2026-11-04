@@ -772,6 +772,26 @@ class PlanningView(ContractModel):
     # 이전에 저장한 화면 응답은 정보 없음으로 읽는다. 0개라고 추정하지 않는다.
     history_usage: PlanningHistoryUsage | None = None
 
+# 저장하지 않는 일시적인 진행 상태
+class PlanningProgress(ContractModel):
+    """한 요청의 임시 작업 상태. 완료는 DB 저장이나 행사 확정을 뜻하지 않는다."""
+
+    operation_id: NonBlankStr
+    kind: Literal["condition_applied", "search_started", "search_finished",
+                  "generation_started", "generation_finished"]
+    status: Literal["running", "completed", "failed"]
+    text: NonBlankStr
+
+    @model_validator(mode="after")
+    def _consistent_progress(self) -> Self:
+        allowed = ({"running"} if self.kind.endswith("_started") else
+                   {"completed"} if self.kind == "condition_applied" else
+                   {"completed", "failed"})
+        if self.status not in allowed:
+            raise ValueError("진행 이벤트 종류와 상태가 다릅니다")
+        return self
+
+
 # 화면용 결과와 보관용 상태
 class PlanningPublicResult(ContractModel):
     request_id: NonBlankStr

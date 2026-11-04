@@ -15,7 +15,7 @@ from .features.meeting.schemas import (
     MeetingProgressPort,
 )
 from .features.retrieval.indexing import index_record_chunks
-from .ports import RecordSearchPort, RetrievedChunk
+from .ports import RecordSearchPort, RetrievedChunk, PlanningProgressPort
 from .contracts import (
     PlanEditReviewRequest,
     PlanEditReviewResult,
@@ -73,19 +73,21 @@ async def judge_utterance(
 
 
 async def chat_planning(request: "PlanningChatRequest", *,
-                        records: RecordSearchPort | None = None) -> "PlanningPublicResult":
+                        records: RecordSearchPort | None = None,
+                        progress: PlanningProgressPort | None = None) -> "PlanningPublicResult":
     """P1 한 턴. records가 없으면 검색 Tool은 제공하지 않는다. 저장/권한은 BE 책임.
 
     계약은 팀 협의 전 초안이며 docs/planning/p1-public-contract.md를 따른다.
     """
     from .features.planning.public_workflow import chat
-    return await chat(request, records=records)
+    return await chat(request, records=records, progress=progress)
 
 
-async def generate_planning_preview(request: "PlanningPreviewRequest") -> "PlanningPublicResult":
+async def generate_planning_preview(request: "PlanningPreviewRequest", *,
+                                   progress: PlanningProgressPort | None = None) -> "PlanningPublicResult":
     """P1 버튼 생성. 메시지를 추가하지 않고 기존 검색 근거와 조건으로 초안을 만든다."""
     from .features.planning.public_workflow import generate_preview
-    return await generate_preview(request)
+    return await generate_preview(request, progress=progress)
 
 
 async def extract_task_suggestions(request: "TaskExtractionRequest") -> "TaskExtractionResult":

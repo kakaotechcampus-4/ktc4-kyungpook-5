@@ -2,7 +2,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMe, useNotificationClub } from '@/features/auth/hooks'
 import { MeetingWorkspace } from '@/features/meetings/components/MeetingWorkspace'
 import { FixtureMeeting } from '@/features/meetings/components/FixtureMeeting'
-import { MeetingRecordsSummary } from '@/features/records'
+import { useEvents } from '@/features/events/hooks'
 import { NotificationsPanel } from '@/features/notifications/components/NotificationsPanel'
 import { useAuthStore } from '@/shared/auth/store'
 import { Card } from '@/shared/ui/Card'
@@ -12,6 +12,8 @@ export default function MeetingsPage() {
   const meQuery = useMe()
   const linkedClub = useNotificationClub(params.get('clubId'))
   const { me, clubId, token } = useAuthStore()
+  // 행사 목록은 시작 카드의 '연결할 행사'에만 쓴다.
+  const events = useEvents(undefined, !meetingId)
   if (import.meta.env.DEV && params.get('fixture') === '1') return <FixtureMeeting />
   if (token && meQuery.isPending && !me)
     return <Card className="p-8">로그인과 소속을 확인 중입니다…</Card>
@@ -45,11 +47,13 @@ export default function MeetingsPage() {
     )
   return (
     <MeetingWorkspace
-      key={clubId}
+      key={`${clubId}:${meetingId ?? 'new'}`}
       clubId={clubId}
       meetingId={meetingId}
       highlightTaskId={params.get('taskId') ?? undefined}
-      records={<MeetingRecordsSummary clubId={clubId} />}
+      events={(events.data ?? []).filter(
+        (event) => event.status !== 'CANCELLING' && event.status !== 'CANCELLED',
+      )}
       notifications={<NotificationsPanel key={me.id} />}
     />
   )

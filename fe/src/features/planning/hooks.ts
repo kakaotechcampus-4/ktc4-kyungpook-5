@@ -1,9 +1,17 @@
 import { useRef, useState } from 'react'
-import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useIsMutating,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { planningApi } from './api'
 import { PartialPlanSaveError } from './errors'
-import type { ChatMessage, PlanFacts } from './types'
+import type { ChatMessage, PlanFacts, PlanProgress } from './types'
+import type { PlanStreamHandlers } from './stream'
 import { FIRST_MESSAGE } from './mock'
+import { attachReceipts, upsertProgress, type TurnReceipt } from './turn'
 import { ApiError } from '@/shared/api/types'
 import type { components } from '@/shared/api/schema'
 
@@ -37,6 +45,25 @@ function toFacts(draft: Draft): PlanFacts {
   }
   return result
 }
+// 대화 화면이 쓰는 저장 상태 묶음(조건·대화·단계). 새 계획을 만든 직후 미리 받아 둘 때도
+// 같은 키·같은 요청을 써야 화면이 넘어가자마자 이 값을 그대로 쓴다.
+function snapshotQuery(userId: string | undefined, clubId: string | null, eventId: string | null) {
+  return queryOptions({
+    queryKey: ['planning', 'snapshot', userId, clubId, eventId],
+    queryFn: async () => {
+      const [screen, messages, steps] = await Promise.all([
+        planningApi.get(eventId!),
+        planningApi.messages(eventId!),
+        planningApi.steps(eventId!),
+      ])
+      return { screen, messages, steps }
+    },
+    retry: false,
+  })
+}
+function receiptsKey(userId: string | undefined, clubId: string | null, eventId: string | null) {
+  return ['planning', 'receipts', userId, clubId, eventId]
+}
 export function usePlanningDrafts(clubId: string | null, userId: string | undefined) {
   return useQuery({
     queryKey: ['planning', 'drafts', userId, clubId],
@@ -53,34 +80,72 @@ export function usePlanningChat(
 ) {
   const queryClient = useQueryClient()
   const [view, setView] = useState<S['PlanViewOut'] | null>(null)
-  const [busy, setBusy] = useState(false)
+  // 채팅 답변 대기와 버튼 초안 생성 대기를 나눈다. 하나로 두면 채팅만 보내도
+  // 생성 버튼이 "초안을 만드는 중…"이 된다(#290). 둘 중 하나라도 진행 중이면 입력은 잠근다.
+  const [sending, setSending] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
+  // 스트림으로 받는 동안만 보이는 임시 표시(#285). done 뒤 저장된 대화로 바뀌면 지운다.
+  const [progress, setProgress] = useState<PlanProgress[]>([])
+  const [pendingText, setPendingText] = useState('')
+  const [pendingReply, setPendingReply] = useState('')
+  const [notice, setNotice] = useState('')
+  // 보낼 때 저장돼 있던 대화 수. 다시 불러온 대화가 이보다 많으면 이번 턴이 저장된 것이다.
+  const [pendingBase, setPendingBase] = useState<number | null>(null)
   const locked = useRef(false)
+  // 이번 턴의 작업 줄. 답변이 끝나면 화면 상태가 아니라 이 값으로 저장할 작업 줄을 정한다.
+  const turnLines = useRef<PlanProgress[]>([])
+  const clearPending = () => {
+    setPendingBase(null)
+    turnLines.current = []
+    setProgress([])
+    setPendingText('')
+    setPendingReply('')
+    setNotice('')
+  }
+  const handlers: PlanStreamHandlers = {
+    // 같은 작업의 진행 줄은 제자리에서 결과 줄로 바꾼다. 이번 턴의 줄은 모두 남긴다(#290).
+    onProgress: (event) => {
+      turnLines.current = upsertProgress(turnLines.current, event)
+      setProgress(turnLines.current)
+    },
+    onReply: setPendingReply,
+    onReconnect: () => {
+      turnLines.current = []
+      setProgress([])
+      setPendingReply('')
+      setNotice('연결이 끊겨 처리 결과를 다시 확인하고 있어요…')
+    },
+  }
   const snapshot = useQuery({
-    queryKey: ['planning', 'snapshot', userId, clubId, selectedId],
+    ...snapshotQuery(userId, clubId, selectedId),
     enabled: !!clubId && !!selectedId,
-    retry: false,
     // 서버가 검토 중이면 결과가 나올 때까지 짧게 다시 불러온다.
     refetchInterval: (q) => (q.state.data?.screen.review?.status === 'REVIEWING' ? 2000 : false),
-    queryFn: async () => {
-      const [screen, messages, steps] = await Promise.all([
-        planningApi.get(selectedId!),
-        planningApi.messages(selectedId!),
-        planningApi.steps(selectedId!),
-      ])
-      return { screen, messages, steps }
-    },
   })
   const refresh = () =>
-    queryClient.invalidateQueries({
-      queryKey: ['planning', 'snapshot', userId, clubId, selectedId],
-    })
-  const storedMessages: ChatMessage[] = (snapshot.data?.messages ?? []).map((m) => ({
-    id: m.id,
-    from: m.role === 'USER' ? '나' : '토리',
-    text: m.content,
-  }))
+    queryClient.invalidateQueries({ queryKey: snapshotQuery(userId, clubId, selectedId).queryKey })
+  // 이번 화면에서 끝난 턴의 작업 줄. 새 계획은 첫 답변 뒤 대화 영역이 새로 그려지므로
+  // 화면 상태가 아니라 계획별 캐시에 둔다. 서버에 저장하지 않아 새로고침하면 사라진다.
+  const receipts = useQuery({
+    queryKey: receiptsKey(userId, clubId, selectedId),
+    queryFn: () => [] as TurnReceipt[],
+    enabled: !!selectedId,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
+  const storedMessages: ChatMessage[] = attachReceipts(
+    (snapshot.data?.messages ?? []).map((m) => ({
+      id: m.id,
+      from: m.role === 'USER' ? '나' : '토리',
+      text: m.content,
+    })),
+    receipts.data ?? [],
+  )
   const messages = [FIRST_MESSAGE, ...storedMessages]
+  // 저장된 대화에 이번 턴이 들어오면 임시 표시는 같은 화면 갱신에서 숨긴다.
+  // 임시 표시를 지우는 일과 다시 불러온 대화를 그리는 일이 따로 일어나도 두 번 보이지 않는다.
+  const turnSaved = pendingBase !== null && storedMessages.length > pendingBase
   const screen = snapshot.data?.screen
   const currentView = view && view.baseRevision >= (screen?.baseRevision ?? 0) ? view : null
   const revision = currentView?.baseRevision ?? screen?.baseRevision ?? 0
@@ -108,21 +173,43 @@ export function usePlanningChat(
       return false
     }
     locked.current = true
-    setBusy(true)
+    setSending(true)
     setError('')
+    clearPending()
+    setPendingText(text)
+    const base = storedMessages.length
+    setPendingBase(base)
     let eventId = selectedId
     const id = crypto.randomUUID()
     let succeeded = false
     try {
       if (!eventId) eventId = (await planningApi.create(clubId)).id
-      const result = await planningApi.chat(eventId, {
-        messageId: id,
-        message: text,
-        baseRevision: revision,
-      })
+      // messageId를 멱등키로도 쓴다. 끊겨서 다시 보내도 같은 턴이 두 번 처리되지 않는다.
+      const result = await planningApi.chatStream(
+        eventId,
+        { messageId: id, message: text, baseRevision: revision },
+        id,
+        handlers,
+      )
       setView(result)
       succeeded = true
-      if (selectedId) {
+      // 저장된 대화를 다시 불러오기 전에 작업 줄을 먼저 넣어 둔다. 그래야 임시 표시가
+      // 저장된 답변으로 바뀌는 같은 화면 갱신에서 작업 줄이 답변 위에 그대로 남는다.
+      const lines = turnLines.current.filter((line) => line.status !== 'running')
+      if (lines.length)
+        queryClient.setQueryData<TurnReceipt[]>(
+          receiptsKey(userId, clubId, eventId),
+          (old = []) => [...old, { base, lines }],
+        )
+      if (!selectedId) {
+        // 새 계획: 끝나면 화면이 이 계획 주소로 넘어가며 대화 영역을 새로 그린다.
+        // 저장된 대화를 먼저 받아 두면 넘어가자마자 그 대화를 그려,
+        // 임시 말풍선 → "불러오는 중" 카드 → 저장된 대화로 깜빡이지 않는다.
+        // 실패해도 넘어간 화면이 직접 다시 불러오므로 여기서는 오류로 보지 않는다.
+        await queryClient
+          .fetchQuery(snapshotQuery(userId, clubId, eventId))
+          .catch(() => undefined)
+      } else {
         const updated = await snapshot.refetch()
         if (updated.isError)
           setError('답변은 처리됐지만 대화 이력을 불러오지 못했어요. 다시 확인해 주세요.')
@@ -137,36 +224,65 @@ export function usePlanningChat(
             ? '답변 서비스를 이용할 수 없어요. 잠시 후 다시 시도해 주세요.'
             : '계획 답변을 확인하지 못했어요. 요청이 반영됐을 수 있으니 다시 보내기 전에 확인해 주세요.',
       )
+      // 흘려 받은 답변·진행 표시는 저장되지 않았을 수 있다. 저장된 상태를 다시 불러온다.
+      if (selectedId) void snapshot.refetch()
       return false
     } finally {
       locked.current = false
-      setBusy(false)
       void queryClient.invalidateQueries({ queryKey: ['planning', 'drafts', userId, clubId] })
-      if (eventId && !selectedId) onCreated(eventId, succeeded ? undefined : text)
+      if (eventId && !selectedId) {
+        // 새 계획은 이 대화 영역이 새 주소의 영역으로 바뀐다. 주소 이동은 다음 화면 갱신에서
+        // 반영되므로, 여기서 임시 표시를 먼저 지우면 그 사이 한 번 빈 대화가 보인다.
+        // 바뀔 때까지 그대로 두고 새 영역이 저장된 대화를 그린다.
+        onCreated(eventId, succeeded ? undefined : text)
+      } else {
+        clearPending()
+        setSending(false)
+      }
     }
   }
   const generate = async () => {
     if (!selectedId || !snapshot.data || locked.current) return
     locked.current = true
-    setBusy(true)
+    setGenerating(true)
     setError('')
+    clearPending()
     try {
-      const result = await planningApi.generate(selectedId, {
-        baseRevision: revision,
-        useCurrentConditions: false,
-      })
+      const result = await planningApi.generateStream(
+        selectedId,
+        { baseRevision: revision, useCurrentConditions: false },
+        crypto.randomUUID(),
+        handlers,
+      )
       setView(result)
       await refresh()
       if (result.generationResult?.status !== 'generated')
         setError(result.reply || '계획을 생성하지 못했어요. 조건을 확인해 주세요.')
     } catch {
       setError('계획 생성 결과를 확인하지 못했어요. 다시 불러와 저장 상태를 확인해 주세요.')
+      void refresh()
     } finally {
+      clearPending()
       locked.current = false
-      setBusy(false)
+      setGenerating(false)
     }
   }
-  return { messages, facts, busy, error, send, generate, snapshot, view: currentView, revision }
+  return {
+    messages,
+    facts,
+    busy: sending || generating,
+    generating,
+    error,
+    send,
+    generate,
+    snapshot,
+    view: currentView,
+    revision,
+    progress: turnSaved ? [] : progress,
+    pendingText: turnSaved ? '' : pendingText,
+    pendingReply: turnSaved ? '' : pendingReply,
+    notice,
+  }
 }
 
 // --- 단계 수정 · 행사 시작 --------------------------------------------------

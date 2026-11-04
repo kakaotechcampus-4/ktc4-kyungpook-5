@@ -1,4 +1,4 @@
-import type { Decision, Meeting, TimelineEntry, Transcript } from './types'
+import type { Decision, Meeting, Transcript } from './types'
 import type { AudioPhase } from './audio/useMeetingAudio'
 export function sourceOf(decision: Decision, transcripts: Transcript[]): Transcript | undefined {
   return transcripts.find(
@@ -17,105 +17,157 @@ export function visibleDecision(decision: Decision, transcripts: Transcript[]) {
     !!sourceOf(decision, transcripts)
   )
 }
-// Keep each answer with the utterance it used, including answers arriving later.
-export function reconcileTimeline(
-  _previous: TimelineEntry[],
+export function utteranceAt(transcript: Transcript, startedAt?: string | null) {
+  return startedAt && transcript.startMs != null
+    ? new Date(startedAt).getTime() + transcript.startMs
+    : new Date(transcript.createdAt).getTime()
+}
+const SEOUL_CLOCK = new Intl.DateTimeFormat('ko-KR', {
+  timeZone: 'Asia/Seoul',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+})
+export function transcriptTime(transcript: Transcript, startedAt?: string | null) {
+  const at = utteranceAt(transcript, startedAt)
+  return Number.isNaN(at) ? '' : SEOUL_CLOCK.format(at)
+}
+
+const SEOUL_PARTS = new Intl.DateTimeFormat('ko-KR', {
+  timeZone: 'Asia/Seoul',
+  month: 'numeric',
+  day: 'numeric',
+  weekday: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+// 서버가 날짜를 잘못 주면 Intl이 에러를 던져 화면 전체가 멈춘다. 그때는 null.
+function seoulParts(iso: string) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return Object.fromEntries(SEOUL_PARTS.formatToParts(date).map((part) => [part.type, part.value]))
+}
+
+export function clockTime(iso: string) {
+  const parts = seoulParts(iso)
+  return parts ? `${parts.hour}:${parts.minute}` : iso
+}
+
+// 지난 회의 한 줄: "10/27(월) 14:12 · 22분"
+export function meetingWhen(meeting: Pick<Meeting, 'startedAt' | 'endedAt'>) {
+  const parts = meeting.startedAt ? seoulParts(meeting.startedAt) : null
+  if (!parts) return '시각 미정'
+  const start = `${parts.month}/${parts.day}(${parts.weekday}) ${parts.hour}:${parts.minute}`
+  const minutes = Math.round(
+    (Date.parse(meeting.endedAt ?? '') - Date.parse(meeting.startedAt!)) / 60000,
+  )
+  return Number.isNaN(minutes) ? start : `${start} · ${Math.max(1, minutes)}분`
+}
+
+// 답 카드의 "14:27에 물은 것 · 8분 전"
+export function askedAgo(at: number, now: number) {
+  const minutes = Math.floor((now - at) / 60000)
+  return minutes < 1 ? '방금' : `${minutes}분 전`
+}
+
+// 녹음 알약의 "21:38"
+export function recordedClock(ms: number) {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = String(total % 60).padStart(2, '0')
+  return hours ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${minutes}:${seconds}`
+}
+
+export interface ToriResult {
+  decision: Decision
+  transcript: Transcript
+}
+
+// judgment can arrive out of utterance order (#240). A live meeting shows the newest
+// arrival first; a finished meeting's record reads in utterance order.
+function byOrder(order: 'arrival' | 'seq') {
+  return (a: ToriResult, b: ToriResult) => {
+    const arrival = b.decision.createdAt.localeCompare(a.decision.createdAt)
+    const seq = b.transcript.seq - a.transcript.seq
+    return order === 'arrival' ? arrival || seq : seq || arrival
+  }
+}
+
+export function meetingAnswers(
   transcripts: Transcript[],
   decisions: Decision[],
-): TimelineEntry[] {
-  const visibleTranscripts = transcripts
-    .filter((t) => t.final)
-    .sort(
-      (a, b) => b.seq - a.seq || b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id),
-    )
-  const visibleDecisions = decisions.filter((d) => visibleDecision(d, visibleTranscripts))
-  const seen = new Set<string>()
-  const entries: TimelineEntry[] = []
-  for (const transcript of visibleTranscripts) {
-    if (seen.has(`transcript:${transcript.id}`)) continue
-    seen.add(`transcript:${transcript.id}`)
-    entries.push({ type: 'transcript', id: transcript.id })
-    const answers = visibleDecisions
-      .filter((d) => sourceOf(d, visibleTranscripts)?.id === transcript.id)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
-    for (const answer of answers) {
-      if (seen.has(`decision:${answer.id}`)) continue
-      seen.add(`decision:${answer.id}`)
-      entries.push({ type: 'decision', id: answer.id })
-    }
-  }
-  return entries
-}
-export function transcriptTime(transcript: Transcript, startedAt?: string | null) {
-  const at =
-    startedAt && transcript.startMs != null
-      ? new Date(startedAt).getTime() + transcript.startMs
-      : new Date(transcript.createdAt).getTime()
-  return new Intl.DateTimeFormat('ko-KR', {
-    timeZone: 'Asia/Seoul',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(at)
-}
-
-export function answerDelay(decision: Decision, transcript: Transcript, startedAt?: string | null) {
-  const at =
-    startedAt && transcript.startMs != null
-      ? new Date(startedAt).getTime() + transcript.startMs
-      : new Date(transcript.createdAt).getTime()
-  return Math.max(1, Math.floor((new Date(decision.createdAt).getTime() - at) / 60000))
-}
-
-export function meetingAnswers(transcripts: Transcript[], decisions: Decision[]) {
+  order: 'arrival' | 'seq' = 'arrival',
+) {
   return decisions
     .filter(
       (d) =>
         (d.status === 'SUCCEEDED' || d.status === 'PARTIAL') && visibleDecision(d, transcripts),
     )
     .map((decision) => ({ decision, transcript: sourceOf(decision, transcripts)! }))
-    .sort(
-      (a, b) =>
-        b.transcript.seq - a.transcript.seq ||
-        b.decision.createdAt.localeCompare(a.decision.createdAt),
-    )
+    .sort(byOrder(order))
 }
 
-export function latestTranscriptStatus(
-  latest: Transcript | undefined,
+export function lookupFailed(decision: Decision) {
+  return String(decision.kind) === 'FAILED'
+}
+
+// 토리 칸에 보일 것: 답, 그리고 조회가 실패한 판단. 조회가 실패해도 판단은 kind FAILED로
+// 저장되므로 작업(job)을 따로 묻지 않는다.
+export function toriResults(
   transcripts: Transcript[],
   decisions: Decision[],
-  meetingStatus: Meeting['status'],
-  jobStatus: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | undefined,
-  hasError: boolean,
-) {
-  if (!latest?.text.trim() || hasError || jobStatus === 'FAILED') return null
-  const active = meetingStatus === 'RECORDING' || meetingStatus === 'FINALIZING'
-  if (active && (jobStatus === 'QUEUED' || jobStatus === 'RUNNING')) return 'processing'
-  const matching = decisions.filter(
-    (decision) => decision.status !== 'STALE' && sourceOf(decision, transcripts)?.id === latest.id,
+  order: 'arrival' | 'seq',
+): ToriResult[] {
+  const failures = decisions.flatMap((decision) => {
+    const transcript =
+      decision.status !== 'STALE' && lookupFailed(decision)
+        ? sourceOf(decision, transcripts)
+        : undefined
+    return transcript ? [{ decision, transcript }] : []
+  })
+  return [...meetingAnswers(transcripts, decisions, order), ...failures].sort(byOrder(order))
+}
+
+// 할 일 후보 추출이 실패한 판단이 있는지. 실패한 도구는 판단의 toolCalls에 남는다.
+export function extractionFailed(decisions: Decision[]) {
+  return decisions.some(
+    (decision) =>
+      decision.status !== 'STALE' &&
+      decision.toolCalls.some((call) => call.tool === 'tasks.extract' && call.status === 'FAILED'),
   )
-  if (matching.some((decision) => decision.kind === 'NO_LOOKUP' && decision.status === 'SUCCEEDED'))
-    return 'no-lookup'
-  if (active && !matching.length) return 'waiting'
-  return null
 }
 
-export function meetingMicStatus(status: Meeting['status'], phase: AudioPhase) {
-  if (status === 'FINALIZING') return '마지막 전사와 답변을 처리하고 있어요.'
-  if (phase === 'recording') return '이 기기의 마이크로 회의를 듣고 있어요.'
-  if (phase === 'connecting' || phase === 'permission') return '마이크 연결을 준비하고 있어요.'
-  if (phase === 'flushing' || phase === 'ending' || phase === 'processing')
-    return '마지막 음성을 처리하고 있어요.'
-  if (phase === 'error') return '마이크 상태를 확인해 주세요.'
-  return '이 기기의 마이크가 꺼져 있어요.'
-}
+export type MeetingView =
+  | 'connecting'
+  | 'recording'
+  | 'paused'
+  | 'finalizing'
+  | 'stopped'
+  | 'dropped'
+  | 'ended'
+  | 'record'
+  | 'failed'
 
-// The terminal DB state can arrive before the last WebSocket acknowledgement.
-export function meetingAudioVisible(status: Meeting['status'], audioActive: boolean) {
-  return status === 'RECORDING' || audioActive
-}
-
-export function meetingToriVisible(status: Meeting['status'], audioActive: boolean) {
-  return status === 'FINALIZING' || meetingAudioVisible(status, audioActive)
+// Which meeting screen to draw. The local audio phase wins over the DB status because
+// the terminal DB state can arrive before the last WebSocket acknowledgement.
+export function meetingView(
+  status: Meeting['status'],
+  phase: AudioPhase,
+  justEnded: boolean,
+): MeetingView {
+  if (phase === 'connecting' || phase === 'permission') return 'connecting'
+  if (phase === 'recording' || phase === 'paused') return phase
+  if (phase === 'flushing' || phase === 'ending' || phase === 'processing') return 'finalizing'
+  // The socket failed (end-ack or result timeout) while the server still says FINALIZING:
+  // that is the "마무리하지 못했어요" state, not an endless wait.
+  if (status === 'FINALIZING') return phase === 'error' ? 'failed' : 'finalizing'
+  if (status === 'RECORDING') {
+    if (phase === 'error') return 'dropped'
+    return phase === 'completed' ? 'finalizing' : 'stopped'
+  }
+  if (status === 'FAILED') return 'failed'
+  return justEnded ? 'ended' : 'record'
 }

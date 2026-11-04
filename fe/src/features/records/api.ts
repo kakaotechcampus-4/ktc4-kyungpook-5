@@ -7,7 +7,12 @@ import {
   apiPostForm,
 } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
-import type { ClubRecord, RecordDetail, UploadRecordInput } from '@/features/records/types'
+import type {
+  ClubRecord,
+  RecordCategory,
+  RecordDetail,
+  UploadRecordInput,
+} from '@/features/records/types'
 
 export function uploadRecord({ clubId, category, file }: UploadRecordInput) {
   const form = new FormData()
@@ -23,10 +28,11 @@ export function getRecord(recordId: string) {
 
 export const RECORD_PAGE_SIZE = 20
 
-export function getRecords(clubId: string, page: number) {
-  return apiGetPage<ClubRecord, components['schemas']['PageMeta']>(
-    `/records?clubId=${encodeURIComponent(clubId)}&page=${page}&size=${RECORD_PAGE_SIZE}`,
-  )
+// category를 빼면 모든 분류를 받는다. totalCount도 고른 분류 기준으로 온다.
+export function getRecords(clubId: string, page: number, category?: RecordCategory) {
+  const params = new URLSearchParams({ clubId, page: String(page), size: String(RECORD_PAGE_SIZE) })
+  if (category) params.set('category', category)
+  return apiGetPage<ClubRecord, components['schemas']['PageMeta']>(`/records?${params}`)
 }
 
 export function retryRecordIndex(recordId: string) {

@@ -8,6 +8,62 @@
 
 ## 1. 이번에 정하는 것
 
+### 진행 알림 계약 (#266, #279)
+
+`chat_planning`과 `generate_planning_preview`는 선택적인 `progress: PlanningProgressPort | None`
+인자를 받는다. 포트의 `async progress(event: PlanningProgress)`는 화면용 진행 상태만 전달한다.
+공개 이벤트는 `contracts.py`, 포트는 `ports.py`에 정의하고 `app.ai`에서 재공개한다.
+반환값·저장 JSON 형식은 유지한다. BE의 SSE 경로(`/plan/chat/stream`, `/plan/generate/stream`)가 포트를 큐에 연결해 이벤트로 보낸다(#284, [BE README](../../../../README.md#p1-진행답변-스트리밍-sse-266-284)). 제품 FE는 `fe/src/features/planning/stream.ts`로 받아 진행 줄과 답변 조각을 표시한다(#285).
+
+### 답변 조각 전달 (#280)
+
+포트가 있으면 대화 모델을 스트리밍으로 받고 `reply_delta(text)`로 최종 답변 조각을
+보낸다. 포트가 없으면 기존 `ainvoke_with_tools`를 사용한다. 생성 모델 JSON은 보내지 않는다.
+`reply_reset()`은 임시 답변을 비우는 알림이며, 최종 답변 뒤 Tool 요청이 오거나 모델
+스트림이 실패했을 때 사용한다. 포트의 일반 오류는 턴을 실패시키지 않는다.
+
+공급자 `phase`는 text 블록의 시작에만 올 수 있다. 블록 index별로 합친 상태에서
+`final_answer`만 점진 전달하고 commentary/추론/Tool 블록은 보내지 않는다.
+phase 없는 답변은 completed와 검증을 확인한 뒤 한 번에 전달한다. 여러 블록의 순서를
+확정할 수 없는 경우도 버퍼링한다. 정상 반환 전에 전달한 전체 텍스트와 공개 reply를 맞춘다.
+
+invoke/stream 모두 명시된 final_answer가 있으면 해당 블록만 공개 reply로 사용한다.
+phase가 전혀 없으면 기존 text를 사용한다. commentary만 있고 Tool도 없으면 빈 답변 오류다.
+원본 content는 이력에 보존하므로 중간 설명을 다음 턴 문맥에서 삭제하지 않는다.
+이것은 기존의 모든 text 합치기에서 혼합 응답의 사용자 답변만 구분하는 변경이다.
+
+스트림은 completed를 확인해야 하며, 중간 끊김·incomplete·출력 한도·잘못된 Tool 요청은
+오류다. 조립에는 SDK의 chunk 합산을 사용하고 저장 전 블록의 전송용 index를 제거하며
+생략된 빈 text annotations를 보완한다. Tool 인자·ID·phase·사용량은 임의 삭제하지 않는다.
+
+공식 참고: [LangGraph streaming](https://docs.langchain.com/oss/python/langgraph/streaming),
+[LangChain model streaming](https://docs.langchain.com/oss/python/langchain/models#stream).
+전체 Graph의 messages/custom 스트림으로 전환하지 않고 기존 포트와 모델 호출 경계를 유지한다.
+
+이벤트 필드는 `operation_id`, `kind`, `status`, `text`다. 작업 ID는 한 요청 안에서
+시작과 종료를 연결하며 같은 종류를 반복 실행해도 구분한다. 채팅은 Tool 호출 ID,
+버튼은 요청 ID를 사용한다. FE는 요청별로 진행 상태를 분리해야 한다.
+
+| kind | status | 알리는 시점 / 문구 예 |
+| --- | --- | --- |
+| condition_applied | completed | applied이고 변경 필드가 있을 때. “예상 인원 60명 반영했어요”. 바뀐 항목이 여럿이면 “예상 인원 60명 · 참가비 1인 30,000원 반영했어요”(#290) |
+| search_started | running | 검증 후 실제 검색 직전. “지난 행사 기록을 찾고 있어요” |
+| search_finished | completed / failed | 자료 있음 / 자료 없음 / 검색 실패를 구분 |
+| generation_started | running | 공통 검증·성공 요청 재사용 분기를 통과한 실제 생성 직전 |
+| generation_finished | completed / failed | 최종 생성 결과의 기준 조건 검증까지 통과한 초안 / 생성 실패 |
+
+조건의 unchanged/rejected, 보류만 변경한 경우에는 조건 성공 알림을 만들지 않는다.
+잠정 값, 미정으로 해제, 무료를 구분하며 모델 인자가 아닌 검증 결과로 문구를 만든다.
+생성 전 확인이 필요하거나 기존 성공 초안을 재사용하면 생성 시작·종료 알림을 보내지 않는다.
+검색 자료 없음은 검색 처리의 정상 종료이며 검색 실패와 다르다. 검색 개수를 사실 개수로 추정하지 않는다.
+
+예: “인원을 60명으로 바꾸고 초안 만들어줘” → 조건 변경 완료 → 생성 진행 중 →
+검증된 초안 생성 완료 → 기존 공개 결과 반환 → BE 저장.
+개별 완료는 AI 내부 처리 성공이며 DB 저장 완료가 아니다. 제품 UI는 진행 중에 부드러운
+애니메이션, 완료에 초록 체크를 표시하되 전체 요청 실패 시 임시 성공 표시를 저장 상태와 맞춘다.
+진행 포트의 일반 예외는 원문 없이 로그를 남기고 턴을 계속한다. 작업 취소는 삼키지 않는다.
+포트 구현체는 네트워크 송신을 기다리지 않고 이벤트를 빠르게 넘겨야 한다.
+
 BE가 `app.ai`만 import해서 P1 대화를 이어갈 수 있도록 입력과 출력의 책임을 정한다. 내부 Agent를 새로 만드는 작업이 아니다. 기존 대화 Graph와 생성 Graph 앞에 공개 계약과 변환 계층을 둔다.
 
 이번 문서는 공개 입출력과 상태 보관 방향을 제안한다. 2번에서 데이터 타입과 직렬화 코드를 추가했다. 3번에서 공개 실행 함수를 연결했다. DB 컬럼과 HTTP 경로는 추가하지 않았다. P2 단계 삭제와 순서 변경, 운영 Agent도 이번 범위에 넣지 않는다.

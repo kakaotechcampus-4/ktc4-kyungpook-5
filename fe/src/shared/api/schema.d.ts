@@ -442,6 +442,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/records/category-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Count Records By Category */
+        get: operations["count_records_by_category_api_v1_records_category_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/records": {
         parameters: {
             query?: never;
@@ -1040,6 +1057,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{event_id}/plan/chat/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Chat Plan Stream */
+        post: operations["chat_plan_stream_api_v1_events__event_id__plan_chat_stream_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/{event_id}/plan/messages": {
         parameters: {
             query?: never;
@@ -1103,6 +1137,23 @@ export interface paths {
         put?: never;
         /** Generate Plan */
         post: operations["generate_plan_api_v1_events__event_id__plan_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{event_id}/plan/generate/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Plan Stream */
+        post: operations["generate_plan_stream_api_v1_events__event_id__plan_generate_stream_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2264,6 +2315,12 @@ export interface components {
             /** Meta */
             meta?: null;
         };
+        /** Envelope[RecordCategoryCountsOut] */
+        Envelope_RecordCategoryCountsOut_: {
+            data: components["schemas"]["RecordCategoryCountsOut"];
+            /** Meta */
+            meta?: null;
+        };
         /** Envelope[RecordDetailOut] */
         Envelope_RecordDetailOut_: {
             data: components["schemas"]["RecordDetailOut"];
@@ -3322,6 +3379,15 @@ export interface components {
          * @enum {string}
          */
         RecordCategory: "LEDGER" | "ETC" | "RULES" | "EVENT_HISTORY" | "RECEIPT";
+        /** RecordCategoryCountsOut */
+        RecordCategoryCountsOut: {
+            /** All */
+            all: number;
+            /** Bycategory */
+            byCategory: {
+                [key: string]: number;
+            };
+        };
         /** RecordDetailOut */
         RecordDetailOut: {
             /** Id */
@@ -5116,6 +5182,39 @@ export interface operations {
             };
         };
     };
+    count_records_by_category_api_v1_records_category_counts_get: {
+        parameters: {
+            query: {
+                clubId: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RecordCategoryCountsOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_records_api_v1_records_get: {
         parameters: {
             query: {
@@ -6533,6 +6632,44 @@ export interface operations {
             };
         };
     };
+    chat_plan_stream_api_v1_events__event_id__plan_chat_stream_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanChatIn"];
+            };
+        };
+        responses: {
+            /** @description text/event-stream. event: progress(PlanProgressOut) · reply_delta({text}) · reply_reset({}) · done(PlanViewOut, 마지막) · error({code, message}, 마지막). 15초 동안 이벤트가 없으면 ': heartbeat' 주석 줄. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_plan_messages_api_v1_events__event_id__plan_messages_get: {
         parameters: {
             query?: never;
@@ -6694,6 +6831,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_PlanViewOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_plan_stream_api_v1_events__event_id__plan_generate_stream_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanGenerateIn"];
+            };
+        };
+        responses: {
+            /** @description text/event-stream. event: progress(PlanProgressOut) · reply_delta({text}) · reply_reset({}) · done(PlanViewOut, 마지막) · error({code, message}, 마지막). 15초 동안 이벤트가 없으면 ': heartbeat' 주석 줄. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
                 };
             };
             /** @description Validation Error */
