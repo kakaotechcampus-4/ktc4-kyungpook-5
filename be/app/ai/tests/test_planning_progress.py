@@ -14,7 +14,7 @@ from app.ai.features.planning.agent.graph import run_planning_agent_turn
 from app.ai.features.planning.agent import nodes
 from app.ai.features.planning.agent.tools import UpdateEventConditionsInput, update_event_conditions
 from app.ai.features.planning.generation.graph import run_plan_generation
-from app.ai.features.planning.progress import condition_progress, notify, particle_to, started
+from app.ai.features.planning.progress import condition_progress, notify, started
 from app.ai.tests.test_plan_generation_graph import Model
 from app.ai.tests.test_planning_agent_generation import request, change_call, gen_call
 from app.ai.tests.test_planning_agent_parallel_tools import defer_call, C2
@@ -58,7 +58,7 @@ def test_change_and_defer_only_reports_actual_condition_change():
     result = run_turn(req, [change_call(req, "headcount", 60), defer_call(req)], progress=port)
     assert result.draft.conditions.headcount == 60
     assert [(e.kind, e.status, e.text) for e in port.events] == [
-        ("condition_applied", "completed", "예상 인원을 60명으로 변경했어요")]
+        ("condition_applied", "completed", "예상 인원 60명 반영했어요")]
 
 
 @pytest.mark.parametrize("mode", ["rejected", "unchanged", "defer_only"])
@@ -78,16 +78,15 @@ def test_no_false_condition_completion(mode):
 
 
 @pytest.mark.parametrize("field,value,status,expected", [
-    ("headcount", 60, "tentative", "예상 인원을 잠정 60명으로 변경했어요"),
-    ("fee_per_person", 0, "specified", "참가비를 무료로 변경했어요"),
-    ("fee_per_person", 45000, "specified", "참가비를 1인 45,000원으로 변경했어요"),
-    ("fee_per_person", None, "specified", "참가비 항목을 미정으로 변경했어요"),
-    ("event_type", "WELCOME", "specified", "행사 종류 항목을 ‘개총·신환회’로 변경했어요"),
-    # 받침 있는 값은 '으로', 날짜는 읽기 쉬운 형식으로 보여 준다.
-    ("location", "가평", "specified", "장소 항목을 ‘가평’으로 변경했어요"),
-    ("location", "서울", "specified", "장소 항목을 ‘서울’로 변경했어요"),
-    ("title", "봄 MT", "specified", "행사 이름 항목을 ‘봄 MT’로 변경했어요"),
-    ("start_date", "2026-05-10", "specified", "시작일 항목을 2026년 5월 10일로 변경했어요"),
+    ("headcount", 60, "tentative", "예상 인원 60명 (잠정) 반영했어요"),
+    ("fee_per_person", 0, "specified", "참가비 무료 반영했어요"),
+    ("fee_per_person", 45000, "specified", "참가비 1인 45,000원 반영했어요"),
+    ("fee_per_person", None, "specified", "참가비 미정 반영했어요"),
+    ("event_type", "WELCOME", "specified", "행사 종류 개총·신환회 반영했어요"),
+    # 이름·장소 같은 자유 입력은 따옴표로 경계를 보이고, 날짜는 읽기 쉬운 형식으로 보여 준다.
+    ("location", "가평", "specified", "장소 ‘가평’ 반영했어요"),
+    ("title", "봄 MT", "specified", "행사 이름 ‘봄 MT’ 반영했어요"),
+    ("start_date", "2026-05-10", "specified", "시작일 2026년 5월 10일 반영했어요"),
 ])
 def test_condition_wording_preserves_value_meaning(field, value, status, expected):
     req = request()
@@ -225,11 +224,12 @@ def test_multiple_fields_and_metadata_only_change():
     args = change_call(req, "headcount", 50)["args"]
     result = update_event_conditions(req.draft, UpdateEventConditionsInput.model_validate(args),
                                      current_message=req.current_message)
-    assert condition_progress("c1", result).text == "예상 인원을 50명으로 변경했어요"
+    assert condition_progress("c1", result).text == "예상 인원 50명 반영했어요"
     args["changes"].extend(change_call(req, "fee_per_person", 30000)["args"]["changes"])
     result = update_event_conditions(req.draft, UpdateEventConditionsInput.model_validate(args),
                                      current_message=req.current_message)
-    assert condition_progress("c2", result).text == "예상 인원·참가비 항목을 변경했어요"
+    # 여러 항목이 바뀌어도 값을 모두 적는다(#290). 예전에는 값 없이 "예상 인원·참가비 항목을 변경했어요"였다.
+    assert condition_progress("c2", result).text == "예상 인원 50명 · 참가비 1인 30,000원 반영했어요"
 
 
 def test_button_port_failure_preserves_result(monkeypatch):
@@ -260,11 +260,3 @@ def test_progress_cancellation_is_not_swallowed():
 
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(notify(CancelledPort(), started("s1")))
-
-
-@pytest.mark.parametrize("value,expected", [
-    ("가평", "으로"), ("서울", "로"), ("강화도", "로"), ("MT", "로"), ("팀 BBQ", "로"),
-    ("5월 10일", "로"), ("3", "으로"), ("A6", "으로"), ("ROOM", "으로"), ("HALL", "로"),
-])
-def test_particle_follows_last_sound(value, expected):
-    assert particle_to(value) == expected

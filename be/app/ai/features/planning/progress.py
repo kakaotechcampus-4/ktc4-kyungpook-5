@@ -20,25 +20,6 @@ EVENT_TYPES = {
 }
 
 
-# 숫자·영문 끝 글자를 읽었을 때 받침이 있는지(있으면 True, ㄹ이면 "rieul").
-_DIGIT_ENDINGS = {"0": True, "1": "rieul", "2": False, "3": True, "4": False,
-                  "5": False, "6": True, "7": "rieul", "8": "rieul", "9": False}
-_LETTER_ENDINGS = {"L": "rieul", "R": "rieul", "M": True, "N": True}
-
-
-def particle_to(value: str) -> str:
-    """'가평'→'으로', 'MT'→'로', '5월 10일'→'로'. 받침이 없거나 ㄹ이면 '로'다."""
-    last = value.rstrip()[-1:] or " "
-    if "가" <= last <= "힣":
-        ending = (ord(last) - ord("가")) % 28
-        batchim = "rieul" if ending == 8 else ending != 0
-    elif last.isdigit():
-        batchim = _DIGIT_ENDINGS[last]
-    else:
-        batchim = _LETTER_ENDINGS.get(last.upper(), False)
-    return "으로" if batchim is True else "로"
-
-
 async def notify(port: PlanningProgressPort | None, event: PlanningProgress | None) -> None:
     if port is None or event is None:
         return
@@ -72,46 +53,41 @@ def started(operation_id: str, *, generation: bool = False) -> PlanningProgress:
     )
 
 
+def _shown(field: str, value) -> str:
+    """패널에서 읽는 값의 모양으로 보여 준다. 예: 40 → '40명', 0(참가비) → '무료'."""
+    if value is None:
+        return "미정"
+    if field == "headcount":
+        return f"{value:,}명"
+    if field == "fee_per_person":
+        return "무료" if value == 0 else f"1인 {value:,}원"
+    if field == "budget_total":
+        return f"{value:,}원"
+    if field == "event_type":
+        return EVENT_TYPES.get(value, value)
+    if isinstance(value, date):
+        return f"{value.year}년 {value.month}월 {value.day}일"
+    # 이름·장소는 자유 입력이라 따옴표로 값의 경계를 보인다. 예: 장소 ‘가평 펜션’
+    return f"‘{value}’"
+
+
 def condition_progress(operation_id: str, result: ConditionUpdateResult) -> PlanningProgress | None:
+    """검증된 조건 변경을 '항목 값 반영했어요' 한 줄로 만든다(#290).
+
+    "인원 40명, 12월 5일부터로 해 줘" → "예상 인원 40명 · 시작일 2026년 12월 5일 반영했어요".
+    바뀐 항목이 여럿이어도 값을 모두 적는다. 처음 정한 값과 바꾼 값을 구분할 정보가 없으므로
+    '변경'이 아니라 '반영'이라고 쓰고, 이전 값은 화면의 조건 패널이 보여 준다.
+    """
     if result.status != "applied" or not result.changed_fields:
         return None
-    if len(result.changed_fields) > 1:
-        labels = "·".join(FIELD_LABELS[field] for field in result.changed_fields)
-        text = f"{labels} 항목을 변경했어요"
-    else:
-        field = result.changed_fields[0]
-        label = FIELD_LABELS[field]
+    items = []
+    for field in result.changed_fields:
         value = getattr(result.draft.conditions, field)
-        if value is None:
-            text = f"{label} 항목을 미정으로 변경했어요"
-        else:
-            if field == "headcount":
-                rendered = f"{value:,}명"
-            elif field == "fee_per_person":
-                rendered = "무료" if value == 0 else f"1인 {value:,}원"
-            elif field == "budget_total":
-                rendered = f"{value:,}원"
-            elif field == "event_type":
-                rendered = EVENT_TYPES.get(value, value)
-            elif isinstance(value, date):
-                rendered = f"{value.year}년 {value.month}월 {value.day}일"
-            else:
-                rendered = str(value)
-            meta = result.draft.condition_meta.get(field)
-            tentative = "잠정 " if meta and meta.status == "tentative" else ""
-            # 값의 받침에 따라 어색한 '으로'를 붙이지 않도록 결과를 자연스럽게 나눈다.
-            if field == "headcount":
-                text = f"예상 인원을 {tentative}{rendered}으로 변경했어요"
-            elif field == "fee_per_person" and value == 0:
-                text = f"참가비를 {tentative}무료로 변경했어요"
-            elif field in {"fee_per_person", "budget_total"}:
-                subject = "참가비를" if field == "fee_per_person" else "총예산을"
-                text = f"{subject} {tentative}{rendered}으로 변경했어요"
-            else:
-                shown = rendered if isinstance(value, date) else f"‘{rendered}’"
-                text = f"{label} 항목을 {shown}{particle_to(rendered)} {tentative}변경했어요"
+        meta = result.draft.condition_meta.get(field)
+        tentative = " (잠정)" if value is not None and meta and meta.status == "tentative" else ""
+        items.append(f"{FIELD_LABELS[field]} {_shown(field, value)}{tentative}")
     return PlanningProgress(operation_id=operation_id, kind="condition_applied",
-                            status="completed", text=text)
+                            status="completed", text=f"{' · '.join(items)} 반영했어요")
 
 
 def search_finished(operation_id: str, result: RecordLookupResult) -> PlanningProgress | None:

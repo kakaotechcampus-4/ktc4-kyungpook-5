@@ -46,7 +46,7 @@ phase가 전혀 없으면 기존 text를 사용한다. commentary만 있고 Tool
 
 | kind | status | 알리는 시점 / 문구 예 |
 | --- | --- | --- |
-| condition_applied | completed | applied이고 변경 필드가 있을 때. “예상 인원을 60명으로 변경했어요” |
+| condition_applied | completed | applied이고 변경 필드가 있을 때. “예상 인원 60명 반영했어요”. 바뀐 항목이 여럿이면 “예상 인원 60명 · 참가비 1인 30,000원 반영했어요”(#290) |
 | search_started | running | 검증 후 실제 검색 직전. “지난 행사 기록을 찾고 있어요” |
 | search_finished | completed / failed | 자료 있음 / 자료 없음 / 검색 실패를 구분 |
 | generation_started | running | 공통 검증·성공 요청 재사용 분기를 통과한 실제 생성 직전 |
