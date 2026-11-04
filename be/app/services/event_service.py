@@ -27,7 +27,7 @@ from app.models.chat import Conversation
 from app.models.clubs import Member
 from app.models.events import Action, Event, EventCancelTask, Step
 from app.core.exceptions import ApiError
-from app.services import event_rules
+from app.services import event_rules, plan_review_service
 
 _KST = ZoneInfo("Asia/Seoul")
 
@@ -438,13 +438,19 @@ async def update_step(
         raise NotEditable()
     if step.version != expected_version:
         raise VersionConflict()
-    if "starts_at" in fields:
+    changed = False
+    if "starts_at" in fields and step.starts_at != starts_at:
         step.starts_at = starts_at
-    if "deadline" in fields:
+        changed = True
+    if "deadline" in fields and step.deadline != deadline:
         step.deadline = deadline
+        changed = True
     event.modified_at = datetime.now(UTC)
     step.version += 1
     await _advance_plan_revision(session, event=event, member_id=member_id)
+    # 검토 버전은 값이 실제로 바뀐 경우에만 올린다(#177). 같은 값 저장은 검토를 낡게 만들지 않는다.
+    if changed:
+        await plan_review_service.bump_plan_revision(session, event.id)
     await session.commit()
     await session.refresh(step, ["actions"])
     return step
@@ -476,10 +482,15 @@ async def update_action(
         raise NotEditable()
     if action.version != expected_version:
         raise VersionConflict()
+    changed = any(getattr(action, key) != value for key, value in values.items())
     for key, value in values.items():
         setattr(action, key, value)
     if payload_values:
-        action.payload = {**(action.payload or {}), **payload_values}
+        merged = {**(action.payload or {}), **payload_values}
+        changed = changed or merged != (action.payload or {})
+        action.payload = merged
+    if changed:
+        await plan_review_service.bump_plan_revision(session, action.event_id)
     if "amount" in values and action.step is not None:
         if action.step.code == StepCode.COLLECT_FEES:
             event.fee_per_person = action.amount
@@ -536,6 +547,7 @@ async def replace_plan_steps(
             select(Step).where(Step.event_id == event.id).with_for_update()
         )
     }
+    before = sorted((step.step_order, step.code) for step in existing.values())
     for code, step in existing.items():
         if code not in codes:
             await session.execute(delete(Action).where(Action.step_id == step.id))
@@ -565,6 +577,9 @@ async def replace_plan_steps(
     event.modified_at = datetime.now(UTC)
     if conversation is not None:
         conversation.base_revision += 1
+    # 검토 버전은 구성이나 순서가 실제로 바뀐 경우에만 올린다(#177).
+    if before != [(order, code) for order, code in enumerate(ordered, start=1)]:
+        await plan_review_service.bump_plan_revision(session, event.id)
     await session.commit()
     return list(await session.scalars(
         select(Step).where(Step.event_id == event.id)

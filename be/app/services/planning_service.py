@@ -34,9 +34,9 @@ from app.db.base import new_id
 from app.db.session import get_sessionmaker
 from app.models.chat import Conversation, Message
 from app.models.common import IdempotencyKey
-from app.models.events import Action, Event, Step
+from app.models.events import Action, Event, PlanReview, Step
 
-from app.services import event_rules
+from app.services import event_rules, plan_review_service
 from app.services.record_search_port import PostgresRecordSearch
 
 _KST = ZoneInfo("Asia/Seoul")
@@ -97,6 +97,10 @@ def _resume_state(conversation: Conversation) -> "ai.PlanningResumeState | None"
     if conversation.resume_state is None:
         return None
     return ai.parse_resume_state(json.dumps(conversation.resume_state))
+
+
+def _basis_draft(resume_state: "ai.PlanningResumeState | None") -> "ai.PlanningDraft":
+    return resume_state.payload.basis_draft if resume_state is not None else ai.PlanningDraft()
 
 
 def _draft_out(draft: "ai.PlanningDraft") -> dict:
@@ -240,6 +244,11 @@ async def _materialize_preview(
         for excl in preview.excluded_steps
     ]
     event.saved_at = datetime.now(UTC)
+    # 생성이 계획을 바꿨으니 버전을 올리고, 생성 직후 모양을 검토 기준으로 남긴다.
+    revision = await plan_review_service.bump_plan_revision(session, event.id)
+    await session.flush()
+    if revision is not None:
+        await plan_review_service.reset_baseline(session, event.id, revision)
 
 
 async def _save_turn(
@@ -252,6 +261,26 @@ async def _save_turn(
     user_message_text: str | None,
 ) -> None:
     conditions = result.view.draft.conditions
+    new_conditions = (
+        conditions.title or event.title,
+        conditions.event_type,
+        conditions.location,
+        conditions.start_date,
+        conditions.end_date,
+        conditions.headcount,
+        conditions.budget_total,
+        conditions.fee_per_person,
+    )
+    conditions_changed = new_conditions != (
+        event.title,
+        event.event_type,
+        event.location,
+        event.start_date,
+        event.end_date,
+        event.expected_headcount,
+        event.budget_total,
+        event.fee_per_person,
+    )
     event.title = conditions.title or event.title
     event.event_type = conditions.event_type
     event.location = conditions.location
@@ -260,6 +289,11 @@ async def _save_turn(
     event.expected_headcount = conditions.headcount
     event.budget_total = conditions.budget_total
     event.fee_per_person = conditions.fee_per_person
+    generation_result = result.view.generation_result
+    generated = generation_result is not None and generation_result.status == "generated"
+    # 같은 턴에 계획이 새로 만들어지면 _materialize_preview가 한 번 올리므로 여기선 건너뛴다.
+    if conditions_changed and not generated:
+        await plan_review_service.bump_plan_revision(session, event.id)
 
     conversation.resume_state = result.next_state.model_dump(mode="json")
     # null은 이번 턴 미조회다. 새 실패/없음은 저장하되 옛 성공을 최신으로 보이지 않는다.
@@ -296,8 +330,7 @@ async def _save_turn(
             )
         )
 
-    generation_result = result.view.generation_result
-    if generation_result is not None and generation_result.status == "generated":
+    if generated:
         await _materialize_preview(session, event, generation_result.preview)
 
 
@@ -388,11 +421,7 @@ async def _prepare(
             raise VersionConflict()
 
         resume_state = _resume_state(conversation)
-        draft = (
-            resume_state.payload.basis_draft
-            if resume_state is not None
-            else ai.PlanningDraft()
-        )
+        draft = _basis_draft(resume_state)
         context = {
             "request_id": new_id("req"),
             "club_id": club_id,
@@ -537,20 +566,29 @@ async def generate(
     return await _run_once(idem, work)
 
 
+async def _latest_conversation(session: AsyncSession, event_id: str) -> Conversation | None:
+    return await session.scalar(
+        select(Conversation)
+        .where(Conversation.event_id == event_id)
+        .order_by(Conversation.created_at.desc())
+        .limit(1)
+    )
+
+
+async def current_draft(session: AsyncSession, event_id: str) -> "ai.PlanningDraft":
+    """최신 대화의 조건 초안. 대화가 없으면 빈 초안."""
+    conversation = await _latest_conversation(session, event_id)
+    return _basis_draft(_resume_state(conversation) if conversation is not None else None)
+
+
 async def get_plan_screen(
     session: AsyncSession, *, club_id: str, event_id: str
 ) -> dict:
     event = await get_event(session, club_id=club_id, event_id=event_id)
-    conversation = await session.scalar(
-        select(Conversation)
-        .where(Conversation.event_id == event.id)
-        .order_by(Conversation.created_at.desc())
-        .limit(1)
-    )
+    # 대화 이력·생성 가능 여부에도 resume_state가 필요해 current_draft 대신 같은 부품을 쓴다.
+    conversation = await _latest_conversation(session, event.id)
     resume_state = _resume_state(conversation) if conversation is not None else None
-    draft = (
-        resume_state.payload.basis_draft if resume_state is not None else ai.PlanningDraft()
-    )
+    draft = _basis_draft(resume_state)
 
     total = await session.scalar(
         select(func.count()).select_from(Step).where(Step.event_id == event.id)
@@ -564,6 +602,7 @@ async def get_plan_screen(
             )
         ).all()
     )
+    review = await session.scalar(select(PlanReview).where(PlanReview.event_id == event.id))
     return {
         "draft": _draft_out(draft),
         "last_record_lookup": conversation.last_record_lookup if conversation is not None else None,
@@ -587,4 +626,7 @@ async def get_plan_screen(
             ai.planning_generation_readiness(draft, resume_state=resume_state).model_dump(mode="json")
             if resume_state is not None else None
         ),
+        "plan_revision": event.plan_revision,
+        # 초안 생성 전에는 검토 행이 없어 null이다.
+        "review": plan_review_service.review_out(review, now=datetime.now(UTC)),
     }

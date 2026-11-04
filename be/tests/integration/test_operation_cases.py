@@ -191,7 +191,10 @@ async def test_migration_preserves_existing_event(client, app_db, alembic_cfg):
     await asyncio.to_thread(command.downgrade, alembic_cfg, '20261103_decision_judge_input')
     try:
         async with db_session.get_sessionmaker()() as session:
-            before = await session.get(Event, event)
+            # 뒤에 붙은 migration의 컬럼은 이 시점에 없으므로 ORM 엔터티 대신 필요한 컬럼만 읽는다.
+            before = (await session.execute(
+                select(Event.title, Event.expected_headcount).where(Event.id == event)
+            )).one()
             assert before.title == '기존 행사' and before.expected_headcount == 24
     finally:
         await asyncio.to_thread(command.upgrade, alembic_cfg, 'head')

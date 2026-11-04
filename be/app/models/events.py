@@ -23,6 +23,7 @@ from app.core.enums import (
     ActionType,
     EventStatus,
     EventType,
+    PlanReviewStatus,
     StepActor,
     StepCode,
     StepPhase,
@@ -66,6 +67,10 @@ class Event(IdMixin, TimestampMixin, Base):
     plan_excluded_steps: Mapped[list[dict[str, Any]] | None] = mapped_column(JsonB)
     # 계획 임시 저장 시각. null이면 미저장.
     saved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 계획이 실제로 바뀔 때마다 +1. AI 검토가 어느 시점의 계획을 봤는지 가리킨다(#177).
+    plan_revision: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
     club: Mapped["Club"] = relationship(back_populates="events")
     steps: Mapped[list["Step"]] = relationship(
@@ -223,3 +228,34 @@ class Participant(IdMixin, TimestampMixin, Base):
 
     event: Mapped["Event"] = relationship(back_populates="participants")
     member: Mapped["Member"] = relationship(back_populates="participations")
+
+
+class PlanReview(IdMixin, TimestampMixin, Base):
+    """계획 수정 후 AI 검토. 행사당 한 행.
+
+    events에 쓰면 modified_at이 올라 사용자 수정으로 읽히므로(onupdate) 검토 상태와
+    기준 스냅샷은 이 테이블에 따로 둔다.
+    """
+
+    __tablename__ = "plan_reviews"
+    __id_prefix__ = "prv"
+    __table_args__ = ({"comment": "계획 수정 후 AI 검토"},)
+
+    event_id: Mapped[str] = mapped_column(
+        String(ID_LENGTH), fk("events.id"), nullable=False, unique=True
+    )
+    # 초안 생성 직후 계획 모양. 검토가 "사용자가 무엇을 바꿨는지"를 비교하는 기준이다.
+    baseline: Mapped[dict[str, Any]] = mapped_column(JsonB, nullable=False)
+    generated_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[PlanReviewStatus] = mapped_column(
+        enum_column(PlanReviewStatus),
+        nullable=False,
+        default=PlanReviewStatus.NOT_REQUESTED,
+    )
+    request_id: Mapped[str | None] = mapped_column(String(100))
+    reviewed_revision: Mapped[int | None] = mapped_column(Integer)
+    outcome: Mapped[str | None] = mapped_column(String(32))
+    items: Mapped[list[dict[str, Any]] | None] = mapped_column(JsonB)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

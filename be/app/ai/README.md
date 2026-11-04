@@ -32,7 +32,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 | 공개 경계 | 루트 `contracts.py`, `facade.py`와 `public_workflow.py`에 구현 |
 | 상태 이어가기 | `state_codec.py`가 대화와 Tool 이력, 권유, 마지막 초안을 JSON으로 변환하고 복원 |
 | 제품 연결 | BE의 권한 검사·실제 검색 port·DB 저장·중복/버전 검사·검색 상세 HTTP/복원 연결. 제품 출처 카드는 FE 후속 |
-| P2 편집과 AI 검토 | [#177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177)에서 협의 중이며 AI 검토 미구현 |
+| P2 수정 후 AI 검토 | `app.ai.review_plan_edit`가 수정 내역을 검토해 걱정되는 점을 돌려줌([#177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177)). BE·FE 연결 완료, 자동 보완안 적용은 미구현 |
 | 운영 Agent | 전체 신호 대기와 운영 흐름은 설계 단계 |
 
 P1은 행사 조건 대화와 최초 생성 요청까지입니다. 단계 제외와 복원, 순서 변경은 P2 범위입니다. 테스트 UI는 `tests/ui/planning/`의 독립 앱이고 제품 `fe/`를 수정하거나 참조하지 않습니다. 이전 고정 추출과 질문 조립 코드는 `features/planning/legacy/`에 보존하며 현재 공개 P1에서 호출하지 않습니다.
@@ -49,7 +49,7 @@ be/app/ai/
 ├── errors.py            # AI 내부 오류 타입
 ├── llm.py               # 공통 채팅·임베딩 모델 생성
 ├── features/
-│   ├── planning/        # agent, generation, 공개 실행/상태 변환, legacy (P2 수정 후 검토는 미구현)
+│   ├── planning/        # agent, generation, 공개 실행/상태 변환, legacy (review/: P2 수정 후 검토)
 │   ├── retrieval/       # 기록 색인·검색·근거 구성 (chunking: 청킹, indexing: 색인, nodes: 기록 검색 search_records, memory_port: 개발용 검색 구현)
 │   ├── operations/      # 변경 영향 설명·대응안
 │   └── meeting/         # 회의 발화 판단과 답 (context: 판단 입력, nodes: 판단·결과 구성, lookup: 기록 검색 연결과 카드 문구, questions: 판단 전용 모델의 질문)
