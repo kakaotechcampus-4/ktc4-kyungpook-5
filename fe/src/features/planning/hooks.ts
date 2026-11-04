@@ -2,7 +2,8 @@ import { useRef, useState } from 'react'
 import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
 import { PartialPlanSaveError } from './errors'
-import type { ChatMessage, PlanFacts } from './types'
+import type { ChatMessage, PlanFacts, PlanProgress } from './types'
+import type { PlanStreamHandlers } from './stream'
 import { FIRST_MESSAGE } from './mock'
 import { ApiError } from '@/shared/api/types'
 import type { components } from '@/shared/api/schema'
@@ -55,7 +56,31 @@ export function usePlanningChat(
   const [view, setView] = useState<S['PlanViewOut'] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // 스트림으로 받는 동안만 보이는 임시 표시(#285). done 뒤 저장된 대화로 바뀌면 지운다.
+  const [progress, setProgress] = useState<PlanProgress[]>([])
+  const [pendingText, setPendingText] = useState('')
+  const [pendingReply, setPendingReply] = useState('')
+  const [notice, setNotice] = useState('')
   const locked = useRef(false)
+  const clearPending = () => {
+    setProgress([])
+    setPendingText('')
+    setPendingReply('')
+    setNotice('')
+  }
+  const handlers: PlanStreamHandlers = {
+    // 같은 작업의 진행 줄은 결과 줄로 바꾸고, 현재 단계와 직전 결과 두 줄만 남긴다.
+    onProgress: (event) =>
+      setProgress((lines) =>
+        [...lines.filter((line) => line.operationId !== event.operationId), event].slice(-2),
+      ),
+    onReply: setPendingReply,
+    onReconnect: () => {
+      setProgress([])
+      setPendingReply('')
+      setNotice('연결이 끊겨 처리 결과를 다시 확인하고 있어요…')
+    },
+  }
   const snapshot = useQuery({
     queryKey: ['planning', 'snapshot', userId, clubId, selectedId],
     enabled: !!clubId && !!selectedId,
@@ -110,16 +135,20 @@ export function usePlanningChat(
     locked.current = true
     setBusy(true)
     setError('')
+    clearPending()
+    setPendingText(text)
     let eventId = selectedId
     const id = crypto.randomUUID()
     let succeeded = false
     try {
       if (!eventId) eventId = (await planningApi.create(clubId)).id
-      const result = await planningApi.chat(eventId, {
-        messageId: id,
-        message: text,
-        baseRevision: revision,
-      })
+      // messageId를 멱등키로도 쓴다. 끊겨서 다시 보내도 같은 턴이 두 번 처리되지 않는다.
+      const result = await planningApi.chatStream(
+        eventId,
+        { messageId: id, message: text, baseRevision: revision },
+        id,
+        handlers,
+      )
       setView(result)
       succeeded = true
       if (selectedId) {
@@ -137,8 +166,11 @@ export function usePlanningChat(
             ? '답변 서비스를 이용할 수 없어요. 잠시 후 다시 시도해 주세요.'
             : '계획 답변을 확인하지 못했어요. 요청이 반영됐을 수 있으니 다시 보내기 전에 확인해 주세요.',
       )
+      // 흘려 받은 답변·진행 표시는 저장되지 않았을 수 있다. 저장된 상태를 다시 불러온다.
+      if (selectedId) void snapshot.refetch()
       return false
     } finally {
+      clearPending()
       locked.current = false
       setBusy(false)
       void queryClient.invalidateQueries({ queryKey: ['planning', 'drafts', userId, clubId] })
@@ -150,23 +182,42 @@ export function usePlanningChat(
     locked.current = true
     setBusy(true)
     setError('')
+    clearPending()
     try {
-      const result = await planningApi.generate(selectedId, {
-        baseRevision: revision,
-        useCurrentConditions: false,
-      })
+      const result = await planningApi.generateStream(
+        selectedId,
+        { baseRevision: revision, useCurrentConditions: false },
+        crypto.randomUUID(),
+        handlers,
+      )
       setView(result)
       await refresh()
       if (result.generationResult?.status !== 'generated')
         setError(result.reply || '계획을 생성하지 못했어요. 조건을 확인해 주세요.')
     } catch {
       setError('계획 생성 결과를 확인하지 못했어요. 다시 불러와 저장 상태를 확인해 주세요.')
+      void refresh()
     } finally {
+      clearPending()
       locked.current = false
       setBusy(false)
     }
   }
-  return { messages, facts, busy, error, send, generate, snapshot, view: currentView, revision }
+  return {
+    messages,
+    facts,
+    busy,
+    error,
+    send,
+    generate,
+    snapshot,
+    view: currentView,
+    revision,
+    progress,
+    pendingText,
+    pendingReply,
+    notice,
+  }
 }
 
 // --- 단계 수정 · 행사 시작 --------------------------------------------------

@@ -8,6 +8,20 @@ export interface ChatMessage {
   quickReplies?: string[]
 }
 
+// SSE progress 이벤트(#285, BE PlanProgressOut). 저장되지 않는 임시 작업 상태다.
+// 같은 operationId의 running 줄은 completed/failed 줄로 바뀐다. DB 저장 완료는 done으로만 안다.
+export interface PlanProgress {
+  operationId: string
+  kind:
+    | 'condition_applied'
+    | 'search_started'
+    | 'search_finished'
+    | 'generation_started'
+    | 'generation_finished'
+  status: 'running' | 'completed' | 'failed'
+  text: string
+}
+
 // 큰 틀에서 정해야 하는 것. 여섯 개로 고정이라 화면이 흔들리지 않는다.
 export const PLAN_FACT_KEYS = ['행사 이름', '종류', '예상 인원', '참가비', '일정', '장소'] as const
 export type PlanFactKey = (typeof PLAN_FACT_KEYS)[number]

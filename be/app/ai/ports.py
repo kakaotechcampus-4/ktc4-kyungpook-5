@@ -25,8 +25,18 @@ from pydantic import Field
 
 from app.core.enums import RecordCategory
 
-from .contracts import ContractModel, RecordSource
+from .contracts import ContractModel, RecordSource, PlanningProgress
 from .llm import EMBEDDING_DIMENSIONS
+
+
+class PlanningProgressPort(Protocol):
+    """진행 상태의 빠른 전달. BE 구현체가 연결 해제와 전송을 관리한다."""
+
+    async def progress(self, event: PlanningProgress) -> None: ...
+
+    async def reply_delta(self, text: str) -> None: ...
+
+    async def reply_reset(self) -> None: ...
 
 
 class ChunkSearchQuery(ContractModel):

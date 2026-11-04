@@ -3,6 +3,8 @@
 from pydantic import Field, field_validator
 
 from ....contracts import ChatTurn, ContractModel, NonBlankStr
+from ....ports import PlanningProgressPort
+from ..progress import notify, started, generation_finished
 from ...retrieval.schemas import RecordFact
 from ..agent.state import PlanningDraft
 from ..schemas import CalendarDate
@@ -23,6 +25,8 @@ class GenerationUpdate(ContractModel):
 async def generate_with_context(
     request: PlanGenerationInput, state: PlanningGenerationState, *, generate: PlanGenerator,
     use_current_conditions: bool = False,
+    progress: PlanningProgressPort | None = None,
+    operation_id: str | None = None,
 ) -> GenerationUpdate:
     """두 진입점의 공통 검증. 거절/실패 때 이전 성공 초안을 유실하지 않는다."""
     def clarify(reason):
@@ -37,12 +41,19 @@ async def generate_with_context(
             return clarify("조건이 바뀌었어요. 새로운 생성 요청 ID로 다시 요청해 주세요.")
         return GenerationUpdate(generation=PlanningGenerationState(preview=previous),
                                 result=PlanGenerationResult(status="generated", preview=previous))
+    # 검증 차단·기존 결과 재사용을 지나 실제 생성할 때만 시작을 알린다.
+    operation_id = operation_id or request.trigger.request_id
+    await notify(progress, started(operation_id, generation=True))
     result = await generate(request.model_copy(deep=True))
     if result.status != "generated":
+        await notify(progress, generation_finished(operation_id, result))
         return GenerationUpdate(generation=state, result=result)
     if result.preview.basis_draft != request.basis_draft or result.preview.trigger != request.trigger:
-        return GenerationUpdate(generation=state, result=PlanGenerationResult(status="failed",
-            reason="생성 결과의 기준 조건이 요청과 달라요.", model_calls=result.model_calls))
+        result = PlanGenerationResult(status="failed",
+            reason="생성 결과의 기준 조건이 요청과 달라요.", model_calls=result.model_calls)
+        await notify(progress, generation_finished(operation_id, result))
+        return GenerationUpdate(generation=state, result=result)
+    await notify(progress, generation_finished(operation_id, result))
     return GenerationUpdate(generation=PlanningGenerationState(preview=result.preview), result=result)
 
 
@@ -62,10 +73,11 @@ class ButtonPlanGenerationRequest(ContractModel):
 
 async def run_button_plan_generation(
     request: ButtonPlanGenerationRequest, *, generate: PlanGenerator = run_plan_generation,
+    progress: PlanningProgressPort | None = None,
 ) -> GenerationUpdate:
     # 클릭 자체가 명시적 요청이다. Agent의 의도 판단·권유 ID·HumanMessage를 만들지 않는다.
     shared = PlanGenerationInput(basis_draft=request.draft,
         trigger=ButtonGenerationTrigger(request_id=request.request_id), messages=request.messages,
         reference_date=request.reference_date, timezone=request.timezone, reference_facts=request.reference_facts)
     return await generate_with_context(shared, request.generation, generate=generate,
-                                       use_current_conditions=request.use_current_conditions)
+                                       use_current_conditions=request.use_current_conditions, progress=progress)

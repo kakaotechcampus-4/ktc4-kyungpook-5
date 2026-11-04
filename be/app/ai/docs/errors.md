@@ -42,12 +42,13 @@ BE는 이 타입들을 `app.ai`에서 가져온다.
 
 ## 모델 호출 오류 변환
 
-모델 호출 예외는 `llm.ainvoke_structured`(구조화 출력), `llm.ainvoke_with_tools`(Tool 선택·대화), `llm.aembed_texts`(임베딩)가 위 타입으로 바꾼다. 기능 코드는 openai 예외를 직접 다루지 않는다.
+모델 호출 예외는 `llm.ainvoke_structured`(구조화 출력), `llm.ainvoke_with_tools`(Tool 선택·대화), `llm.astream_with_tools`(Tool 선택·대화를 조각으로 받기, #280), `llm.aembed_texts`(임베딩)가 위 타입으로 바꾼다. 기능 코드는 openai 예외를 직접 다루지 않는다.
 
 | 실패 | 오류 |
 | --- | --- |
 | 응답 시간 초과 | `AITimeoutError` |
 | 연결 실패·429·5xx | `AIRetryableError` |
+| 스트리밍 응답 도중 공급자가 보낸 오류 이벤트(HTTP 상태 없는 `openai.APIError`) | `AIRetryableError` |
 | 401·403·404 (주소·키·모델명), 모델명 오류 400 | `AIConfigError` |
 | 응답 형식 불일치·거절·빈 응답 | `AIInvalidResponseError` |
 | 응답 메타정보에 출력 한도 도달이 명시됨 | `AIOutputLimitError` |

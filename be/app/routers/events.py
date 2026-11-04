@@ -5,6 +5,7 @@
 """
 
 from fastapi import APIRouter, Depends, Header, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select
@@ -44,7 +45,13 @@ from app.schemas.events import (
     StepListResponse,
 )
 from app.schemas.common import Envelope
-from app.services import action_service, event_service, plan_review_service, planning_service
+from app.services import (
+    action_service,
+    event_service,
+    plan_review_service,
+    planning_service,
+    planning_stream,
+)
 
 router = APIRouter(prefix="/api/v1/events", tags=["events"])
 
@@ -196,6 +203,45 @@ async def chat_plan(
     return Envelope(data=PlanViewOut.model_validate(view))
 
 
+# SSE 응답 (#266, #284). 본문·Idempotency-Key는 JSON 경로와 같다.
+# 스트림을 열기 전 오류(권한·계획 단계·멱등 충돌·revision 불일치)는 JSON 경로와 같은 4xx다.
+_STREAM_RESPONSES = {
+    200: {
+        "description": (
+            "text/event-stream. event: progress(PlanProgressOut) · reply_delta({text}) · "
+            "reply_reset({}) · done(PlanViewOut, 마지막) · error({code, message}, 마지막). "
+            "15초 동안 이벤트가 없으면 ': heartbeat' 주석 줄."
+        ),
+        "content": {"text/event-stream": {}},
+    }
+}
+_STREAM_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+
+
+@router.post("/{event_id}/plan/chat/stream", response_class=StreamingResponse,
+             responses=_STREAM_RESPONSES)
+async def chat_plan_stream(
+    event_id: str,
+    body: PlanChatIn,
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> StreamingResponse:
+    event, member = await _get_event_for_account(
+        session, event_id=event_id, account=account
+    )
+    _ensure_planning(event)
+    # chat_plan과 같은 이유로 요청 세션을 닫는다. 스트림이 열려 있는 동안 DB 연결을 잡지 않는다.
+    await session.close()
+    turn = await planning_service.open_chat(
+        club_id=event.club_id, event_id=event_id, member_id=member.id,
+        message_id=body.message_id, message_content=body.message,
+        base_revision=body.base_revision, idempotency_key=idempotency_key,
+    )
+    return StreamingResponse(planning_stream.stream(turn), media_type="text/event-stream",
+                             headers=_STREAM_HEADERS)
+
+
 @router.get("/{event_id}/plan/messages", response_model=PlanMessageListResponse)
 async def list_plan_messages(
     event_id: str,
@@ -303,6 +349,30 @@ async def generate_plan(
         idempotency_key=idempotency_key,
     )
     return Envelope(data=PlanViewOut.model_validate(view))
+
+
+@router.post("/{event_id}/plan/generate/stream", response_class=StreamingResponse,
+             responses=_STREAM_RESPONSES)
+async def generate_plan_stream(
+    event_id: str,
+    body: PlanGenerateIn,
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> StreamingResponse:
+    event, member = await _get_event_for_account(
+        session, event_id=event_id, account=account
+    )
+    _ensure_planning(event)
+    await session.close()
+    turn = await planning_service.open_generate(
+        club_id=event.club_id, event_id=event_id, member_id=member.id,
+        base_revision=body.base_revision,
+        use_current_conditions=body.use_current_conditions,
+        idempotency_key=idempotency_key,
+    )
+    return StreamingResponse(planning_stream.stream(turn), media_type="text/event-stream",
+                             headers=_STREAM_HEADERS)
 
 
 @router.get("/{event_id}/plan", response_model=Envelope[PlanScreenOut])

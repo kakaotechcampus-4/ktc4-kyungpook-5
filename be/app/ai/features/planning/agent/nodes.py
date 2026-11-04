@@ -1,6 +1,7 @@
 """agent는 다음 행동을 고르고, tools는 실제 변경을 검증·실행한다."""
 
 import json
+from functools import partial
 from pathlib import Path
 from typing import Protocol
 
@@ -9,7 +10,10 @@ from langchain_core.utils.function_calling import convert_to_openai_tool
 from pydantic import ValidationError
 
 from ....errors import AIInvalidResponseError
-from ....llm import ainvoke_with_tools
+from ....llm import ainvoke_with_tools, astream_with_tools
+from ....llm_stream import final_answer_text
+from ....ports import PlanningProgressPort
+from ..progress import notify, started, condition_progress, search_finished, reply_delta, reply_reset
 from .schemas import PlanningAgentState, PlanningAgentTurnInput, ToolExecution
 from .record_tool import RecordLookupResult, RecordSearcher, SearchPastEventsInput
 from .tools import ConditionUpdateResult, UpdateEventConditionsInput, update_event_conditions
@@ -74,7 +78,13 @@ def agent_tool_schemas(*, search_enabled: bool, generation_enabled: bool = False
 
 
 async def call_agent_model(messages: list[AnyMessage], *, allow_tools: bool,
-                           search_enabled: bool = False, generation_enabled: bool = False) -> AIMessage:
+                           search_enabled: bool = False, generation_enabled: bool = False,
+                           progress: PlanningProgressPort | None = None) -> AIMessage:
+    if progress is not None:
+        return await astream_with_tools(messages,
+            tools=agent_tool_schemas(search_enabled=search_enabled, generation_enabled=generation_enabled),
+            allow_tools=allow_tools, parallel_tool_calls=PARALLEL_TOOL_CALLS,
+            on_text=partial(reply_delta, progress), on_reset=partial(reply_reset, progress))
     return await ainvoke_with_tools(messages, tools=agent_tool_schemas(search_enabled=search_enabled,
                                                                     generation_enabled=generation_enabled),
                                    allow_tools=allow_tools, parallel_tool_calls=PARALLEL_TOOL_CALLS)
@@ -121,13 +131,14 @@ async def agent_node(
         used = {call["id"] for m in state["messages"] if isinstance(m, AIMessage) for call in m.tool_calls}
         if any(not item or item in used for item in ids) or len(ids) != len(set(ids)):
             raise AIInvalidResponseError("Tool 호출 ID가 비어 있거나 중복됐습니다")
-    elif not response.text.strip():
+    elif not final_answer_text(response).strip():
         raise AIInvalidResponseError("모델이 답변을 반환하지 않았습니다")
     return {"messages": [response], "model_calls": state["model_calls"] + 1}
 
 
 async def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInput,
-                     search: RecordSearcher | None = None, generate: PlanGenerator | None = None) -> dict:
+                     search: RecordSearcher | None = None, generate: PlanGenerator | None = None,
+                     progress: PlanningProgressPort | None = None) -> dict:
     draft = state["draft"]
     executions = list(state["executions"])
     messages = []
@@ -170,7 +181,8 @@ async def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInp
                             result = update_generation_offer(draft, generation, arguments, current_message=request.current_message)
                         else:
                             update = await generate_event_plan(arguments, request=request, draft=draft, state=generation,
-                                messages=[*state["messages"], *messages], generate=generate)
+                                messages=[*state["messages"], *messages], generate=generate,
+                                progress=progress, operation_id=call["id"])
                             generation, result = update.generation, update.result
             elif call["name"] == SEARCH_TOOL_NAME:
                 if search is None:
@@ -182,7 +194,9 @@ async def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInp
                         result = reject(call, "검색 질문 query만 전달해 주세요. 질문은 비어 있지 않은 4000자 이하의 글이어야 해요.")
                     else:
                         # 기존 검색 결과만 돌려받는다. 검색 Tool에는 현재 초안을 바꿀 권한이 없다.
+                        await notify(progress, started(call["id"]))
                         result = await search(arguments, draft, request.reference_date)
+                        await notify(progress, search_finished(call["id"], result))
             elif call["name"] != TOOL_NAME:
                 result = reject(call, "지원하지 않는 Tool이에요.")
             elif searched:
@@ -205,6 +219,7 @@ async def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInp
         if isinstance(result, ConditionUpdateResult):
             draft = result.draft
             if call["name"] == TOOL_NAME:
+                await notify(progress, condition_progress(call["id"], result))
                 generation = condition_generation_state(generation, result, call["args"])
                 offer = generation.offer
                 if result.status == "applied" and offer and offer.id == deferred_offer_id:
@@ -225,7 +240,7 @@ async def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInp
             generation_calls += result.model_calls
         searched = searched or call["name"] == SEARCH_TOOL_NAME
         executions.append(ToolExecution(tool_call_id=call["id"], name=call["name"], result=result))
-        # 호출 ID와 연결한 결과를 LLM에 전달한다. '반영했어요' 문장을 코드가 만들지 않는다.
+        # 호출 ID와 연결한 결과를 LLM에 전달한다. 임시 진행 문구와 별개로 대화 답변은 모델이 쓴다.
         messages.append(ToolMessage(content=result.model_dump_json(), tool_call_id=call["id"], name=call["name"]))
     return dict(messages=messages, draft=draft, executions=executions, tool_calls=count,
                 limit_reached=limited or count >= MAX_TOOL_CALLS, record_lookup=lookup,

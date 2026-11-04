@@ -5,17 +5,19 @@
 """
 
 import re
+from contextlib import aclosing
 from collections.abc import Sequence
 from functools import lru_cache
 from typing import Any
 
 import openai
 from langchain_core.language_models import LanguageModelInput
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, AIMessageChunk
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import BaseModel, ValidationError
 
 from .config import AISettings, get_settings
+from .llm_stream import ReplyStream, TextCallback, ResetCallback, assembled_message, final_answer_text
 from .errors import (
     AIConfigError,
     AIError,
@@ -212,6 +214,55 @@ async def ainvoke_with_tools(
     if not allow_tools and response.tool_calls:
         raise AIInvalidResponseError("Tool 사용이 끝난 뒤에도 모델이 Tool을 요청했습니다")
     return response
+
+
+async def astream_with_tools(
+    messages: LanguageModelInput, *, tools: Sequence[dict[str, Any]],
+    on_text: TextCallback, on_reset: ResetCallback,
+    allow_tools: bool = True, parallel_tool_calls: bool = False,
+    model: ChatOpenAI | None = None,
+) -> AIMessage:
+    """최종 답변만 조각으로 알리고, Graph에는 검증한 완성 메시지를 반환한다."""
+    model = model or get_chat_model()
+    bound = model.bind_tools(list(tools), parallel_tool_calls=parallel_tool_calls,
+                             tool_choice="auto" if allow_tools else "none")
+    display = ReplyStream(on_text, on_reset)
+    combined = None
+    try:
+        # 실패·취소 시에도 공급자 스트림을 닫는다. Tool은 조립·검증 뒤 Node에서 실행한다.
+        async with aclosing(bound.astream(messages)) as stream:
+            async for chunk in stream:
+                if not isinstance(chunk, AIMessageChunk):
+                    raise AIInvalidResponseError("모델의 응답 조각 형식을 읽을 수 없습니다")
+                combined = chunk if combined is None else combined + chunk
+                await display.accept(combined)
+        if combined is None:
+            raise AIInvalidResponseError("모델이 답변을 반환하지 않았습니다")
+        response = assembled_message(combined)
+        metadata = response.response_metadata
+        if metadata.get("status") == "incomplete" and (metadata.get("incomplete_details") or {}).get("reason") == "max_output_tokens":
+            raise AIOutputLimitError("모델이 출력 한도에 도달해 응답을 끝내지 못했습니다")
+        if metadata.get("status") != "completed":
+            raise AIInvalidResponseError("모델이 응답을 끝내지 못했습니다")
+        if response.invalid_tool_calls:
+            raise AIInvalidResponseError("모델의 Tool 요청을 읽을 수 없습니다")
+        if not allow_tools and response.tool_calls:
+            raise AIInvalidResponseError("Tool 사용이 끝난 뒤에도 모델이 Tool을 요청했습니다")
+        if not response.tool_calls and not final_answer_text(response).strip():
+            raise AIInvalidResponseError("모델이 답변을 반환하지 않았습니다")
+        await display.finish(response)
+        return response
+    except Exception as error:
+        await display.reset()
+        if isinstance(error, (openai.APIConnectionError, openai.APIStatusError)):
+            converted = _convert_api_error(error)
+            if converted is not None:
+                raise converted from error
+        elif isinstance(error, openai.APIError):
+            # 응답 도중 공급자가 error 이벤트를 보내면 SDK는 HTTP 상태가 없는 APIError를 낸다.
+            # 일반 호출이라면 5xx로 왔을 공급자 쪽 실패이므로 재시도 안내 대상으로 본다.
+            raise AIRetryableError("모델 응답 스트림이 공급자 오류로 끝났습니다") from error
+        raise
 
 
 async def aembed_texts(
