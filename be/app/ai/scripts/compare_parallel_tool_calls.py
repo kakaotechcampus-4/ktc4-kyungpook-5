@@ -24,7 +24,7 @@ from app.ai import chat_planning
 from app.ai.config import AISettings
 from app.ai.features.planning.agent import nodes
 from app.ai.scripts.compare_agent_context_layout import CONTROLS, measure_control
-from app.ai.scripts.check_planning_deferrals import case_request
+from app.ai.scripts.check_planning_deferrals import AMBIGUOUS_CASE_IDS, case_request
 from app.ai.scripts.measure_planning_latency import append_event, execution_metadata, measure_attempt, now, write_manifest
 from app.ai.scripts.planning_latency_inputs import DEFAULT_FIXTURE, json_text, load_fixture, make_request
 from app.ai.scripts.planning_latency_observation import install_observers
@@ -136,6 +136,7 @@ def summarize(rows):
             chosen = [row for row in rows if row['phase'] == 'control'
                       and row['variant'] == variant and row['case_id'] == case.id]
             controls[variant][case.id] = dict(
+                ambiguous=case.id in AMBIGUOUS_CASE_IDS,  # 모호한 표현. 기록하되 채택 판정에 쓰지 않는다(#274).
                 started=len(chosen), passed=sum(row['passed'] for row in chosen),
                 failed_checks=dict(Counter(key for row in chosen for key, ok in row.get('checks', {}).items() if not ok)),
                 errors=dict(Counter(row['error'] for row in chosen if row.get('error'))),

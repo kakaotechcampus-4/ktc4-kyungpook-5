@@ -26,6 +26,8 @@ class Case:
     expected_topics: tuple[str, ...] = ()
     initial_topics: tuple[str, ...] = ()
     previous_reply: str | None = None
+    # 고정 입력(C2) 대신 tests/fixtures/eval/의 저장된 상태에서 시작한다. 실제로 틀린 턴 다음의 정정을 잴 때 쓴다(#274).
+    start_state: str | None = None
 
 
 CASES = (
@@ -36,13 +38,22 @@ CASES = (
          ('dates', 'location')),
     Case('context_defer', '그건 나중에 정할게. 인원은 60명으로 바꿔줘. 계획 초안은 만들지 마.',
          ('dates',), previous_reply='초안은 아직 만들지 않았어요. 행사 날짜는 언제로 정할까요?'),
+    # "다시 얘기하자"는 "지금 다시"와 "나중에 다시" 둘 다로 읽히는 모호한 표현이다. 기록은 하되 판정에 쓰지 않는다(#274).
     Case('date_resume', '날짜는 다시 얘기하자. 인원은 60명으로 바꿔줘. 초안은 만들지 마.',
          initial_topics=('dates',)),
+    Case('date_resume_clear', '이제 날짜 정하자. 인원은 60명으로 바꿔줘. 초안은 만들지 마.',
+         initial_topics=('dates',)),
+    # date_resume을 "나중에"로 읽어 날짜를 다시 보류한 실제 턴 다음에, 사용자가 바로잡는 말(#274).
+    Case('date_resume_correction', '아니, 날짜는 지금 정하자는 거였어.',
+         start_state='planning_date_resume_correction.json'),
 )
+AMBIGUOUS_CASE_IDS = frozenset({'date_resume'})
 
 
 def case_request(fixture, case, attempt_id):
     """이전 반복의 반환값을 재사용하지 않는다. 문맥/보류 초기값만 사례에 맞춰 바꾼다."""
+    if case.start_state:
+        return saved_state_request(fixture, case, attempt_id)
     original = make_request(fixture, next(c for c in fixture.cases if c.id == 'C2'), attempt_id)
     data = original.model_dump(mode='json')
     draft = data['draft']
@@ -60,6 +71,18 @@ def case_request(fixture, case, attempt_id):
         payload['history'][-1]['content'] = case.previous_reply
     data['message']['content'] = case.text
     return PlanningChatRequest.model_validate(data)
+
+
+def saved_state_request(fixture, case, attempt_id):
+    """저장된 실제 턴의 다음 상태(인원 60·보류 [dates]·생성 권유 deferred)에 이번 발화만 붙인다."""
+    saved = json.loads((AI_DIR / 'tests/fixtures/eval' / case.start_state).read_text())
+    state = parse_resume_state(json.dumps(saved['resume_state'], ensure_ascii=False))
+    return PlanningChatRequest(
+        request_id=attempt_id, club_id=state.club_id, event_id=state.event_id,
+        conversation_id=state.conversation_id, base_revision=saved['base_revision'],
+        draft=state.payload.basis_draft, resume_state=state,
+        reference_date=fixture.reference_date, timezone=fixture.timezone,
+        message=dict(id=f'{attempt_id}-user', content=case.text))
 
 
 def inspect_boundary(request, result, case):
