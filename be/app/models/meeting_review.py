@@ -17,5 +17,10 @@ class MeetingReview(IdMixin, TimestampMixin, Base):
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     turns: Mapped[list[dict[str, Any]] | None] = mapped_column(JsonB)
     speaker_names: Mapped[dict[str, str] | None] = mapped_column(JsonB)
+    # label -> {memberId, name, confirmed}. speaker_names는 기존 FE 호환용이다.
+    speaker_mappings: Mapped[dict[str, dict[str, Any]] | None] = mapped_column(JsonB)
     draft: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
     error_code: Mapped[str | None] = mapped_column(String(64))
+    candidate_request_id: Mapped[str | None] = mapped_column(String(100))
+    candidate_hash: Mapped[str | None] = mapped_column(String(64))
+    candidate_ids: Mapped[list[str] | None] = mapped_column(JsonB)

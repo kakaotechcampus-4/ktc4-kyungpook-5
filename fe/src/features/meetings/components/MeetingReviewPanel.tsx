@@ -1,48 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useClubMembers } from '@/features/clubs/hooks'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
-import { Input } from '@/shared/ui/Input'
+import { Input, Textarea } from '@/shared/ui/Input'
 import { meetingError } from '../errors'
-import type { MeetingReview } from '../types'
+import { meetingsApi } from '../api'
+import type { MeetingReview, MeetingReviewTask } from '../types'
 
-export function MeetingReviewPanel({
-  review,
-  onStart,
-  onSubmit,
-  onSaveNames,
-  onDraft,
-  busy,
-  error,
-}: {
-  review: MeetingReview | undefined
-  onStart: () => void
-  onSubmit: () => void
-  onSaveNames: (version: number, names: Record<string, string>) => void
-  onDraft: (version: number) => void
-  busy: boolean
-  error: unknown
-}) {
+type Candidate = MeetingReviewTask & { assigneeMemberId: string | null }
+export function MeetingReviewPanel({ review, clubId, onStart, onSubmit, onSaveNames, onDraft, onSaveCandidates, busy, error }: { review: MeetingReview | undefined; clubId: string; onStart: () => void; onSubmit: () => void; onSaveNames: (version: number, names: Record<string, string>, members: Record<string, { memberId: string | null; confirmed: boolean }>) => Promise<unknown>; onDraft: (version: number) => void; onSaveCandidates: (version: number, requestId: string, candidates: Candidate[]) => Promise<unknown>; busy: boolean; error: unknown }) {
+  const members = useClubMembers(clubId)
   const [names, setNames] = useState<Record<string, string>>({})
-  const errorMessage = error ? meetingError(error) : null
-  useEffect(() => {
-    if (review) setNames(Object.fromEntries(review.speakers.map((speaker) => [speaker.label, speaker.name ?? ''])))
-  }, [review])
-  if (!review) {
-    return <Card className="space-y-3 p-5"><h2 className="text-h2">회의 후 화자 확인</h2><p>회의가 끝났습니다. 녹음에서 화자를 나눈 뒤 이름을 확인할 수 있어요.</p><Button onClick={onStart} disabled={busy}>화자분리 검토 시작</Button>{errorMessage && <p role="alert" className="text-failed">{errorMessage}</p>}</Card>
-  }
+  const [speakerMembers, setSpeakerMembers] = useState<Record<string, string>>({})
+  const [savedVersion, setSavedVersion] = useState<number | null>(null)
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [saveError, setSaveError] = useState('')
+  const [candidateError, setCandidateError] = useState('')
+  const requestId = useRef(crypto.randomUUID())
+  const [playing, setPlaying] = useState<string | null>(null)
+  const loaded = useRef<string | null>(null)
+  const errorMessage = saveError || candidateError || (error ? meetingError(error) : null)
+  useEffect(() => { if (!review) return; const key = `${review.id}:${review.version}`; if (loaded.current === key) return; loaded.current = key; setNames(Object.fromEntries(review.speakers.map((speaker) => [speaker.label, speaker.name ?? '']))); setSpeakerMembers(Object.fromEntries(review.speakers.map((speaker) => [speaker.label, speaker.memberId ?? '']))); setSavedVersion(review.speakers.length > 0 && review.speakers.every((speaker) => speaker.confirmed === true) ? review.version : null); setCandidates((review.draft?.tasks ?? []).map((task) => ({ ...task, assigneeMemberId: task.suggestedAssigneeMemberId }))); setSaveError(''); setCandidateError('') }, [review])
+  if (!review) return <Card className="space-y-3 p-5"><h2 className="text-h2">회의 후 화자 확인</h2><p>회의가 끝났습니다. 녹음에서 화자를 나눈 뒤 이름을 확인할 수 있어요.</p><Button onClick={onStart} disabled={busy}>화자분리 검토 시작</Button>{errorMessage && <p role="alert" className="text-failed">{errorMessage}</p>}</Card>
   const ready = review.status === 'NEEDS_REVIEW' || review.status === 'DRAFT_READY'
+  const namesSaved = savedVersion === review.version
+  const saveNames = async () => { setSaveError(''); try { await onSaveNames(review.version, names, Object.fromEntries(review.speakers.map((speaker) => [speaker.label, { memberId: speakerMembers[speaker.label] || null, confirmed: Boolean(speakerMembers[speaker.label] || names[speaker.label]) }]))); setSavedVersion(review.version) } catch (cause) { setSaveError(meetingError(cause)) } }
+  const play = async (segmentId: string) => { setPlaying(segmentId); try { const blob = await meetingsApi.reviewSegmentClip(review.meetingId, segmentId); const url = URL.createObjectURL(blob); const audio = new Audio(url); await audio.play(); await new Promise<void>((resolve) => { audio.onended = () => resolve() }) ; URL.revokeObjectURL(url) } catch (cause) { setSaveError(`음성 구간을 재생하지 못했어요. ${meetingError(cause)}`) } finally { setPlaying(null) } }
+  const updateCandidate = (index: number, changes: Partial<Candidate>) => setCandidates((current) => current.map((candidate, i) => i === index ? { ...candidate, ...changes } : candidate))
+  const saveCandidates = async () => { setCandidateError(''); try { await onSaveCandidates(review.version, requestId.current, candidates) } catch (cause) { setCandidateError(`${meetingError(cause)} 후보 입력은 유지됩니다.`) } }
   return <Card className="space-y-4 p-5">
     <div><h2 className="text-h2">회의 후 화자 확인</h2><p className="mt-1 text-ink2">화자와 할 일 담당자는 다를 수 있어요. 이름과 후보를 확인한 뒤 저장하세요.</p></div>
     {review.status === 'QUEUED' && <Button onClick={onSubmit} disabled={busy}>화자분리 실행</Button>}
     {(review.status === 'SUBMITTING' || review.status === 'PROCESSING') && <p role="status">화자분리 결과를 기다리는 중입니다… 새로고침해도 작업은 이어집니다.</p>}
     {review.status === 'FAILED' && <><p role="alert" className="text-failed">화자분리를 완료하지 못했습니다. 원래 전사는 보존됩니다. {review.errorCode ?? ''}</p><Button onClick={onSubmit} disabled={busy}>다시 시도</Button></>}
     {ready && <>
-      <div className="space-y-3">{review.speakers.map((speaker) => <Input key={speaker.label} label={speaker.label} placeholder="실제 이름 또는 비워 두기" value={names[speaker.label] ?? ''} onChange={(event) => setNames((current) => ({ ...current, [speaker.label]: event.target.value }))} />)}</div>
-      <Button variant="secondary" onClick={() => onSaveNames(review.version, names)} disabled={busy}>화자 이름 저장</Button>
-      <div className="space-y-2 border-t border-line pt-4"><h3 className="font-semibold">화자별 전사</h3>{review.segments.map((segment) => <p key={segment.segmentId} className="text-sm"><strong>{segment.speakerLabel ? names[segment.speakerLabel] || segment.speakerLabel : '확인 필요'}:</strong> {segment.text}</p>)}</div>
-      {review.status === 'NEEDS_REVIEW' && <Button onClick={() => onDraft(review.version)} disabled={busy}>회의록·할 일 후보 만들기</Button>}
+      <div className="space-y-3">{review.speakers.map((speaker) => <div key={speaker.label} className="space-y-2 rounded-lg border border-line p-3"><Input label={`${speaker.label} 이름 (선택)`} placeholder="미확인으로 두기" value={names[speaker.label] ?? ''} onChange={(event) => { setNames((current) => ({ ...current, [speaker.label]: event.target.value })); setSavedVersion(null); setSaveError('') }} /><label className="text-caption font-bold">실제 구성원<select className="mt-2 w-full rounded-lg border border-soft bg-bg p-3" value={speakerMembers[speaker.label] ?? ''} onChange={(event) => { setSpeakerMembers((current) => ({ ...current, [speaker.label]: event.target.value })); setSavedVersion(null) }}><option value="">미확인</option>{members.data?.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label><p className="text-caption text-mute">{speaker.confirmed ? '저장된 확인' : '저장 전 확인 필요'}</p></div>)}</div>
+      <div className="flex flex-wrap items-center gap-3"><Button variant="secondary" onClick={() => void saveNames()} disabled={busy || namesSaved}>화자 이름·구성원 저장</Button>{!namesSaved && <span className="text-caption text-pending">변경 내용을 저장해야 후보를 만들 수 있어요.</span>}</div>
+      <div className="space-y-2 border-t border-line pt-4"><h3 className="font-semibold">화자별 전사</h3>{review.segments.map((segment) => <div key={segment.segmentId} className="flex items-start gap-2"><p className="min-w-0 flex-1 break-words text-sm"><strong>{segment.speakerLabel ? names[segment.speakerLabel] || segment.speakerLabel : '화자 미확인'}:</strong> {segment.text}</p><Button size="sm" variant="ghost" disabled={playing !== null} onClick={() => void play(segment.segmentId)}>{playing === segment.segmentId ? '재생 중…' : '듣기'}</Button></div>)}</div>
+      {review.status === 'NEEDS_REVIEW' && <Button onClick={() => onDraft(review.version)} disabled={busy || !namesSaved}>회의록·할 일 후보 만들기</Button>}
     </>}
-    {review.draft && <div className="space-y-3 border-t border-line pt-4"><h3 className="font-semibold">확인할 회의록과 할 일 후보</h3>{review.draft.summary.map((item) => <p key={item.text}>• {item.text}</p>)}{review.draft.tasks.map((task) => <p key={task.title}>• {task.title} · 담당 후보: {task.suggestedAssignee ?? '미지정'}</p>)}<p className="text-caption text-ink2">후보는 아직 저장·예약·알림하지 않았습니다. 담당자·내용·기한을 확인한 뒤 확정하세요.</p></div>}
-    {errorMessage && <p role="alert" className="text-failed">{errorMessage}</p>}
+    {review.draft && <div className="space-y-3 border-t border-line pt-4"><h3 className="font-semibold">확인할 회의록과 할 일 후보</h3>{review.draft.summary.map((item) => <p key={item.text}>• {item.text}</p>)}{candidates.map((candidate, index) => <div key={`${candidate.title}-${index}`} className="space-y-2 rounded-lg border border-line p-3"><Input label="후보 내용" value={candidate.title} onChange={(e) => updateCandidate(index, { title: e.target.value })} /><Textarea label="설명" value={candidate.description ?? ''} onChange={(e) => updateCandidate(index, { description: e.target.value })} /><label className="text-caption font-bold">담당자<select className="mt-2 w-full rounded-lg border border-soft bg-bg p-3" value={candidate.assigneeMemberId ?? ''} onChange={(e) => updateCandidate(index, { assigneeMemberId: e.target.value || null })}><option value="">담당자 미지정</option>{members.data?.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label><Input label="기한" type="date" value={candidate.dueDate ?? ''} onChange={(e) => updateCandidate(index, { dueDate: e.target.value || null })} /><p className="text-caption text-mute">근거 전사 {candidate.evidenceSegmentIds.length}건</p></div>)}<p className="text-caption text-ink2">저장 전에는 일정 예약이나 Push 발송이 없습니다.</p>{candidates.length > 0 && <Button onClick={() => void saveCandidates()} disabled={busy || !namesSaved}>확인한 후보 저장</Button>}</div>}
+    {errorMessage && <p role="alert" className="text-failed">{errorMessage} 입력한 내용은 유지됩니다. 다시 시도해 주세요.</p>}
   </Card>
 }

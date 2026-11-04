@@ -435,4 +435,4 @@ BE는 분류를 자료 판단 및 후보 추출과 독립해 호출하고, `curr
 
 ## 종료 후 회의록 제안
 
-`generate_meeting_review(MeetingReviewRequest(transcripts=...))`는 확정 전사의 ID·내용과 선택적인 화자 라벨/사용자 확인 이름을 받아 `MeetingReviewResult(summary, tasks)`를 제안한다. 각 요약과 할 일은 입력 전사의 `evidence_segment_ids`를 필수로 참조하며 없는 ID는 오류다. 화자는 발언자이며 담당자는 내용에서 명시된 경우만 `suggested_assignee`로 제안한다. 이름·계정·수신자를 추측하거나 저장·예약·알림을 실행하지 않는다. 사용자 검토 및 확정은 BE 책임이다.
+`generate_meeting_review(MeetingReviewRequest(transcripts=...))`는 확정 전사의 ID·내용과 선택적인 화자 라벨/사용자 확인 이름을 받아 `MeetingReviewResult(summary, tasks)`를 제안한다. 각 요약과 할 일은 입력 전사의 `evidence_segment_ids`를 필수로 참조하며 없는 ID는 오류다. 할 일은 `description`, 내용에서 명시된 담당자 이름인 `suggested_assignee`, 계정 추정 없이 nullable인 `suggested_assignee_member_id`, 발화에 명시된 경우만 채우는 ISO 날짜 `due_date`를 포함한다. 화자는 발언자이며 담당자는 내용에서 명시된 경우만 제안한다. 이름·계정·수신자·날짜를 추측하거나 저장·예약·알림을 실행하지 않는다. 사용자 검토 및 확정은 BE 책임이다.

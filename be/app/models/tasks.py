@@ -32,6 +32,9 @@ class TaskSuggestion(IdMixin, TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(Text)
     # 담당·마감을 대화에서 알 수 없으면 null. 사람이 수락하기 전까지 확정 배정이 아니다.
     suggested_assignee: Mapped[str | None] = mapped_column(String(100))
+    suggested_assignee_member_id: Mapped[str | None] = mapped_column(
+        String(ID_LENGTH), fk("members.id", ondelete="SET NULL")
+    )
     due_date: Mapped[date | None] = mapped_column(Date)
     # AI가 해석한 시간도 확인 전의 후보 값이다. 날짜만 있는 기존 후보와 함께 유지한다.
     kind: Mapped[str | None] = mapped_column(String(16))

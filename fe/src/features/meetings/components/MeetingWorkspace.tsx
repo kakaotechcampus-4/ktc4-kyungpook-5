@@ -189,12 +189,14 @@ export function MeetingWorkspace({
           onOpenCandidates={() => setCandidatesOpen(true)}
           onOpenRecord={() => setJustEnded(false)}
           review={data.review.data}
+          clubId={clubId}
           onStartReview={() => data.startReview.mutate()}
           onSubmitReview={() => data.submitReview.mutate()}
-          onSaveReviewNames={(version, names) => data.updateReviewSpeakers.mutate({ version, names })}
+          onSaveReviewNames={(version, names, members) => data.updateReviewSpeakers.mutateAsync({ version, names, members })}
           onCreateReviewDraft={(version) => data.createReviewDraft.mutate(version)}
-          reviewBusy={data.startReview.isPending || data.submitReview.isPending || data.updateReviewSpeakers.isPending || data.createReviewDraft.isPending}
-          reviewError={data.review.error || data.startReview.error || data.submitReview.error || data.updateReviewSpeakers.error || data.createReviewDraft.error}
+          onSaveReviewCandidates={(version, requestId, candidates) => data.saveReviewCandidates.mutateAsync({ version, clientRequestId: requestId, candidates })}
+          reviewBusy={data.startReview.isPending || data.submitReview.isPending || data.updateReviewSpeakers.isPending || data.createReviewDraft.isPending || data.saveReviewCandidates.isPending}
+          reviewError={data.review.error || data.startReview.error || data.submitReview.error || data.updateReviewSpeakers.error || data.createReviewDraft.error || data.saveReviewCandidates.error}
         />
         {candidates}
       </>

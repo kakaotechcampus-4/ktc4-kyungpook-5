@@ -16,6 +16,7 @@ class TaskSuggestionOut(CamelModel):
     title: str
     description: str | None
     suggested_assignee: str | None
+    suggested_assignee_member_id: str | None = None
     due_date: date | None
     kind: str | None = None
     due_at: UtcDateTime | None = None

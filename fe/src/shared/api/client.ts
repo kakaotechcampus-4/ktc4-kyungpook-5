@@ -135,3 +135,7 @@ export async function apiDownload(path: string, fileName: string): Promise<void>
   anchor.click()
   URL.revokeObjectURL(url)
 }
+
+export async function apiGetBlob(path: string): Promise<Blob> {
+  return http.get<Blob>(path, { responseType: 'blob' }).then((res) => res.data)
+}
