@@ -5,6 +5,7 @@ WS PCM 연속 음성은 BE VAD·실제 STT를 거쳐 확정 전사·AI로 연결
 """
 
 from datetime import UTC, datetime
+import asyncio
 import tempfile
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,7 +34,8 @@ from app.core.enums import MeetingStatus
 from app.core.exceptions import Forbidden
 from app.db.session import get_session, get_sessionmaker
 from app.infra.stt import SttError, WhisperStt, pcm_to_wav
-from app.infra.diarization import PyannoteDiarization
+from app.infra.diarization import DiarizationError, PyannoteDiarization
+from app.infra.storage import read_file
 from app.models.auth import Account
 from app.models.clubs import Member
 from app.models.meetings import Meeting, MeetingAudioChunk, TranscriptSegment
@@ -112,9 +115,10 @@ async def _review_wav(session: AsyncSession, meeting_id: str):
     temp.close(); path = Path(temp.name)
     try:
         chunks = [(start, end, await run_in_threadpool(read_file, key)) for start, end, key in rows if key]
-        duration = await run_in_threadpool(assemble_meeting_wav, chunks, path.open('wb'))
+        with path.open('wb') as output:
+            duration = await run_in_threadpool(assemble_meeting_wav, chunks, output)
         return path, duration
-    except Exception:
+    except Exception as error:
         path.unlink(missing_ok=True); raise
 
 @router.post('/api/v1/meetings/{meeting_id}/review/submit', response_model=Envelope[MeetingReviewOut], status_code=202)
@@ -125,12 +129,18 @@ async def submit_review_diarization(meeting_id: str, account: Account = Depends(
         raise meeting_review_service.ReviewConflict('먼저 회의 검토를 시작해 주세요.')
     if review.status != 'QUEUED':
         return Envelope(data=await meeting_review_service.output(session, review))
-    path, _duration = await _review_wav(session, meeting.id)
+    path = None
     try:
+        path, _duration = await _review_wav(session, meeting.id)
         provider = PyannoteDiarization(get_settings().pyannote_api_key.get_secret_value(), get_settings().pyannote_model, get_settings().pyannote_timeout_seconds)
         review = await meeting_review_service.submit_diarization(session, review.id, wav_path=path, provider=provider)
+    except DiarizationError as error:
+        raise meeting_review_service.DiarizationUnavailable() from error
+    except ValueError as error:
+        raise meeting_review_service.ReviewConflict(str(error)) from error
     finally:
-        path.unlink(missing_ok=True)
+        if path is not None:
+            path.unlink(missing_ok=True)
     return Envelope(data=await meeting_review_service.output(session, review))
 
 @router.post('/api/v1/meetings/{meeting_id}/review/poll', response_model=Envelope[MeetingReviewOut], status_code=200)
@@ -141,7 +151,10 @@ async def poll_review_diarization(meeting_id: str, account: Account = Depends(ge
         raise meeting_review_service.ReviewConflict()
     rows = await meeting_review_service.audio_snapshot(session, meeting.id)
     duration = max((end for _start, end, _key in rows), default=0)
-    provider = PyannoteDiarization(get_settings().pyannote_api_key.get_secret_value(), get_settings().pyannote_model, get_settings().pyannote_timeout_seconds)
+    try:
+        provider = PyannoteDiarization(get_settings().pyannote_api_key.get_secret_value(), get_settings().pyannote_model, get_settings().pyannote_timeout_seconds)
+    except DiarizationError as error:
+        raise meeting_review_service.DiarizationUnavailable() from error
     review = await meeting_review_service.poll_diarization(session, review.id, duration_ms=duration, provider=provider)
     return Envelope(data=await meeting_review_service.output(session, review))
 
@@ -270,6 +283,23 @@ async def upload_audio_chunk(
         content=await file.read(),
     )
     return Envelope(data=AudioChunkOut(chunk_id=chunk.id, seq=chunk.seq, job_id=chunk.job_id))
+
+
+@router.get('/api/v1/meetings/{meeting_id}/audio-chunks/{seq}/file')
+async def get_audio_chunk_file(
+    meeting_id: str,
+    seq: int,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+):
+    meeting = await _get_meeting_for_account(session, meeting_id=meeting_id, account=account)
+    chunk = await session.scalar(select(MeetingAudioChunk).where(
+        MeetingAudioChunk.meeting_id == meeting.id, MeetingAudioChunk.seq == seq
+    ))
+    if chunk is None or not chunk.storage_key:
+        raise meeting_service.MeetingNotFound()
+    content = await asyncio.to_thread(read_file, chunk.storage_key)
+    return Response(content=content, media_type=chunk.mime_type or 'audio/wav')
 
 
 @router.get(
