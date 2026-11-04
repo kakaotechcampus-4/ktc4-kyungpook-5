@@ -1,0 +1,95 @@
+{
+  "commit": "6ef3a14",
+  "event_id": "evt_Y0FPOLqlWzamXX8jRqN1m",
+  "rows": [
+    {
+      "message": "MT를 준비할게요. 예상 인원은 40명, 참가비는 2만원으로 해줘. 초안은 아직 만들지 마.",
+      "progress": [
+        {
+          "at_ms": 5120.558,
+          "event": {
+            "operationId": "call_pkYfMbl0JlfOif4KxLS6JC3M",
+            "kind": "condition_started",
+            "status": "running",
+            "text": "조건을 반영하고 있어요"
+          }
+        },
+        {
+          "at_ms": 5690.52,
+          "event": {
+            "operationId": "call_pkYfMbl0JlfOif4KxLS6JC3M",
+            "kind": "condition_applied",
+            "status": "completed",
+            "text": "행사 종류 MT · 예상 인원 40명 · 참가비 1인 20,000원 반영했어요"
+          }
+        }
+      ],
+      "done_ms": 8545.988,
+      "completed_to_done_ms": [
+        2855.468
+      ],
+      "reply": "MT, 예상 인원 40명, 참가비 2만 원으로 반영했어요. 초안 생성은 보류해둘게요.\n\n일정은 언제로 생각하고 계세요?"
+    },
+    {
+      "message": "참가비 3만원으로 해줘.",
+      "progress": [
+        {
+          "at_ms": 2335.425,
+          "event": {
+            "operationId": "call_YJaCFno7o7E5bLtu5j6nVAQz",
+            "kind": "condition_started",
+            "status": "running",
+            "text": "조건을 반영하고 있어요"
+          }
+        },
+        {
+          "at_ms": 3947.042,
+          "event": {
+            "operationId": "call_YJaCFno7o7E5bLtu5j6nVAQz",
+            "kind": "condition_applied",
+            "status": "completed",
+            "text": "참가비 1인 30,000원 반영했어요"
+          }
+        }
+      ],
+      "done_ms": 6730.486,
+      "completed_to_done_ms": [
+        2783.444
+      ],
+      "reply": "참가비를 3만 원으로 변경했어요. 일정은 언제로 생각하고 계세요?"
+    },
+    {
+      "message": "인원은 일단 50명, 일정은 2026년 12월 5일부터 6일까지로 해줘.",
+      "progress": [
+        {
+          "at_ms": 2326.82,
+          "event": {
+            "operationId": "call_djM01CEySVOB1BoohTE1xLCO",
+            "kind": "condition_started",
+            "status": "running",
+            "text": "조건을 반영하고 있어요"
+          }
+        },
+        {
+          "at_ms": 4926.28,
+          "event": {
+            "operationId": "call_djM01CEySVOB1BoohTE1xLCO",
+            "kind": "condition_applied",
+            "status": "completed",
+            "text": "예상 인원 50명 (잠정) · 일정 2026년 12월 5일~6일 반영했어요"
+          }
+        }
+      ],
+      "done_ms": 7325.022,
+      "completed_to_done_ms": [
+        2398.742
+      ],
+      "reply": "인원은 일단 50명으로, 일정은 2026년 12월 5~6일로 반영했어요. 장소는 어디로 생각하고 계세요?"
+    }
+  ],
+  "model": "gpt-5.6-luna",
+  "prompt_version": "planning-agent-v8",
+  "prompt_sha256": "76ca3203e1f5ad89ed0b6300dd9d4beab7b5dbf6ed2588b3fbc5e721e09be412",
+  "measured_at": "2026-11-05 Asia/Seoul",
+  "transport": "httpx streaming, localhost:8010, PostgreSQL localhost:5434/unyounghae"
+}

@@ -1,0 +1,71 @@
+{
+  "events": [
+    {
+      "at": 297.59999999403954,
+      "frame": 25,
+      "event": "progress",
+      "data": {
+        "operationId": "c-302",
+        "kind": "condition_applied",
+        "status": "completed",
+        "text": "예상 인원 · 참가비 반영했어요",
+        "conditionDraft": {
+          "conditions": {
+            "title": null,
+            "eventType": "MT",
+            "headcount": 99,
+            "feePerPerson": 0,
+            "startDate": "2026-12-05",
+            "endDate": "2026-12-06",
+            "location": null,
+            "budgetTotal": null
+          },
+          "conditionMeta": {},
+          "deferredTopics": []
+        }
+      }
+    },
+    {
+      "at": 926.5,
+      "frame": 101,
+      "event": "error",
+      "data": {
+        "code": "AI_UNAVAILABLE",
+        "message": "로컬 검증용 실패"
+      }
+    }
+  ],
+  "renders": [
+    {
+      "frame": 26,
+      "at": 301.69999998807907,
+      "url": "?eventId=evt_nNYgMIpyxNv4GO0iVSxKz",
+      "completedChecks": 1,
+      "lines": [
+        "예상 인원 · 참가비 반영했어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n✓\n종류\nMT\n✓\n예상 인원\n99명\n✓\n참가비\n무료\n✓\n일정\n12/5 – 12/6\n장소\n아직이에요",
+      "flash": [
+        "✓\n예상 인원\n99명",
+        "✓\n참가비\n무료"
+      ],
+      "animation": "fact-flash"
+    },
+    {
+      "frame": 101,
+      "at": 939.5999999940395,
+      "url": "?eventId=evt_nNYgMIpyxNv4GO0iVSxKz",
+      "completedChecks": 0,
+      "lines": [
+        "!\n조건 반영을 확인하지 못했어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n✓\n종류\nMT\n~\n예상 인원\n50명\n잠정\n\n「인원은 일단 50명」\n\n✓\n참가비\n1인 30,000원\n✓\n일정\n12/5 – 12/6\n장소\n아직이에요",
+      "flash": [],
+      "animation": null
+    }
+  ],
+  "scenario": "existing-failure",
+  "responseSource": "fixed-sse",
+  "before": "지금까지 정한 것\n행사 이름\n아직이에요\n✓\n종류\nMT\n~\n예상 인원\n50명\n잠정\n\n「인원은 일단 50명」\n\n✓\n참가비\n1인 30,000원\n✓\n일정\n12/5 – 12/6\n장소\n아직이에요",
+  "after": "지금까지 정한 것\n행사 이름\n아직이에요\n✓\n종류\nMT\n~\n예상 인원\n50명\n잠정\n\n「인원은 일단 50명」\n\n✓\n참가비\n1인 30,000원\n✓\n일정\n12/5 – 12/6\n장소\n아직이에요"
+}

@@ -722,3 +722,72 @@ AI 전체 테스트 **1,226개 통과**(신규 24개). 같은 고정 응답의 �
 다음 턴 이력 복원, 조각 순서, Tool/추론 숨김, 중간 실패·출력 한도·취소·포트 예외를 검증했다.
 실제 UI 성능 비교는 아직 수행하지 않았다. 조건·토큰 사용량·선택 이유·재현 방법은
 [관찰 원본과 해석](evaluation-results/planning-stream-probe-2026-11-04/README.md)에 있다.
+
+## 조건 완료와 패널 갱신 시점 맞추기 (#302, 2026-11-05)
+
+관련 AI-PLAN-01, AI-COMMON-02. “참가비 2만원으로 해줘” → 조건 완료 알림 → 진행 줄 체크와 패널 값·강조를 같은 화면 갱신에 표시한다. 답변을 다 쓴 뒤 저장돼도 같은 값은 다시 강조하지 않는다. 저장 전 실패하면 진행 줄을 실패로 바꾸고 저장된 패널로 돌아간다.
+
+### 실행 조건과 변경 전 측정
+
+- 기준 코드 `6ef3a14`, 구현 코드 `83c5fa6`. 별도 워크트리의 `feature/290-plan-facts-sync`, BE 8010 / FE 5174, PostgreSQL `localhost:5434/unyounghae`.
+- 모델 `gpt-5.6-luna`, 대화 지침 `planning-agent-v8`. 지침 SHA-256 `76ca3203e1f5ad89ed0b6300dd9d4beab7b5dbf6ed2588b3fbc5e721e09be412`. 모델·지침·Tool 선택 설정은 바꾸지 않았다.
+- 변경 전은 HTTP 스트림 수신 시각, 변경 후는 Chromium의 스트림 수신 시각을 `performance.now()`로 기록했다. 아래 값은 각각의 실행에서 `condition_applied/completed`부터 `done`까지다. 측정 경계가 달라 속도 개선 비교에 쓰지 않는다.
+- 같은 동아리의 새 계획 하나에서 아래 세 문장을 순서대로 보냈다. 각 1회이며 서비스 평균·지연 보장으로 일반화하지 않는다. 사전 측정과 구현 중 확인도 실제 모델을 썼으며, 아래 변경 후 값은 구현 커밋에서 다시 실행한 최종 3턴이다.
+
+| 턴 / 입력 문장 | 변경 전 완료 → done | 변경 후 완료 → done |
+| --- | ---: | ---: |
+| “MT를 준비할게요. 예상 인원은 40명, 참가비는 2만원으로 해줘. 초안은 아직 만들지 마.” | 2.855초 | 2.534초 |
+| “참가비 3만원으로 해줘.” | 2.783초 | 4.164초 |
+| “인원은 일단 50명, 일정은 2026년 12월 5일부터 6일까지로 해줘.” | 2.399초 | 2.772초 |
+
+원본: [변경 전](ui-tests/plan-facts-sync-302-baseline.json), 변경 후 [첫 턴](ui-tests/plan-facts-sync-302-real-1.json) · [기존 계획](ui-tests/plan-facts-sync-302-real-2.json) · [움직임 줄이기](ui-tests/plan-facts-sync-302-real-3.json).
+
+### 화면 갱신 기록
+
+1600×1050 Chromium에서 `MutationObserver`로 완료 줄·완료 SVG·패널 값·`.animate-fact-flash`의 삽입/제거를 함께 기록하고, `requestAnimationFrame` 카운터를 붙였다. 사진에서는 강조가 삽입되는 순간 `getAnimations().forEach(a => a.pause())`로 CSS만 멈췄다. 1.5초 만료 타이머는 계속 실행된다.
+
+| 실제 모델 턴 | 완료 줄 / 패널·강조의 프레임 | 같은 observer 콜백 | 이벤트 수신 → 해당 갱신 | 강조 삽입 → 제거 |
+| --- | --- | --- | ---: | ---: |
+| 새 계획 첫 턴 | 709 / 709 | 같음 | 12.1ms | 1493.4ms |
+| 기존 계획 참가비 | 2058 / 2058 | 같음 | 12.6ms | 1490.5ms |
+| 잠정 인원·일정, 움직임 줄이기 | 3293 / 3293 | 같음 | 21.1ms | 1484.9ms |
+
+3턴 모두 저장 결과가 같아 done 이후 강조를 다시 켠 기록은 0회다. 첫 턴의 첫 강조 기록에는 주소 쿼리가 비어 있어, eventId 주소로 이동하기 전부터 패널이 바뀐 것을 확인했다. 움직임 줄이기에서는 `animationName: none`이고 색만 남았다. 강조 시간은 이벤트 처리 시각부터 계산하므로 DOM에 삽입된 뒤 남은 시간은 1.5초보다 조금 짧다.
+
+사진: [새 계획 첫 턴](ui-tests/plan-facts-sync-302-new.jpg), [기존 계획](ui-tests/plan-facts-sync-302-existing.jpg), [움직임 줄이기](ui-tests/plan-facts-sync-302-reduced-motion.jpg).
+
+### 실패·저장 차이·빠른 주소 이동
+
+아래 네 경우는 실제 화면에 **고정 SSE**를 주입했다. 실제 모델/서버의 자연 발생 실패나 DB 저장 결과로 주장하지 않는다. 기존 계획은 저장된 50명(잠정)·30,000원을 사용하고, 완료 알림에서 99명·무료를 먼저 표시했다.
+
+| 경우 | 확인 결과 | 기록 / 사진 |
+| --- | --- | --- |
+| 기존 계획, 조건 완료 후 error | 저장된 50명(잠정)·30,000원으로 복구, 강조 0개, 진행 줄 실패 표시 | [기록](ui-tests/plan-facts-sync-302-existing-failure.json) · [복구 전](ui-tests/plan-facts-sync-302-existing-failure-pending.jpg) · [복구 후](ui-tests/plan-facts-sync-302-existing-failure.jpg) |
+| 새 계획 첫 턴, 조건 완료 후 error | eventId 주소 이동 뒤에도 저장된 미정 패널, 강조 0개, 진행 줄 실패 표시 | [기록](ui-tests/plan-facts-sync-302-new-failure.json) · [사진](ui-tests/plan-facts-sync-302-new-failure.jpg) |
+| done에서 참가비만 10,000원으로 다름 | 인원은 그대로, 참가비 칸만 다시 강조 | [기록](ui-tests/plan-facts-sync-302-saved-difference.json) · [사진](ui-tests/plan-facts-sync-302-saved-difference.jpg) |
+| 새 계획, 강조 중 같은 값으로 빠른 done | 주소 이동 전후 99명·무료 유지, 처음 시작한 강조를 남은 시간만 이어감. 삽입부터 최종 제거까지 1504ms | [기록](ui-tests/plan-facts-sync-302-new-fast-done.json) · [사진](ui-tests/plan-facts-sync-302-new-fast-done.jpg) |
+
+주소 이동으로 컴포넌트가 다시 그려질 때 CSS 애니메이션도 처음부터 켜질 수 있어, 캐시의 시작 시각으로 남은 타이머뿐 아니라 음수 `animation-delay`도 맞췄다. 실패에서 조건 초안과 강조를 버리는 것, done에서 마지막으로 보인 패널과 비교하는 것은 같은 조건 반영 경로다.
+
+### 자동 검증과 재실행
+
+- AI 전체: 로컬 `.env`를 둔 요청 명령은 1,275 통과 / 기존 설정 관련 11 실패. `.env`를 테스트 동안만 분리해 같은 전체 테스트를 다시 실행하면 **1,286 통과**다. `.env`는 복원했고 커밋하지 않았다.
+- BE `tests/integration/test_planning_stream.py`: **11 통과**. 두 Alembic head(`20261101_plan_review`, `20261104_meeting_review`)의 임시 merge 파일을 로컬에만 두고 실행 후 삭제했다. 테스트 DB에는 이전 실행의 `zz_tmp_merge_local` revision이 이미 남아 있어 같은 이름의 merge를 재구성했다. 이 PR에는 migration 변경이 없다.
+- FE: `node --test tests/` **94 통과**, `npx tsc -b`, `npx eslint .`, `npm run build` 통과. 기존 단일 번들 500KB 안내만 남았다.
+- 단위 검증은 항목 이름 요약(3개/4개 이상, 일정 한 항목), 잠정·무료·CLEAR payload, 다른 알림의 payload 생략, 실패 줄 변환을 고정한다.
+
+화면 검증기는 `scripts/check_planning_facts_sync.cjs`(실제 모델 3턴), `scripts/check_planning_facts_cases.cjs`(고정 SSE 4경우), 공통 `scripts/planning_facts_probe.cjs`다. Playwright가 설치된 환경에서 사용한다. 로그인·동아리 선택을 마친 context의 `storageState`를 임시 경로에 저장하고 그 경로를 `PLANNING_STORAGE_STATE`로 넘긴다. 인증 상태 파일은 커밋하지 않는다.
+
+```sh
+# 저장소 루트. 5174 → 8010 CORS도 로컬 실행 환경에 허용한다.
+# Playwright가 기본 모듈 경로에 없으면 PLAYWRIGHT_MODULE로 모듈 경로를,
+# 기본 Chromium 대신 설치된 실행 파일을 쓰면 CHROMIUM_PATH를 지정한다.
+PLANNING_STORAGE_STATE=/tmp/planning-state.json PLANNING_MODEL_LABEL=gpt-5.6-luna \
+  node be/app/ai/scripts/check_planning_facts_sync.cjs
+# 위 스크립트가 출력한 verifiedPlanUrl을 사용한다.
+PLANNING_STORAGE_STATE=/tmp/planning-state.json \
+PLANNING_PLAN_URL='http://localhost:5174/planning?eventId=확인한ID' \
+  node be/app/ai/scripts/check_planning_facts_cases.cjs
+```
+
+Orca는 로컬 runtime 연결/기동 시간 초과로 사용할 수 없어 설치된 Playwright와 Chromium으로 확인했다. 모델 속도를 바꾸는 작업은 아니며, 네트워크 환경·공급자별 스트림 묶임에 따른 전체 지연은 남는다.
