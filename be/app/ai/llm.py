@@ -187,12 +187,17 @@ async def ainvoke_with_tools(
     *,
     tools: Sequence[dict[str, Any]],
     allow_tools: bool = True,
+    parallel_tool_calls: bool = False,
     model: ChatOpenAI | None = None,
 ) -> AIMessage:
-    """Tool 요청 또는 자연어 답변을 받는다. 실제 Tool 실행은 Node가 담당한다."""
+    """Tool 요청 또는 자연어 답변을 받는다. 실제 Tool 실행은 Node가 담당한다.
+
+    parallel_tool_calls=True면 모델이 한 응답에 Tool 요청을 여러 개 담을 수 있다.
+    이름은 "병렬"이지만 실행은 호출한 Node가 정한다. 행사계획 tools_node는 앞에서부터 차례로 실행한다.
+    """
     model = model or get_chat_model()
     bound = model.bind_tools(
-        list(tools), parallel_tool_calls=False,
+        list(tools), parallel_tool_calls=parallel_tool_calls,
         tool_choice="auto" if allow_tools else "none",
     )
     try:
