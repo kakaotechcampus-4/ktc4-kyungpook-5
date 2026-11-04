@@ -80,7 +80,10 @@ export function MeetingWorkspace({
           </div>
         )}
       </div>
-      {meeting && meetingToriVisible(meeting.status, audioActive) ? (
+      <div hidden={audioActive}>
+        <MeetingList clubId={clubId} selectedId={meetingId} />
+      </div>
+      {meeting && meetingToriVisible(meeting.status, audioActive) && (
         <MeetingToriPanel
           meeting={meeting}
           phase={audioPhase}
@@ -91,9 +94,7 @@ export function MeetingWorkspace({
           error={data.transcripts.isError || data.decisions.isError}
           onRefresh={() => void data.refresh()}
         />
-      ) : !meetingId || meeting ? (
-        <MeetingList clubId={clubId} selectedId={meetingId} />
-      ) : null}
+      )}
       {!meetingId && (
         <Card className="p-6">
           <form
@@ -153,11 +154,13 @@ export function MeetingWorkspace({
         <Card className="p-5 text-failed" role="alert">
           {meetingError(data.meeting.error)}
           <Button variant="secondary" className="ml-3" onClick={() => void data.refresh()}>
-            다시 확인
+            다시 시도
           </Button>
         </Card>
       )}
-      {meetingId && data.meeting.isPending && <p>회의 불러오는 중…</p>}
+      {meetingId && data.meeting.isPending && (
+        <Card className="p-5" role="status">회의를 불러오고 있어요.</Card>
+      )}
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
         <div className="space-y-6">
           {meeting && (

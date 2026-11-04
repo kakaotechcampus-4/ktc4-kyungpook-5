@@ -15,6 +15,7 @@ export function useMeetingData(clubId: string, meetingId: string | undefined) {
     queryKey: ['meeting', clubId, meetingId],
     queryFn: () => meetingsApi.get(meetingId!),
     enabled: !!meetingId,
+    retry: false,
     refetchInterval: (q) =>
       q.state.data?.status === 'RECORDING' || q.state.data?.status === 'FINALIZING' ? 3000 : false,
   })

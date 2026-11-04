@@ -2,7 +2,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMe, useNotificationClub } from '@/features/auth/hooks'
 import { MeetingWorkspace } from '@/features/meetings/components/MeetingWorkspace'
 import { FixtureMeeting } from '@/features/meetings/components/FixtureMeeting'
-import { RecordsPanel } from '@/features/records'
+import { MeetingRecordsSummary } from '@/features/records'
 import { NotificationsPanel } from '@/features/notifications/components/NotificationsPanel'
 import { useAuthStore } from '@/shared/auth/store'
 import { Card } from '@/shared/ui/Card'
@@ -45,11 +45,11 @@ export default function MeetingsPage() {
     )
   return (
     <MeetingWorkspace
-      key={`${clubId}:${meetingId ?? 'new'}`}
+      key={clubId}
       clubId={clubId}
       meetingId={meetingId}
       highlightTaskId={params.get('taskId') ?? undefined}
-      records={<RecordsPanel clubId={clubId} />}
+      records={<MeetingRecordsSummary clubId={clubId} />}
       notifications={<NotificationsPanel key={me.id} />}
     />
   )
