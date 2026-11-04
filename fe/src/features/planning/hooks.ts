@@ -8,15 +8,16 @@ import {
 } from '@tanstack/react-query'
 import { planningApi } from './api'
 import { PartialPlanSaveError } from './errors'
-import type { ChatMessage, PlanFacts, PlanProgress } from './types'
+import type { ChatMessage, PlanFacts } from './types'
 import type { PlanStreamHandlers } from './stream'
 import { FIRST_MESSAGE } from './mock'
 import {
   attachReceipts,
-  dropProgress,
+  dropSkipped,
   finishedLines,
   LINE_EXIT_MS,
   upsertProgress,
+  type TurnLine,
   type TurnReceipt,
 } from './turn'
 import { ApiError } from '@/shared/api/types'
@@ -93,7 +94,7 @@ export function usePlanningChat(
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   // 스트림으로 받는 동안만 보이는 임시 표시(#285). done 뒤 저장된 대화로 바뀌면 지운다.
-  const [progress, setProgress] = useState<PlanProgress[]>([])
+  const [progress, setProgress] = useState<TurnLine[]>([])
   const [pendingText, setPendingText] = useState('')
   const [pendingReply, setPendingReply] = useState('')
   const [notice, setNotice] = useState('')
@@ -101,7 +102,7 @@ export function usePlanningChat(
   const [pendingBase, setPendingBase] = useState<number | null>(null)
   const locked = useRef(false)
   // 이번 턴의 작업 줄. 답변이 끝나면 화면 상태가 아니라 이 값으로 저장할 작업 줄을 정한다.
-  const turnLines = useRef<PlanProgress[]>([])
+  const turnLines = useRef<TurnLine[]>([])
   const clearPending = () => {
     setPendingBase(null)
     turnLines.current = []
@@ -115,14 +116,17 @@ export function usePlanningChat(
     onProgress: (event) => {
       turnLines.current = upsertProgress(turnLines.current, event)
       setProgress(turnLines.current)
-      // 거절·같은 값이면 진행 중 줄이 사라지는 움직임(PlanChat의 line-out)을 보인 뒤 목록에서 뺀다.
-      if (event.status === 'skipped')
+    },
+    onReply: (text) => {
+      setPendingReply(text)
+      // 답변이 시작되면 다시 시도되지 않은 조건 줄(거절·같은 값)이 사라지는 움직임
+      // (PlanChat의 line-out)을 보인 뒤 목록에서 뺀다. 이유는 이제 나오는 답변이 설명한다.
+      if (text && turnLines.current.some((line) => line.status === 'skipped'))
         setTimeout(() => {
-          turnLines.current = dropProgress(turnLines.current, event.operationId)
+          turnLines.current = dropSkipped(turnLines.current)
           setProgress(turnLines.current)
         }, LINE_EXIT_MS)
     },
-    onReply: setPendingReply,
     onReconnect: () => {
       turnLines.current = []
       setProgress([])

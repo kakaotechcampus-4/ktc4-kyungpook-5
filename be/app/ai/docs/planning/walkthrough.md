@@ -15,7 +15,9 @@ BE의 SSE 경로(`services/planning_stream.py`, #284)가 이 알림을 `progress
    `condition_started/running`과 “조건을 반영하고 있어요”를 보낸다(#297).
    `agent/tools.py`가 조건을 검증한 뒤 `nodes.tools_node`가 같은 Tool 호출 ID로
    `condition_applied/completed`와 “예상 인원 60명 반영했어요”를 보낸다.
-   거절·같은 값이면 `condition_applied/skipped`를 보내 화면이 진행 중 줄을 지운다.
+   거절·같은 값이면 `condition_applied/skipped`를 보낸다. 화면은 그 줄을 답변이 시작될 때 지운다.
+   예: "…참가비는 20000원" → [검색, 참가비 변경]에서 참가비가 거절되고(검색 결과 전) 모델이 다시
+   요청하면, 새 `condition_started`가 처음 줄의 자리를 이어 써 줄이 사라졌다 다시 생기지 않는다(#299).
 2. `generation/entrypoints.generate_with_context`는 생성 차단과 성공 결과 재사용을 확인한다.
    실제 생성이 필요할 때만 `generation_started/running`을 보낸다.
 3. 생성 및 기준 조건 검증 후 같은 `operation_id`로 `generation_finished`를 보낸다.

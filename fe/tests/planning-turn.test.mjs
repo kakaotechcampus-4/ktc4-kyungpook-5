@@ -105,30 +105,61 @@ test('조건 반영 시작 줄은 같은 자리에서 완료 줄로 바뀐다', 
   )
 })
 
-test('거절·같은 값(skipped)은 진행 중 줄을 지우고, 지울 줄이 없으면 새로 붙이지 않는다', async () => {
-  const { upsertProgress, dropProgress, finishedLines } = await load()
+test('거절·같은 값(skipped)은 답변이 시작될 때까지 진행 중 문구로 남고, 지울 줄이 없으면 붙이지 않는다', async () => {
+  const { upsertProgress, dropSkipped, finishedLines } = await load()
   let lines = [line('c1', 'running', '조건을 반영하고 있어요'), line('s1', 'completed')]
   lines = upsertProgress(lines, line('c1', 'skipped', '바뀐 조건이 없어요'))
-  // 사라지는 움직임 동안은 같은 자리에 skipped로 남는다. 답변 위에는 남기지 않는다.
+  // 다시 시도될 수 있어 같은 자리에 진행 중 문구로 남는다. 답변 위에는 남기지 않는다.
   assert.deepEqual(
-    Array.from(lines, (l) => [l.operationId, l.status]),
+    Array.from(lines, (l) => [l.operationId, l.status, l.text]),
     [
-      ['c1', 'skipped'],
-      ['s1', 'completed'],
+      ['c1', 'skipped', '조건을 반영하고 있어요'],
+      ['s1', 'completed', 's1'],
     ],
   )
   assert.deepEqual(
     Array.from(finishedLines(lines), (l) => l.operationId),
     ['s1'],
   )
-  lines = dropProgress(lines, 'c1')
+  // 답변이 시작되면 뺀다.
   assert.deepEqual(
-    Array.from(lines, (l) => l.operationId),
+    Array.from(dropSkipped(lines), (l) => l.operationId),
     ['s1'],
   )
   // 재접속으로 줄을 비운 뒤 온 skipped는 무시한다.
   assert.deepEqual(
     Array.from(upsertProgress([], line('c9', 'skipped')), (l) => l.operationId),
     [],
+  )
+})
+
+test('거절된 조건을 다시 시도하면 처음 줄의 자리를 이어 써서 사라졌다 다시 생기지 않는다', async () => {
+  const { upsertProgress, finishedLines } = await load()
+  const cond = (id, status, text) => ({ ...line(id, status, text), kind: 'condition_started' })
+  // "…참가비는 20000원" → [검색, 참가비 변경] → 참가비 거절 → 다시 [참가비 변경] → 반영
+  let lines = []
+  lines = upsertProgress(lines, line('s1', 'running', '지난 행사 기록을 찾고 있어요'))
+  lines = upsertProgress(lines, cond('c1', 'running', '조건을 반영하고 있어요'))
+  lines = upsertProgress(lines, line('s1', 'completed', '맞는 기록을 찾지 못했어요'))
+  lines = upsertProgress(lines, {
+    ...line('c1', 'skipped', '바뀐 조건이 없어요'),
+    kind: 'condition_applied',
+  })
+  lines = upsertProgress(lines, cond('c2', 'running', '조건을 반영하고 있어요'))
+  lines = upsertProgress(lines, {
+    ...line('c2', 'completed', '참가비 1인 20,000원 반영했어요'),
+    kind: 'condition_applied',
+  })
+  // 두 번째 시도는 c2지만 화면의 자리(slot)는 처음 줄 c1 그대로다.
+  assert.deepEqual(
+    Array.from(lines, (l) => [l.slot ?? l.operationId, l.operationId, l.status]),
+    [
+      ['s1', 's1', 'completed'],
+      ['c1', 'c2', 'completed'],
+    ],
+  )
+  assert.deepEqual(
+    Array.from(finishedLines(lines), (l) => l.text),
+    ['맞는 기록을 찾지 못했어요', '참가비 1인 20,000원 반영했어요'],
   )
 })

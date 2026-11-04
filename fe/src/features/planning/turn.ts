@@ -14,27 +14,52 @@ export const MAX_TURN_LINES = 4
 // skipped 줄이 사라지는 움직임 시간. index.css의 --animate-line-out과 맞춘다.
 export const LINE_EXIT_MS = 180
 
+// 화면에 그리는 작업 줄. slot은 줄의 자리(React key)다. 보통 operationId와 같고,
+// 거절된 조건 줄을 다시 시도한 조건이 이어 쓰면 처음 줄의 자리를 물려받는다.
+export interface TurnLine extends PlanProgress {
+  slot?: string
+}
+
 // 같은 작업(operationId)의 줄은 제자리에서 결과 줄로 바꾼다.
 // 끝에 다시 붙이면 "기록을 찾고 있어요"가 완료되는 순간 줄 순서가 바뀌어 위아래로 튄다.
 //   "조건을 반영하고 있어요"(running) → "예상 인원 40명 반영했어요"(completed)  같은 자리
-//   "조건을 반영하고 있어요"(running) → skipped(거절·같은 값)                  사라질 줄로 표시
+//   "조건을 반영하고 있어요"(running) → skipped(거절·같은 값)                  그대로 둠(보류)
+//
+// skipped 줄은 바로 지우지 않는다. 모델이 거절 이유를 보고 같은 변경을 다시 요청하는 일이 있어서다.
+//   "…참가비는 20000원" → [검색, 참가비 변경] → 참가비 거절(검색 결과 전) → 다시 [참가비 변경] → 반영
+// 바로 지우면 조건 줄이 사라졌다 다시 생긴다. 그래서 같은 턴에 조건 시작이 다시 오면 그 자리를
+// 이어 쓰고, 오지 않으면 답변이 시작될 때 지운다(dropSkipped). 그동안은 "반영하고 있어요"로 보인다.
 // skipped는 지울 줄이 있을 때만 의미가 있다. 없으면(예: 재접속으로 줄을 비운 뒤) 새로 붙이지 않는다.
-export function upsertProgress(lines: PlanProgress[], event: PlanProgress): PlanProgress[] {
+export function upsertProgress(lines: TurnLine[], event: PlanProgress): TurnLine[] {
   const index = lines.findIndex((line) => line.operationId === event.operationId)
-  if (index < 0)
-    return event.status === 'skipped' ? lines : [...lines, event].slice(-MAX_TURN_LINES)
-  const next = [...lines]
-  next[index] = event
-  return next
+  if (index >= 0) {
+    const old = lines[index]
+    const next = [...lines]
+    // 보류 중에는 진행 중 문구를 그대로 보인다("바뀐 조건이 없어요"는 화면에 쓰지 않는다).
+    next[index] = {
+      ...event,
+      slot: old.slot,
+      text: event.status === 'skipped' ? old.text : event.text,
+    }
+    return next
+  }
+  if (event.status === 'skipped') return lines
+  const held = lines.findIndex((line) => line.status === 'skipped')
+  if (event.kind === 'condition_started' && held >= 0) {
+    const next = [...lines]
+    next[held] = { ...event, slot: lines[held].slot ?? lines[held].operationId }
+    return next
+  }
+  return [...lines, event].slice(-MAX_TURN_LINES)
 }
 
-// 사라지는 움직임이 끝난 skipped 줄을 목록에서 뺀다. 남은 줄은 그대로다.
-export function dropProgress(lines: PlanProgress[], operationId: string): PlanProgress[] {
-  return lines.filter((line) => line.operationId !== operationId || line.status !== 'skipped')
+// 답변이 시작되면 보류 중인 skipped 줄을 사라지는 움직임 뒤 목록에서 뺀다. 남은 줄은 그대로다.
+export function dropSkipped(lines: TurnLine[]): TurnLine[] {
+  return lines.filter((line) => line.status !== 'skipped')
 }
 
 // 답변 위에 남길 줄. 끝나지 않았거나(running) 결과가 없는(skipped) 줄은 남기지 않는다.
-export function finishedLines(lines: PlanProgress[]): PlanProgress[] {
+export function finishedLines(lines: TurnLine[]): TurnLine[] {
   return lines.filter((line) => line.status === 'completed' || line.status === 'failed')
 }
 

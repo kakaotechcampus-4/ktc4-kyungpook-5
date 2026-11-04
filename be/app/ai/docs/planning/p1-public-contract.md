@@ -47,7 +47,7 @@ phase가 전혀 없으면 기존 text를 사용한다. commentary만 있고 Tool
 | kind | status | 알리는 시점 / 문구 예 |
 | --- | --- | --- |
 | condition_started | running | 스트림에서 조건 변경 Tool의 첫 조각(이름·호출 ID)을 받았을 때. 인자를 다 받기 전이라 값 없이 “조건을 반영하고 있어요”(#297) |
-| condition_applied | skipped | 같은 호출이 거절·같은 값·보류만으로 끝났을 때. “바뀐 조건이 없어요”. 화면은 진행 중 줄을 지우고 이유는 답변이 설명한다(#297) |
+| condition_applied | skipped | 같은 호출이 거절·같은 값·보류만으로 끝났을 때. “바뀐 조건이 없어요”. 모델이 거절 이유를 보고 다시 요청할 수 있어, 화면은 답변이 시작될 때 진행 중 줄을 지운다. 그 사이 같은 턴의 `condition_started`가 오면 그 자리를 이어 쓴다(#297) |
 | condition_applied | completed | applied이고 변경 필드가 있을 때. “예상 인원 60명 반영했어요”. 바뀐 항목이 여럿이면 “예상 인원 60명 · 참가비 1인 30,000원 반영했어요”(#290) |
 | search_started | running | 검증 후 실제 검색 직전. “지난 행사 기록을 찾고 있어요” |
 | search_finished | completed / failed | 자료 있음 / 자료 없음 / 검색 실패를 구분 |
