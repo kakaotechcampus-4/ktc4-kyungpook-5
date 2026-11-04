@@ -39,7 +39,8 @@ Thumbs.db
 *.iml
 
 # ── JavaScript / TypeScript ─────────────────────────
-node_modules/
+# 끝에 /를 붙이면 폴더만 막고 같은 이름의 링크 파일은 못 막는다.
+node_modules
 dist/
 build/
 .next/
