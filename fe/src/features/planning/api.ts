@@ -1,5 +1,6 @@
 import { apiGet, apiPatch, apiPost } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
+import { streamPlan, type PlanStreamHandlers } from './stream'
 
 type S = components['schemas']
 const plan = (eventId: string) => `/events/${encodeURIComponent(eventId)}/plan`
@@ -16,6 +17,15 @@ export const planningApi = {
     apiPost<S['PlanViewOut']>(`${plan(eventId)}/chat`, body),
   generate: (eventId: string, body: S['PlanGenerateIn']) =>
     apiPost<S['PlanViewOut']>(`${plan(eventId)}/generate`, body),
+  // 진행 단계와 답변 조각을 차례로 받는 SSE 경로(#285). 본문은 위와 같다.
+  chatStream: (eventId: string, body: S['PlanChatIn'], key: string, handlers: PlanStreamHandlers) =>
+    streamPlan(`${plan(eventId)}/chat/stream`, body, key, handlers),
+  generateStream: (
+    eventId: string,
+    body: S['PlanGenerateIn'],
+    key: string,
+    handlers: PlanStreamHandlers,
+  ) => streamPlan(`${plan(eventId)}/generate/stream`, body, key, handlers),
 
   // 단계·Action 세부 수정 (#106 ④)
   updateStep: (stepId: string, body: S['StepUpdateIn']) =>
