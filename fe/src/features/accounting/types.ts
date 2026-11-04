@@ -6,3 +6,5 @@ export type CreateExpenseInput = components['schemas']['ExpenseCreateIn']
 
 export type ReceiptImport = components['schemas']['ReceiptImportOut']
 export type ReceiptImportListItem = components['schemas']['ReceiptImportListItemOut']
+export type ReceiptDraft = components['schemas']['ReceiptImportDraftIn']
+export type ReceiptConfirm = components['schemas']['ReceiptImportConfirmOut']

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createExpense, getExpenses, getReceiptImports, retryReceiptImport } from './api'
-import type { CreateExpenseInput } from './types'
+import { createExpense, getExpenses, getReceiptImports, retryReceiptImport, getReceiptImport, uploadReceipt, saveReceiptDraft, confirmReceiptImport } from './api'
+import type { CreateExpenseInput, ReceiptDraft } from './types'
 import { ApiError } from '@/shared/api/types'
 
 export function useExpenses(clubId: string, page: number) {
@@ -47,4 +47,23 @@ export function useRetryReceiptImport(clubId: string) {
     mutationFn: (id: string) => retryReceiptImport(clubId, id),
     onSettled: () => client.invalidateQueries({ queryKey: ['accounting', clubId, 'receipt-imports'] }),
   })
+}
+
+export function useReceiptDetail(clubId: string, id: string | null) {
+  return useQuery({
+    queryKey: ['accounting', clubId, 'receipt-import', id],
+    queryFn: () => getReceiptImport(clubId, id!),
+    enabled: Boolean(id),
+    retry: false,
+    refetchInterval: (query) => query.state.data?.status === 'PROCESSING' ? 5000 : false,
+  })
+}
+export function useReceiptActions(clubId: string) {
+  const client = useQueryClient()
+  const refresh = () => client.invalidateQueries({ queryKey: ['accounting', clubId] })
+  return {
+    upload: useMutation({ mutationFn: (file: File) => uploadReceipt(clubId, file), onSettled: refresh }),
+    draft: useMutation({ mutationFn: ({id, body}: {id: string; body: ReceiptDraft}) => saveReceiptDraft(clubId, id, body) }),
+    confirm: useMutation({ mutationFn: ({id, version}: {id: string; version: number}) => confirmReceiptImport(clubId, id, version), onSettled: refresh }),
+  }
 }
