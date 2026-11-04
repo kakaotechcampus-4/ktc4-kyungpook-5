@@ -191,7 +191,7 @@ export function MeetingWorkspace({
           review={data.review.data}
           onStartReview={() => data.startReview.mutate()}
           onSubmitReview={() => data.submitReview.mutate()}
-          onSaveReviewNames={(version, names) => data.updateReviewSpeakers.mutate({ version, names })}
+          onSaveReviewNames={(version, names) => data.updateReviewSpeakers.mutateAsync({ version, names })}
           onCreateReviewDraft={(version) => data.createReviewDraft.mutate(version)}
           reviewBusy={data.startReview.isPending || data.submitReview.isPending || data.updateReviewSpeakers.isPending || data.createReviewDraft.isPending}
           reviewError={data.review.error || data.startReview.error || data.submitReview.error || data.updateReviewSpeakers.error || data.createReviewDraft.error}

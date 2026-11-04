@@ -36,7 +36,7 @@ export function MeetingEnded({
   review?: MeetingReview
   onStartReview?: () => void
   onSubmitReview?: () => void
-  onSaveReviewNames?: (version: number, names: Record<string, string>) => void
+  onSaveReviewNames?: (version: number, names: Record<string, string>) => Promise<unknown>
   onCreateReviewDraft?: (version: number) => void
   reviewBusy?: boolean
   reviewError?: unknown
