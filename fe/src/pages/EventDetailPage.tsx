@@ -107,21 +107,18 @@ export default function EventDetailPage() {
   const answering = reviewing?.type === 'CONFIRMATION' ? reviewing : undefined
   const deciding = reviewing && reviewing.type !== 'CONFIRMATION' ? reviewing : undefined
 
+  // 결정 검토 모달만 닫고 Step 모달은 남긴다. 한 단계에 검토할 일이 여럿이라
+  // 같이 닫으면 한 건 처리할 때마다 단계를 다시 열어야 한다. 처리하면 쿼리가
+  // 무효화돼 열린 Step 모달의 목록이 그 자리에서 갱신된다.
   const approveAction = async (action: EventAction) => {
     const success = await run(() => approveMutation.mutateAsync(action), '승인했어요', action.title)
-    if (success) {
-      setReviewing(undefined)
-      setOpenStepId(null)
-    }
+    if (success) setReviewing(undefined)
     return success
   }
 
   const denyAction = async (action: EventAction, reason: string) => {
     const success = await run(() => denyMutation.mutateAsync({ action, reason }), '진행하지 않기로 했어요', action.title)
-    if (success) {
-      setReviewing(undefined)
-      setOpenStepId(null)
-    }
+    if (success) setReviewing(undefined)
     return success
   }
 

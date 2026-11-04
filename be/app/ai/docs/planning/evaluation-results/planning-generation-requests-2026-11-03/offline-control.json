@@ -1,0 +1,87 @@
+{
+  "mode": "injected_control_flow",
+  "actual_provider_calls": 0,
+  "fixture_sha256": "df6703ca2196f7bd0f9ae385c45889c4ec850524a2222c1de3951b33534c008f",
+  "script_sha256": "11ad9b6ccac7dd3d8f43a32aff1374c4c1921947e52abe59d0670f2d296c36da",
+  "commit": "92ed9824347eccd181889c1cb249523560844a5b",
+  "rows": [
+    {
+      "case_id": "changed_headcount",
+      "turn": 1,
+      "offer_id_supplied": true,
+      "status": "needs_clarification",
+      "generation_calls": 0,
+      "draft_preserved": true
+    },
+    {
+      "case_id": "changed_headcount",
+      "turn": 2,
+      "offer_id_supplied": true,
+      "status": "needs_clarification",
+      "generation_calls": 0,
+      "draft_preserved": true
+    },
+    {
+      "case_id": "changed_headcount",
+      "turn": 3,
+      "offer_id_supplied": true,
+      "status": "needs_clarification",
+      "generation_calls": 0,
+      "draft_preserved": true
+    },
+    {
+      "case_id": "changed_headcount",
+      "turn": 4,
+      "offer_id_supplied": false,
+      "status": "generated",
+      "generation_calls": 1,
+      "draft_preserved": true
+    },
+    {
+      "case_id": "changed_headcount",
+      "route": "button",
+      "status": "generated",
+      "generation_calls": 1,
+      "history_preserved": true
+    },
+    {
+      "case_id": "specified_dates",
+      "turn": 1,
+      "offer_id_supplied": true,
+      "status": "needs_clarification",
+      "generation_calls": 0,
+      "draft_preserved": true
+    },
+    {
+      "case_id": "specified_dates",
+      "turn": 2,
+      "offer_id_supplied": true,
+      "status": "needs_clarification",
+      "generation_calls": 0,
+      "draft_preserved": true
+    },
+    {
+      "case_id": "specified_dates",
+      "turn": 3,
+      "offer_id_supplied": true,
+      "status": "needs_clarification",
+      "generation_calls": 0,
+      "draft_preserved": true
+    },
+    {
+      "case_id": "specified_dates",
+      "turn": 4,
+      "offer_id_supplied": false,
+      "status": "generated",
+      "generation_calls": 1,
+      "draft_preserved": true
+    },
+    {
+      "case_id": "specified_dates",
+      "route": "button",
+      "status": "generated",
+      "generation_calls": 1,
+      "history_preserved": true
+    }
+  ]
+}

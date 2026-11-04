@@ -591,8 +591,8 @@ export function ToriChat({
             <br />
             대화는 새로고침하면 사라져요.
           </p>
-          <Button type="submit" disabled={!clubId || busy || !draft.trim()}>
-            {busy ? '확인 중…' : '보내기'}
+          <Button type="submit" loading={busy} disabled={!clubId || !draft.trim()}>
+            {busy ? '기다리는 중…' : '보내기'}
           </Button>
         </div>
       </form>

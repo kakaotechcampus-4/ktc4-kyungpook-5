@@ -156,8 +156,8 @@ export function PlanChat({
             Enter로 전송 · Shift+Enter로 줄바꿈
           </p>
         </div>
-        <Button type="submit" disabled={busy}>
-          보내기
+        <Button type="submit" loading={busy}>
+          {busy ? '기다리는 중…' : '보내기'}
         </Button>
       </form>
     </Card>

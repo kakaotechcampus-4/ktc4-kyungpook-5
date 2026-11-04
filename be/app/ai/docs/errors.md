@@ -34,6 +34,12 @@ AIError
 회의 판단(`judge_utterance`)이 올린 `AIError`는 `trace`에 실패하기 전까지의 판단 기록을 담는다. 실패한 판단도 판단 기록에 남기기 위해서다([회의 발화 처리 초안](contracts.md#비동기와-실패), #117). 다른 기능에서는 `None`이다.
 BE는 이 타입들을 `app.ai`에서 가져온다.
 
+계획 생성의 내부 `generation/validation.py`에는 `PlanValidationError`가 있다(#239).
+`AIInvalidResponseError`의 하위 타입이므로 기존 실패 처리를 그대로 거치며, `app.ai`에
+공개하지 않는다. `violation`에 첫 규칙·위치·기대/실제 값을 담되 예외 문자열은 기존
+고정 문구다. 일반 로그와 공개 결과에는 이 세부 값을 추가하지 않고 합성 진단 도구에서만
+명시적으로 수집한다. 자세한 기준은 [생성 진단 명세 §11](planning/step-05-generation.md#11-실패한-초안과-구체적-검증-위반을-확보하기-239)을 따른다.
+
 ## 모델 호출 오류 변환
 
 모델 호출 예외는 `llm.ainvoke_structured`(구조화 출력), `llm.ainvoke_with_tools`(Tool 선택·대화), `llm.aembed_texts`(임베딩)가 위 타입으로 바꾼다. 기능 코드는 openai 예외를 직접 다루지 않는다.

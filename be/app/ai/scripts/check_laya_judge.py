@@ -116,8 +116,10 @@ def run(args) -> dict:
         print(f"  {'O' if pred == row['needs_lookup'] else 'X'} {row['id']:6} P={p:.3f}{detail}  {row['heard']}")
 
     caught = luna_caught(args.luna) if args.luna else None
-    sweep_records = [r for r in records if r.get("split") != "holdout"]
-    sweep = threshold_sweep(sweep_records, args.sweep)
+    # 임계값 표는 개발용으로만 만든다. 홀드아웃(holdout·holdout2)은 고른 값을 확인하는 데만 쓴다
+    sweep_records = [r for r in records if r.get("split", "dev") == "dev"]
+    # --split holdout2처럼 개발용이 없으면 표를 만들지 않는다
+    sweep = threshold_sweep(sweep_records, args.sweep) if sweep_records else []
     if caught is not None:
         for row in sweep:
             row["luna_caught_missed"] = luna_missed(sweep_records, caught, row["threshold"])["missed"]
@@ -181,8 +183,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.eval_set and args.set:
         parser.error("--eval-set에는 --set을 함께 쓸 수 없다")
-    if args.holdout and not args.eval_set:
-        parser.error("--holdout은 --eval-set과 함께 쓴다")
+    if (args.holdout or args.split) and not args.eval_set:
+        parser.error("--holdout·--split은 --eval-set과 함께 쓴다")
     if not 0 <= args.threshold <= 1 or not all(0 <= t <= 1 for t in args.sweep):
         parser.error("임계값은 0과 1 사이다")
     args.sweep = tuple(sorted(set(args.sweep)))
