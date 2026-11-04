@@ -1,6 +1,6 @@
 # P1 응답 시간 기준 측정
 
-상태: **고정 입력, 반복 실행기, 전체/세부 구간과 모델 호출별 토큰 관측, 집계를 구현했다.** 실제 모델 3세션 측정을 두 번 했다. 10-28 측정([원본과 분석](evaluation-results/planning-latency-real-2026-10-28/README.md))은 구간 시간까지, 11-03 측정([원본과 분석](evaluation-results/planning-latency-tokens-2026-11-03/README.md))은 토큰까지 기록했다. **지금 기준값은 11-03이다.** 토리 대화 지연 개선(#262)의 단계별 변경은 이 기준값과 같은 프로필로, 같은 측정 안에서 번갈아 잰다. 11-03 이후 바뀐 것은 대화 모델 메시지 순서(#269, `planning-agent-v8`)와 생성 모델 추론 깊이 `low`(#264)이며, 비교는 각각 [실행 문맥 위치 측정](evaluation-results/planning-agent-context-layout-2026-11-04/README.md)과 [추론 깊이 측정](evaluation-results/planning-generation-reasoning-2026-11-04/README.md)에 있다.
+상태: **고정 입력, 반복 실행기, 전체/세부 구간과 모델 호출별 토큰 관측, 집계를 구현했다.** 실제 모델 3세션 측정을 두 번 했다. 10-28 측정([원본과 분석](evaluation-results/planning-latency-real-2026-10-28/README.md))은 구간 시간까지, 11-03 측정([원본과 분석](evaluation-results/planning-latency-tokens-2026-11-03/README.md))은 토큰까지 기록했다. **지금 기준값은 11-03이다.** 토리 대화 지연 개선(#262)의 단계별 변경은 이 기준값과 같은 프로필로, 같은 측정 안에서 번갈아 잰다. 11-03 이후 바뀐 것은 대화 모델 메시지 순서(#269, `planning-agent-v8`)와 생성 모델 추론 깊이 `low`(#264)이며, 비교는 각각 [실행 문맥 위치 측정](evaluation-results/planning-agent-context-layout-2026-11-04/README.md)과 [추론 깊이 측정](evaluation-results/planning-generation-reasoning-2026-11-04/README.md)에 있다. 한 응답에 Tool 여러 개 허용(#265)은 같은 방식으로 쟀지만 채택하지 않아 코드가 바뀌지 않았다([측정](evaluation-results/planning-parallel-tool-calls-2026-11-04/README.md)).
 
 관련: [#196](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/196), AI-PLAN-01, AI-PLAN-05, AI-COMMON-02. 기존 개별 관찰은 [평가 기록](evaluation.md), 현재 실행 흐름은 [코드 따라가기](walkthrough.md)를 참고한다.
 
