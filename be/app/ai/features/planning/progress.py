@@ -53,6 +53,22 @@ def started(operation_id: str, *, generation: bool = False) -> PlanningProgress:
     )
 
 
+def condition_started(operation_id: str) -> PlanningProgress:
+    """모델이 조건 변경 Tool을 쓰기 시작한 순간(#290). 값 조각은 아직 다 오지 않아 일반 문구만 쓴다.
+
+    완료 알림과 같은 Tool 호출 ID를 써서, 화면은 같은 줄을 "…반영했어요"로 바꾼다.
+    실제 모델 9턴에서 이 순간은 완료보다 1.2~2.3초(p50 1.8초) 먼저 왔다.
+    """
+    return PlanningProgress(operation_id=operation_id, kind="condition_started", status="running",
+                            text="조건을 반영하고 있어요")
+
+
+def condition_skipped(operation_id: str) -> PlanningProgress:
+    """조건이 거절됐거나 바뀐 값이 없을 때. 화면은 진행 중 줄을 조용히 지우고, 이유는 답변이 설명한다."""
+    return PlanningProgress(operation_id=operation_id, kind="condition_applied", status="skipped",
+                            text="바뀐 조건이 없어요")
+
+
 def _shown(field: str, value) -> str:
     """패널에서 읽는 값의 모양으로 보여 준다. 예: 40 → '40명', 0(참가비) → '무료'."""
     if value is None:

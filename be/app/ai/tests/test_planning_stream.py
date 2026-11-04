@@ -125,6 +125,34 @@ def test_tool_after_text_resets_and_never_streams_arguments():
     assert 'index' not in response.content[-1]
 
 
+def test_tool_start_is_reported_once_per_call_before_arguments_finish():
+    # 조각은 누적돼 accept에 다시 들어온다. 같은 호출 ID는 한 번만, 이름과 ID가 있는 첫 조각에서 알린다.
+    second = [AIMessageChunk(content=[dict(type='function_call', index=2, name='search_past_events',
+                  arguments='', call_id='t2', id='fc2')],
+              tool_call_chunks=[dict(index=2, name='search_past_events', args='', id='t2')]),
+              AIMessageChunk(content=[dict(type='function_call', index=2, arguments='{"query":"MT"}')],
+              tool_call_chunks=[dict(index=2, args='{"query":"MT"}')])]
+    started = []
+    seen_args = []
+    async def on_tool_start(name, call_id):
+        started.append((name, call_id))
+    model = Model([*tool_chunks(), *second, done()])
+    model.before = lambda i: seen_args.append(len(started))
+    response, out = run(model, on_tool_start=on_tool_start)
+    assert started == [('update_event_conditions', 't1'), ('search_past_events', 't2')]
+    # 첫 조건 조각 다음(인자 조각이 오기 전)에 이미 시작을 알렸다.
+    assert seen_args[1] == 1
+    assert [c['id'] for c in response.tool_calls] == ['t1', 't2'] and not out.parts
+
+
+def test_text_only_answer_reports_no_tool_start():
+    started = []
+    async def on_tool_start(name, call_id):
+        started.append(name)
+    run(Model([chunk('좋아요', 'final_answer'), done()]), on_tool_start=on_tool_start)
+    assert not started
+
+
 def test_tool_only_has_no_reply_or_reset():
     response, out = run(Model([*tool_chunks(), done()]))
     assert response.tool_calls and not out.parts and not out.resets
@@ -221,7 +249,9 @@ def test_public_invoke_and_stream_store_identical_history_and_restore(monkeypatc
     streamed = asyncio.run(ai.chat_planning(req, progress=out))
     assert streamed == baseline
     assert ''.join(out.parts) == streamed.view.reply
-    assert [e.kind for e in out.events] == ['condition_applied']
+    # 스트림은 Tool 첫 조각에서 시작을, 검증·반영 뒤 같은 호출 ID로 완료를 알린다(#290).
+    assert [(e.kind, e.status, e.operation_id) for e in out.events] == [
+        ('condition_started', 'running', 't1'), ('condition_applied', 'completed', 't1')]
     restored = ai.parse_resume_state(streamed.next_state.model_dump_json())
     assert restored == baseline.next_state
     # 다음 턴에 복원한 Tool 호출과 결과를 모델이 실제로 받는지 확인한다.

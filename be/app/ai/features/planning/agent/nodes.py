@@ -13,7 +13,8 @@ from ....errors import AIInvalidResponseError
 from ....llm import ainvoke_with_tools, astream_with_tools
 from ....llm_stream import final_answer_text
 from ....ports import PlanningProgressPort
-from ..progress import notify, started, condition_progress, search_finished, reply_delta, reply_reset
+from ..progress import (notify, started, condition_started, condition_progress, condition_skipped,
+                        search_finished, reply_delta, reply_reset)
 from .schemas import PlanningAgentState, PlanningAgentTurnInput, ToolExecution
 from .record_tool import RecordLookupResult, RecordSearcher, SearchPastEventsInput
 from .tools import ConditionUpdateResult, UpdateEventConditionsInput, update_event_conditions
@@ -81,10 +82,16 @@ async def call_agent_model(messages: list[AnyMessage], *, allow_tools: bool,
                            search_enabled: bool = False, generation_enabled: bool = False,
                            progress: PlanningProgressPort | None = None) -> AIMessage:
     if progress is not None:
+        async def tool_started(name: str, call_id: str) -> None:
+            # 조건 변경만 Tool을 쓰기 시작한 순간에 알린다. 실행은 인자를 다 받아 검증한 뒤다.
+            # 검색·생성은 실제 실행 직전에 이미 시작 알림을 보낸다.
+            if name == TOOL_NAME:
+                await notify(progress, condition_started(call_id))
         return await astream_with_tools(messages,
             tools=agent_tool_schemas(search_enabled=search_enabled, generation_enabled=generation_enabled),
             allow_tools=allow_tools, parallel_tool_calls=PARALLEL_TOOL_CALLS,
-            on_text=partial(reply_delta, progress), on_reset=partial(reply_reset, progress))
+            on_text=partial(reply_delta, progress), on_reset=partial(reply_reset, progress),
+            on_tool_start=tool_started)
     return await ainvoke_with_tools(messages, tools=agent_tool_schemas(search_enabled=search_enabled,
                                                                     generation_enabled=generation_enabled),
                                    allow_tools=allow_tools, parallel_tool_calls=PARALLEL_TOOL_CALLS)
@@ -219,7 +226,8 @@ async def tools_node(state: PlanningAgentState, *, request: PlanningAgentTurnInp
         if isinstance(result, ConditionUpdateResult):
             draft = result.draft
             if call["name"] == TOOL_NAME:
-                await notify(progress, condition_progress(call["id"], result))
+                # 반영된 값이 없으면(거절·같은 값·보류만) 시작 알림의 줄을 지우게 한다.
+                await notify(progress, condition_progress(call["id"], result) or condition_skipped(call["id"]))
                 generation = condition_generation_state(generation, result, call["args"])
                 offer = generation.offer
                 if result.status == "applied" and offer and offer.id == deferred_offer_id:

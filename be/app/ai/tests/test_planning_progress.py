@@ -106,9 +106,10 @@ def test_search_then_guessed_change_does_not_claim_change():
     result = run_turn(req, [search_call(), change_call(req, "fee_per_person", 30000)], progress=port,
                       search=lookup(Port((chunk("report", "참가비 45,000원"),))))
     assert result.executions[-1].result.status == "rejected"
-    assert [e.kind for e in port.events] == ["search_started", "search_finished"]
-    assert {e.operation_id for e in port.events} == {"s1"}
-    assert port.events[-1].text == "참고할 기록을 찾았어요"
+    # 거절된 조건 변경은 성공 대신 skipped만 보내 화면이 진행 중 줄을 지우게 한다.
+    assert [(e.kind, e.status) for e in port.events] == [
+        ("search_started", "running"), ("search_finished", "completed"), ("condition_applied", "skipped")]
+    assert port.events[1].text == "참고할 기록을 찾았어요"
 
 
 @pytest.mark.parametrize("status,expected_status,text", [
@@ -216,7 +217,7 @@ def test_rejected_condition_in_graph_does_not_emit_success():
     port = Recorder()
     result = run_turn(req, [call], progress=port)
     assert result.executions[0].result.status == "rejected"
-    assert not port.events
+    assert [(e.kind, e.status) for e in port.events] == [("condition_applied", "skipped")]
 
 
 def test_multiple_fields_and_metadata_only_change():
@@ -251,6 +252,22 @@ def test_progress_contract_rejects_false_completion_and_is_public():
     assert ai.PlanningProgressPort is not None
     with pytest.raises(ValidationError):
         ai.PlanningProgress(operation_id="g1", kind="generation_started", status="completed", text="생성")
+
+
+@pytest.mark.parametrize("kind,status,ok", [
+    ("condition_started", "running", True),
+    ("condition_started", "completed", False),  # 시작 알림이 완료를 주장하지 않는다
+    ("condition_applied", "skipped", True),     # 거절·같은 값: 진행 중 줄을 지운다
+    ("condition_applied", "running", False),
+    ("search_finished", "skipped", False),      # 검색은 자료 없음도 결과로 보여 준다
+])
+def test_condition_start_and_skip_contract(kind, status, ok):
+    make = lambda: ai.PlanningProgress(operation_id="c1", kind=kind, status=status, text="문구")
+    if ok:
+        make()
+    else:
+        with pytest.raises(ValidationError):
+            make()
 
 
 def test_progress_cancellation_is_not_swallowed():
