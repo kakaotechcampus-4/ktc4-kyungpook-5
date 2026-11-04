@@ -100,8 +100,9 @@ export function useMeetingData(clubId: string, meetingId: string | undefined) {
   })
   const startReview = useMutation({ mutationFn: () => meetingsApi.review(meetingId!), onSuccess: refresh })
   const submitReview = useMutation({ mutationFn: () => meetingsApi.submitReview(meetingId!), onSuccess: refresh })
-  const updateReviewSpeakers = useMutation({ mutationFn: (input: { version: number; names: Record<string, string> }) => meetingsApi.updateReviewSpeakers(meetingId!, input.version, input.names), onSuccess: refresh })
+  const updateReviewSpeakers = useMutation({ mutationFn: (input: { version: number; names: Record<string, string>; members: Record<string, { memberId: string | null; confirmed: boolean }> }) => meetingsApi.updateReviewSpeakers(meetingId!, input.version, input.names, input.members), onSuccess: refresh })
   const createReviewDraft = useMutation({ mutationFn: (version: number) => meetingsApi.createReviewDraft(meetingId!, version), onSuccess: refresh })
+  const saveReviewCandidates = useMutation({ mutationFn: (input: { version: number; clientRequestId: string; candidates: Array<{ title: string; description: string | null; assigneeMemberId: string | null; dueDate: string | null; evidenceSegmentIds: string[] }> }) => meetingsApi.saveReviewCandidates(meetingId!, input.version, input.clientRequestId, input.candidates), onSuccess: refresh })
   return {
     meeting,
     transcripts,
@@ -115,6 +116,7 @@ export function useMeetingData(clubId: string, meetingId: string | undefined) {
     submitReview,
     updateReviewSpeakers,
     createReviewDraft,
+    saveReviewCandidates,
   }
 }
 export function useMeetings(clubId: string, status?: Meeting['status']) {

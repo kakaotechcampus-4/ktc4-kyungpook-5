@@ -339,6 +339,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/meetings/{meeting_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Meeting Review */
+        get: operations["get_meeting_review_api_v1_meetings__meeting_id__review_get"];
+        put?: never;
+        /** Start Meeting Review */
+        post: operations["start_meeting_review_api_v1_meetings__meeting_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meetings/{meeting_id}/review/speakers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Review Speakers */
+        patch: operations["update_review_speakers_api_v1_meetings__meeting_id__review_speakers_patch"];
+        trace?: never;
+    };
+    "/api/v1/meetings/{meeting_id}/review/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save Review Candidates */
+        post: operations["save_review_candidates_api_v1_meetings__meeting_id__review_candidates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meetings/{meeting_id}/review/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Review Draft */
+        post: operations["create_review_draft_api_v1_meetings__meeting_id__review_draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meetings/{meeting_id}/review/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Review Diarization */
+        post: operations["submit_review_diarization_api_v1_meetings__meeting_id__review_submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meetings/{meeting_id}/review/poll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Poll Review Diarization */
+        post: operations["poll_review_diarization_api_v1_meetings__meeting_id__review_poll_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/clubs/{club_id}/meetings": {
         parameters: {
             query?: never;
@@ -385,6 +488,63 @@ export interface paths {
         put?: never;
         /** Upload Audio Chunk */
         post: operations["upload_audio_chunk_api_v1_meetings__meeting_id__audio_chunks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meetings/{meeting_id}/audio-chunks/{seq}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Audio Chunk File */
+        get: operations["get_audio_chunk_file_api_v1_meetings__meeting_id__audio_chunks__seq__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meetings/{meeting_id}/audio-chunks/{seq}/clip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Audio Chunk Clip
+         * @description Return a bounded WAV clip after the same meeting membership check as the source file.
+         */
+        get: operations["get_audio_chunk_clip_api_v1_meetings__meeting_id__audio_chunks__seq__clip_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meetings/{meeting_id}/review/segments/{segment_id}/clip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Review Segment Clip
+         * @description Resolve a transcript segment to its stored source chunk before clipping.
+         */
+        get: operations["get_review_segment_clip_api_v1_meetings__meeting_id__review_segments__segment_id__clip_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1444,90 +1604,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/test-support/auth/kakao-login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Kakao Login Bypass
-         * @description 카카오 동의 화면 없이 테스트 프로필로 바로 세션을 발급한다.
-         */
-        post: operations["kakao_login_bypass_api_v1_test_support_auth_kakao_login_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/test-support/clubs/{club_id}/meetings/{meeting_id}/transcripts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Inject Transcript
-         * @description 실제 Whisper 없이 전사 텍스트를 직접 주입한다 (meeting.curl.sh M05).
-         *
-         *     STT가 만든 전사와 같은 경로(meeting_service)로 저장한다. final이면 판단 작업이
-         *     자동으로 생기고, 연결된 WebSocket이 있으면 결과가 그쪽으로도 나간다.
-         *     분기를 입력으로 지정하지 않는다 — 판단은 문장만 보고 한다.
-         */
-        post: operations["inject_transcript_api_v1_test_support_clubs__club_id__meetings__meeting_id__transcripts_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/test-support/clubs/{club_id}/discord-connections": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create Fixture Connection
-         * @description 실제 bot credential 없이 이벤트 주입용 연결을 만든다. 외부 Discord에 접속하지 않는다.
-         */
-        post: operations["create_fixture_connection_api_v1_test_support_clubs__club_id__discord_connections_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/test-support/clubs/{club_id}/discord-events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Inject Discord Event
-         * @description 수집기가 받은 Discord 이벤트를 흉내 낸다. 메시지를 외부로 보내지 않는다.
-         */
-        post: operations["inject_discord_event_api_v1_test_support_clubs__club_id__discord_events_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1707,7 +1783,7 @@ export interface components {
          * AgentJobKind
          * @enum {string}
          */
-        AgentJobKind: "RECEIPT_OCR" | "MEETING_STT" | "CONTEXT_DECISION" | "DISCORD_SYNC";
+        AgentJobKind: "RECEIPT_OCR" | "MEETING_STT" | "MEETING_REVIEW" | "CONTEXT_DECISION" | "DISCORD_SYNC";
         /** AgentJobOut */
         AgentJobOut: {
             /** Id */
@@ -2213,12 +2289,6 @@ export interface components {
             /** Meta */
             meta?: null;
         };
-        /** Envelope[FixtureDiscordEventOut] */
-        Envelope_FixtureDiscordEventOut_: {
-            data: components["schemas"]["FixtureDiscordEventOut"];
-            /** Meta */
-            meta?: null;
-        };
         /** Envelope[InvitationAcceptOut] */
         Envelope_InvitationAcceptOut_: {
             data: components["schemas"]["InvitationAcceptOut"];
@@ -2240,6 +2310,12 @@ export interface components {
         /** Envelope[MeetingOut] */
         Envelope_MeetingOut_: {
             data: components["schemas"]["MeetingOut"];
+            /** Meta */
+            meta?: null;
+        };
+        /** Envelope[MeetingReviewOut] */
+        Envelope_MeetingReviewOut_: {
+            data: components["schemas"]["MeetingReviewOut"];
             /** Meta */
             meta?: null;
         };
@@ -2354,12 +2430,6 @@ export interface components {
         /** Envelope[TaskSuggestionOut] */
         Envelope_TaskSuggestionOut_: {
             data: components["schemas"]["TaskSuggestionOut"];
-            /** Meta */
-            meta?: null;
-        };
-        /** Envelope[TestSupportTranscriptOut] */
-        Envelope_TestSupportTranscriptOut_: {
-            data: components["schemas"]["TestSupportTranscriptOut"];
             /** Meta */
             meta?: null;
         };
@@ -2645,56 +2715,6 @@ export interface components {
             /** Eventid */
             eventId?: string | null;
         };
-        /** FixtureConnectionCreateIn */
-        FixtureConnectionCreateIn: {
-            mode: components["schemas"]["DiscordConnectionMode"];
-            /** Guildid */
-            guildId: string;
-            /** Channelids */
-            channelIds: string[];
-            /**
-             * Enabled
-             * @default true
-             */
-            enabled: boolean;
-        };
-        /** FixtureDiscordEventIn */
-        FixtureDiscordEventIn: {
-            /** Connectionid */
-            connectionId: string;
-            /** Eventtype */
-            eventType: string;
-            /** Eventid */
-            eventId: string;
-            /** Guildid */
-            guildId: string;
-            /** Channelid */
-            channelId: string;
-            /** Messageid */
-            messageId: string;
-            /** Authorid */
-            authorId?: string | null;
-            /**
-             * Sourceoccurredat
-             * Format: date-time
-             */
-            sourceOccurredAt: string;
-            /** Content */
-            content?: string | null;
-        };
-        /** FixtureDiscordEventOut */
-        FixtureDiscordEventOut: {
-            /** Eventid */
-            eventId: string;
-            /** Messageid */
-            messageId: string;
-            /** Sourceversion */
-            sourceVersion: number;
-            /** Duplicate */
-            duplicate: boolean;
-            /** Jobid */
-            jobId: string | null;
-        };
         /** GenerationReadinessOut */
         GenerationReadinessOut: {
             /** Cangenerate */
@@ -2856,6 +2876,33 @@ export interface components {
             endedAt: string | null;
             /** Version */
             version: number;
+        };
+        /** MeetingReviewOut */
+        MeetingReviewOut: {
+            /** Id */
+            id: string;
+            /** Meetingid */
+            meetingId: string;
+            /** Jobid */
+            jobId: string;
+            /** Status */
+            status: string;
+            /** Version */
+            version: number;
+            /** Errorcode */
+            errorCode: string | null;
+            /** Speakers */
+            speakers: {
+                [key: string]: unknown;
+            }[];
+            /** Segments */
+            segments: {
+                [key: string]: unknown;
+            }[];
+            /** Draft */
+            draft: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * MeetingStatus
@@ -3593,6 +3640,33 @@ export interface components {
             name: string;
             role: components["schemas"]["MemberRole"];
         };
+        /** ReviewCandidateIn */
+        ReviewCandidateIn: {
+            /** Title */
+            title: string;
+            /** Description */
+            description?: string | null;
+            /** Assigneememberid */
+            assigneeMemberId?: string | null;
+            /** Duedate */
+            dueDate?: string | null;
+            /** Evidencesegmentids */
+            evidenceSegmentIds: string[];
+        };
+        /** ReviewCandidatesIn */
+        ReviewCandidatesIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+            /** Clientrequestid */
+            clientRequestId: string;
+            /** Candidates */
+            candidates: components["schemas"]["ReviewCandidateIn"][];
+        };
+        /** ReviewDraftIn */
+        ReviewDraftIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+        };
         /** RowErrorOut */
         RowErrorOut: {
             /** Rowno */
@@ -3625,6 +3699,29 @@ export interface components {
         SignupOut: {
             /** Id */
             id: string;
+        };
+        /** SpeakerMemberIn */
+        SpeakerMemberIn: {
+            /** Memberid */
+            memberId?: string | null;
+            /**
+             * Confirmed
+             * @default false
+             */
+            confirmed: boolean;
+        };
+        /** SpeakerNamesIn */
+        SpeakerNamesIn: {
+            /** Expectedversion */
+            expectedVersion: number;
+            /** Names */
+            names?: {
+                [key: string]: string;
+            };
+            /** Members */
+            members?: {
+                [key: string]: components["schemas"]["SpeakerMemberIn"];
+            };
         };
         /**
          * StepActor
@@ -3791,6 +3888,8 @@ export interface components {
             description: string | null;
             /** Suggestedassignee */
             suggestedAssignee: string | null;
+            /** Suggestedassigneememberid */
+            suggestedAssigneeMemberId?: string | null;
             /** Duedate */
             dueDate: string | null;
             /** Kind */
@@ -3837,57 +3936,6 @@ export interface components {
          * @enum {string}
          */
         TaskSuggestionStatus: "PROPOSED" | "ACCEPTED";
-        /**
-         * TestSupportTranscriptIn
-         * @description 실제 Whisper 없이 전사 텍스트를 직접 주입한다 (meeting.curl.sh M05와 동일한 패턴).
-         */
-        TestSupportTranscriptIn: {
-            /** Seq */
-            seq: number;
-            /** Startms */
-            startMs: number;
-            /** Endms */
-            endMs: number;
-            /** Final */
-            final: boolean;
-            /** Text */
-            text: string;
-            /** Speakerlabel */
-            speakerLabel?: string | null;
-            /** Expectedversion */
-            expectedVersion?: number | null;
-        };
-        /** TestSupportTranscriptOut */
-        TestSupportTranscriptOut: {
-            /** Id */
-            id: string;
-            /** Sourceid */
-            sourceId: string;
-            /** Sourceversion */
-            sourceVersion: number;
-            /** Seq */
-            seq: number;
-            /** Text */
-            text: string;
-            /** Final */
-            final: boolean;
-            /** Version */
-            version: number;
-            /** Speakerlabel */
-            speakerLabel: string | null;
-            /** Startms */
-            startMs: number | null;
-            /** Endms */
-            endMs: number | null;
-            /** Decisionjobid */
-            decisionJobId: string | null;
-            /** Createdat */
-            createdAt: string;
-            /** Modifiedat */
-            modifiedAt: string;
-            /** Jobid */
-            jobId: string | null;
-        };
         /** ToriClarification */
         ToriClarification: {
             /** Originalquestion */
@@ -4934,6 +4982,249 @@ export interface operations {
             };
         };
     };
+    get_meeting_review_api_v1_meetings__meeting_id__review_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_MeetingReviewOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_meeting_review_api_v1_meetings__meeting_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_MeetingReviewOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_review_speakers_api_v1_meetings__meeting_id__review_speakers_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpeakerNamesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_MeetingReviewOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_review_candidates_api_v1_meetings__meeting_id__review_candidates_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewCandidatesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_TaskSuggestionOut__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_review_draft_api_v1_meetings__meeting_id__review_draft_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewDraftIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_MeetingReviewOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_review_diarization_api_v1_meetings__meeting_id__review_submit_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_MeetingReviewOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    poll_review_diarization_api_v1_meetings__meeting_id__review_poll_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_MeetingReviewOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_club_meetings_api_v1_clubs__club_id__meetings_get: {
         parameters: {
             query?: {
@@ -5065,6 +5356,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_AudioChunkOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_audio_chunk_file_api_v1_meetings__meeting_id__audio_chunks__seq__file_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                meeting_id: string;
+                seq: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_audio_chunk_clip_api_v1_meetings__meeting_id__audio_chunks__seq__clip_get: {
+        parameters: {
+            query?: {
+                startMs?: number | null;
+                endMs?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                meeting_id: string;
+                seq: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_review_segment_clip_api_v1_meetings__meeting_id__review_segments__segment_id__clip_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                meeting_id: string;
+                segment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -7481,151 +7877,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_ToriMessageOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    kakao_login_bypass_api_v1_test_support_auth_kakao_login_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["KakaoLoginIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_SessionOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    inject_transcript_api_v1_test_support_clubs__club_id__meetings__meeting_id__transcripts_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                club_id: string;
-                meeting_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TestSupportTranscriptIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_TestSupportTranscriptOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_fixture_connection_api_v1_test_support_clubs__club_id__discord_connections_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                club_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FixtureConnectionCreateIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_DiscordConnectionOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    inject_discord_event_api_v1_test_support_clubs__club_id__discord_events_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                club_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FixtureDiscordEventIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_FixtureDiscordEventOut_"];
                 };
             };
             /** @description Validation Error */

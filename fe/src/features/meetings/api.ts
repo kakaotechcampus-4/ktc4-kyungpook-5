@@ -1,4 +1,4 @@
-import { apiGet, apiGetPage, apiPatch, apiPost } from '@/shared/api/client'
+import { apiGet, apiGetBlob, apiGetPage, apiPatch, apiPost } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
 import type { Decision, Job, Meeting, MeetingReview, Suggestion, TranscriptList } from './types'
 const id = encodeURIComponent
@@ -35,8 +35,11 @@ export const meetingsApi = {
   getReview: (meetingId: string) => apiGet<MeetingReview>(`/meetings/${id(meetingId)}/review`),
   submitReview: (meetingId: string) => apiPost<MeetingReview>(`/meetings/${id(meetingId)}/review/submit`),
   pollReview: (meetingId: string) => apiPost<MeetingReview>(`/meetings/${id(meetingId)}/review/poll`),
-  updateReviewSpeakers: (meetingId: string, expectedVersion: number, names: Record<string, string>) =>
-    apiPatch<MeetingReview>(`/meetings/${id(meetingId)}/review/speakers`, { expectedVersion, names }),
+  updateReviewSpeakers: (meetingId: string, expectedVersion: number, names: Record<string, string>, members: Record<string, { memberId: string | null; confirmed: boolean }>) =>
+    apiPatch<MeetingReview>(`/meetings/${id(meetingId)}/review/speakers`, { expectedVersion, names, members }),
+  saveReviewCandidates: (meetingId: string, expectedVersion: number, clientRequestId: string, candidates: Array<{ title: string; description: string | null; assigneeMemberId: string | null; dueDate: string | null; evidenceSegmentIds: string[] }>) =>
+    apiPost<components['schemas']['TaskSuggestionOut'][]>(`/meetings/${id(meetingId)}/review/candidates`, { expectedVersion, clientRequestId, candidates }),
+  reviewSegmentClip: (meetingId: string, segmentId: string) => apiGetBlob(`/meetings/${id(meetingId)}/review/segments/${id(segmentId)}/clip`),
   createReviewDraft: (meetingId: string, expectedVersion: number) =>
     apiPost<MeetingReview>(`/meetings/${id(meetingId)}/review/draft`, { expectedVersion }),
   patchSuggestion: (

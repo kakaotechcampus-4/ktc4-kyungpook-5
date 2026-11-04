@@ -18,6 +18,7 @@ export function FixtureMeeting() {
     return (
       <>
         <MeetingEnded
+          clubId={fixtureMeeting.clubId}
           summary={`${fixtureMeeting.title} · 14:00 – 14:06 · 들은 말 4개 · 토리 2번`}
           suggestions={[fixtureSuggestion]}
           suggestionsError={false}

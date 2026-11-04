@@ -19,10 +19,12 @@ export function MeetingEnded({
   onOpenCandidates,
   onOpenRecord,
   review,
+  clubId,
   onStartReview,
   onSubmitReview,
   onSaveReviewNames,
   onCreateReviewDraft,
+  onSaveReviewCandidates,
   reviewBusy,
   reviewError,
 }: {
@@ -34,10 +36,12 @@ export function MeetingEnded({
   onOpenCandidates: () => void
   onOpenRecord: () => void
   review?: MeetingReview
+  clubId: string
   onStartReview?: () => void
   onSubmitReview?: () => void
-  onSaveReviewNames?: (version: number, names: Record<string, string>) => Promise<unknown>
+  onSaveReviewNames?: (version: number, names: Record<string, string>, members: Record<string, { memberId: string | null; confirmed: boolean }>) => Promise<unknown>
   onCreateReviewDraft?: (version: number) => void
+  onSaveReviewCandidates?: (version: number, requestId: string, candidates: Array<{ title: string; description: string | null; assigneeMemberId: string | null; dueDate: string | null; evidenceSegmentIds: string[] }>) => Promise<unknown>
   reviewBusy?: boolean
   reviewError?: unknown
 }) {
@@ -117,13 +121,15 @@ export function MeetingEnded({
           새 회의 시작하기 ›
         </Link>
       </Card>
-      {onStartReview && onSubmitReview && onSaveReviewNames && onCreateReviewDraft && (
+      {onStartReview && onSubmitReview && onSaveReviewNames && onCreateReviewDraft && onSaveReviewCandidates && (
         <MeetingReviewPanel
           review={review}
+          clubId={clubId}
           onStart={onStartReview}
           onSubmit={onSubmitReview}
           onSaveNames={onSaveReviewNames}
           onDraft={onCreateReviewDraft}
+          onSaveCandidates={onSaveReviewCandidates}
           busy={reviewBusy ?? false}
           error={reviewError}
         />
