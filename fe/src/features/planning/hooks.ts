@@ -11,6 +11,7 @@ import { PartialPlanSaveError } from './errors'
 import type { ChatMessage, PlanFacts, PlanProgress } from './types'
 import type { PlanStreamHandlers } from './stream'
 import { FIRST_MESSAGE } from './mock'
+import { attachReceipts, upsertProgress, type TurnReceipt } from './turn'
 import { ApiError } from '@/shared/api/types'
 import type { components } from '@/shared/api/schema'
 
@@ -60,6 +61,9 @@ function snapshotQuery(userId: string | undefined, clubId: string | null, eventI
     retry: false,
   })
 }
+function receiptsKey(userId: string | undefined, clubId: string | null, eventId: string | null) {
+  return ['planning', 'receipts', userId, clubId, eventId]
+}
 export function usePlanningDrafts(clubId: string | null, userId: string | undefined) {
   return useQuery({
     queryKey: ['planning', 'drafts', userId, clubId],
@@ -76,7 +80,10 @@ export function usePlanningChat(
 ) {
   const queryClient = useQueryClient()
   const [view, setView] = useState<S['PlanViewOut'] | null>(null)
-  const [busy, setBusy] = useState(false)
+  // 채팅 답변 대기와 버튼 초안 생성 대기를 나눈다. 하나로 두면 채팅만 보내도
+  // 생성 버튼이 "초안을 만드는 중…"이 된다(#290). 둘 중 하나라도 진행 중이면 입력은 잠근다.
+  const [sending, setSending] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   // 스트림으로 받는 동안만 보이는 임시 표시(#285). done 뒤 저장된 대화로 바뀌면 지운다.
   const [progress, setProgress] = useState<PlanProgress[]>([])
@@ -86,21 +93,25 @@ export function usePlanningChat(
   // 보낼 때 저장돼 있던 대화 수. 다시 불러온 대화가 이보다 많으면 이번 턴이 저장된 것이다.
   const [pendingBase, setPendingBase] = useState<number | null>(null)
   const locked = useRef(false)
+  // 이번 턴의 작업 줄. 답변이 끝나면 화면 상태가 아니라 이 값으로 저장할 작업 줄을 정한다.
+  const turnLines = useRef<PlanProgress[]>([])
   const clearPending = () => {
     setPendingBase(null)
+    turnLines.current = []
     setProgress([])
     setPendingText('')
     setPendingReply('')
     setNotice('')
   }
   const handlers: PlanStreamHandlers = {
-    // 같은 작업의 진행 줄은 결과 줄로 바꾸고, 현재 단계와 직전 결과 두 줄만 남긴다.
-    onProgress: (event) =>
-      setProgress((lines) =>
-        [...lines.filter((line) => line.operationId !== event.operationId), event].slice(-2),
-      ),
+    // 같은 작업의 진행 줄은 제자리에서 결과 줄로 바꾼다. 이번 턴의 줄은 모두 남긴다(#290).
+    onProgress: (event) => {
+      turnLines.current = upsertProgress(turnLines.current, event)
+      setProgress(turnLines.current)
+    },
     onReply: setPendingReply,
     onReconnect: () => {
+      turnLines.current = []
       setProgress([])
       setPendingReply('')
       setNotice('연결이 끊겨 처리 결과를 다시 확인하고 있어요…')
@@ -114,11 +125,23 @@ export function usePlanningChat(
   })
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: snapshotQuery(userId, clubId, selectedId).queryKey })
-  const storedMessages: ChatMessage[] = (snapshot.data?.messages ?? []).map((m) => ({
-    id: m.id,
-    from: m.role === 'USER' ? '나' : '토리',
-    text: m.content,
-  }))
+  // 이번 화면에서 끝난 턴의 작업 줄. 새 계획은 첫 답변 뒤 대화 영역이 새로 그려지므로
+  // 화면 상태가 아니라 계획별 캐시에 둔다. 서버에 저장하지 않아 새로고침하면 사라진다.
+  const receipts = useQuery({
+    queryKey: receiptsKey(userId, clubId, selectedId),
+    queryFn: () => [] as TurnReceipt[],
+    enabled: !!selectedId,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
+  const storedMessages: ChatMessage[] = attachReceipts(
+    (snapshot.data?.messages ?? []).map((m) => ({
+      id: m.id,
+      from: m.role === 'USER' ? '나' : '토리',
+      text: m.content,
+    })),
+    receipts.data ?? [],
+  )
   const messages = [FIRST_MESSAGE, ...storedMessages]
   // 저장된 대화에 이번 턴이 들어오면 임시 표시는 같은 화면 갱신에서 숨긴다.
   // 임시 표시를 지우는 일과 다시 불러온 대화를 그리는 일이 따로 일어나도 두 번 보이지 않는다.
@@ -150,11 +173,12 @@ export function usePlanningChat(
       return false
     }
     locked.current = true
-    setBusy(true)
+    setSending(true)
     setError('')
     clearPending()
     setPendingText(text)
-    setPendingBase(storedMessages.length)
+    const base = storedMessages.length
+    setPendingBase(base)
     let eventId = selectedId
     const id = crypto.randomUUID()
     let succeeded = false
@@ -169,6 +193,14 @@ export function usePlanningChat(
       )
       setView(result)
       succeeded = true
+      // 저장된 대화를 다시 불러오기 전에 작업 줄을 먼저 넣어 둔다. 그래야 임시 표시가
+      // 저장된 답변으로 바뀌는 같은 화면 갱신에서 작업 줄이 답변 위에 그대로 남는다.
+      const lines = turnLines.current.filter((line) => line.status !== 'running')
+      if (lines.length)
+        queryClient.setQueryData<TurnReceipt[]>(
+          receiptsKey(userId, clubId, eventId),
+          (old = []) => [...old, { base, lines }],
+        )
       if (!selectedId) {
         // 새 계획: 끝나면 화면이 이 계획 주소로 넘어가며 대화 영역을 새로 그린다.
         // 저장된 대화를 먼저 받아 두면 넘어가자마자 그 대화를 그려,
@@ -205,14 +237,14 @@ export function usePlanningChat(
         onCreated(eventId, succeeded ? undefined : text)
       } else {
         clearPending()
-        setBusy(false)
+        setSending(false)
       }
     }
   }
   const generate = async () => {
     if (!selectedId || !snapshot.data || locked.current) return
     locked.current = true
-    setBusy(true)
+    setGenerating(true)
     setError('')
     clearPending()
     try {
@@ -232,13 +264,14 @@ export function usePlanningChat(
     } finally {
       clearPending()
       locked.current = false
-      setBusy(false)
+      setGenerating(false)
     }
   }
   return {
     messages,
     facts,
-    busy,
+    busy: sending || generating,
+    generating,
     error,
     send,
     generate,

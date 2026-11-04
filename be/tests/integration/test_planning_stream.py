@@ -51,7 +51,7 @@ def post_stream(client: TestClient, path: str, headers: dict, body: dict) -> htt
     return res
 
 
-def progress_event(kind="condition_applied", status="completed", text="예상 인원을 60명으로 변경했어요"):
+def progress_event(kind="condition_applied", status="completed", text="예상 인원 60명 반영했어요"):
     return ai.PlanningProgress(operation_id="call_1", kind=kind, status=status, text=text)
 
 
@@ -86,7 +86,7 @@ async def test_채팅_스트림은_진행_답변_조각_뒤에_JSON과_같은_�
     events = parse(res.text)
     assert [name for name, _ in events] == ["progress", "reply_delta", "reply_delta", "done"]
     assert events[0][1] == {"operationId": "call_1", "kind": "condition_applied",
-                            "status": "completed", "text": "예상 인원을 60명으로 변경했어요"}
+                            "status": "completed", "text": "예상 인원 60명 반영했어요"}
     assert "".join(data["text"] for name, data in events if name == "reply_delta") == \
         events[-1][1]["reply"]
 

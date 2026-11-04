@@ -6,11 +6,12 @@ BE가 `chat_planning(request, progress=port)` 또는
 `generate_planning_preview(request, progress=port)`를 호출하면 실제 작업에 맞춰
 `port.progress(PlanningProgress)`가 실행된다. 포트를 생략하면 기존 호출 방식을 유지한다.
 BE의 SSE 경로(`services/planning_stream.py`, #284)가 이 알림을 `progress`·`reply_delta` 이벤트로 보낸다. 제품 FE는 `features/planning/stream.ts` → `hooks.usePlanningChat` → `PlanChat`에서 진행 줄과 답변 조각을 그린다(#285).
+화면은 한 턴의 진행 줄을 토리 답변과 한 덩어리로 묶고, 답변이 끝난 뒤에도 답변 위에 남긴다(#290, `features/planning/turn.ts`). 진행 줄은 저장하지 않으므로 새로고침하면 답변만 남는다.
 
 예: “예상 인원을 60명으로 바꾸고 초안 만들어줘”:
 
 1. `agent/tools.py`가 조건을 검증한 뒤 `nodes.tools_node`가
-   `condition_applied/completed`와 “예상 인원을 60명으로 변경했어요”를 보낸다.
+   `condition_applied/completed`와 “예상 인원 60명 반영했어요”를 보낸다.
 2. `generation/entrypoints.generate_with_context`는 생성 차단과 성공 결과 재사용을 확인한다.
    실제 생성이 필요할 때만 `generation_started/running`을 보낸다.
 3. 생성 및 기준 조건 검증 후 같은 `operation_id`로 `generation_finished`를 보낸다.
