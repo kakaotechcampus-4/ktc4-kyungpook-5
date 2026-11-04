@@ -783,6 +783,8 @@ class PlanningProgress(ContractModel):
     # empty: 작업은 정상으로 끝났지만 찾은 것이 없다(기록 검색 자료 없음). 화면은 실패와 구분해 남긴다.
     status: Literal["running", "completed", "failed", "skipped", "empty"]
     text: NonBlankStr
+    # 조건 완료 직후의 검증된 값·잠정 여부. 저장 전 패널에만 쓰고 상태 JSON에는 넣지 않는다.
+    condition_draft: PlanningDraft | None = None
 
     @model_validator(mode="after")
     def _consistent_progress(self) -> Self:
@@ -792,6 +794,8 @@ class PlanningProgress(ContractModel):
                    {"completed", "failed"})
         if self.status not in allowed:
             raise ValueError("진행 이벤트 종류와 상태가 다릅니다")
+        if self.condition_draft is not None and (self.kind, self.status) != ("condition_applied", "completed"):
+            raise ValueError("조건 초안은 조건 완료 알림에만 넣을 수 있습니다")
         return self
 
 

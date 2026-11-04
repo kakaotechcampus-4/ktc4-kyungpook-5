@@ -66,6 +66,20 @@ export function finishedLines(lines: TurnLine[]): TurnLine[] {
   )
 }
 
+// 저장 전 실패한 요청의 성공 줄은 실패 표시로 바꾼다. 값은 저장된 패널로 복구한다.
+export function failedLines(lines: TurnLine[]): TurnLine[] {
+  return lines
+    .filter((line) => line.status !== 'skipped')
+    .map((line) => ({
+      ...line,
+      conditionDraft: undefined,
+      status: 'failed',
+      text: line.kind.startsWith('condition_')
+        ? '조건 반영을 확인하지 못했어요'
+        : '처리 결과를 확인하지 못했어요',
+    }))
+}
+
 // 이번 화면에서 끝난 턴의 작업 줄. base는 보낼 때 저장돼 있던 대화 수다.
 // 서버는 메시지를 자체 ID로 저장해 보낸 messageId로는 찾을 수 없으므로 위치로 찾는다.
 export interface TurnReceipt {

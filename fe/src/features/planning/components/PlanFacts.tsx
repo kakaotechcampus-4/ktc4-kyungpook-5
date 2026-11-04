@@ -1,5 +1,5 @@
 // P1 오른쪽: 대화에서 정해진 것이 쌓이는 자리. 여섯 항목으로 고정이라 화면이 흔들리지 않는다.
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { flashLeft, type FactFlash } from '@/features/planning/factFlash'
 import type {
   GenerationBlockReason,
@@ -54,21 +54,21 @@ interface PlanFactsProps {
   unavailable?: boolean
   hideNext?: boolean
   onNext: () => void
-  // 방금 저장된 대화로 바뀐 칸(#300). 그 칸만 옅은 파란 배경이 잠시 켜졌다 사라진다.
+  // 조건 완료 또는 저장 결과 보정으로 바뀐 칸(#302). 그 칸만 옅은 파란 배경이 잠시 켜졌다 사라진다.
   flash?: FactFlash | null
 }
 
 // 강조가 켜져 있는 동안의 값. 남은 시간이 지나면 비워 다시 그릴 때 지난 강조가 켜지지 않게 한다.
 function useActiveFlash(flash: FactFlash | null | undefined): FactFlash | null {
-  const [active, setActive] = useState<FactFlash | null>(null)
+  const [expired, setExpired] = useState<FactFlash | null>(null)
   useEffect(() => {
     const left = flashLeft(flash, Date.now())
-    if (!flash || !left) return
-    setActive(flash)
-    const timer = setTimeout(() => setActive((now) => (now === flash ? null : now)), left)
+    if (!left) return
+    const timer = setTimeout(() => setExpired(flash ?? null), left)
     return () => clearTimeout(timer)
   }, [flash])
-  return active
+  // effect에서 강조를 켜면 값·체크보다 한 번 늦게 그려진다. 이번 렌더에서 바로 판단한다.
+  return flash !== expired && flashLeft(flash, Date.now()) ? (flash ?? null) : null
 }
 
 export function PlanFacts({
@@ -82,6 +82,8 @@ export function PlanFacts({
 }: PlanFactsProps) {
   const { canGenerate, reasons } = readiness ?? localReadiness(facts)
   const active = useActiveFlash(flash)
+  // 주소 이동으로 다시 그려져도 이미 지난 시간만큼 색이 사라진 지점에서 이어 간다.
+  const flashDelay = useMemo(() => (flash ? Math.min(0, flash.at - Date.now()) : 0), [flash])
 
   return (
     <div className="flex w-full min-w-0 shrink-0 flex-col gap-[16px]">
@@ -105,6 +107,7 @@ export function PlanFacts({
                   <span
                     key={active!.at}
                     aria-hidden
+                    style={{ animationDelay: `${flashDelay}ms` }}
                     className="pointer-events-none absolute inset-y-0 -inset-x-[10px] rounded-[8px] bg-blue-100 animate-fact-flash motion-reduce:animate-none"
                   />
                 )}
