@@ -472,7 +472,8 @@ class PlanProgressOut(CamelModel):
         "generation_started", "generation_finished",
     ]
     # skipped는 같은 operationId의 running 줄을 지우라는 뜻이다(조건 거절·같은 값, #290).
-    status: Literal["running", "completed", "failed", "skipped"]
+    # empty는 정상으로 끝났지만 찾은 것이 없다는 뜻이다(기록 검색 자료 없음, #300).
+    status: Literal["running", "completed", "failed", "skipped", "empty"]
     text: str
 
 

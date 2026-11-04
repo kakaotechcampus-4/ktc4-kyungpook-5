@@ -86,7 +86,8 @@ def test_no_false_condition_completion(mode):
     # 이름·장소 같은 자유 입력은 따옴표로 경계를 보이고, 날짜는 읽기 쉬운 형식으로 보여 준다.
     ("location", "가평", "specified", "장소 ‘가평’ 반영했어요"),
     ("title", "봄 MT", "specified", "행사 이름 ‘봄 MT’ 반영했어요"),
-    ("start_date", "2026-05-10", "specified", "시작일 2026년 5월 10일 반영했어요"),
+    # 시작일·종료일은 패널의 「일정」 한 칸이라 문구도 「일정」으로 적는다(#300).
+    ("start_date", "2026-05-10", "specified", "일정 2026년 5월 10일 반영했어요"),
 ])
 def test_condition_wording_preserves_value_meaning(field, value, status, expected):
     req = request()
@@ -113,7 +114,8 @@ def test_search_then_guessed_change_does_not_claim_change():
 
 
 @pytest.mark.parametrize("status,expected_status,text", [
-    ("not_found", "completed", "맞는 기록을 찾지 못했어요"),
+    # 자료 없음은 정상 종료라 실패가 아니고, 찾았다는 체크도 아니다(#300).
+    ("not_found", "empty", "맞는 기록이 없었어요"),
     ("failed", "failed", "기록을 검색하지 못했어요"),
 ])
 def test_search_empty_and_failure_are_distinct(status, expected_status, text):
@@ -233,6 +235,25 @@ def test_multiple_fields_and_metadata_only_change():
     assert condition_progress("c2", result).text == "예상 인원 50명 · 참가비 1인 30,000원 반영했어요"
 
 
+@pytest.mark.parametrize("start,end,expected", [
+    ("2026-12-05", "2026-12-06", "일정 2026년 12월 5일~6일 반영했어요"),
+    ("2026-12-31", "2027-01-02", "일정 2026년 12월 31일~2027년 1월 2일 반영했어요"),
+    ("2026-11-28", "2026-12-01", "일정 2026년 11월 28일~12월 1일 반영했어요"),
+    ("2026-12-05", "2026-12-05", "일정 2026년 12월 5일 반영했어요"),
+])
+def test_start_and_end_dates_read_as_one_schedule(start, end, expected):
+    """시작일·종료일이 함께 바뀌어도 「일정」 한 항목으로 적는다(#300)."""
+    req = request()
+    args = change_call(req, "start_date", start)["args"]
+    args["changes"].extend(change_call(req, "end_date", end)["args"]["changes"])
+    args["changes"].extend(change_call(req, "headcount", 40)["args"]["changes"])
+    result = update_event_conditions(req.draft, UpdateEventConditionsInput.model_validate(args),
+                                     current_message=req.current_message)
+    text = condition_progress("c1", result).text
+    assert text.count("일정") == 1
+    assert text.replace("예상 인원 40명 · ", "").replace(" · 예상 인원 40명", "") == expected
+
+
 def test_button_port_failure_preserves_result(monkeypatch):
     req = button(public_request())
     monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=Model()))
@@ -260,6 +281,9 @@ def test_progress_contract_rejects_false_completion_and_is_public():
     ("condition_applied", "skipped", True),     # 거절·같은 값: 진행 중 줄을 지운다
     ("condition_applied", "running", False),
     ("search_finished", "skipped", False),      # 검색은 자료 없음도 결과로 보여 준다
+    ("search_finished", "empty", True),         # 자료 없음: 회색 대시로 남긴다(#300)
+    ("condition_applied", "empty", False),      # 조건은 결과가 없으면 skipped다
+    ("generation_finished", "empty", False),
 ])
 def test_condition_start_and_skip_contract(kind, status, ok):
     make = lambda: ai.PlanningProgress(operation_id="c1", kind=kind, status=status, text="문구")
