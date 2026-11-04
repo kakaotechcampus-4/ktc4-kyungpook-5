@@ -647,6 +647,29 @@ agent_node
 
 테스트 `test_first_system_message_is_identical_across_turns_and_calls_for_provider_cache`가 서로 다른 턴·호출의 첫 시스템 메시지가 같고, 같은 턴 2번째 호출이 1번째 호출의 실행 문맥만 빼고 앞부분을 그대로 이어 쓰는지 고정한다. v7과 v8은 [compare_agent_context_layout.py](../../scripts/compare_agent_context_layout.py)로 같은 실행 안에서 번갈아 쟀다. 요청마다 `agent_messages`를 v7 함수로 바꿔 끼우고 끝나면 되돌린다. 결과는 [11-04 측정 기록](evaluation-results/planning-agent-context-layout-2026-11-04/README.md)에 있다.
 
+## 생성 모델은 얼마나 생각하고 쓰나 (#264)
+
+생성 모델은 계획 JSON을 쓰기 전에 내부에서 추론한다. 추론에 쓴 토큰도 출력 토큰에 들어가고, 생성 호출 시간은 출력 토큰 수에 거의 비례한다(#263). 그래서 추론 깊이(reasoning effort)를 `low`로 정해 둔다.
+
+```text
+입력: 「다음: 흐름 만들기」 클릭 (MT / 50명 / 날짜·장소 미정)
+
+generate_planning_preview
+  → run_plan_generation → compose_plan
+      → invoke_plan_composition
+          → build_plan_model()   max_tokens=8192, streaming=True, reasoning={"effort": "low"}
+          → ainvoke_structured(..., PlanComposition)
+  → validate_plan → 13단계 초안
+
+같은 입력을 30번씩 번갈아 잰 값(11-04)
+  추론 미지정  출력 약 1,500토큰(그중 추론 516) → 생성 호출 p50 15.4초
+  low         출력 약 1,190토큰(그중 추론 240) → 생성 호출 p50 11.1초
+```
+
+추론을 뺀 계획 JSON은 두 설정 모두 약 930~950토큰이었다. 단계 수(13)와 계획 검증 통과도 줄지 않았다. 값은 `generation/model.py`의 `PLAN_REASONING` 한 곳에 있고, 테스트 `test_default_graph_uses_streaming_budget_and_validates_complete_preview`가 실제 SDK 요청 본문에 `reasoning: {"effort": "low"}`가 실리는지 고정한다.
+
+비교는 [compare_generation_reasoning.py](../../scripts/compare_generation_reasoning.py)로 했다. 요청마다 `build_plan_model`을 변형 함수로 바꿔 끼워 `reasoning`만 덮어쓰고(기본값 변형은 `None`이라 값을 보내지 않음), 끝나면 되돌린다. 계획 검증에서 거절되면 #239의 `capture_validation_failures`로 어느 규칙에서 거절됐는지 남긴다. 결과는 [추론 깊이 측정](evaluation-results/planning-generation-reasoning-2026-11-04/README.md)에 있다.
+
 ## 응답 시간은 어떻게 비교할까? (#196)
 
 같은 MT 조건에서 사용자가 “응, 만들어줘.”라고 답하는 경우와 버튼을 누르는 경우를 생각해 보자.
