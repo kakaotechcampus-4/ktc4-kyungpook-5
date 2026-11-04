@@ -13,7 +13,32 @@
 `chat_planning`과 `generate_planning_preview`는 선택적인 `progress: PlanningProgressPort | None`
 인자를 받는다. 포트의 `async progress(event: PlanningProgress)`는 화면용 진행 상태만 전달한다.
 공개 이벤트는 `contracts.py`, 포트는 `ports.py`에 정의하고 `app.ai`에서 재공개한다.
-반환값·저장 JSON·모델 호출 방식은 유지한다. SSE와 답변 조각 전달은 후속 단계다.
+반환값·저장 JSON 형식은 유지한다. 제품 SSE는 후속 단계다.
+
+### 답변 조각 전달 (#280)
+
+포트가 있으면 대화 모델을 스트리밍으로 받고 `reply_delta(text)`로 최종 답변 조각을
+보낸다. 포트가 없으면 기존 `ainvoke_with_tools`를 사용한다. 생성 모델 JSON은 보내지 않는다.
+`reply_reset()`은 임시 답변을 비우는 알림이며, 최종 답변 뒤 Tool 요청이 오거나 모델
+스트림이 실패했을 때 사용한다. 포트의 일반 오류는 턴을 실패시키지 않는다.
+
+공급자 `phase`는 text 블록의 시작에만 올 수 있다. 블록 index별로 합친 상태에서
+`final_answer`만 점진 전달하고 commentary/추론/Tool 블록은 보내지 않는다.
+phase 없는 답변은 completed와 검증을 확인한 뒤 한 번에 전달한다. 여러 블록의 순서를
+확정할 수 없는 경우도 버퍼링한다. 정상 반환 전에 전달한 전체 텍스트와 공개 reply를 맞춘다.
+
+invoke/stream 모두 명시된 final_answer가 있으면 해당 블록만 공개 reply로 사용한다.
+phase가 전혀 없으면 기존 text를 사용한다. commentary만 있고 Tool도 없으면 빈 답변 오류다.
+원본 content는 이력에 보존하므로 중간 설명을 다음 턴 문맥에서 삭제하지 않는다.
+이것은 기존의 모든 text 합치기에서 혼합 응답의 사용자 답변만 구분하는 변경이다.
+
+스트림은 completed를 확인해야 하며, 중간 끊김·incomplete·출력 한도·잘못된 Tool 요청은
+오류다. 조립에는 SDK의 chunk 합산을 사용하고 저장 전 블록의 전송용 index를 제거하며
+생략된 빈 text annotations를 보완한다. Tool 인자·ID·phase·사용량은 임의 삭제하지 않는다.
+
+공식 참고: [LangGraph streaming](https://docs.langchain.com/oss/python/langgraph/streaming),
+[LangChain model streaming](https://docs.langchain.com/oss/python/langchain/models#stream).
+전체 Graph의 messages/custom 스트림으로 전환하지 않고 기존 포트와 모델 호출 경계를 유지한다.
 
 이벤트 필드는 `operation_id`, `kind`, `status`, `text`다. 작업 ID는 한 요청 안에서
 시작과 종료를 연결하며 같은 종류를 반복 실행해도 구분한다. 채팅은 Tool 호출 ID,

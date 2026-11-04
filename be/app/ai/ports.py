@@ -34,6 +34,10 @@ class PlanningProgressPort(Protocol):
 
     async def progress(self, event: PlanningProgress) -> None: ...
 
+    async def reply_delta(self, text: str) -> None: ...
+
+    async def reply_reset(self) -> None: ...
+
 
 class ChunkSearchQuery(ContractModel):
     """청크 검색 요청"""

@@ -5,7 +5,7 @@
 BE가 `chat_planning(request, progress=port)` 또는
 `generate_planning_preview(request, progress=port)`를 호출하면 실제 작업에 맞춰
 `port.progress(PlanningProgress)`가 실행된다. 포트를 생략하면 기존 호출 방식을 유지한다.
-이 단계는 AI 알림만 연결하며 제품 SSE·애니메이션·답변 스트리밍은 후속이다.
+AI 진행·답변 조각 알림까지 연결하며 제품 SSE·애니메이션은 후속이다.
 
 예: “예상 인원을 60명으로 바꾸고 초안 만들어줘”:
 
@@ -21,6 +21,24 @@ BE가 `chat_planning(request, progress=port)` 또는
 원문 없이 기록한다. 검색은 실제 호출 직전에 시작을 알리고 자료 없음과 실패를 구분한다.
 진행 이벤트는 대화 이력이나 다음 상태 JSON에 넣지 않는다. 단위 테스트는
 `tests/test_planning_progress.py`에서 이벤트 순서·거절·재사용·알림 실패와 결과 보존을 확인한다.
+
+### 답변을 쓰는 동안 전달하기 (#280)
+
+`agent.graph`는 기존처럼 최종 상태를 반환한다. 선택적 포트가 있으면 `call_agent_model`이
+`llm.astream_with_tools`를 호출한다. 포트가 없으면 `ainvoke_with_tools`를 유지한다.
+
+“인원을 60명으로 바꿔줘” → 첫 호출의 Tool 조각을 온전히 조립·검증 → 조건 변경 실행 →
+진행 완료 알림 → 다음 호출의 final_answer 블록을 `reply_delta`로 전달 → SDK 메시지 조립 →
+기존 `capture_turn_state`로 저장 상태 반환 순서다. Tool은 미완성 조각으로 실행하지 않는다.
+
+`llm_stream.ReplyStream`은 블록별 phase를 합친 상태에서 답변만 선택한다. commentary와
+추론은 표시하지 않으며 phase가 없으면 완료 후 답변을 한 번에 보낸다. 연결이 끊기거나
+답변 뒤 Tool이 나타나면 `reply_reset`으로 임시 표시를 비운다. completed 없는 수신은 실패다.
+`assembled_message`는 전송용 index와 빈 annotations 차이만 맞춘다. `final_answer_text`는
+invoke/stream 공통으로 최종 답변을 선택하며 원본 content는 이력에 남긴다.
+
+실제 공급자 8회 관찰과 한계는 [스트림 형태 확인](evaluation-results/planning-stream-probe-2026-11-04/README.md),
+고정 응답 검증은 `tests/test_planning_stream.py`에 있다. 아직 제품 화면에서 보이는 상태는 아니다.
 
 현재 흐름은 `agent/`와 `generation/`을 따른다. 이전 `turn_*`, `lookup.py`, `records.py`, `questions.py`, 조건 추출 `nodes.py`는 [features/planning/legacy](../../features/planning/legacy/README.md)에 있다. 공유 조건 값과 `PlanningMessage`는 `planning/schemas.py`에 남겼으며 현재 코드가 legacy 타입을 가져오지 않는다.
 

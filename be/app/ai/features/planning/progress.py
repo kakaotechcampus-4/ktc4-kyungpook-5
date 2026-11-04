@@ -30,6 +30,20 @@ async def notify(port: PlanningProgressPort | None, event: PlanningProgress | No
         logger.warning("계획 진행 알림 전달 실패: kind=%s", event.kind)
 
 
+async def reply_delta(port: PlanningProgressPort, text: str) -> None:
+    try:
+        await port.reply_delta(text)
+    except Exception:
+        logger.warning("계획 답변 조각 전달 실패")
+
+
+async def reply_reset(port: PlanningProgressPort) -> None:
+    try:
+        await port.reply_reset()
+    except Exception:
+        logger.warning("계획 임시 답변 초기화 알림 실패")
+
+
 def started(operation_id: str, *, generation: bool = False) -> PlanningProgress:
     return PlanningProgress(
         operation_id=operation_id,

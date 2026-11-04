@@ -5,6 +5,7 @@ from functools import partial
 from langchain_core.messages import HumanMessage
 from langgraph.graph import END, START, StateGraph
 from ....ports import PlanningProgressPort
+from ....llm_stream import final_answer_text
 
 from .nodes import MAX_TOOL_CALLS, PROMPT_VERSION, AgentInvoker, agent_node, call_agent_model, tools_node
 from .schemas import PlanningAgentState, PlanningAgentTurnInput, PlanningAgentTurnResult
@@ -16,7 +17,8 @@ from ..generation.offers import same_basis
 def build_planning_graph(request: PlanningAgentTurnInput, *, invoke: AgentInvoker | None = None,
                          search: RecordSearcher | None = None, generate: PlanGenerator | None = None,
                          progress: PlanningProgressPort | None = None):
-    invoke = invoke or partial(call_agent_model, search_enabled=search is not None, generation_enabled=generate is not None)
+    invoke = invoke or partial(call_agent_model, search_enabled=search is not None,
+                              generation_enabled=generate is not None, progress=progress)
     graph = StateGraph(PlanningAgentState)
     graph.add_node("agent", partial(agent_node, request=request, invoke=invoke, search_available=search is not None,
                                     generation_available=generate is not None))
@@ -47,7 +49,7 @@ async def run_planning_agent_turn(
         state, {"recursion_limit": 2 * MAX_TOOL_CALLS + 5},
     )
     return PlanningAgentTurnResult(
-        reply=result["messages"][-1].text, draft=result["draft"], history=tuple(result["messages"]),
+        reply=final_answer_text(result["messages"][-1]), draft=result["draft"], history=tuple(result["messages"]),
         executions=tuple(result["executions"]), model_calls=result["model_calls"],
         limit_reached=result["limit_reached"], prompt_version=PROMPT_VERSION, record_lookup=result["record_lookup"],
         generation=result["generation"], generation_result=result["generation_result"],

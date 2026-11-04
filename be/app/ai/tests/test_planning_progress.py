@@ -32,6 +32,12 @@ class Recorder:
         if self.broken:
             raise RuntimeError("private provider payload")
 
+    async def reply_delta(self, text):
+        pass
+
+    async def reply_reset(self):
+        pass
+
 
 def run_turn(req, calls, *, progress=None, search=None, model=None):
     responses = iter([AIMessage(id="assistant-tools", content="", tool_calls=calls),

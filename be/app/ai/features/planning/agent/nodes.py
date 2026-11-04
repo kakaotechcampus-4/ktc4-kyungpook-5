@@ -1,6 +1,7 @@
 """agent는 다음 행동을 고르고, tools는 실제 변경을 검증·실행한다."""
 
 import json
+from functools import partial
 from pathlib import Path
 from typing import Protocol
 
@@ -9,9 +10,10 @@ from langchain_core.utils.function_calling import convert_to_openai_tool
 from pydantic import ValidationError
 
 from ....errors import AIInvalidResponseError
-from ....llm import ainvoke_with_tools
+from ....llm import ainvoke_with_tools, astream_with_tools
+from ....llm_stream import final_answer_text
 from ....ports import PlanningProgressPort
-from ..progress import notify, started, condition_progress, search_finished
+from ..progress import notify, started, condition_progress, search_finished, reply_delta, reply_reset
 from .schemas import PlanningAgentState, PlanningAgentTurnInput, ToolExecution
 from .record_tool import RecordLookupResult, RecordSearcher, SearchPastEventsInput
 from .tools import ConditionUpdateResult, UpdateEventConditionsInput, update_event_conditions
@@ -76,7 +78,13 @@ def agent_tool_schemas(*, search_enabled: bool, generation_enabled: bool = False
 
 
 async def call_agent_model(messages: list[AnyMessage], *, allow_tools: bool,
-                           search_enabled: bool = False, generation_enabled: bool = False) -> AIMessage:
+                           search_enabled: bool = False, generation_enabled: bool = False,
+                           progress: PlanningProgressPort | None = None) -> AIMessage:
+    if progress is not None:
+        return await astream_with_tools(messages,
+            tools=agent_tool_schemas(search_enabled=search_enabled, generation_enabled=generation_enabled),
+            allow_tools=allow_tools, parallel_tool_calls=PARALLEL_TOOL_CALLS,
+            on_text=partial(reply_delta, progress), on_reset=partial(reply_reset, progress))
     return await ainvoke_with_tools(messages, tools=agent_tool_schemas(search_enabled=search_enabled,
                                                                     generation_enabled=generation_enabled),
                                    allow_tools=allow_tools, parallel_tool_calls=PARALLEL_TOOL_CALLS)
@@ -123,7 +131,7 @@ async def agent_node(
         used = {call["id"] for m in state["messages"] if isinstance(m, AIMessage) for call in m.tool_calls}
         if any(not item or item in used for item in ids) or len(ids) != len(set(ids)):
             raise AIInvalidResponseError("Tool 호출 ID가 비어 있거나 중복됐습니다")
-    elif not response.text.strip():
+    elif not final_answer_text(response).strip():
         raise AIInvalidResponseError("모델이 답변을 반환하지 않았습니다")
     return {"messages": [response], "model_calls": state["model_calls"] + 1}
 
