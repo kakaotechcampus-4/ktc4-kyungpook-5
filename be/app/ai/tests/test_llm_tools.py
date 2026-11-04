@@ -28,11 +28,21 @@ class StubModel:
 
 
 @pytest.mark.parametrize("allow_tools,choice", [(True,"auto"),(False,"none")])
-def test_binding_controls_tool_choice_and_disables_parallel_calls(allow_tools, choice):
+def test_binding_controls_tool_choice_and_disables_parallel_calls_by_default(allow_tools, choice):
     model = StubModel(AIMessage(content="안녕하세요"))
     result = asyncio.run(ainvoke_with_tools([], tools=[{"type":"function"}], allow_tools=allow_tools, model=model))
     assert result.text == "안녕하세요"
     assert model.kwargs == {"parallel_tool_calls":False,"tool_choice":choice}
+
+
+def test_planning_agent_allows_several_tool_calls_in_one_response(monkeypatch):
+    # 행사계획 Agent만 켠다(#265). 실행 순서는 tools_node가 보장한다.
+    from app.ai.features.planning.agent import nodes
+    model = StubModel(AIMessage(content="안녕하세요"))
+    monkeypatch.setattr(nodes, "ainvoke_with_tools",
+                        lambda messages, **kwargs: ainvoke_with_tools(messages, model=model, **kwargs))
+    asyncio.run(nodes.call_agent_model([], allow_tools=True))
+    assert model.kwargs == {"parallel_tool_calls":True,"tool_choice":"auto"}
 
 
 def test_api_timeout_uses_common_error_without_raw_details():

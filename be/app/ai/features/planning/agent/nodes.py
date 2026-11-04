@@ -20,6 +20,9 @@ from .generation_tools import GenerateEventPlanInput, condition_generation_state
 
 PROMPT_VERSION = "planning-agent-v8"
 MAX_TOOL_CALLS = 3
+# 한 응답에 Tool 요청 여러 개를 허용한다. "60명으로 바꾸고 초안은 만들지 마"의 변경과 보류를
+# 한 번에 받아 모델 호출 1번을 줄인다. 실행은 tools_node가 앞에서부터 차례로 한다(#265).
+PARALLEL_TOOL_CALLS = True
 PROMPT = (Path(__file__).parent / "prompts/chat.md").read_text()
 TOOL_NAME = "update_event_conditions"
 SEARCH_TOOL_NAME = "search_past_events"
@@ -73,7 +76,7 @@ async def call_agent_model(messages: list[AnyMessage], *, allow_tools: bool,
                            search_enabled: bool = False, generation_enabled: bool = False) -> AIMessage:
     return await ainvoke_with_tools(messages, tools=agent_tool_schemas(search_enabled=search_enabled,
                                                                     generation_enabled=generation_enabled),
-                                   allow_tools=allow_tools)
+                                   allow_tools=allow_tools, parallel_tool_calls=PARALLEL_TOOL_CALLS)
 
 
 TOOL_LIMIT_NOTICE = "이번 턴의 Tool 한도에 도달했습니다. 추가 실행 없이 실제 완료한 결과와 남은 내용을 답하세요."

@@ -16,7 +16,7 @@ import httpx
 from app.ai.config import AISettings
 from app.ai.contracts import IndexRecordRequest
 from app.ai.features.planning.agent.graph import run_planning_agent_turn
-from app.ai.features.planning.agent.nodes import PROMPT_VERSION, agent_tool_schemas
+from app.ai.features.planning.agent.nodes import PARALLEL_TOOL_CALLS, PROMPT_VERSION, agent_tool_schemas
 from app.ai.features.planning.agent.record_tool import search_past_events
 from app.ai.features.planning.agent.schemas import PlanningAgentTurnInput
 from app.ai.features.planning.agent.state import PlanningDraft
@@ -67,7 +67,7 @@ async def run(output: Path, *, cases: Path = CASES, with_records: bool = False) 
         async def embed(texts): return await aembed_texts(texts,model=embeddings)
         async def structured(messages,schema): return await ainvoke_structured(messages,schema,model=model)
         async def invoke(messages, *, allow_tools):
-            return await ainvoke_with_tools(messages,tools=agent_tool_schemas(search_enabled=with_records),allow_tools=allow_tools,model=model)
+            return await ainvoke_with_tools(messages,tools=agent_tool_schemas(search_enabled=with_records),allow_tools=allow_tools,parallel_tool_calls=PARALLEL_TOOL_CALLS,model=model)
         memory=InMemoryRecordSearch()
         if with_records:
             started=time.perf_counter()
