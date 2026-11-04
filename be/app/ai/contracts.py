@@ -787,25 +787,3 @@ class PlanningPublicResult(ContractModel):
             if self.view.history_usage.message_count != len(self.next_state.payload.history):
                 raise ValueError('화면 이력 사용량과 보관 상태의 이력이 다릅니다')
         return self
-
-# 영수증 이미지 추출 공개 계약
-class ExtractReceiptRequest(ContractModel):
-    file_name: NonBlankStr = Field(max_length=255)
-    mime_type: NonBlankStr = Field(max_length=100)
-    image_bytes: bytes = Field(min_length=1)
-    @field_validator('mime_type')
-    @classmethod
-    def image_mime_type(cls, value: str) -> str:
-        if not value.lower().startswith('image/'):
-            raise ValueError('이미지 MIME type이 필요합니다')
-        return value
-
-class ExtractedReceiptRow(ContractModel):
-    spent_at: CalendarDate | None
-    merchant: NonBlankStr | None
-    amount: Won | None
-    category: NonBlankStr | None
-    description: NonBlankStr | None
-
-class ExtractReceiptResult(ContractModel):
-    rows: tuple[ExtractedReceiptRow, ...]

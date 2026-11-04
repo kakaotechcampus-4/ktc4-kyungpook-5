@@ -131,7 +131,3 @@ __all__ += ('ToriRecordQueryRequest', 'ToriRecordQueryResult', 'build_tori_recor
 from .features.operations.schemas import OperationalEventContext, OperationalSituationRequest, OperationalSituationResult
 from .facade import respond_operational_situation
 __all__ += ('OperationalEventContext', 'OperationalSituationRequest', 'OperationalSituationResult', 'respond_operational_situation')
-
-from .contracts import ExtractReceiptRequest, ExtractReceiptResult, ExtractedReceiptRow
-from .facade import extract_receipt
-__all__ += ('ExtractReceiptRequest', 'ExtractReceiptResult', 'ExtractedReceiptRow', 'extract_receipt')

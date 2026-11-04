@@ -92,8 +92,3 @@ async def respond_operational_situation(request: "OperationalSituationRequest") 
     """운영 상황을 확인하거나 후속 제안만 한다. 권한·저장·실행은 BE 책임이다."""
     from .features.operations.nodes import respond_operational_situation as respond
     return await respond(request)
-
-async def extract_receipt(request: "ExtractReceiptRequest") -> "ExtractReceiptResult":
-    """영수증 이미지에서 검토용 행만 제안한다. 저장·확정은 BE 책임이다."""
-    from .features.accounting.receipt_extraction import extract_receipt as extract
-    return await extract(request)
