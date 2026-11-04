@@ -7,6 +7,7 @@ BE가 `chat_planning(request, progress=port)` 또는
 `port.progress(PlanningProgress)`가 실행된다. 포트를 생략하면 기존 호출 방식을 유지한다.
 BE의 SSE 경로(`services/planning_stream.py`, #284)가 이 알림을 `progress`·`reply_delta` 이벤트로 보낸다. 제품 FE는 `features/planning/stream.ts` → `hooks.usePlanningChat` → `PlanChat`에서 진행 줄과 답변 조각을 그린다(#285).
 화면은 한 턴의 진행 줄을 토리 답변과 한 덩어리로 묶고, 답변이 끝난 뒤에도 답변 위에 남긴다(#290, `features/planning/turn.ts`). 진행 줄은 저장하지 않으므로 새로고침하면 답변만 남는다.
+보내자마자 토리 자리에 입력 중 말풍선(점 세 개)이 뜨고, 답변 첫 조각이 오면 같은 말풍선이 글자로 바뀐다. 진행 중인 줄은 글자가 옅어졌다 진해지고, 완료되면 같은 자리에 체크가 나타난다. 답변이 저장된 뒤 줄이 2개 이상이면 “처리한 작업 2개” 한 줄로 접히고 눌러서 펼칠 수 있다(#295, `components/PlanChat.tsx`).
 
 예: “예상 인원을 60명으로 바꾸고 초안 만들어줘”:
 
