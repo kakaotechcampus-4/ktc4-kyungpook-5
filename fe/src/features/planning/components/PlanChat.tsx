@@ -8,6 +8,7 @@ import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Textarea } from '@/shared/ui/Input'
 import { Tori } from '@/shared/ui/Tori'
+import { ReplyText } from '@/features/planning/components/ReplyText'
 
 interface PlanChatProps {
   messages: ChatMessage[]
@@ -213,7 +214,7 @@ function Receipt({ lines }: { lines: PlanProgress[] }) {
 // 글자로 바뀐다. 움직임 줄이기 설정이면 점 세 개가 움직이지 않고 그대로 보인다.
 function TypingDots() {
   return (
-    <span aria-hidden className="flex h-[19px] items-center gap-[4px] px-[2px]">
+    <span aria-hidden className="flex h-[22px] items-center gap-[4px] px-[2px]">
       {['0ms', '150ms', '300ms'].map((delay) => (
         <span
           key={delay}
@@ -225,8 +226,22 @@ function TypingDots() {
   )
 }
 
-const TORI_BUBBLE =
-  'rounded-[12px] border border-line bg-bg px-[15px] py-[12px] text-[12.5px] leading-[19px] whitespace-pre-wrap text-ink'
+// 답변과 보낸 말은 화면의 본문 크기(text-body 14px)로 쓴다. 작업 줄(12px)보다 한 단계 커서 답변이 먼저 읽힌다.
+// 한글은 받침 때문에 글자가 위아래로 차 보여 줄 간격을 넉넉히(22px, 약 1.57배) 둔다.
+// 줄은 낱말 단위로 바꾼다(break-keep). 기본값이면 "좋겠습|니다"처럼 낱말 가운데서 끊긴다.
+// 띄어쓰기 없는 긴 글(주소 등)은 칸을 넘지 않게 그때만 글자 단위로 끊는다(break-words).
+const CHAT_TEXT = 'text-body leading-[22px] break-keep break-words'
+// 넓은 화면에서도 한 줄이 한글 약 42자를 넘지 않게 폭을 묶는다. 짧은 답변은 글 길이만큼만 차지한다.
+const TORI_BUBBLE = cn(
+  'max-w-[42em] rounded-[12px] border border-line bg-bg px-[15px] py-[12px] text-ink [text-wrap:pretty]',
+  CHAT_TEXT,
+)
+// 토리 답변 글. 모델이 쓴 굵게·목록·빈 줄 문단을 기호 대신 모양으로 보인다(ReplyText, #304).
+const REPLY_BODY = 'flex flex-col gap-[8px]'
+const USER_BUBBLE = cn(
+  'ml-auto max-w-[70%] rounded-[12px] bg-blue-600 px-[15px] py-[12px] font-medium whitespace-pre-wrap text-white',
+  CHAT_TEXT,
+)
 
 export function PlanChat({
   messages,
@@ -269,7 +284,7 @@ export function PlanChat({
     <Card className="flex h-[min(70vh,700px)] min-h-[380px] w-full min-w-0 flex-col lg:flex-1">
       <header className="flex items-center justify-between border-b border-line px-[24px] py-[18px]">
         <h2 className="text-h2 text-ink">토리와 계획 잡기</h2>
-        <span className="text-[11px] text-mute">
+        <span className="text-[12px] text-mute">
           {demo
             ? '화면 미리보기'
             : persisted
@@ -296,7 +311,9 @@ export function PlanChat({
                 <Tori size={26} className="mt-[4px] shrink-0" />
                 <div className="flex min-w-0 flex-col items-start gap-[8px]">
                   {message.receipt && <Receipt lines={message.receipt} />}
-                  <p className={TORI_BUBBLE}>{message.text}</p>
+                  <div className={cn(TORI_BUBBLE, REPLY_BODY)}>
+                    <ReplyText text={message.text} />
+                  </div>
                 </div>
               </div>
               {message.id === lastToriId && message.quickReplies && (
@@ -307,7 +324,7 @@ export function PlanChat({
                       type="button"
                       disabled={busy}
                       onClick={() => void send(reply, false)}
-                      className="rounded-[9px] border border-blue-200 bg-card px-[13px] py-[8px] text-[11.5px] font-bold text-blue-700 hover:bg-blue-50"
+                      className="rounded-[9px] border border-blue-200 bg-card px-[13px] py-[8px] text-caption font-bold text-blue-700 hover:bg-blue-50"
                     >
                       {reply}
                     </button>
@@ -316,22 +333,12 @@ export function PlanChat({
               )}
             </div>
           ) : (
-            <p
-              key={message.id}
-              className={cn(
-                'ml-auto max-w-[70%] rounded-[12px] bg-blue-600 px-[15px] py-[12px]',
-                'text-[12.5px] leading-[19px] font-medium whitespace-pre-wrap text-white',
-              )}
-            >
+            <p key={message.id} className={USER_BUBBLE}>
               {message.text}
             </p>
           ),
         )}
-        {busy && pendingText && (
-          <p className="ml-auto max-w-[70%] rounded-[12px] bg-blue-600 px-[15px] py-[12px] text-[12.5px] leading-[19px] font-medium whitespace-pre-wrap text-white opacity-80">
-            {pendingText}
-          </p>
-        )}
+        {busy && pendingText && <p className={cn(USER_BUBBLE, 'opacity-80')}>{pendingText}</p>}
         {/* 받는 중인 토리 응답. 저장된 응답(위)과 같은 구조라, 저장된 대화로 바뀌어도 자리가 그대로다.
             ① 보냄: 말풍선에 점 세 개 → ② 작업 줄이 말풍선 위에 붙음 → ③ 점이 답변 글자로 바뀜 */}
         {showTurn && (
@@ -339,13 +346,15 @@ export function PlanChat({
             <Tori size={26} className="mt-[4px] shrink-0" />
             <div className="flex min-w-0 flex-col items-start gap-[8px]">
               {progress.length > 0 && <TurnLines lines={progress} settled={!!pendingReply} live />}
-              <p className={TORI_BUBBLE}>
+              <div className={TORI_BUBBLE}>
                 {pendingReply ? (
-                  <span className="animate-fade-in motion-reduce:animate-none">{pendingReply}</span>
+                  <div className={cn(REPLY_BODY, 'animate-fade-in motion-reduce:animate-none')}>
+                    <ReplyText text={pendingReply} partial />
+                  </div>
                 ) : (
                   <TypingDots />
                 )}
-              </p>
+              </div>
             </div>
           </div>
         )}
@@ -403,7 +412,7 @@ export function PlanChat({
               if (!e.repeat) e.currentTarget.form?.requestSubmit()
             }}
           />
-          <p id="planning-input-help" className="mt-1 text-[11px] text-mute">
+          <p id="planning-input-help" className="mt-1 text-[12px] text-mute">
             Enter로 전송 · Shift+Enter로 줄바꿈
           </p>
         </div>
