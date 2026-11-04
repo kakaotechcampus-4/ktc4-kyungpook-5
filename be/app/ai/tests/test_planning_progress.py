@@ -14,7 +14,7 @@ from app.ai.features.planning.agent.graph import run_planning_agent_turn
 from app.ai.features.planning.agent import nodes
 from app.ai.features.planning.agent.tools import UpdateEventConditionsInput, update_event_conditions
 from app.ai.features.planning.generation.graph import run_plan_generation
-from app.ai.features.planning.progress import condition_progress, notify, started
+from app.ai.features.planning.progress import condition_progress, notify, particle_to, started
 from app.ai.tests.test_plan_generation_graph import Model
 from app.ai.tests.test_planning_agent_generation import request, change_call, gen_call
 from app.ai.tests.test_planning_agent_parallel_tools import defer_call, C2
@@ -83,6 +83,11 @@ def test_no_false_condition_completion(mode):
     ("fee_per_person", 45000, "specified", "참가비를 1인 45,000원으로 변경했어요"),
     ("fee_per_person", None, "specified", "참가비 항목을 미정으로 변경했어요"),
     ("event_type", "WELCOME", "specified", "행사 종류 항목을 ‘개총·신환회’로 변경했어요"),
+    # 받침 있는 값은 '으로', 날짜는 읽기 쉬운 형식으로 보여 준다.
+    ("location", "가평", "specified", "장소 항목을 ‘가평’으로 변경했어요"),
+    ("location", "서울", "specified", "장소 항목을 ‘서울’로 변경했어요"),
+    ("title", "봄 MT", "specified", "행사 이름 항목을 ‘봄 MT’로 변경했어요"),
+    ("start_date", "2026-05-10", "specified", "시작일 항목을 2026년 5월 10일로 변경했어요"),
 ])
 def test_condition_wording_preserves_value_meaning(field, value, status, expected):
     req = request()
@@ -255,3 +260,11 @@ def test_progress_cancellation_is_not_swallowed():
 
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(notify(CancelledPort(), started("s1")))
+
+
+@pytest.mark.parametrize("value,expected", [
+    ("가평", "으로"), ("서울", "로"), ("강화도", "로"), ("MT", "로"), ("팀 BBQ", "로"),
+    ("5월 10일", "로"), ("3", "으로"), ("A6", "으로"), ("ROOM", "으로"), ("HALL", "로"),
+])
+def test_particle_follows_last_sound(value, expected):
+    assert particle_to(value) == expected

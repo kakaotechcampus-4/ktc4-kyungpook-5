@@ -1,6 +1,7 @@
 """검증된 작업 결과를 일시적인 진행 문구로 바꾼다. 답변과 저장은 기존 경로가 맡는다."""
 
 import logging
+from datetime import date
 
 from ...contracts import PlanningProgress, RecordLookupResult, PlanGenerationResult
 from ...ports import PlanningProgressPort
@@ -17,6 +18,25 @@ EVENT_TYPES = {
     "MT": "MT", "WELCOME": "개총·신환회", "PICNIC": "피크닉",
     "ACADEMIC": "학술행사", "WORKSHOP": "워크샵", "ETC": "기타",
 }
+
+
+# 숫자·영문 끝 글자를 읽었을 때 받침이 있는지(있으면 True, ㄹ이면 "rieul").
+_DIGIT_ENDINGS = {"0": True, "1": "rieul", "2": False, "3": True, "4": False,
+                  "5": False, "6": True, "7": "rieul", "8": "rieul", "9": False}
+_LETTER_ENDINGS = {"L": "rieul", "R": "rieul", "M": True, "N": True}
+
+
+def particle_to(value: str) -> str:
+    """'가평'→'으로', 'MT'→'로', '5월 10일'→'로'. 받침이 없거나 ㄹ이면 '로'다."""
+    last = value.rstrip()[-1:] or " "
+    if "가" <= last <= "힣":
+        ending = (ord(last) - ord("가")) % 28
+        batchim = "rieul" if ending == 8 else ending != 0
+    elif last.isdigit():
+        batchim = _DIGIT_ENDINGS[last]
+    else:
+        batchim = _LETTER_ENDINGS.get(last.upper(), False)
+    return "으로" if batchim is True else "로"
 
 
 async def notify(port: PlanningProgressPort | None, event: PlanningProgress | None) -> None:
@@ -73,6 +93,8 @@ def condition_progress(operation_id: str, result: ConditionUpdateResult) -> Plan
                 rendered = f"{value:,}원"
             elif field == "event_type":
                 rendered = EVENT_TYPES.get(value, value)
+            elif isinstance(value, date):
+                rendered = f"{value.year}년 {value.month}월 {value.day}일"
             else:
                 rendered = str(value)
             meta = result.draft.condition_meta.get(field)
@@ -86,7 +108,8 @@ def condition_progress(operation_id: str, result: ConditionUpdateResult) -> Plan
                 subject = "참가비를" if field == "fee_per_person" else "총예산을"
                 text = f"{subject} {tentative}{rendered}으로 변경했어요"
             else:
-                text = f"{label} 항목을 ‘{rendered}’로 {tentative}변경했어요"
+                shown = rendered if isinstance(value, date) else f"‘{rendered}’"
+                text = f"{label} 항목을 {shown}{particle_to(rendered)} {tentative}변경했어요"
     return PlanningProgress(operation_id=operation_id, kind="condition_applied",
                             status="completed", text=text)
 
