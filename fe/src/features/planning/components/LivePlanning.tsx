@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { usePlanningChat, usePlanningDrafts } from '@/features/planning/hooks'
-import { useEventDetail } from '@/features/events/hooks'
+import { useEventDetail, usePrefetchEventDetail } from '@/features/events/hooks'
 import { planningStage } from '../reviewModel'
 import { PlanReviewScreen } from './PlanReviewScreen'
 import { PlanStageNav } from './PlanStageNav'
@@ -235,12 +235,20 @@ function Conversation({
 }) {
   const navigate = useNavigate()
   const generationDescriptionId = useId()
-  const live = usePlanningChat(clubId, eventId, userId, onCreated, (id, count, key) => {
-    navigate(`/planning?${new URLSearchParams({ eventId: id, stage: 'review' })}`, {
-      replace: true,
-      state: { generated: count > 0 ? { count, key } : undefined, focusPlan: true },
-    })
-  })
+  const prefetchEventDetail = usePrefetchEventDetail()
+  const live = usePlanningChat(
+    clubId,
+    eventId,
+    userId,
+    onCreated,
+    (id, count, key) => {
+      navigate(`/planning?${new URLSearchParams({ eventId: id, stage: 'review' })}`, {
+        replace: true,
+        state: { generated: count > 0 ? { count, key } : undefined, focusPlan: true },
+      })
+    },
+    prefetchEventDetail,
+  )
   useEffect(() => {
     onBusy(live.busy)
   }, [live.busy, onBusy])

@@ -128,6 +128,7 @@ export function usePlanningChat(
   userId: string | undefined,
   onCreated: (id: string, failedText?: string) => void,
   onGenerated: (eventId: string, count: number, key: string) => void,
+  prepareCreated?: (eventId: string) => Promise<unknown>,
 ) {
   const queryClient = useQueryClient()
   const generation = useGenerationRequest(userId, clubId, selectedId, onGenerated)
@@ -332,10 +333,13 @@ export function usePlanningChat(
       }
       if (!selectedId) {
         // 새 계획: 끝나면 화면이 이 계획 주소로 넘어가며 대화 영역을 새로 그린다.
-        // 저장된 대화를 먼저 받아 두면 넘어가자마자 그 대화를 그려,
-        // 임시 말풍선 → "불러오는 중" 카드 → 저장된 대화로 깜빡이지 않는다.
+        // 대화와 화면 진입에 필요한 행사 상세를 함께 준비한다. 대화만 준비하면
+        // 상세 조회를 기다리는 동안 전체 대화가 "불러오는 중" 카드로 바뀐다.
         // 실패해도 넘어간 화면이 직접 다시 불러오므로 여기서는 오류로 보지 않는다.
-        await queryClient.fetchQuery(snapshotQuery(userId, clubId, eventId)).catch(() => undefined)
+        await Promise.allSettled([
+          queryClient.fetchQuery(snapshotQuery(userId, clubId, eventId)),
+          prepareCreated?.(eventId),
+        ])
       } else {
         const updated = await snapshot.refetch()
         if (updated.isError)
