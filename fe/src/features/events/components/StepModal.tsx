@@ -29,6 +29,9 @@ interface StepModalProps {
   onCompleteAction: (action: EventAction) => void
   // 승인 대기 Action의 [검토하기]. 결정 검토 모달은 화면 쪽에서 띄운다.
   onReviewAction: (action: EventAction) => void
+  // 토리 초안 「다시 받기」와 지금 보내는 중인 Action id
+  onRequestDraft?: (action: EventAction) => void
+  requestingDraftId?: string
   onCompleteStep: (step: EventStep) => void
   readOnly?: boolean
 }
@@ -42,6 +45,8 @@ export function StepModal({
   onClose,
   onCompleteAction,
   onReviewAction,
+  onRequestDraft,
+  requestingDraftId,
   onCompleteStep,
   readOnly = false,
 }: StepModalProps) {
@@ -156,6 +161,9 @@ export function StepModal({
               action={action}
               onComplete={onCompleteAction}
               onReview={onReviewAction}
+              onRequestDraft={onRequestDraft}
+              requestingDraft={requestingDraftId === action.id}
+              stepState={step.state}
               readOnly={readOnly}
             />
           ))}
