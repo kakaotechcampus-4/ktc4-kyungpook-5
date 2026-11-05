@@ -9,6 +9,7 @@ import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { Skeleton } from '@/shared/ui/Skeleton'
 
 const SOURCE_LABEL: Record<Expense['source'], string> = {
   MANUAL: '직접 입력',
@@ -71,9 +72,21 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
       )}
 
       {expenses.isPending && (
-        <p role="status" className="border-t border-line px-[22px] py-[30px] text-[13px] text-mute">
-          지출 내역을 불러오고 있어요.
-        </p>
+        <div className="border-t border-line" role="status" aria-busy>
+          <p className="sr-only">지출 내역을 불러오고 있어요.</p>
+          {/* 표가 들어올 자리를 행 높이 그대로 잡아 둔다. 숫자는 오른쪽에 붙는다. */}
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="flex items-center gap-[14px] border-t border-line px-[22px] py-[16px] first:border-0"
+            >
+              <Skeleton className="h-[17px] w-[72px] shrink-0" />
+              <Skeleton className="h-[17px] flex-1" />
+              <Skeleton className="h-[17px] w-[64px] shrink-0" />
+              <Skeleton className="h-[17px] w-[88px] shrink-0" />
+            </div>
+          ))}
+        </div>
       )}
       {expenses.isError && (
         <div

@@ -19,6 +19,7 @@ import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 import { Input } from '@/shared/ui/Input'
+import { Skeleton } from '@/shared/ui/Skeleton'
 
 const FILTERS: Array<{ value: RecordFilter; label: string }> = [
   { value: 'ALL', label: '전체' },
@@ -269,9 +270,19 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
           ))}
         </div>
         {records.isPending && (
-          <p role="status" className="py-[18px] text-[12px] text-mute">
-            팀 자료를 불러오고 있어요.
-          </p>
+          <ul className="mt-[6px]" role="status" aria-busy>
+            <li className="sr-only">팀 자료를 불러오고 있어요.</li>
+            {[0, 1, 2].map((i) => (
+              <li
+                key={i}
+                className="flex flex-col gap-[9px] border-t border-line py-[16px] first:border-0"
+              >
+                <Skeleton className="h-[18px] w-[240px]" />
+                <Skeleton className="h-[14px] w-[160px]" />
+                <Skeleton className="h-[17px] w-full max-w-[420px]" />
+              </li>
+            ))}
+          </ul>
         )}
         {records.isError && (
           <p role="alert" className="py-[18px] text-[12px] text-failed">

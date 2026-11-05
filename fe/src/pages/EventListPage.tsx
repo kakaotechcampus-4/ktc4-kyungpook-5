@@ -5,6 +5,7 @@ import { EventCard } from '@/features/events/components/EventCard'
 import { useEvents } from '@/features/events/hooks'
 import type { EventStatus, EventSummary } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
+import { Skeleton } from '@/shared/ui/Skeleton'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { ServerErrorScreen } from '@/shared/ui/StateScreen'
@@ -36,8 +37,9 @@ export default function EventListPage() {
     value === 'ALL' ? events.length : events.filter((e) => e.status === value).length
   const shown = filter === 'ALL' ? events : events.filter((e) => e.status === filter)
 
-  // 목록을 받기 전에 빈 상태를 그리면 "아직 만든 행사가 없어요"가 잠깐 깜빡인다
-  if (eventsQuery.isPending) return null
+  // 목록을 받기 전에 빈 상태를 그리면 "아직 만든 행사가 없어요"가 잠깐 깜빡인다.
+  // 그렇다고 아무것도 안 그리면 흰 화면이라, 들어올 카드 자리를 미리 잡아 둔다.
+  if (eventsQuery.isPending) return <EventListSkeleton />
   if (eventsQuery.isError) {
     return <ServerErrorScreen onRetry={() => eventsQuery.refetch()} onHome={() => navigate('/')} />
   }
@@ -97,6 +99,36 @@ export default function EventListPage() {
           )}
         </>
       )}
+    </div>
+  )
+}
+
+// 실제 카드와 같은 테두리·여백·줄 높이를 쓴다. 들어올 때 줄이 밀리지 않게 하는 것이 목적이다.
+function EventListSkeleton() {
+  return (
+    <div className="flex flex-col gap-[20px]" role="status" aria-busy>
+      <span className="sr-only">행사 목록을 불러오고 있어요.</span>
+      <header className="flex items-center justify-between">
+        <div className="flex flex-col gap-[4px]">
+          <h1 className="text-h1">행사 목록</h1>
+          <p className="text-mute">계획 중인 행사와 지난 행사를 모두 봅니다</p>
+        </div>
+      </header>
+      <div className="flex gap-[8px]">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-[37px] w-[86px] rounded-[10px]" />
+        ))}
+      </div>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="flex flex-col gap-[14px] rounded-[18px] border border-line bg-card px-[26px] pt-[24px] pb-[26px]"
+        >
+          <Skeleton className="h-[26px] w-[220px]" />
+          <Skeleton className="h-[17px] w-full max-w-[460px]" />
+          <Skeleton className="h-[17px] w-full max-w-[380px]" />
+        </div>
+      ))}
     </div>
   )
 }
