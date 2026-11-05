@@ -127,6 +127,7 @@ class JudgeTrace(ContractModel):
     prompt_version: str
     # 판단 단계에 걸린 시간. 조회로 본 발화는 검색어 만들기까지 들어간다
     judge_ms: int = Field(ge=0)
+    web_search_probability: float | None = Field(default=None, ge=0, le=1)
     # 부른 순서대로. 판단(judge.decide)이 늘 처음이고, NONE이면 그것 하나다
     tool_calls: tuple[ToolCall, ...] = ()
 

@@ -160,6 +160,8 @@ class WebSearchSettings(BaseSettings):
     enabled: bool = False
     context_size: Literal["low", "medium", "high"] = "low"
     timeout_seconds: float = 30.0
+    search_engine_url: str = "https://html.duckduckgo.com/html/"
+    max_results: int = 5
     model: str = "gpt-6.1-terra"
 
     def require(self) -> None:

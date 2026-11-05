@@ -94,7 +94,7 @@ BE는 ANSWER·NOT_FOUND를 도착하는 대로 화면으로 보낸다. 늦게 �
 
 ### 입력과 결과
 
-내부 자료에서 답을 찾지 못한 현재성·웹 요청은 AI 계약의 `NONE` 결과를 바꾸지 않는다. BE가 `can_search_web` 신호를 확인한 뒤 Terra 고정 Responses `web_search`를 호출하고, `ContextDecision.route=LLM`과 `citations=[{type: "web", url, title, text}]`로 화면에 투영한다. 일반 잡담은 외부 검색하지 않는다.
+내부 자료에서 답을 찾지 못한 현재성·웹 요청은 AI 계약의 `NONE` 결과를 바꾸지 않는다. Jev의 `external_web_search` 확률이 임계값 이상일 때 BE가 외부 검색 결과를 Terra 고정 Responses 호출에 전달하고, `ContextDecision.route=LLM`과 `citations=[{type: "web", url, title, text}]`로 화면에 투영한다. 일반 잡담은 외부 검색하지 않는다.
 
 판단과 검색어 구성을 나누는 일은 AI 내부에서 한다(#114). BE는 발화마다 한 번 부르고 결과 하나를 받는다.
 
@@ -143,8 +143,9 @@ class JudgeTrace(ContractModel):
     """이 판단을 누가, 어떤 지시로 내렸고 무엇을 했는지. BE가 판단 기록으로 저장한다"""
 
     model: str                       # 판단 모델. "typesafe/jev-1.14" (코드에 고정)
-    prompt_version: str              # 판단 질문 문구의 버전. "meeting-questions-v1"
+    prompt_version: str              # 판단 질문 문구의 버전. "meeting-questions-v2"
     judge_ms: int                    # 판단 단계에 걸린 시간. 조회로 본 발화는 검색어 만들기까지 들어간다
+    web_search_probability: float | None = None  # Jev의 문장 전체 외부 웹 검색 확률
     tool_calls: tuple[ToolCall, ...] = ()   # 부른 순서대로. 판단(judge.decide)이 늘 처음이고, NONE이면 그것 하나다
 
 

@@ -137,7 +137,8 @@ async def judge_live_meeting_segment(
         and event_answer is None
         and judged.route in (JudgeRoute.NONE, JudgeRoute.RAG)
         and (judged.route == JudgeRoute.NONE or judged.kind == 'NOT_FOUND')
-        and meeting_ai_service.can_search_web(segment.text)
+        and getattr(judged.trace, 'web_search_probability', None) is not None
+        and judged.trace.web_search_probability >= meeting_ai_service.web_search_threshold()
     ):
         try:
             web_answer = await meeting_ai_service.search_web(payload)

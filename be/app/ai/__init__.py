@@ -30,7 +30,7 @@ from .errors import (
     AIRetryableError,
     AITimeoutError,
 )
-from .facade import can_search_web, index_record, judge_utterance, search_related_records, search_web
+from .facade import can_search_web, index_record, judge_utterance, search_related_records, search_web, web_search_threshold
 from .facade import extract_receipt
 from .contracts import ExtractedReceiptRow, ExtractReceiptRequest, ExtractReceiptResult
 from .features.meeting.context import MEETING_CONTEXT_UTTERANCES
@@ -74,6 +74,7 @@ __all__ = (
     "judge_utterance",
     "search_web",
     "can_search_web",
+    "web_search_threshold",
     "JudgeUtteranceRequest",
     "JudgeUtteranceResult",
     "MeetingUtterance",

@@ -28,6 +28,7 @@ QUERY_PROMPT_VERSION = "meeting-query-v1"
 JEV_MODEL = "typesafe/jev-1.14"
 # 조회가 필요할 확률이 이 값 이상이면 조회로 본다. 개발용 151건에서 기준에 닿은 구간 0.28~0.42의 가운데다
 JEV_THRESHOLD = 0.35
+WEB_SEARCH_THRESHOLD = 0.35
 
 # "작년"을 연도로 풀 때 쓰는 회의 날짜의 기준. 발화 시각은 UTC로 올 수 있다
 MEETING_TIMEZONE = ZoneInfo("Asia/Seoul")

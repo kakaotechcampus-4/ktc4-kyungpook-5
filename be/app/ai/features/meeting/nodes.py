@@ -27,7 +27,7 @@ from .context import (
     build_query_messages,
     meeting_date,
 )
-from .jev import call_jev
+from .jev import JevDecision, call_jev_decision
 from .questions import QUESTIONS_VERSION
 from .schemas import (
     JudgeOutput,
@@ -52,7 +52,9 @@ from .schemas import (
 JUDGE_TIMEOUT_SECONDS = 10.0
 
 # 입력 글 → 조회가 필요할 확률. 기본은 Jev(call_jev)이고 테스트에서는 가짜로 바꾼다
-Decide = Callable[[str], Awaitable[float]]
+Decide = Callable[[str], Awaitable[float | JevDecision]]
+# 기존 테스트·도구가 교체하던 이름을 유지하되, 기본 경로는 두 확률을 받는다.
+call_jev = call_jev_decision
 # 검색어 지시문 → 검색어. 기본은 luna(call_query_model)
 Query = Callable[[list[BaseMessage]], Awaitable[QueryOutput]]
 
@@ -110,6 +112,7 @@ class _Run:
 
     def __init__(self) -> None:
         self.judge_ms = 0
+        self.web_search_probability: float | None = None
         self.tool_calls: list[ToolCall] = []
 
     def trace(self) -> JudgeTrace:
@@ -117,6 +120,7 @@ class _Run:
             model=JEV_MODEL,
             prompt_version=QUESTIONS_VERSION,
             judge_ms=self.judge_ms,
+            web_search_probability=self.web_search_probability,
             tool_calls=tuple(self.tool_calls),
         )
 
@@ -179,9 +183,17 @@ async def _judge(
     started = time.perf_counter()
     try:
         async with asyncio.timeout(JUDGE_TIMEOUT_SECONDS):
-            probability = await run.call_tool(
-                "judge.decide", said, decide(build_judge_input(request)), probability=float
+            decision = await run.call_tool(
+                "judge.decide", said, decide(build_judge_input(request)),
+                probability=lambda value: (
+                    value.record_lookup if isinstance(value, JevDecision) else float(value)
+                ),
             )
+            if isinstance(decision, JevDecision):
+                probability = decision.record_lookup
+                run.web_search_probability = decision.external_web_search
+            else:
+                probability = decision
             needs_lookup = probability >= JEV_THRESHOLD
             searched_for = ""
             if needs_lookup:

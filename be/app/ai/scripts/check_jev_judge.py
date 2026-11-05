@@ -44,6 +44,7 @@ from app.ai.features.meeting.context import (
     build_judge_input,
 )
 from app.ai.features.meeting.questions import (
+    EXTERNAL_WEB_SEARCH,
     QUESTIONS_VERSION,
     RECORD_LOOKUP,
     judge_questions,
@@ -85,6 +86,7 @@ class JevClient:
         body = response.json()
         return {
             "p_true": body["answers"][RECORD_LOOKUP]["noul"],
+            "p_web": body["answers"].get(EXTERNAL_WEB_SEARCH, {}).get("noul", 0.0),
             "ms": ms,
             "prompt_tokens": body.get("usage", {}).get("prompt_tokens"),
             "served_model": body.get("model"),
@@ -128,6 +130,7 @@ def run(args, client: JevClient, git: dict) -> dict:
         records.append({
             **eval_record(row),
             "p_true": outcome["p_true"],
+            "p_web": outcome.get("p_web", 0.0),
             **({"p_passes": p_passes} if len(passes) > 1 else {}),
             "pred": outcome["p_true"] >= args.threshold,
         })
@@ -216,8 +219,8 @@ def main() -> int:
     args.questions_body = args.questions_version = None
     if args.questions:
         candidate = json.loads(args.questions.read_text(encoding="utf-8"))
-        if set(candidate.get("questions", {})) != {RECORD_LOOKUP} or not candidate.get("version"):
-            parser.error("--questions 파일에는 version과 record_lookup 질문 하나만 둔다")
+        if set(candidate.get("questions", {})) not in ({RECORD_LOOKUP}, {RECORD_LOOKUP, EXTERNAL_WEB_SEARCH}) or not candidate.get("version"):
+            parser.error("--questions 파일에는 version과 record_lookup, 선택적 external_web_search 질문을 둔다")
         args.questions_body, args.questions_version = candidate["questions"], candidate["version"]
     if args.eval_set and args.set:
         parser.error("--eval-set에는 --set을 함께 쓸 수 없다")

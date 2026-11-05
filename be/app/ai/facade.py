@@ -9,6 +9,7 @@ from .contracts import IndexRecordRequest, IndexRecordResult, RecordDiscoveryReq
 from .contracts import ExtractReceiptRequest, ExtractReceiptResult
 from .features.meeting.lookup import RecordsLookup
 from .features.meeting.web_search import search_web as search_meeting_web, should_search_web
+from .features.meeting.context import WEB_SEARCH_THRESHOLD
 from .features.meeting.nodes import judge_utterance as judge_meeting_utterance
 from .features.meeting.schemas import (
     JudgeUtteranceRequest,
@@ -81,6 +82,10 @@ async def search_web(request: JudgeUtteranceRequest):
 
 def can_search_web(text: str) -> bool:
     return should_search_web(text)
+
+
+def web_search_threshold() -> float:
+    return WEB_SEARCH_THRESHOLD
 
 
 async def chat_planning(request: "PlanningChatRequest", *,

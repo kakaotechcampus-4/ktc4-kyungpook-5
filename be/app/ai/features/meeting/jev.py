@@ -14,6 +14,7 @@ AI 오류 타입으로 바꾼다(docs/errors.md "모델 호출 오류 변환").
 
 import asyncio
 import weakref
+from dataclasses import dataclass
 
 import httpx
 
@@ -21,7 +22,7 @@ from ...config import get_jev_settings
 from ...errors import AIConfigError, AIError, AIInvalidResponseError, AIRetryableError, AITimeoutError
 from ...llm import DEFAULT_MAX_RETRIES
 from .context import JEV_MODEL
-from .questions import RECORD_LOOKUP, judge_questions
+from .questions import EXTERNAL_WEB_SEARCH, RECORD_LOOKUP, judge_questions
 
 # 호출 하나의 대기 상한. 판단 단계 전체의 제한 시간(nodes.JUDGE_TIMEOUT_SECONDS)이 먼저 끊으므로
 # 같은 값으로 두어 httpx 기본값(5초)이 먼저 끊지 않게 한다
@@ -45,8 +46,14 @@ def _client() -> httpx.AsyncClient:
     return client
 
 
-async def call_jev(state: str) -> float:
-    """입력 글 하나에 record_lookup이 참일 확률(0~1)을 받는다.
+@dataclass(frozen=True)
+class JevDecision:
+    record_lookup: float
+    external_web_search: float
+
+
+async def call_jev_decision(state: str) -> JevDecision:
+    """입력 글 하나에 두 판단 질문의 확률을 받는다.
 
     예: "...[방금] 작년 MT 숙소비 얼마였지?" → 0.83
     임계값과 견주는 일은 부르는 쪽(nodes)이 한다.
@@ -69,8 +76,13 @@ async def call_jev(state: str) -> float:
                 raise converted from error
             await asyncio.sleep(RETRY_BACKOFF_SECONDS * 2**attempt)
             continue
-        return _probability(response)
+        return _decision(response)
     raise AssertionError("unreachable")
+
+
+async def call_jev(state: str) -> float:
+    """기존 공개 호환 함수. 기록 조회 확률만 반환한다."""
+    return (await call_jev_decision(state)).record_lookup
 
 
 def _probability(response: httpx.Response) -> float:
@@ -81,6 +93,32 @@ def _probability(response: httpx.Response) -> float:
     # bool은 int의 하위 타입이라 숫자로 통과하지 않게 먼저 거른다
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
         raise AIInvalidResponseError("Jev 응답의 조회 확률이 0~1 사이의 수가 아닙니다")
+    return float(value)
+
+
+def _decision(response: httpx.Response) -> JevDecision:
+    try:
+        answers = response.json()["answers"]
+        return JevDecision(
+            record_lookup=_read_probability(answers, RECORD_LOOKUP),
+            # 구버전 Jev mock/배포는 기존 질문 하나만 돌려줄 수 있다. 그 경우 웹 분기는 닫는다.
+            external_web_search=(
+                _read_probability(answers, EXTERNAL_WEB_SEARCH)
+                if isinstance(answers, dict) and EXTERNAL_WEB_SEARCH in answers
+                else 0.0
+            ),
+        )
+    except (ValueError, KeyError, TypeError) as error:
+        raise AIInvalidResponseError("Jev 응답에 판단 확률이 없습니다") from error
+
+
+def _read_probability(answers: object, question: str) -> float:
+    try:
+        value = answers[question]["noul"]  # type: ignore[index]
+    except (KeyError, TypeError) as error:
+        raise AIInvalidResponseError(f"Jev 응답에 {question} 확률이 없습니다") from error
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
+        raise AIInvalidResponseError(f"Jev 응답의 {question} 확률이 0~1 사이의 수가 아닙니다")
     return float(value)
 
 

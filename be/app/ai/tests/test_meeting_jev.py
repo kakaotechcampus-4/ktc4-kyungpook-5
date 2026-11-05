@@ -35,6 +35,18 @@ def _answer(noul):
     )
 
 
+def _multi_answer(record, web):
+    return httpx.Response(
+        200,
+        json={
+            "answers": {
+                "record_lookup": {"noul": record},
+                "external_web_search": {"noul": web},
+            },
+        },
+    )
+
+
 def _call(monkeypatch, handler, state="[방금] 작년 MT 숙소비 얼마였지?"):
     requests = []
 
@@ -59,6 +71,20 @@ def test_측정과_같은_요청을_보내고_확률을_돌려준다(monkeypatch
         "state": "[방금] 작년 MT 숙소비 얼마였지?",
         "questions": judge_questions(),
     }
+
+
+def test_문장_전체_웹_판단을_함께_받는다(monkeypatch):
+    decision, _ = _call(monkeypatch, lambda request: _multi_answer(0.1, 0.91))
+    # 기존 helper는 기록 확률만 반환하므로 새 구조는 별도 호출로 검증한다.
+    assert decision == 0.1
+
+    async def run():
+        return await jev.call_jev_decision("대구 공개 행사 일정 알려줘")
+
+    transport = httpx.MockTransport(lambda request: _multi_answer(0.1, 0.91))
+    monkeypatch.setattr(jev, "_client", lambda: httpx.AsyncClient(transport=transport))
+    result = asyncio.run(run())
+    assert (result.record_lookup, result.external_web_search) == (0.1, 0.91)
 
 
 @pytest.mark.parametrize("status", [401, 403, 404])

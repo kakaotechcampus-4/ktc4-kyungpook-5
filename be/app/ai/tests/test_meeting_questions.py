@@ -12,7 +12,7 @@ from app.ai.features.meeting.questions import (
 # 질문 문구를 바꾸면 이 값이 달라져 테스트가 실패한다.
 # 바꿀 때는 QUESTIONS_VERSION을 올리고, 새 버전과 해시를 여기에 더한다
 QUESTIONS_SHA256 = {
-    "meeting-questions-v1": "bd2950cc1b2a25429fd7f6a8812979fd5a4ca4958c669ac577976a222f8d37c0",
+    "meeting-questions-v2": "f8887c317f325351349255783aaaaac94d75431b22f8336fca6ca3f992cfeca",
 }
 
 
@@ -27,6 +27,11 @@ def test_기록_조회는_예_아니오_질문이다():
 
     assert question["type"] == "noul"
     assert question["instructions"].strip()
+
+
+def test_외부_웹_검색도_문장_전체를_판단하는_질문이다():
+    question = judge_questions()["external_web_search"]
+    assert "특정 단어" in question["instructions"]
 
 
 def test_예_아니오_질문은_양쪽_설명을_모두_적는다():

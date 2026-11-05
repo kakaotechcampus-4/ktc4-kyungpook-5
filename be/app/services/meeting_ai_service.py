@@ -50,6 +50,10 @@ def can_search_web(text: str) -> bool:
     return _public("can_search_web")(text)
 
 
+def web_search_threshold() -> float:
+    return _public("web_search_threshold")()
+
+
 async def search_web(payload: dict):
     request = _public("JudgeUtteranceRequest").model_validate(payload)
     return await _public("search_web")(request)

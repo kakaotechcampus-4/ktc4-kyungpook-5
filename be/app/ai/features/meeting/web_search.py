@@ -6,8 +6,10 @@
 
 import re
 from functools import lru_cache
+from html import unescape
 from time import monotonic
 from typing import Any
+from urllib.parse import unquote
 
 import httpx
 
@@ -16,15 +18,11 @@ from ...errors import AIConfigError, AIInvalidResponseError, AIRetryableError, A
 from .schemas import MeetingUtteranceRequest
 
 WEB_SEARCH_PROMPT_VERSION = "meeting-web-search-v1"
-_WEB_HINTS = re.compile(
-    r"(웹|인터넷|온라인|검색해|최신|현재|오늘|요즘|이번\s*주|이번\s*달|날씨|가격|시세|공식|공고|모집|운영시간|영업시간|뉴스)"
-)
-
-
+# shortcut: DuckDuckGo HTML 결과를 직접 읽는다. MLAPI는 provider-executed web_search를 막으므로,
+# 검색 provider가 필요해지면 공식 검색 API로 교체한다.
 def should_search_web(text: str) -> bool:
-    """잡담·현재 운영 확인은 제외하고 명시적인 외부/최신 정보 요청만 허용한다."""
-
-    return bool(_WEB_HINTS.search(text.strip()))
+    """구버전 호환용. 실제 분기는 Jev의 문장 확률을 사용한다."""
+    return False
 
 
 class WebSearchAnswer:
@@ -78,33 +76,62 @@ def _citations(payload: dict[str, Any]) -> tuple[dict[str, str], ...]:
     return tuple(rows)
 
 
+def _strip_html(value: str) -> str:
+    return re.sub(r"<[^>]+>", "", unescape(value)).strip()
+
+
+def _search_results(html: str, limit: int) -> tuple[dict[str, str], ...]:
+    rows: list[dict[str, str]] = []
+    matches = re.findall(
+        r'<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>(.*?)(?=<a[^>]+class="result__a"|$)',
+        html,
+        flags=re.S,
+    )
+    for url, title, tail in matches[:limit]:
+        if "uddg=" in url:
+            url = unquote(url.split("uddg=", 1)[1].split("&", 1)[0])
+        if not url.startswith("http"):
+            continue
+        snippet_match = re.search(r'class="result__snippet"[^>]*>(.*?)</', tail, flags=re.S)
+        rows.append({
+            "type": "web",
+            "url": url,
+            "title": _strip_html(title) or url,
+            "text": _strip_html(snippet_match.group(1)) if snippet_match else "",
+        })
+    return tuple(rows)
+
+
 async def search_web(request: MeetingUtteranceRequest) -> WebSearchAnswer:
     settings = _settings()
     settings.require()
     started = monotonic()
-    body = {
-        "model": "gpt-6.1-terra",
-        "tools": [
-            {
-                "type": "web_search",
-                "search_context_size": settings.context_size,
-                "external_web_access": True,
-            }
-        ],
-        "tool_choice": "required",
-        "input": (
-            "한국어로 답하세요. 외부 웹 검색 결과만 사용해 짧고 명확하게 요약하세요. "
-            "각 핵심 사실에는 검색 출처가 연결되어야 합니다. 확인할 수 없는 내용은 추정하지 마세요.\n\n"
-            f"질문: {request.utterance.text}"
-        ),
-        "include": ["web_search_call.action.sources"],
-    }
     try:
         async with httpx.AsyncClient(timeout=settings.timeout_seconds) as client:
+            search_response = await client.get(
+                settings.search_engine_url,
+                params={"q": request.utterance.text, "kl": "kr-kr"},
+                headers={"User-Agent": "unyounghae/1.0"},
+            )
+            search_response.raise_for_status()
+            citations = _search_results(search_response.text, settings.max_results)
+            if not citations:
+                raise AIInvalidResponseError("외부 검색 결과를 찾지 못했습니다")
+            source_text = "\n\n".join(
+                f"[{index}] {item['title']}\nURL: {item['url']}\n{item['text']}"
+                for index, item in enumerate(citations, 1)
+            )
             response = await client.post(
                 _responses_url(settings.api_base_url),
                 headers={"Authorization": f"Bearer {settings.api_key.get_secret_value()}"},
-                json=body,
+                json={
+                    "model": settings.model,
+                    "input": (
+                        "한국어로 답하세요. 아래 외부 검색 결과만 사용해 짧고 명확하게 요약하세요. "
+                        "각 핵심 사실 끝에 [번호]를 붙이고, 확인할 수 없는 내용은 추정하지 마세요.\n\n"
+                        f"질문: {request.utterance.text}\n\n검색 결과:\n{source_text}"
+                    ),
+                },
             )
             response.raise_for_status()
             payload = response.json()
@@ -118,7 +145,6 @@ async def search_web(request: MeetingUtteranceRequest) -> WebSearchAnswer:
         raise AIRetryableError("외부 웹 검색 서비스에 연결하지 못했습니다") from error
 
     answer = _output_text(payload)
-    citations = _citations(payload)
     if not answer or not citations:
         raise AIInvalidResponseError("외부 웹 검색 결과나 출처를 읽지 못했습니다")
     return WebSearchAnswer(answer, citations, round((monotonic() - started) * 1000))

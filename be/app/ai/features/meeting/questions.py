@@ -14,9 +14,10 @@ luna는 prompts/judge.md 지시문으로 판단하고, Laya는 입력과 함께 
 from copy import deepcopy
 
 # 아래 문구를 바꾸면 올린다. 바꾸기 전에 모은 학습 데이터와 섞지 않기 위해서다
-QUESTIONS_VERSION = "meeting-questions-v1"
+QUESTIONS_VERSION = "meeting-questions-v2"
 
 RECORD_LOOKUP = "record_lookup"
+EXTERNAL_WEB_SEARCH = "external_web_search"
 
 # 기준은 prompts/judge.md(v5)와 같다. 조회가 필요한 경우와 필요 없는 경우를 줄여 옮겼다
 _QUESTIONS = {
@@ -31,6 +32,19 @@ _QUESTIONS = {
         "criteria": {
             "false": "기록을 찾아봐야 답할 질문이 없음",
             "true": "기록을 찾아봐야 답할 질문이 있음",
+        },
+    },
+    EXTERNAL_WEB_SEARCH: {
+        "type": "noul",
+        "instructions": (
+            "방금 발화가 동아리 내부 기록이 아니라 인터넷의 최신·현재 공개 정보를 찾아야만 "
+            "답할 수 있는 질문인가요? 날씨·뉴스·공식 공고·공개 가격처럼 외부 웹 자료가 필요한 "
+            "질문은 해당합니다. 동아리의 과거 기록 질문, 현재 동아리 운영 상태 확인, 잡담, "
+            "앞으로 할 일을 정하는 말은 해당하지 않습니다. 문장에 특정 단어가 없어도 전체 뜻으로 판단하세요."
+        ),
+        "criteria": {
+            "false": "외부 웹 자료를 찾아야 할 질문이 없음",
+            "true": "외부 웹 자료를 찾아야 할 질문이 있음",
         },
     },
 }
