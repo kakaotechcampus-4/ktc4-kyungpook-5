@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { usePlanningChat, usePlanningDrafts } from '@/features/planning/hooks'
 import { useEventDetail } from '@/features/events/hooks'
@@ -30,7 +30,6 @@ export function LivePlanning() {
   const location = useLocation()
   const failedText = typeof location.state?.failedText === 'string' ? location.state.failedText : ''
   const eventId = params.get('eventId')
-  const drafts = usePlanningDrafts(clubId, userId)
   const journal = usePlanningRequestJournal(userId, clubId)
   const [busy, setBusy] = useState(false)
   const blocked = busy || !!journal.raw
@@ -38,48 +37,30 @@ export function LivePlanning() {
     setParams(id ? { eventId: id } : {}, { state: text ? { failedText: text } : null })
   return (
     <div className="flex flex-col gap-5">
-      <header>
-        <h1 className="text-h1">행사 계획</h1>
-        <p className="text-mute">대화로 조건을 정하고 계획 초안을 확인해요.</p>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="shrink-0 text-h1">행사 계획</h1>
+        {clubId && (
+          <div className="ml-auto flex items-center gap-2">
+            {eventId && (
+              <Button size="sm" variant="ghost" disabled={blocked} onClick={() => select(null)}>
+                새 계획
+              </Button>
+            )}
+            <PlanningDraftPicker
+              key={`${userId}:${clubId}`}
+              clubId={clubId}
+              userId={userId}
+              eventId={eventId}
+              disabled={blocked}
+              onSelect={select}
+            />
+          </div>
+        )}
       </header>
       {!clubId ? (
         <Card className="p-5">로그인하고 소속을 선택해 주세요.</Card>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line pb-4">
-            <label htmlFor="planning-draft" className="text-caption font-medium text-ink2">
-              계획 이어보기
-            </label>
-            <select
-              id="planning-draft"
-              className="min-h-11 min-w-0 max-w-full flex-1 rounded-lg border border-soft bg-card py-2 pr-8 pl-3 text-caption sm:max-w-[360px]"
-              disabled={blocked}
-              value={eventId ?? ''}
-              onChange={(event) => select(event.target.value || null)}
-            >
-              <option value="">새 계획</option>
-              {drafts.data?.map((draft) => (
-                <option key={draft.id} value={draft.id}>
-                  {draft.title} · {new Date(draft.createdAt).toLocaleDateString('ko-KR')}
-                </option>
-              ))}
-              {eventId && drafts.data && !drafts.data.some((draft) => draft.id === eventId) && (
-                <option value={eventId}>선택한 계획</option>
-              )}
-            </select>
-            <Button variant="secondary" disabled={blocked} onClick={() => select(null)}>
-              새 계획
-            </Button>
-            {drafts.isLoading && <span role="status">계획 목록을 불러오는 중이에요.</span>}
-            {drafts.isError && (
-              <span role="alert">
-                계획 목록을 불러오지 못했어요.{' '}
-                <button className="underline" onClick={() => void drafts.refetch()}>
-                  다시 시도
-                </button>
-              </span>
-            )}
-          </div>
           {journal.raw && !journal.request && (
             <p role="alert" className="text-failed">
               이전 요청 기록을 확인하지 못했어요. 새 요청을 보내기 전에 브라우저의 임시 저장 기능과
@@ -113,6 +94,126 @@ export function LivePlanning() {
           />
         </>
       )}
+    </div>
+  )
+}
+
+function PlanningDraftPicker({
+  clubId,
+  userId,
+  eventId,
+  disabled,
+  onSelect,
+}: {
+  clubId: string
+  userId: string | undefined
+  eventId: string | null
+  disabled: boolean
+  onSelect: (id: string) => void
+}) {
+  const drafts = usePlanningDrafts(clubId, userId)
+  const popoverId = useId()
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    if (disabled) {
+      popoverRef.current?.hidePopover()
+      return
+    }
+    const close = () => popoverRef.current?.hidePopover()
+    window.addEventListener('resize', close)
+    window.addEventListener('scroll', close, { passive: true })
+    return () => {
+      window.removeEventListener('resize', close)
+      window.removeEventListener('scroll', close)
+    }
+  }, [open, disabled])
+
+  return (
+    <div ref={anchorRef}>
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={disabled}
+        popoverTarget={popoverId}
+        aria-expanded={open}
+        aria-controls={popoverId}
+        onClick={() => {
+          const anchor = anchorRef.current?.getBoundingClientRect()
+          const popover = popoverRef.current
+          if (!anchor || !popover) return
+          popover.style.top = `${anchor.bottom + 8}px`
+          popover.style.right = `${Math.max(16, window.innerWidth - anchor.right)}px`
+          popover.style.maxHeight = `${Math.max(0, window.innerHeight - anchor.bottom - 24)}px`
+        }}
+      >
+        이전 계획
+        <svg
+          aria-hidden
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d={open ? 'm6 15 6-6 6 6' : 'm6 9 6 6 6-6'} />
+        </svg>
+      </Button>
+      <div
+        ref={popoverRef}
+        id={popoverId}
+        popover="auto"
+        role="region"
+        aria-label="이전 계획"
+        onToggle={(event) => setOpen(event.newState === 'open')}
+        style={{ width: 'min(320px, calc(100vw - 32px))' }}
+        className="fixed inset-auto m-0 overflow-y-auto rounded-xl border border-line bg-card p-2 text-ink"
+      >
+        {drafts.isLoading ? (
+          <p role="status" className="px-3 py-4 text-caption text-mute">
+            계획 목록을 불러오는 중이에요.
+          </p>
+        ) : drafts.isError ? (
+          <div role="alert" className="space-y-2 px-3 py-4 text-caption text-ink2">
+            <p>계획 목록을 불러오지 못했어요.</p>
+            <Button size="sm" variant="secondary" onClick={() => void drafts.refetch()}>
+              다시 시도
+            </Button>
+          </div>
+        ) : drafts.data?.length ? (
+          <ul className="divide-y divide-line">
+            {drafts.data.map((draft) => (
+              <li key={draft.id}>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  aria-current={draft.id === eventId ? 'true' : undefined}
+                  className="flex w-full flex-col gap-1 rounded-lg px-3 py-3 text-left hover:bg-bg focus-visible:outline-2 focus-visible:outline-blue-600 aria-current:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => {
+                    popoverRef.current?.hidePopover()
+                    onSelect(draft.id)
+                  }}
+                >
+                  <span className="w-full break-words text-caption font-medium">{draft.title}</span>
+                  <span className="text-[12px] text-mute">
+                    {new Date(draft.savedAt ?? draft.createdAt).toLocaleDateString('ko-KR')}
+                    {draft.savedAt ? ' 저장' : ' 생성'}
+                    {draft.id === eventId && ' · 현재 계획'}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="px-3 py-4 text-caption text-mute">아직 저장된 계획이 없어요.</p>
+        )}
+      </div>
     </div>
   )
 }
