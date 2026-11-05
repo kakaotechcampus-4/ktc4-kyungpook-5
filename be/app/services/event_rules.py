@@ -132,11 +132,17 @@ class _StepLike(Protocol):
     completed_at: datetime | None
 
 
-def step_states(steps: Sequence[_StepLike]) -> dict[str, StepState]:
+def step_states(
+    steps: Sequence[_StepLike], *, event_status: EventStatus
+) -> dict[str, StepState]:
     """step_order 순으로 받은 단계의 진행 상태 (이슈 #17 판단 A).
 
     처음으로 completed_at이 비어 있는 단계가 CURRENT, 그 앞은 DONE, 뒤는 TODO다.
+    계획 중(PLANNING)에는 단계 진행이 시작되지 않았으므로 모두 TODO다(#336).
+    단계 진행은 운영 시작 뒤의 일이다(is_operating, #177).
     """
+    if event_status == EventStatus.PLANNING:
+        return {step.id: StepState.TODO for step in steps}
     states: dict[str, StepState] = {}
     reached_current = False
     for step in steps:

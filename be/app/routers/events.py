@@ -466,6 +466,8 @@ async def list_event_steps(
     account: Account = Depends(get_current_account),
     session: AsyncSession = Depends(get_session),
 ) -> StepListResponse:
-    await _get_event_for_account(session, event_id=event_id, account=account)
-    rows = await event_service.list_steps(session, event_id=event_id)
+    event, _ = await _get_event_for_account(session, event_id=event_id, account=account)
+    rows = await event_service.list_steps(
+        session, event_id=event_id, event_status=event.status
+    )
     return StepListResponse.model_validate({"data": rows, "meta": None})
