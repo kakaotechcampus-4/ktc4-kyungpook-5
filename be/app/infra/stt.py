@@ -122,6 +122,8 @@ class WhisperStt:
                 normalized_text = " ".join(text.split())
                 if normalized_text in UNRECOGNIZED_TRANSCRIPT_MARKERS:
                     return ""
+                if _is_repeated_short_phrase(normalized_text):
+                    return ""
                 return normalized_text
         except httpx.TimeoutException as exc:
             raise SttError("STT_TIMEOUT", "음성 인식 응답 시간이 초과됐습니다.") from exc
@@ -149,7 +151,8 @@ def _contains_voiced_energy(wav: bytes) -> bool:
         if len(block) < 2:
             continue
         samples = struct.unpack(f"<{len(block) // 2}h", block[: len(block) - len(block) % 2])
-        rms = math.sqrt(sum(sample * sample for sample in samples) / len(samples))
+        mean = sum(samples) / len(samples)
+        rms = math.sqrt(sum((sample - mean) ** 2 for sample in samples) / len(samples))
         if rms >= MIN_AUDIO_RMS:
             voiced_ms += len(block) // 2 // 16
             if voiced_ms >= MIN_VOICED_MS:
@@ -159,6 +162,30 @@ def _contains_voiced_energy(wav: bytes) -> bool:
             # Whisper invent a canned phrase. Require one short, continuous
             # voiced run before sending audio to the provider.
             voiced_ms = 0
+    return False
+
+
+def _is_repeated_short_phrase(text: str) -> bool:
+    """Reject a short phrase repeated verbatim by a silence hallucination."""
+    tokens = text.split()
+    if len(tokens) < 2 or len(text) > 48:
+        return False
+    for repeats in (2, 3, 4):
+        if len(tokens) % repeats:
+            continue
+        unit_size = len(tokens) // repeats
+        if unit_size > 4:
+            continue
+        unit = tokens[:unit_size]
+        # Keep natural short acknowledgements such as "네 네"; canned Whisper
+        # phrases are long enough to be safely identified by their token text.
+        if len(" ".join(unit)) < 3:
+            continue
+        if all(
+            tokens[index : index + unit_size] == unit
+            for index in range(0, len(tokens), unit_size)
+        ):
+            return True
     return False
 
 

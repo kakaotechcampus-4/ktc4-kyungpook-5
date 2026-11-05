@@ -74,6 +74,15 @@ async def test_vad_suppresses_stationary_noise_above_energy_threshold() -> None:
     assert vad.flush() is None
 
 
+async def test_vad_ignores_dc_offset_as_voice_energy() -> None:
+    # A microphone DC offset can exceed the old RMS floor while containing no
+    # speech. RMS must be measured around the frame mean.
+    offset = struct.pack("<{}h".format(16000 * 2), *([1200] * (16000 * 2)))
+    vad = PcmVad()
+    assert vad.feed(offset) == []
+    assert vad.flush() is None
+
+
 async def test_vad_suppresses_low_level_noise_and_preserves_short_voiced_tail() -> None:
     rng = random.Random(11)
     samples = [rng.randint(-300, 300) for _ in range(16000)]
@@ -421,6 +430,17 @@ async def test_whisper_discards_provider_unrecognized_marker() -> None:
         api_key="private-test-key",
         transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
             "text": " (알아듣지 못했어요) ",
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
+
+
+async def test_whisper_discards_repeated_short_hallucination() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다. 감사합니다. 감사합니다.",
         })),
     )
     assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
