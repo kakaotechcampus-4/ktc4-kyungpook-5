@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   usePlanningChat,
   usePlanningDrafts,
@@ -11,6 +11,9 @@ import { useEventDetail } from '@/features/events/hooks'
 import { planningStage } from '../reviewModel'
 import { PlanReviewScreen } from './PlanReviewScreen'
 import { PlanStageNav } from './PlanStageNav'
+import { GenerationScreen } from './GenerationScreen'
+import { GenerationFailureNotice } from './GenerationFailureNotice'
+import { usePlanningRequestJournal } from '../useGenerationRequest'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
 import { PlanningRecordReferences } from '@/features/planning/components/PlanningRecordReferences'
@@ -40,6 +43,9 @@ export function LivePlanning() {
   const failedText = typeof location.state?.failedText === 'string' ? location.state.failedText : ''
   const eventId = params.get('eventId')
   const drafts = usePlanningDrafts(clubId, userId)
+  const journal = usePlanningRequestJournal(userId, clubId)
+  const [busy, setBusy] = useState(false)
+  const blocked = busy || !!journal.raw
   const select = (id: string | null, text?: string) =>
     setParams(id ? { eventId: id } : {}, { state: text ? { failedText: text } : null })
   return (
@@ -59,6 +65,7 @@ export function LivePlanning() {
             <select
               id="planning-draft"
               className="min-h-11 min-w-0 max-w-full flex-1 rounded-lg border border-soft bg-card py-2 pr-8 pl-3 text-caption sm:max-w-[360px]"
+              disabled={blocked}
               value={eventId ?? ''}
               onChange={(event) => select(event.target.value || null)}
             >
@@ -72,7 +79,7 @@ export function LivePlanning() {
                 <option value={eventId}>선택한 계획</option>
               )}
             </select>
-            <Button variant="secondary" onClick={() => select(null)}>
+            <Button variant="secondary" disabled={blocked} onClick={() => select(null)}>
               새 계획
             </Button>
             {drafts.isLoading && <span role="status">계획 목록을 불러오는 중이에요.</span>}
@@ -85,9 +92,27 @@ export function LivePlanning() {
               </span>
             )}
           </div>
+          {journal.raw && !journal.request && (
+            <p role="alert" className="text-failed">
+              이전 요청 기록을 확인하지 못했어요. 새 요청을 보내기 전에 브라우저의 임시 저장 기능과
+              처리 결과를 확인해 주세요.
+            </p>
+          )}
+          {journal.request && journal.request.eventId !== eventId && (
+            <p role="status" className="text-ink2">
+              다른 계획의 처리 결과를 확인해야 해요. 새 요청은 잠가 두었어요.{' '}
+              <Link
+                className="font-semibold text-blue-700 underline"
+                to={`/planning?${new URLSearchParams({ eventId: journal.request.eventId, stage: 'conditions' })}`}
+              >
+                요청한 계획 확인하기
+              </Link>
+            </p>
+          )}
           <Conversation
             key={`${userId}:${clubId}:${eventId ?? 'new'}`}
             clubId={clubId}
+            onBusy={setBusy}
             eventId={eventId}
             onCreated={(id, text) =>
               setParams(
@@ -110,17 +135,39 @@ function Conversation({
   onCreated,
   failedText,
   userId,
+  onBusy,
 }: {
   clubId: string
   eventId: string | null
   onCreated: (id: string, failedText?: string) => void
   failedText: string
   userId: string | undefined
+  onBusy: (busy: boolean) => void
 }) {
-  const live = usePlanningChat(clubId, eventId, userId, onCreated)
+  const navigate = useNavigate()
+  const live = usePlanningChat(clubId, eventId, userId, onCreated, (id, count, key) => {
+    navigate(`/planning?${new URLSearchParams({ eventId: id, stage: 'review' })}`, {
+      replace: true,
+      state: { generated: count > 0 ? { count, key } : undefined, focusPlan: true },
+    })
+  })
+  useEffect(() => {
+    onBusy(live.busy)
+  }, [live.busy, onBusy])
   const [params] = useSearchParams()
   const event = useEventDetail(eventId ?? undefined)
   const [showFailure, setShowFailure] = useState(Boolean(failedText))
+  if (live.generationFlow)
+    return (
+      <>
+        <PlanStageNav current="conditions" />
+        <GenerationScreen
+          flow={live.generationFlow}
+          onReload={live.reloadGenerated}
+          onViewCurrent={live.viewCurrentPlan}
+        />
+      </>
+    )
   if (eventId && (live.snapshot.isLoading || event.isPending))
     return (
       <Card className="p-5" role="status">
@@ -149,7 +196,7 @@ function Conversation({
   if (eventId && event.data && event.data.status !== 'PLANNING') {
     return <Navigate replace to={`/events/${encodeURIComponent(eventId)}`} />
   }
-  // 주소를 처음 해석할 때만 기본 화면을 정한다. 생성 완료 자동 전환은 #326에서 잇는다.
+  // 최초 주소 해석과 생성 성공 이동은 구분한다. 성공은 검증된 스냅샷을 받은 뒤 replace한다.
   if (
     eventId &&
     screen &&
@@ -175,6 +222,7 @@ function Conversation({
   }
   const readiness = live.view?.generationReadiness ?? screen?.generationReadiness ?? null
   const lastMessage = live.snapshot.data?.messages.at(-1)
+  const generationFailure = live.generationFailure
   return (
     <>
       <PlanStageNav current="conditions" />
@@ -194,6 +242,9 @@ function Conversation({
           기존 초안 검토하기
         </Link>
       )}
+      {generationFailure && !live.busy && (
+        <GenerationFailureNotice result={generationFailure} hasPrevious={steps.length > 0} />
+      )}
       <div className="flex flex-col items-start gap-5 lg:flex-row">
         <PlanChat
           messages={live.messages}
@@ -208,8 +259,11 @@ function Conversation({
           pendingReply={live.pendingReply}
           notice={live.notice}
           error={
-            live.error ||
+            (!generationFailure ? live.error : '') ||
             (showFailure ? '이전 요청 결과를 확인해 주세요. 서버에 반영됐을 수 있어요.' : '')
+          }
+          onReload={
+            eventId ? () => Promise.all([live.snapshot.refetch(), event.refetch()]) : undefined
           }
           persisted={!!eventId}
           initialDraft={failedText}

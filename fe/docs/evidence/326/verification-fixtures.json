@@ -1,0 +1,65 @@
+{
+  "reports": [
+    {
+      "type": "fixture",
+      "case": "button-states-responsive-motion-focus",
+      "posts": 1
+    },
+    {
+      "type": "fixture",
+      "case": "read-failure-reload-get-only-recovery",
+      "posts": 1
+    },
+    {
+      "type": "fixture",
+      "case": "stale-snapshot-reload-get-only-recovery",
+      "posts": 1
+    },
+    {
+      "type": "fixture",
+      "case": "changed",
+      "posts": 1
+    },
+    {
+      "type": "fixture",
+      "case": "leave-and-return",
+      "posts": 1
+    },
+    {
+      "type": "fixture",
+      "case": "storage-unavailable",
+      "posts": 0
+    },
+    {
+      "type": "fixture",
+      "case": "clarification",
+      "posts": 1
+    },
+    {
+      "type": "fixture",
+      "case": "failed",
+      "posts": 1
+    },
+    {
+      "type": "fixture",
+      "case": "save-conflict",
+      "posts": 1
+    },
+    {
+      "type": "fixture",
+      "case": "unknown",
+      "posts": 1
+    },
+    {
+      "type": "fixture",
+      "case": "chat-consultation",
+      "posts": 1
+    },
+    {
+      "type": "fixture",
+      "case": "chat-generation",
+      "posts": 1
+    }
+  ],
+  "browserErrors": []
+}
