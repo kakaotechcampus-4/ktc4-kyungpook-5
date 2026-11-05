@@ -260,6 +260,7 @@ export function PlanChat({
 }: PlanChatProps) {
   const [draft, setDraft] = useState(initialDraft)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLDivElement>(null)
   const errorRef = useRef<HTMLParagraphElement>(null)
   useEffect(() => {
     if (error) errorRef.current?.focus()
@@ -332,7 +333,13 @@ export function PlanChat({
                       key={reply}
                       type="button"
                       disabled={busy}
-                      onClick={() => void send(reply, false)}
+                      onClick={() => {
+                        if (reply === '직접 입력') {
+                          composerRef.current?.querySelector('textarea')?.focus()
+                          return
+                        }
+                        void send(reply, false)
+                      }}
                       className="rounded-[9px] border border-blue-200 bg-card px-[13px] py-[8px] text-caption font-bold text-blue-700 hover:bg-blue-50"
                     >
                       {reply}
@@ -414,7 +421,7 @@ export function PlanChat({
           void send(draft, true)
         }}
       >
-        <div className="min-w-0 flex-1">
+        <div ref={composerRef} className="min-w-0 flex-1">
           {/* 기다리는 동안 막지(disabled) 않고 읽기 전용으로 둔다. 막으면 포커스가 빠져
               답변이 끝난 뒤 입력창을 다시 눌러야 한다. 읽기 전용이면 커서가 그대로 남는다. */}
           <Textarea
