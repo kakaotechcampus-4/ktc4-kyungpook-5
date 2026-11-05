@@ -161,10 +161,10 @@ async def test_http_finish_cannot_skip_live_tail(client: TestClient, audio_db: N
 
 
 
-@pytest.mark.parametrize("amplitude, expected_segments", [(0, 0), (2000, 1)])
-async def test_empty_voiced_stt_is_a_restorable_gap_but_silence_has_no_row(
+@pytest.mark.parametrize("amplitude, expected_stt_calls", [(0, 0), (2000, 1)])
+async def test_empty_stt_is_a_gap_without_transcript_row(
     client: TestClient, audio_db: None, monkeypatch: pytest.MonkeyPatch,
-    amplitude: int, expected_segments: int,
+    amplitude: int, expected_stt_calls: int,
 ) -> None:
     stt_calls = []
     ai_calls = []
@@ -198,20 +198,12 @@ async def test_empty_voiced_stt_is_a_restorable_gap_but_silence_has_no_row(
         f"/api/v1/meetings/{meeting}/transcripts",
         headers={"Authorization": f"Bearer {token}"},
     ).json()["data"]
-    assert len(stt_calls) == expected_segments
+    assert len(stt_calls) == expected_stt_calls
     assert ai_calls == []
-    assert saved["cursor"] == expected_segments
-    assert len(saved["items"]) == expected_segments
-    if expected_segments:
-        gap = saved["items"][0]
-        assert gap["text"] == "" and gap["final"] is True
-        assert gap["endMs"] - gap["startMs"] == 300
-        assert gap["decisionJobId"] is None
-        event = next(event for event in events if event["type"] == "transcript.final")
-        assert event["id"] == gap["id"] and event["text"] == ""
-        assert any(event.get("segmentId") == gap["id"] for event in events if event["type"] == "audio.no_transcript")
-    else:
-        assert not any(event["type"] == "transcript.final" for event in events)
+    assert saved == {"cursor": 0, "items": []}
+    assert not any(event["type"] == "transcript.final" for event in events)
+    if expected_stt_calls:
+        assert any(event["type"] == "audio.no_transcript" for event in events)
 
 
 # ── #249: 회의 실패로 세는 것은 판단 실패뿐이다 ───────────────────────────────
