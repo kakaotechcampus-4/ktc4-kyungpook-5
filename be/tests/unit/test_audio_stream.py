@@ -332,9 +332,49 @@ async def test_whisper_posts_wav_and_reads_nested_gateway_response() -> None:
         assert b'RIFF' in request.content
         assert b'\r\nko\r\n' in request.content
         assert b'\r\nopenai/whisper-large-v3\r\n' in request.content
+        assert b'\r\nverbose_json\r\n' in request.content
+        assert b'\r\nfalse\r\n' in request.content
         return httpx.Response(200, json={"transcript": {"text": " 회의를 시작합니다. "}})
     provider = WhisperStt(url="https://gateway.example/transcriptions", api_key="private-test-key", transport=httpx.MockTransport(respond))
     assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko-KR") == "회의를 시작합니다."
+
+
+async def test_whisper_discards_provider_marked_silence_hallucination() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다.",
+            "segments": [{"text": "감사합니다.", "no_speech_prob": 0.91}],
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
+
+
+async def test_whisper_keeps_real_speech_when_provider_marks_speech() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다.",
+            "segments": [{"text": "감사합니다.", "no_speech_prob": 0.02}],
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == "감사합니다."
+
+
+async def test_whisper_rejects_malformed_speech_metadata() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다.",
+            "segments": [{"text": "감사합니다.", "no_speech_prob": "unknown"}],
+        })),
+    )
+    with pytest.raises(SttError) as error:
+        await provider.transcribe(pcm_to_wav(pcm(300)), language="ko")
+    assert error.value.code == "STT_INVALID_RESPONSE"
 
 
 async def test_whisper_reads_openai_compatible_response() -> None:
