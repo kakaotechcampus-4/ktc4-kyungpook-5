@@ -57,10 +57,13 @@ class WhisperStt:
             async with httpx.AsyncClient(
                 timeout=self.timeout_seconds, transport=self.transport
             ) as client:
+                request = {
+                    "headers": {"Authorization": f"Bearer {self.api_key}"},
+                    "files": {"file": ("utterance.wav", wav, "audio/wav")},
+                }
                 response = await client.post(
                     self.url,
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                    files={"file": ("utterance.wav", wav, "audio/wav")},
+                    **request,
                     data={
                         "model": self.model,
                         "language": language.split("-")[0],
@@ -70,6 +73,15 @@ class WhisperStt:
                         "no_speech_threshold": str(NO_SPEECH_THRESHOLD),
                     },
                 )
+                if response.status_code in (400, 422):
+                    # Older MLAPI Whisper deployments accept only model/language.
+                    # Retry the same audio without optional controls so a gateway
+                    # upgrade does not turn every utterance into a provider error.
+                    response = await client.post(
+                        self.url,
+                        **request,
+                        data={"model": self.model, "language": language.split("-")[0]},
+                    )
                 response.raise_for_status()
                 payload = response.json()
                 if not isinstance(payload, dict):

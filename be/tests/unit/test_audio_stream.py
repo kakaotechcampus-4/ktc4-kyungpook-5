@@ -351,6 +351,26 @@ async def test_whisper_discards_provider_marked_silence_hallucination() -> None:
     assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
 
 
+async def test_whisper_falls_back_for_legacy_gateway_options() -> None:
+    requests = []
+
+    def respond(request):
+        requests.append(request)
+        if len(requests) == 1:
+            return httpx.Response(422, json={"error": "unsupported option"})
+        return httpx.Response(200, json={"text": " 회의 기록 "})
+
+    provider = WhisperStt(
+        url="https://legacy-gateway.example/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(respond),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == "회의 기록"
+    assert len(requests) == 2
+    assert b"verbose_json" in requests[0].content
+    assert b"verbose_json" not in requests[1].content
+
+
 async def test_whisper_keeps_real_speech_when_provider_marks_speech() -> None:
     provider = WhisperStt(
         url="https://mlapi.run/v1/audio/transcriptions",
