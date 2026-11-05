@@ -74,6 +74,8 @@ interface MembersTabProps {
   total: number
   onAddClick: () => void
   canAdd?: boolean
+  // 임원 초대 코드 만들기. 회장·임원에게만 준다 — 서버도 그 둘만 받는다.
+  onInviteClick?: () => void
   onResolveRequest: (id: string) => void
 }
 
@@ -83,6 +85,7 @@ export function MembersTab({
   total,
   onAddClick,
   canAdd = true,
+  onInviteClick,
   onResolveRequest,
 }: MembersTabProps) {
   const groups: MemberGroup[] = ['임원', '동아리원']
@@ -122,13 +125,24 @@ export function MembersTab({
               <h2 className="text-h2 text-ink">동아리원</h2>
               <Chip tone="approved">{total}명</Chip>
             </span>
-            <Button onClick={onAddClick} disabled={!canAdd}>+ 직접 추가</Button>
+            <span className="flex gap-[8px]">
+              {onInviteClick && (
+                <Button variant="secondary" onClick={onInviteClick}>
+                  임원 초대
+                </Button>
+              )}
+              <Button onClick={onAddClick} disabled={!canAdd}>+ 직접 추가</Button>
+            </span>
           </div>
           <p className="text-[12px] leading-[18px] text-mute">
             회장과 임원만 계정으로 서비스를 이용해요. 일반 동아리원은 계정 없이 내부 명단으로
             관리합니다.
           </p>
-          {!canAdd && <p className="text-[12px] text-mute">동아리원 추가와 초대 기능은 현재 사용할 수 없어요.</p>}
+          {!canAdd && (
+            <p className="text-[12px] text-mute">
+              명단에 직접 추가하는 기능은 아직 준비 중이에요. 임원은 초대 코드로 부를 수 있어요.
+            </p>
+          )}
         </div>
 
         {groups.map((group) => {

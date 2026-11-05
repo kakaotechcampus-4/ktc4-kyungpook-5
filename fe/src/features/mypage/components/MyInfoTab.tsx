@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import type { ClubInfo, NotificationSettings, Profile } from '@/features/mypage/types'
 import { Avatar } from '@/shared/ui/Avatar'
+import { ClubEditForm } from '@/features/clubs/components/ClubEditForm'
+import { useClub } from '@/features/clubs/hooks'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
@@ -44,11 +46,21 @@ function Facts({ items }: { items: Array<[string, string]> }) {
 interface MyInfoTabProps {
   profile: Profile
   club: ClubInfo
+  // 소속을 고르지 않았거나 시연 중이면 없다. 그때는 수정 자리를 그리지 않는다.
+  clubId?: string
+  // 서버가 동아리 수정을 회장에게만 허용한다. 임원에게는 버튼을 보이지 않는다.
+  canEditClub?: boolean
   // 연결된 계정. 아직 없으면 비워 둔다.
   linkedAccounts?: string
 }
 
-export function MyInfoTab({ profile, club, linkedAccounts }: MyInfoTabProps) {
+export function MyInfoTab({
+  profile,
+  club,
+  clubId,
+  canEditClub = false,
+  linkedAccounts,
+}: MyInfoTabProps) {
   // TODO(연동): PATCH /me/notifications. 지금은 화면에서만 바뀐다.
   const [notifications, setNotifications] = useState<NotificationSettings>({
     pendingApproval: true,
@@ -87,10 +99,7 @@ export function MyInfoTab({ profile, club, linkedAccounts }: MyInfoTabProps) {
               ['가입일', club.joinedAt],
             ]}
           />
-          <div className="flex gap-[9px] border-t border-line pt-[18px]">
-            <Button variant="soft">동아리 정보 수정</Button>
-            <Button variant="secondary">동아리 나가기</Button>
-          </div>
+          <ClubSettings clubId={clubId} canEdit={canEditClub} />
         </Card>
 
         <Card className="flex flex-col pt-[4px]">
@@ -124,6 +133,44 @@ export function MyInfoTab({ profile, club, linkedAccounts }: MyInfoTabProps) {
           승인 알림을 켜두면 되돌릴 수 없는 일만 골라서 알려드릴게요.
         </ToriNote>
       </div>
+    </div>
+  )
+}
+
+// 동아리 설정 줄. 수정은 현재 값을 받아 와야 열 수 있어 버튼과 폼을 함께 둔다.
+function ClubSettings({ clubId, canEdit }: { clubId?: string; canEdit: boolean }) {
+  const [editing, setEditing] = useState(false)
+  const club = useClub(editing && clubId ? clubId : null)
+
+  if (editing && club.data) {
+    return <ClubEditForm club={club.data} onDone={() => setEditing(false)} />
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-[9px] border-t border-line pt-[18px]">
+      {canEdit && clubId && (
+        <Button
+          variant="soft"
+          loading={editing && club.isPending}
+          onClick={() => setEditing(true)}
+        >
+          동아리 정보 수정
+        </Button>
+      )}
+      {/* 나가기는 서버 경로가 없다. 마지막 회장을 어떻게 할지도 정해지지 않았다(#213) */}
+      <Button variant="secondary" disabled>
+        동아리 나가기
+      </Button>
+      <span className="text-[11.5px] text-mute">
+        {!canEdit && clubId
+          ? '동아리 정보는 회장만 고칠 수 있어요 · 나가기는 준비 중이에요'
+          : '나가기는 준비 중이에요'}
+      </span>
+      {editing && club.isError && (
+        <p role="alert" className="w-full text-[12px] font-bold text-failed">
+          동아리 정보를 불러오지 못했어요. 잠시 뒤 다시 눌러 주세요.
+        </p>
+      )}
     </div>
   )
 }

@@ -5,16 +5,11 @@ service-flow.curl.sh 01~10번이 실제 DB로 끝까지 도는지 확인한다.
 
 import uuid
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 
-from app.core.enums import MemberRole
-from app.core.security import hash_token
 from app.db import session as db_session
-from app.models.clubs import Invitation, Member
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
 
@@ -168,7 +163,7 @@ async def test_logout_후_refresh는_401(client: TestClient, app_db: None) -> No
     assert refresh_res.status_code == 401
 
 
-async def test_초대_생성과_기존_초대_수락은_비활성이다(
+async def test_초대_수락하면_해당_역할로_가입된다(
     client: TestClient, app_db: None
 ) -> None:
     owner_email = _unique_email("inv-owner")
@@ -187,17 +182,10 @@ async def test_초대_생성과_기존_초대_수락은_비활성이다(
         headers=owner_headers,
         json={"email": manager_email, "role": "MANAGER"},
     )
-    assert invite_res.status_code == 503, invite_res.text
-    assert invite_res.json()["error"]["code"] == "INVITATION_UNAVAILABLE"
+    assert invite_res.status_code == 201, invite_res.text
 
-    invite_token = uuid.uuid4().hex
-    async with db_session.get_sessionmaker()() as session:
-        owner = await session.scalar(select(Member).where(Member.club_id == club_id))
-        session.add(Invitation(club_id=club_id, email=manager_email,
-                               role=MemberRole.MANAGER, token_hash=hash_token(invite_token),
-                               expires_at=datetime.now(UTC) + timedelta(days=1),
-                               invited_by=owner.id))
-        await session.commit()
+    invite_token = invite_res.json()["data"]["token"]
+    assert invite_res.json()["data"]["expiresAt"]
 
     _signup(client, manager_email, name="매니저")
     manager_token, _ = _login(client, manager_email)
@@ -207,13 +195,15 @@ async def test_초대_생성과_기존_초대_수락은_비활성이다(
         headers={"Authorization": f"Bearer {manager_token}"},
         json={"token": invite_token},
     )
-    assert accept_res.status_code == 503, accept_res.text
-    assert accept_res.json()["error"]["code"] == "INVITATION_UNAVAILABLE"
+    assert accept_res.status_code == 200, accept_res.text
+    assert accept_res.json()["data"] == {"clubId": club_id, "role": "MANAGER"}
 
     me_res = client.get(
         "/api/v1/me", headers={"Authorization": f"Bearer {manager_token}"}
     )
-    assert me_res.json()["data"]["clubs"] == []
+    assert me_res.json()["data"]["clubs"] == [
+        {"id": club_id, "name": "초대 테스트 동아리", "role": "MANAGER"}
+    ]
 
 
 async def test_권한_없는_멤버는_초대를_못_만든다(client: TestClient, app_db: None) -> None:

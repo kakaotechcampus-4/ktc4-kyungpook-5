@@ -1,6 +1,7 @@
 // S2 마이 페이지. 내 정보 · 동아리원 · 동아리 자료 세 탭을 한 화면에서 바꿔 본다.
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { InviteStaffModal } from '@/features/clubs/components/InviteStaffModal'
 import { AddMemberModal } from '@/features/mypage/components/AddMemberModal'
 import { MembersTab } from '@/features/mypage/components/MembersTab'
 import { MyInfoTab } from '@/features/mypage/components/MyInfoTab'
@@ -29,6 +30,10 @@ export default function MyPage() {
   const { user, me, clubId } = useAuthStore()
   const [tab, setTab] = useState<Tab>('내 정보')
   const [addOpen, setAddOpen] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  // 서버가 초대 생성을 회장·임원에게만 허용한다. 스토어는 그 둘만 담으므로
+  // 소속이 골라져 있다는 것 자체가 이미 둘 중 하나라는 뜻이다.
+  const canInvite = !demo && Boolean(clubId)
   const membersQuery = useClubMembers(demo ? null : clubId)
 
   const [members, setMembers] = useState<Member[]>(demo ? DEMO_MEMBERS : [])
@@ -80,6 +85,8 @@ export default function MyPage() {
         <MyInfoTab
           profile={profile}
           club={club}
+          clubId={demo ? undefined : (clubId ?? undefined)}
+          canEditClub={user?.role === 'OWNER'}
           linkedAccounts={demo ? 'Google · 카카오' : undefined}
         />
       )}
@@ -100,12 +107,17 @@ export default function MyPage() {
           total={demo ? DEMO_MEMBER_TOTAL : (membersQuery.data?.length ?? 0)}
           onAddClick={() => setAddOpen(true)}
           canAdd={demo}
+          onInviteClick={canInvite ? () => setInviteOpen(true) : undefined}
           onResolveRequest={(id) => setRequests((list) => list.filter((r) => r.id !== id))}
           />
         </>
       )}
 
       {tab === '동아리 자료' && <RecordsTab records={demo ? DEMO_RECORDS : []} />}
+
+      {!demo && clubId && (
+        <InviteStaffModal open={inviteOpen} clubId={clubId} onClose={() => setInviteOpen(false)} />
+      )}
 
       <AddMemberModal
         open={addOpen}
