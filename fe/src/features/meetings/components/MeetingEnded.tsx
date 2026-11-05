@@ -84,7 +84,9 @@ export function MeetingEnded({
               {suggestions.length > SHOWN && (
                 <p className="mt-2 text-caption text-ink2">외 {suggestions.length - SHOWN}건</p>
               )}
-              <p className="mt-3 text-caption text-ink2">확인한 후보만 저장되고 알림이 예약돼요.</p>
+              <p className="mt-3 text-caption text-ink2">
+                확인한 후보만 먼저 저장돼요. 일정·알림 예약은 후보를 확인한 뒤 별도로 진행해요.
+              </p>
             </>
           ) : (
             !extractionFailed && (
@@ -111,7 +113,7 @@ export function MeetingEnded({
         </div>
         {suggestions.length > 0 && (
           <Button size="lg" className="mt-5 w-full" onClick={onOpenCandidates}>
-            후보 확인하기
+            후보 확인·저장하기
           </Button>
         )}
         <Button variant="secondary" size="lg" className="mt-3 w-full" onClick={onOpenRecord}>
