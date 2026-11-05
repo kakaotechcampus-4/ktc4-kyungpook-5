@@ -5,11 +5,26 @@
   → 통과하면 결과, 걸리면 어긴 값을 알려 주고 한 번만 다시 쓰게 함
 저장·상태 변경·호출 시점은 BE(#334)가 맡는다.
 """
+import json
 import re
+from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 
-from .schemas import ActionDraftRequest, _PLACEHOLDER
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from pydantic import ValidationError
 
+from ...contracts import ContractModel
+from ...errors import AIInvalidResponseError
+from ...llm import ainvoke_structured
+from .schemas import ActionDraftRequest, ActionDraftResult, DraftText, _PLACEHOLDER
+
+
+_PROMPT = (Path(__file__).parent / 'prompts' / 'action_draft.md').read_text(encoding='utf-8')
+# 프롬프트를 바꾸면 올린다. 평가 기록(docs/operations-evaluation.md)에 이 값을 함께 남긴다.
+PROMPT_VERSION = 'action-draft-v1'
+# 첫 호출 1번 + 검사에 걸렸을 때 다시 쓰기 1번.
+MAX_ATTEMPTS = 2
 
 _WEEKDAYS = '월화수목금토일'
 
@@ -145,3 +160,77 @@ def find_draft_violations(content: str, request: ActionDraftRequest) -> tuple[st
     violations += _date_violations(text, _allowed_dates(request))
     violations += _time_violations(text)
     return tuple(dict.fromkeys(violations))
+
+
+# ── 본문 작성 ────────────────────────────────────────────────────────────
+
+
+class _DraftOutput(ContractModel):
+    """모델이 돌려주는 값. 본문만 쓰게 하고 unknowns는 코드가 본문에서 뽑는다."""
+
+    content: DraftText
+
+
+@dataclass(frozen=True)
+class DraftAttempt:
+    """모델 호출 한 번의 본문과 코드 검사 결과. 평가 스크립트가 호출 횟수와 함께 읽는다."""
+
+    content: str
+    violations: tuple[str, ...]
+
+
+def _input_message(request: ActionDraftRequest) -> HumanMessage:
+    """요청 JSON에 날짜별 요일만 더해 데이터로 넘긴다.
+
+    요일은 모델이 계산하면 틀리기 쉬워 코드가 계산해 준다. 예: "2026-05-10" → "일".
+    """
+    data = request.model_dump(mode='json')
+    data['weekdays'] = {d.isoformat(): _WEEKDAYS[d.weekday()] for d in sorted(_allowed_dates(request))}
+    return HumanMessage(json.dumps(data, ensure_ascii=False))
+
+
+def _retry_message(violations: tuple[str, ...]) -> HumanMessage:
+    """어긴 값을 그대로 알려 주고 본문 전체를 다시 쓰게 한다."""
+    lines = '\n'.join(f'- {violation}' for violation in violations)
+    return HumanMessage(
+        '앞에서 쓴 본문에 입력과 맞지 않는 값이 있습니다.\n'
+        f'{lines}\n'
+        '이 값을 입력에 있는 값으로 고치거나 대괄호로 비워 본문 전체를 다시 쓰세요.'
+    )
+
+
+async def _write(messages: list) -> str:
+    output = await ainvoke_structured(messages, _DraftOutput)
+    try:
+        return _DraftOutput.model_validate(output).content
+    except ValidationError as error:
+        raise AIInvalidResponseError('본문 초안 응답 형식이 올바르지 않습니다') from error
+
+
+async def draft_attempts(request: ActionDraftRequest) -> tuple[DraftAttempt, ...]:
+    """본문을 쓰고 검사한다. 검사에 걸리면 어긴 값을 알려 주고 한 번만 다시 쓴다.
+
+    호출한 순서대로 시도를 모두 돌려준다(1개 또는 2개). 마지막 시도에 어긴 값이 남았는지는
+    부르는 쪽이 판단한다. 공개 함수는 draft_action_content이고, 이 함수는 평가 스크립트도 쓴다.
+    """
+    # 요청 JSON은 데이터이므로 지시문과 섞지 않고 별도 사용자 메시지로만 보낸다.
+    messages = [SystemMessage(_PROMPT), _input_message(request)]
+    attempts: list[DraftAttempt] = []
+    for _ in range(MAX_ATTEMPTS):
+        content = await _write(messages)
+        attempt = DraftAttempt(content=content, violations=find_draft_violations(content, request))
+        attempts.append(attempt)
+        if not attempt.violations:
+            break
+        # 다시 쓸 때는 앞 본문과 어긴 값을 함께 보여 준다.
+        messages = [*messages, AIMessage(json.dumps({'content': content}, ensure_ascii=False)),
+                    _retry_message(attempt.violations)]
+    return tuple(attempts)
+
+
+async def draft_action_content(request: ActionDraftRequest) -> ActionDraftResult:
+    """공지·발송 Action 하나의 본문 초안. 다시 써도 검사에 걸리면 AIInvalidResponseError를 낸다."""
+    last = (await draft_attempts(request))[-1]
+    if last.violations:
+        raise AIInvalidResponseError('다시 쓴 본문에도 입력에 없는 값이 있습니다')
+    return ActionDraftResult(content=last.content)
