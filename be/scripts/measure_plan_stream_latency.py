@@ -269,12 +269,12 @@ def run(args) -> None:
 
 
 def percentile(values: list[float], q: float) -> float | None:
+    """선형 보간 분위수(R7). AI 측정기(#196)의 p95와 같은 방식이다."""
     if not values:
         return None
-    ordered = sorted(values)
-    # 최근접 순위(nearest-rank). 표본 10개의 p95는 가장 느린 값이다.
-    rank = max(1, -(-int(q * 100) * len(ordered) // 100))
-    return ordered[rank - 1]
+    if len(values) == 1:
+        return values[0]
+    return statistics.quantiles(values, n=100, method='inclusive')[round(q * 100) - 1]
 
 
 def summarize(directory: Path) -> dict:
