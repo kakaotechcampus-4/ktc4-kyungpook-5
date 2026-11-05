@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EventCard } from '@/features/events/components/EventCard'
 import { useEvents } from '@/features/events/hooks'
-import type { EventStatus } from '@/features/events/types'
+import type { EventStatus, EventSummary } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -18,13 +18,19 @@ const FILTERS: Array<{ value: Filter; label: string }> = [
   { value: 'COMPLETE', label: '완료' },
 ]
 
+// 끝난 행사(완료·취소)는 뒤로 보낸다. 같은 묶음 안에서는 서버가 준 순서(시작일 순)를 지킨다.
+// 취소 정리 중(CANCELLING)은 처리할 일이 남아 있어 앞에 둔다.
+const isFinished = (e: EventSummary) => e.status === 'COMPLETE' || e.status === 'CANCELLED'
+
 export default function EventListPage() {
   const navigate = useNavigate()
   const startPlanning = () => navigate('/planning')
   const [filter, setFilter] = useState<Filter>('ALL')
 
   const eventsQuery = useEvents()
-  const events = eventsQuery.data ?? []
+  const events = [...(eventsQuery.data ?? [])].sort(
+    (a, b) => Number(isFinished(a)) - Number(isFinished(b)),
+  )
 
   const countOf = (value: Filter) =>
     value === 'ALL' ? events.length : events.filter((e) => e.status === value).length
