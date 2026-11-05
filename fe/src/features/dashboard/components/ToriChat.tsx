@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardApi } from '@/features/dashboard/api'
 import type { components } from '@/shared/api/schema'
@@ -23,6 +23,48 @@ const examples = [
   '행사 예산 관련 자료를 찾아줘',
   '새 회의를 시작할게요',
 ]
+
+function elapsedLabel(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+}
+
+function ThinkingStatus({ message }: { message: string }) {
+  const [seconds, setSeconds] = useState(0)
+  useEffect(() => {
+    const timer = window.setInterval(() => setSeconds((value) => value + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+  return (
+    <div className="space-y-3 rounded-xl border border-line bg-bg px-4 py-4" role="status">
+      <div className="flex items-start gap-3">
+        <Tori size={36} thinking />
+        <div className="min-w-0 space-y-1">
+          <p className="font-semibold text-ink">토리가 답변을 만들고 있어요</p>
+          <p className="text-caption leading-5 text-ink2">
+            자료와 확정된 할 일을 확인하고 있어요. 답변이 준비되면 바로 보여드릴게요.
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2" aria-hidden>
+        {[0, 1, 2].map((index) => (
+          <span
+            key={index}
+            className="size-[6px] animate-pulse rounded-full bg-blue-300"
+            style={{ animationDelay: `${index * 0.25}s` }}
+          />
+        ))}
+        <span className="text-caption text-mute">확인 중</span>
+      </div>
+      <p className="text-caption tabular-nums text-mute" aria-live="off">
+        {elapsedLabel(seconds)} · 요청을 처리하고 있어요
+      </p>
+      <div className="rounded-lg border border-soft bg-card px-3 py-2">
+        <p className="text-[11px] font-semibold text-mute">확인 중인 질문</p>
+        <p className="mt-1 whitespace-pre-wrap break-words text-caption text-ink2">{message}</p>
+      </div>
+    </div>
+  )
+}
 
 function Reply({ result }: { result: Result }) {
   const [downloadError, setDownloadError] = useState('')
@@ -525,13 +567,8 @@ export function ToriChat({
         </button>
       )}
       {busy && (
-        <div className="space-y-3 pb-4">
-          <p className="ml-auto w-fit max-w-[90%] whitespace-pre-wrap break-words rounded-xl bg-blue-900 px-4 py-3 text-[14px] leading-6 text-white">
-            {draft}
-          </p>
-          <p role="status" className="text-caption text-ink2">
-            토리가 확인하고 있어요…
-          </p>
+        <div className="pb-4">
+          <ThinkingStatus message={draft} />
         </div>
       )}
       {error && (

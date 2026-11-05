@@ -33,7 +33,7 @@ export const TranscriptColumn = memo(function TranscriptColumn({
   className?: string
 }) {
   const items = useMemo(
-    () => transcripts.filter((t) => t.final).sort((a, b) => a.seq - b.seq),
+    () => transcripts.filter((t) => t.final).sort((a, b) => b.seq - a.seq),
     [transcripts],
   )
   // Lines Tori looked up (answered or failed) get the side bar.
@@ -52,7 +52,7 @@ export const TranscriptColumn = memo(function TranscriptColumn({
   const pinned = useRef(true)
   useEffect(() => {
     const element = scroller.current
-    if (element && pinned.current) element.scrollTop = element.scrollHeight
+    if (element && pinned.current) element.scrollTop = 0
   }, [items.length])
   return (
     <Card className={cn('flex min-h-0 flex-col', className)}>
@@ -67,7 +67,7 @@ export const TranscriptColumn = memo(function TranscriptColumn({
         tabIndex={0}
         onScroll={(event) => {
           const element = event.currentTarget
-          pinned.current = element.scrollHeight - element.scrollTop - element.clientHeight < 40
+          pinned.current = element.scrollTop < 40
         }}
         className="min-h-0 flex-1 overflow-y-auto px-6 py-4 focus-visible:outline-2 focus-visible:outline-blue-600"
       >
@@ -92,7 +92,7 @@ export const TranscriptColumn = memo(function TranscriptColumn({
                   className={cn(
                     'min-w-0 whitespace-pre-wrap break-words leading-6',
                     !text && 'text-mute',
-                    live && text && index === items.length - 1 && 'font-bold',
+                    live && text && index === 0 && 'font-bold',
                   )}
                 >
                   {text || '(알아듣지 못했어요)'}
