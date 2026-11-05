@@ -196,7 +196,7 @@ export default function EventDetailPage() {
             onSelectStep={(step) => setOpenStepId(step.id)}
             onCancelEvent={() => setCancelOpen(true)}
             onViewCancellation={() => navigate(`/events/${event.id}/cancel${search}`)}
-            onEditPlan={() => navigate(demo ? '/planning/steps?demo' : `/planning/steps?eventId=${encodeURIComponent(event.id)}&from=event`)}
+            onEditPlan={() => navigate(demo ? '/planning/steps?demo' : `/planning?eventId=${encodeURIComponent(event.id)}`)}
             onStartEvent={demo ? undefined : () => void run(() => startMutation.mutateAsync(event.id), '행사를 시작했어요')}
             onCompleteEvent={demo ? undefined : () => {
               if (window.confirm('행사를 완료하시겠어요? 완료 후에는 할 일을 처리할 수 없습니다.')) {

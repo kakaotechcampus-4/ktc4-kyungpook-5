@@ -87,6 +87,10 @@ function StepDetailForm({
 
   const submit = async () => {
     setError('')
+    if (draft.startsAt && draft.deadline && new Date(draft.startsAt) > new Date(draft.deadline)) {
+      setError('마감일은 시작일과 같거나 이후여야 해요.')
+      return
+    }
     try {
       await save.mutateAsync({ step, draft })
       onSaved()
@@ -99,17 +103,21 @@ function StepDetailForm({
     <Modal
       open
       onClose={onClose}
+      dismissible={!save.isPending}
       title={step.name}
       subtitle={step.actions.map((action) => action.title).join(' · ') || '붙은 작업이 없어요'}
       width={620}
       footerNote={locked ? '이미 끝난 단계라 고칠 수 없어요' : undefined}
       footer={
         <span className="flex gap-[8px]">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" disabled={save.isPending} onClick={onClose}>
             {locked ? '닫기' : '취소'}
           </Button>
           {!locked && (
-            <Button disabled={save.isPending} onClick={() => void submit()}>
+            <Button
+              disabled={save.isPending || (!!error && !error.startsWith('마감일'))}
+              onClick={() => void submit()}
+            >
               {save.isPending ? '저장하는 중…' : '저장'}
             </Button>
           )}
@@ -119,15 +127,17 @@ function StepDetailForm({
       <div className="flex flex-col gap-[16px]">
         {error && (
           <>
-          <ErrorBanner
-            title={error}
-            action={
-              <Button variant="secondary" size="sm" onClick={onReload}>
-                최신 내용 다시 불러오기
-              </Button>
-            }
-          />
-          <p className="text-caption text-mute">최신 내용을 다시 불러오면 저장하지 않은 입력은 사라져요.</p>
+            <ErrorBanner
+              title={error}
+              action={
+                <Button variant="secondary" size="sm" onClick={onReload}>
+                  최신 내용 다시 불러오기
+                </Button>
+              }
+            />
+            <p className="text-caption text-mute">
+              최신 내용을 다시 불러오면 저장하지 않은 입력은 사라져요.
+            </p>
           </>
         )}
 
@@ -297,7 +307,8 @@ function PayloadField({
     )
   }
 
-  const key = spec.key as 'channel' | 'audience' | 'sendTiming' | 'vendor' | 'cancelTerms' | 'account'
+  const key = spec.key as
+    'channel' | 'audience' | 'sendTiming' | 'vendor' | 'cancelTerms' | 'account'
   return (
     <Field label={spec.label} hint={spec.hint}>
       <Input

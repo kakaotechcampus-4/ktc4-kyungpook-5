@@ -55,7 +55,7 @@ export function EventHeaderCard({
             <Button onClick={onCompleteEvent}>행사 완료</Button>
           )}
           {event.status === 'PLANNING' && (
-            <Button variant="secondary" onClick={onEditPlan}>단계 수정</Button>
+            <Button variant="secondary" onClick={onEditPlan}>계획 이어보기</Button>
           )}
           {(event.status === 'PLANNING' || event.status === 'ON_GOING') && (
             <Button variant="secondary" onClick={onCancelEvent}>행사 취소</Button>

@@ -12,11 +12,11 @@ interface ExcludedStepsProps {
 
 export function ExcludedSteps({ excluded, onInclude }: ExcludedStepsProps) {
   return (
-    <div className="flex w-full shrink-0 flex-col gap-[16px] lg:w-[380px]">
+    <div className="flex w-full shrink-0 flex-col gap-[16px] lg:w-[300px]">
       <Card className="flex flex-col">
         <div className="flex flex-col gap-[9px] px-[22px] pt-[22px] pb-[16px]">
           <span className="flex items-center gap-[9px]">
-            <h2 className="text-h3 text-ink">뺀 단계</h2>
+            <h2 className="text-h3 text-ink">포함하지 않은 단계</h2>
             <Chip size="sm">{excluded.length}개</Chip>
           </span>
           <p className="text-[11px] leading-[16px] text-mute">
@@ -39,14 +39,14 @@ export function ExcludedSteps({ excluded, onInclude }: ExcludedStepsProps) {
                 >
                   <button
                     type="button"
-                    aria-label={`${step.name} 넣기`}
+                    aria-label={`${step.name} 다시 포함`}
                     onClick={() => onInclude(step.code)}
-                    className="shrink-0 rounded-[7px] bg-blue-100 px-[8px] py-[7px] text-[12px] font-bold text-blue-700 hover:bg-blue-200"
+                    className="min-h-11 shrink-0 rounded-[7px] bg-blue-100 px-[8px] py-[7px] text-[12px] font-bold text-blue-700 hover:bg-blue-200"
                   >
-                    +
+                    다시 포함
                   </button>
                   <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-                    <span className="truncate text-[13px] font-bold text-ink">{step.name}</span>
+                    <span className="text-[13px] font-bold text-ink">{step.name}</span>
                     <span className="text-[10.5px] text-mute">
                       {step.actor} · {step.actions}
                     </span>
@@ -58,8 +58,8 @@ export function ExcludedSteps({ excluded, onInclude }: ExcludedStepsProps) {
         })}
       </Card>
 
-      <ToriNote title="뺀 단계는 다시 안 넣을게요">
-        계획을 다시 만들어도 빼신 단계는 되살아나지 않아요.
+      <ToriNote title="다시 포함하면 새 단계로 만들어요">
+        기본 작업이 새로 만들어져요. 이전 일정과 입력은 복원되지 않으니 구성 저장 후 확인해 주세요.
       </ToriNote>
     </div>
   )

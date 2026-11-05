@@ -24,8 +24,14 @@ export default function PlanStepsPage() {
   const params = useSearchParams()[0]
   const demo = params.has('demo')
   const eventId = params.get('eventId')
+  const returnToReview = params.get('from') !== 'event' && eventId
   const returnToEvent = params.get('from') === 'event' && eventId
-  const goBack = () => returnToEvent ? navigate(`/events/${encodeURIComponent(returnToEvent)}`) : navigate(-1)
+  const goBack = () =>
+    returnToReview
+      ? navigate(`/planning?${new URLSearchParams({ eventId: returnToReview, stage: 'review' })}`)
+      : returnToEvent
+        ? navigate(`/events/${encodeURIComponent(returnToEvent)}`)
+        : navigate(-1)
 
   // 서버가 만든 단계를 밑바탕으로 쓴다. 한 번 저장한 뒤로는 그 결과가 우선이다.
   const snapshot = usePlanStepsSnapshot(demo ? null : eventId)
@@ -41,8 +47,7 @@ export default function PlanStepsPage() {
   const [editingRevision, setEditingRevision] = useState<number | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [saveError, setSaveError] = useState('')
-  const resolved =
-    codes ?? (serverSteps ? codesFromSteps(serverSteps) : null)
+  const resolved = codes ?? (serverSteps ? codesFromSteps(serverSteps) : null)
   // 일정은 서버가 들고 있다. 화면에는 StepCode 로 찾아 쓴다.
   const byCode = new Map<string, NonNullable<typeof serverSteps>[number]>(
     (serverSteps ?? []).map((step) => [step.code, step]),
@@ -72,9 +77,13 @@ export default function PlanStepsPage() {
   const saveSteps = async () => {
     if (!eventId) return goBack()
     const removed = (serverSteps ?? []).filter((step) => !current.includes(step.code))
-    if (removed.length && !window.confirm(
-      `${removed.map((step) => step.name).join(', ')} 단계를 빼면 해당 단계의 일정과 행동도 삭제됩니다. 저장할까요?`,
-    )) return
+    if (
+      removed.length &&
+      !window.confirm(
+        `${removed.map((step) => step.name).join(', ')} 단계를 빼면 해당 단계의 일정과 행동도 삭제됩니다. 저장할까요?`,
+      )
+    )
+      return
     setSaveError('')
     const planRevisionBefore = entryPlanRevision.current ?? snapshot.data?.planRevision ?? null
     try {
@@ -113,22 +122,28 @@ export default function PlanStepsPage() {
 
   return (
     <div className="flex flex-col gap-[20px]">
-      <header className="flex items-start justify-between gap-[16px]">
+      <header className="flex flex-col items-start justify-between gap-4 sm:flex-row">
         <div className="flex flex-col gap-[4px]">
-          <h1 className="text-h1">단계 수정</h1>
+          <h1 className="text-h1">단계 구성 변경</h1>
           <p className="text-mute">
-            13개 중 {current.length}개 포함 · 계획 중에만 바꿀 수 있어요
+            포함 단계 {current.length}개 · 포함하지 않은 단계 {excluded.length}개 · 계획 중에만 바꿀
+            수 있어요
           </p>
         </div>
         <div className="flex gap-[9px]">
-          <Button variant="secondary" onClick={goBack}>
-            취소
+          <Button variant="secondary" disabled={save.isPending} onClick={goBack}>
+            변경 취소
           </Button>
           <Button
-            disabled={current.length === 0 || save.isPending || !!saveError || (!demo && (!snapshot.data || snapshot.isError))}
+            disabled={
+              current.length === 0 ||
+              save.isPending ||
+              !!saveError ||
+              (!demo && (!snapshot.data || snapshot.isError))
+            }
             onClick={() => void saveSteps()}
           >
-            {save.isPending ? '저장하는 중…' : '저장'}
+            {save.isPending ? '저장하는 중…' : '구성 저장'}
           </Button>
         </div>
       </header>
@@ -141,20 +156,28 @@ export default function PlanStepsPage() {
       {!demo && eventId && snapshot.isError && (
         <ErrorBanner
           title="행사 계획을 불러오지 못했어요."
-          action={<Button variant="secondary" size="sm" onClick={() => void reloadLatest()}>다시 불러오기</Button>}
+          action={
+            <Button variant="secondary" size="sm" onClick={() => void reloadLatest()}>
+              다시 불러오기
+            </Button>
+          }
         />
       )}
       {saveError && (
         <ErrorBanner
           title={saveError}
           action={
-            <Button variant="secondary" size="sm" onClick={() => {
-              setCodes(null)
-              setEditingRevision(null)
-              entryPlanRevision.current = null
-              setSaveError('')
-              void reloadLatest()
-            }}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setCodes(null)
+                setEditingRevision(null)
+                entryPlanRevision.current = null
+                setSaveError('')
+                void reloadLatest()
+              }}
+            >
               최신 내용으로 다시 시작
             </Button>
           }
@@ -168,11 +191,20 @@ export default function PlanStepsPage() {
       {!demo && eventId && (
         <>
           <p className="text-mute">
-            포함 단계와 순서는 저장을 눌러 반영해요. 단계별 일정과 행동은 상세 창에서 각각 저장합니다.
+            포함 단계와 순서는 구성 저장을 눌러 반영해요. 단계별 일정과 행동은 상세 창에서 각각
+            저장합니다.
           </p>
-          <p className="text-mute">단계를 제외하고 저장하면 해당 단계의 일정과 행동도 삭제됩니다.</p>
-          {editingRevision !== null && <p className="text-mute">단계 구성을 저장한 뒤 세부 내용을 수정할 수 있어요.</p>}
-          {saveError && <p className="text-mute">최신 내용으로 다시 시작하면 저장하지 않은 단계 구성은 사라집니다.</p>}
+          <p className="text-mute">
+            단계를 제외하고 저장하면 해당 단계의 일정과 행동도 삭제됩니다.
+          </p>
+          {editingRevision !== null && (
+            <p className="text-mute">단계 구성을 저장한 뒤 세부 내용을 수정할 수 있어요.</p>
+          )}
+          {saveError && (
+            <p className="text-mute">
+              최신 내용으로 다시 시작하면 저장하지 않은 단계 구성은 사라집니다.
+            </p>
+          )}
           {(() => {
             const raw = (() => {
               try {
@@ -190,7 +222,8 @@ export default function PlanStepsPage() {
                   이 브라우저에 저장된 이전 변경 보기
                 </summary>
                 <p className="mt-2 text-caption text-ink2">
-                  서버 저장으로 자동 전환하거나 덮어쓰지 않습니다. 필요한 내용을 확인한 뒤 다시 입력해 주세요.
+                  서버 저장으로 자동 전환하거나 덮어쓰지 않습니다. 필요한 내용을 확인한 뒤 다시
+                  입력해 주세요.
                 </p>
               </details>
             )
@@ -198,21 +231,26 @@ export default function PlanStepsPage() {
         </>
       )}
 
-      {(demo || (snapshot.data && !snapshot.isError)) && <div className="flex flex-col items-stretch gap-[20px] lg:flex-row lg:items-start">
-        <StepBoard
-          included={included}
-          schedule={DEMO_INCLUDED}
-          dates={demo ? undefined : dates}
-          onEditDetail={demo ? undefined : setEditing}
-          detailsDisabled={editingRevision !== null}
-          onReorder={reorder}
-          onRemove={(code) => editCodes((list) => list.filter((c) => c !== code))}
-        />
-        <ExcludedSteps
-          excluded={excluded}
-          onInclude={(code) => editCodes((list) => [...list, code])}
-        />
-      </div>}
+      {(demo || (snapshot.data && !snapshot.isError)) && (
+        <fieldset
+          disabled={save.isPending}
+          className="flex min-w-0 flex-col items-stretch gap-5 lg:flex-row lg:items-start"
+        >
+          <StepBoard
+            included={included}
+            schedule={demo ? DEMO_INCLUDED : {}}
+            dates={demo ? undefined : dates}
+            onEditDetail={demo ? undefined : setEditing}
+            detailsDisabled={editingRevision !== null}
+            onReorder={reorder}
+            onRemove={(code) => editCodes((list) => list.filter((c) => c !== code))}
+          />
+          <ExcludedSteps
+            excluded={excluded}
+            onInclude={(code) => editCodes((list) => [...list, code])}
+          />
+        </fieldset>
+      )}
 
       <StepDetailModal
         step={editing ? (byCode.get(editing) ?? null) : null}
