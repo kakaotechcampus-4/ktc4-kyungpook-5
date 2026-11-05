@@ -167,7 +167,6 @@ function Conversation({
             hideNext
             onNext={() => {}}
           />
-          <PlanningRecordReferences entries={live.recordHistory} />
           <Card className="space-y-4 p-5">
             <h2 className="text-h2">계획 초안</h2>
             <p role="status" className="text-ink2">
@@ -231,6 +230,7 @@ function Conversation({
             <PlanHandoff eventId={eventId} hasSteps={steps.length > 0} />
           </Card>
           {eventId && screen && <PlanReview eventId={eventId} screen={screen} />}
+          <PlanningRecordReferences entries={live.recordHistory} />
         </div>
       </div>
     </>

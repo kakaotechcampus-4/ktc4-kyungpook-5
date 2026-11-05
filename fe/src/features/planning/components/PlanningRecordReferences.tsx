@@ -156,6 +156,25 @@ function EvidenceFact({
   )
 }
 
+function UnconfirmedContent({ items }: { items: string[] }) {
+  if (!items.length) return null
+  return (
+    <details className="group/unconfirmed border-t border-line">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[12px] font-medium text-ink2 hover:text-blue-700 [&::-webkit-details-marker]:hidden">
+        확인하지 못한 내용 {items.length}개
+        <Chevron className="shrink-0 transition-transform duration-150 group-open/unconfirmed:rotate-180 motion-reduce:transition-none" />
+      </summary>
+      <div className="space-y-2 pb-2">
+        {items.map((item, index) => (
+          <p key={index} className="break-words text-[12px] leading-5 text-mute">
+            {item}
+          </p>
+        ))}
+      </div>
+    </details>
+  )
+}
+
 function LookupContent({ lookup, preview }: { lookup: RecordLookup; preview: boolean }) {
   const [expanded, setExpanded] = useState(false)
   const contentId = useId()
@@ -169,12 +188,9 @@ function LookupContent({ lookup, preview }: { lookup: RecordLookup; preview: boo
     return (
       <div className="space-y-2">
         <p className="text-[13px] leading-[21px] text-ink2">{text}</p>
-        {lookup.status === 'not_found' &&
-          lookup.result?.notFound.map((item, index) => (
-            <p key={index} className="break-words text-[12px] leading-5 text-mute">
-              {item}
-            </p>
-          ))}
+        {lookup.status === 'not_found' && (
+          <UnconfirmedContent items={lookup.result?.notFound ?? []} />
+        )}
         {lookup.status === 'rejected' && lookup.reason && (
           <p className="break-words text-[12px] leading-5 text-mute">{lookup.reason}</p>
         )}
@@ -199,7 +215,7 @@ function LookupContent({ lookup, preview }: { lookup: RecordLookup; preview: boo
   return (
     <div className="space-y-4">
       <div id={contentId} className="divide-y divide-line">
-        {(expanded ? facts : facts.slice(0, 2)).map((fact, index) => (
+        {(expanded ? facts : facts.slice(0, 1)).map((fact, index) => (
           <EvidenceFact
             key={index}
             content={fact.content}
@@ -208,7 +224,7 @@ function LookupContent({ lookup, preview }: { lookup: RecordLookup; preview: boo
           />
         ))}
       </div>
-      {facts.length > 2 && (
+      {facts.length > 1 && (
         <button
           type="button"
           aria-expanded={expanded}
@@ -216,38 +232,34 @@ function LookupContent({ lookup, preview }: { lookup: RecordLookup; preview: boo
           onClick={() => setExpanded((value) => !value)}
           className="flex min-h-11 w-full items-center justify-center gap-1 rounded-lg border border-line text-[12px] font-medium text-ink2 hover:bg-bg"
         >
-          {expanded ? '내용 접기' : `확인한 내용 ${facts.length - 2}개 더 보기`}
+          {expanded ? '내용 접기' : `확인한 내용 ${facts.length - 1}개 더 보기`}
           <Chevron className={expanded ? 'rotate-180' : ''} />
         </button>
       )}
       {conflicts.length > 0 && (
-        <div className="space-y-3 rounded-lg bg-pending-bg px-3.5 py-3">
-          <p className="text-[12px] font-semibold text-pending">기록마다 내용이 달라요</p>
-          {conflicts.map((conflict, index) => (
-            <div key={index} className="space-y-3">
-              <p className="break-words text-[13px] leading-5 text-ink">{conflict.description}</p>
-              {conflict.values.map((value, valueIndex) => (
-                <div key={valueIndex} className="border-t border-pending-line pt-3">
-                  <p className="break-words text-[13px] leading-[21px] text-ink2">
-                    {value.content}
-                  </p>
-                  <Sources sources={value.sources} preview={preview} />
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
+        <details className="group/conflicts rounded-lg bg-pending-bg px-3.5">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[12px] font-semibold text-pending [&::-webkit-details-marker]:hidden">
+            기록마다 다른 내용 {conflicts.length}건
+            <Chevron className="shrink-0 transition-transform duration-150 group-open/conflicts:rotate-180 motion-reduce:transition-none" />
+          </summary>
+          <div className="space-y-3 pb-3">
+            {conflicts.map((conflict, index) => (
+              <div key={index} className="space-y-3">
+                <p className="break-words text-[13px] leading-5 text-ink">{conflict.description}</p>
+                {conflict.values.map((value, valueIndex) => (
+                  <div key={valueIndex} className="border-t border-pending-line pt-3">
+                    <p className="break-words text-[13px] leading-[21px] text-ink2">
+                      {value.content}
+                    </p>
+                    <Sources sources={value.sources} preview={preview} />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </details>
       )}
-      {notFound.length > 0 && (
-        <div className="space-y-1.5 border-t border-line pt-3">
-          <p className="text-[12px] font-semibold text-ink2">확인하지 못한 내용</p>
-          {notFound.map((item, index) => (
-            <p key={index} className="break-words text-[12px] leading-5 text-mute">
-              {item}
-            </p>
-          ))}
-        </div>
-      )}
+      <UnconfirmedContent items={notFound} />
       {!facts.length && !conflicts.length && !notFound.length && (
         <p className="text-[13px] text-mute">표시할 상세 내용이 없어요.</p>
       )}
@@ -283,37 +295,41 @@ export function PlanningRecordReferences({
       {latest ? `저장된 조회 ${entries.length}건. ${recordLookupAnnouncement(latest.lookup)}` : ''}
     </p>
   )
-  if (!latest) return announcement
   const previous = entries.slice(1)
   const count = referenceDocumentCount(entries)
-  const hasConflict = Boolean(latest.lookup.result?.conflicts.length)
+  const hasConflict = Boolean(latest?.lookup.result?.conflicts.length)
   return (
     <>
       {announcement}
       <Card className="min-w-0 overflow-hidden" aria-label="참고한 과거 기록">
-        <header className="flex items-start gap-2.5 border-b border-line bg-blue-50/60 px-5 py-4">
-          <Tori size={32} className="-ml-1" />
+        <header className="flex items-center gap-2.5 border-b border-line bg-blue-50/60 px-5 py-3">
+          <Tori size={28} className="-ml-1" />
           <div className="min-w-0 flex-1 pt-0.5">
             <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
               <h2 className="text-h3 text-ink">참고한 과거 기록</h2>
-              <span className="text-[12px] text-blue-700">
-                {count ? `자료 ${count}개` : '최근 조회'}
+              <span className={`text-[12px] ${count ? 'text-blue-700' : 'text-mute'}`}>
+                {count ? `자료 ${count}개` : latest ? '최근 조회' : '조회 전'}
               </span>
             </div>
-            <p className="mt-1 text-[12px] leading-5 text-ink2">대화에서 찾아본 내용을 모았어요.</p>
           </div>
         </header>
-        <div className="px-5 py-4">
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-[12px] text-mute">
-            <span>최근 조회</span>
-            {latest.lookup.status === 'failed' && (
-              <span className="font-medium text-failed">조회 실패</span>
-            )}
-            {latest.lookup.status === 'not_found' && <span>관련 내용 없음</span>}
-            {hasConflict && <span className="font-medium text-pending">내용 차이 있음</span>}
+        {latest ? (
+          <div className="px-5 py-4">
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-[12px] text-mute">
+              <span>최근 조회</span>
+              {latest.lookup.status === 'failed' && (
+                <span className="font-medium text-failed">조회 실패</span>
+              )}
+              {latest.lookup.status === 'not_found' && <span>관련 내용 없음</span>}
+              {hasConflict && <span className="font-medium text-pending">내용 차이 있음</span>}
+            </div>
+            <LookupContent key={latest.revision} lookup={latest.lookup} preview={preview} />
           </div>
-          <LookupContent key={latest.revision} lookup={latest.lookup} preview={preview} />
-        </div>
+        ) : (
+          <p className="px-5 py-3 text-[13px] leading-[21px] text-mute">
+            과거 기록을 찾아보면 여기에 내용과 출처가 남아요.
+          </p>
+        )}
         {previous.length > 0 && (
           <details className="group/history border-t border-line">
             <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 text-[12px] font-semibold text-ink2 hover:bg-bg [&::-webkit-details-marker]:hidden">
@@ -346,9 +362,6 @@ export function PlanningRecordReferences({
             </div>
           </details>
         )}
-        <p className="border-t border-line px-5 py-3 text-[11px] leading-[18px] text-mute">
-          과거 기록은 참고용이에요. 올해 조건은 대화로 정해요.
-        </p>
       </Card>
     </>
   )
