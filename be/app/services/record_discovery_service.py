@@ -1,4 +1,6 @@
 """자료함 파일명·파싱 본문과 AI 청크 검색을 문서 단위로 합친다."""
+from collections.abc import Mapping
+
 from sqlalchemy import column, exists, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +13,30 @@ from app.services.record_search_port import PostgresRecordSearch
 SEMANTIC_LIMIT = 50
 LEXICAL_ANSWER_LIMIT = 20
 LEXICAL_BLOCK_MAX_CHARS = 4000
+
+# 자료함 화면의 AI 추천 거르기(테스트 브랜치). AI 검색은 가까운 순으로 기준 없이 가져오므로
+# 화면에 보일 자료만 여기서 고른다. 공용 검색(retrieve)과 계획 대화·회의 경로는 바꾸지 않는다.
+# 값은 text-embedding-3-small 기준 로컬 측정(2026-11-05, 큰나무 예시 10건)에서 잡은 시작값이다.
+SEMANTIC_MIN_TOP_SCORE = 0.25  # 1등이 이보다 낮으면 관련 자료가 없다고 본다
+SEMANTIC_SCORE_WINDOW = 0.10  # 1등보다 이만큼 넘게 낮은 자료는 뺀다
+SEMANTIC_MAX_RECORDS = 5
+
+
+def select_semantic_records(
+    scores: Mapping[str, float],
+    *,
+    min_top: float = SEMANTIC_MIN_TOP_SCORE,
+    window: float = SEMANTIC_SCORE_WINDOW,
+    max_records: int = SEMANTIC_MAX_RECORDS,
+) -> set[str]:
+    """자료별 최고 AI 점수에서 화면에 AI 추천으로 보일 자료 id를 고른다."""
+    if not scores:
+        return set()
+    ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
+    top = ranked[0][1]
+    if top < min_top:
+        return set()
+    return {record_id for record_id, score in ranked[:max_records] if score >= top - window}
 
 
 def _excerpt(text: str, query: str | None = None) -> str:
@@ -26,7 +52,8 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
                          chunks_out: list[ai.RetrievedChunk] | None = None,
                          lexical_out: list[ai.RetrievedChunk] | None = None,
                          lexical_omitted: list[bool] | None = None,
-                         filename_only_out: list[str] | None = None) -> tuple[dict, int]:
+                         filename_only_out: list[str] | None = None,
+                         semantic_filter: bool = False) -> tuple[dict, int]:
     # blocks.text만 검색한다. 파일명과 내용 모두 LIKE 특수문자를 그대로 취급한다.
     blocks = func.jsonb_array_elements(Record.parse_result['blocks']).table_valued(
         column('value', JSONB)
@@ -82,6 +109,14 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
     semantic_by_record = {}
     for chunk in semantic:
         semantic_by_record.setdefault(chunk.source.record_id, chunk)
+    if semantic_filter:
+        # 자료함 화면 전용. 토리 대화는 기본값(False)으로 지금처럼 모두 받는다.
+        kept = select_semantic_records(
+            {record_id: chunk.score for record_id, chunk in semantic_by_record.items()}
+        )
+        semantic_by_record = {
+            record_id: chunk for record_id, chunk in semantic_by_record.items() if record_id in kept
+        }
     missing_ids = set(semantic_by_record) - {record.id for record in lexical}
     semantic_rows = []
     if missing_ids:
