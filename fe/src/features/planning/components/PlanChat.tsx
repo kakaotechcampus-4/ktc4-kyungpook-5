@@ -135,76 +135,65 @@ function TurnLines({
   )
 }
 
-// 저장된 답변 위의 작업 줄. 2줄 이상이면 답변이 끝난 뒤 "처리한 작업 2개" 한 줄로 접는다.
-// 답변이 가장 중요하므로 체크 줄들이 토리 옆에서 답변보다 먼저 눈에 띄지 않게 한다.
-// AI 문구를 잘라 합치지 않고 개수만 적어, 문구가 바뀌어도 요약이 깨지지 않는다.
-//
-//   저장 직후     ✓ 참고할 기록을 찾았어요      ← 받는 중일 때와 같은 모습(바뀌는 순간 튀지 않게)
-//                ✓ 행사 종류 MT · … 반영했어요
-//   잠시 뒤      ✓ 처리한 작업 2개 ▾            ← 줄 높이가 부드럽게 줄며 접힘. 누르면 다시 펼침
-//
-// 1줄은 접어도 높이가 같아 그대로 두고, 실패가 섞이면 알려야 하므로 접지 않는다.
-const FOLD_DELAY_MS = 400
-
-function Receipt({ lines }: { lines: PlanProgress[] }) {
+// 수신 중과 저장 후 같은 작업 내역을 유지한다. 읽는 중 높이가 바뀌지 않도록
+// 자동으로 접지 않고, 사용자가 버튼을 눌렀을 때만 접는다.
+function Receipt({
+  lines,
+  live = false,
+  settled = true,
+}: {
+  lines: TurnLine[]
+  live?: boolean
+  settled?: boolean
+}) {
   // 기록 없음(empty)은 실패가 아니라 접어도 된다.
   const foldable =
     lines.length > 1 &&
     lines.every((line) => line.status === 'completed' || line.status === 'empty')
-  // fresh: 막 저장돼 펼친 채 보이는 중 → folded: 접힘 → open: 사용자가 펼침
-  const [state, setState] = useState<'fresh' | 'folded' | 'open'>('fresh')
-  useEffect(() => {
-    if (!foldable) return
-    const timer = setTimeout(() => setState((s) => (s === 'fresh' ? 'folded' : s)), FOLD_DELAY_MS)
-    return () => clearTimeout(timer)
-  }, [foldable])
+  const [expanded, setExpanded] = useState(true)
   const listId = useId()
-  if (!foldable) return <TurnLines lines={lines} settled />
+  if (!foldable) return <TurnLines lines={lines} settled={settled} live={live} />
 
-  const showList = state !== 'folded'
+  const showList = expanded
   // grid 행 높이 0fr ↔ 1fr 전환으로 실제 높이를 몰라도 부드럽게 접고 편다.
   const collapse =
     'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none'
   return (
     <div className="flex flex-col">
-      <div className={cn(collapse, state === 'fresh' ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]')}>
-        <div className="min-h-0 overflow-hidden">
-          <button
-            type="button"
-            aria-expanded={showList}
-            aria-controls={listId}
-            onClick={() => setState(showList ? 'folded' : 'open')}
-            className="mt-[8px] flex items-center gap-[7px] rounded-[6px] text-[12px] leading-[18px] text-mute hover:text-ink2"
-          >
-            <CheckIcon />
-            처리한 작업 {lines.length}개
-            <svg
-              aria-hidden
-              viewBox="0 0 12 12"
-              className={cn(
-                'size-[11px] transition-transform duration-200 ease-out motion-reduce:transition-none',
-                showList && 'rotate-180',
-              )}
-              fill="none"
-            >
-              <path
-                d="m3 4.5 3 3 3-3"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
+      <button
+        type="button"
+        aria-expanded={showList}
+        aria-controls={listId}
+        onClick={() => setExpanded((value) => !value)}
+        className="mt-[8px] flex items-center gap-[7px] rounded-[6px] text-[12px] leading-[18px] text-mute hover:text-ink2"
+      >
+        <CheckIcon />
+        처리한 작업 {lines.length}개
+        <svg
+          aria-hidden
+          viewBox="0 0 12 12"
+          className={cn(
+            'size-[11px] transition-transform duration-200 ease-out motion-reduce:transition-none',
+            showList && 'rotate-180',
+          )}
+          fill="none"
+        >
+          <path
+            d="m3 4.5 3 3 3-3"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
       <div
         id={listId}
         inert={!showList}
         className={cn(collapse, showList ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}
       >
         <div className="min-h-0 overflow-hidden">
-          <TurnLines lines={lines} settled />
+          <TurnLines lines={lines} settled={settled} live={live} />
         </div>
       </div>
     </div>
@@ -260,12 +249,24 @@ export function PlanChat({
 }: PlanChatProps) {
   const [draft, setDraft] = useState(initialDraft)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLDivElement>(null)
   const errorRef = useRef<HTMLParagraphElement>(null)
   useEffect(() => {
     if (error) errorRef.current?.focus()
   }, [error])
   const followEnd = useRef(true)
+  useLayoutEffect(() => {
+    const panel = scrollRef.current
+    const content = contentRef.current
+    if (!panel || !content) return
+    const observer = new ResizeObserver(() => {
+      if (followEnd.current) panel.scrollTop = panel.scrollHeight
+    })
+    observer.observe(panel)
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [])
   useLayoutEffect(() => {
     const panel = scrollRef.current
     if (panel && followEnd.current) panel.scrollTop = panel.scrollHeight
@@ -284,8 +285,24 @@ export function PlanChat({
   // 저장된 대화로 바뀌는 순간 hooks가 셋을 함께 비워, 저장된 답변 아래에 점이 남지 않는다.
   const showTurn = busy && (!!pendingText || progress.length > 0 || !!pendingReply)
 
+  const timeline: { message: ChatMessage; streaming: boolean }[] = messages.map((message) => ({
+    message,
+    streaming: false,
+  }))
+  if (busy && pendingText)
+    timeline.push({
+      message: { id: 'pending-user', from: '나', text: pendingText },
+      streaming: true,
+    })
+  if (showTurn)
+    timeline.push({
+      message: { id: 'pending-reply', from: '토리', text: pendingReply, receipt: progress },
+      streaming: true,
+    })
+
   // 빠른 답변은 마지막 토리 말풍선에만 남긴다. 지난 질문의 선택지는 이미 지나간 것이다.
-  const lastToriId = [...messages].reverse().find((m) => m.from === '토리')?.id
+  const lastToriId = [...timeline].reverse().find(({ message }) => message.from === '토리')
+    ?.message.id
 
   return (
     <Card className="flex h-[min(76vh,760px)] min-h-[440px] w-full min-w-0 flex-col lg:sticky lg:top-6 lg:flex-1">
@@ -294,7 +311,7 @@ export function PlanChat({
           <Tori size={30} />
           <h2 className="text-h3 text-ink">토리와 계획 잡기</h2>
         </div>
-        <span className="text-[12px] text-mute">
+        <span className="w-[180px] max-w-full shrink-0 text-right text-[12px] text-mute">
           {demo
             ? '화면 미리보기'
             : persisted
@@ -312,74 +329,68 @@ export function PlanChat({
           const panel = event.currentTarget
           followEnd.current = panel.scrollHeight - panel.scrollTop - panel.clientHeight < 48
         }}
-        className="planning-conversation flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pt-5 pb-5 sm:px-6"
+        className="planning-conversation flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-5 sm:px-6 [overflow-anchor:none] [scrollbar-gutter:stable]"
       >
-        {messages.map((message) =>
-          message.from === '토리' ? (
-            <div key={message.id} className="flex flex-col gap-[9px]">
-              <div className="flex items-start gap-[10px]">
-                <Tori size={26} className="mt-[4px] shrink-0" />
-                <div className="flex min-w-0 flex-col items-start gap-[8px]">
-                  {message.receipt && <Receipt lines={message.receipt} />}
-                  <div className={cn(TORI_BUBBLE, REPLY_BODY)}>
-                    <ReplyText text={message.text} />
+        <div ref={contentRef} className="flex shrink-0 flex-col gap-5">
+          {/* 한 계획의 대화는 추가만 된다. 수신 중 자리와 저장 후 자리를 같은 키로 묶어
+            서버 ID가 도착해도 입력·답변 DOM과 펼친 작업 내역을 유지한다. 다른 계획은 부모에서 초기화한다. */}
+          {timeline.map(({ message, streaming }, index) =>
+            message.from === '토리' ? (
+              <div key={`${index}:토리`} className="flex flex-col gap-[9px]">
+                <div className="flex items-start gap-[10px]">
+                  <Tori size={26} className="mt-[4px] shrink-0" />
+                  <div className="flex min-w-0 flex-col items-start gap-[8px]">
+                    {!!message.receipt?.length && (
+                      <Receipt
+                        lines={message.receipt}
+                        live={streaming}
+                        settled={!streaming || !!message.text}
+                      />
+                    )}
+                    <div className={cn(TORI_BUBBLE, REPLY_BODY)}>
+                      {streaming && !message.text ? (
+                        <TypingDots />
+                      ) : (
+                        <ReplyText text={message.text} partial={streaming} />
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              {message.id === lastToriId && message.quickReplies && (
-                <div className="flex flex-wrap gap-[8px] pl-[36px]">
-                  {message.quickReplies.map((reply) => (
-                    <button
-                      key={reply}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        if (reply === '직접 입력') {
-                          composerRef.current?.querySelector('textarea')?.focus()
-                          return
-                        }
-                        void send(reply, false)
-                      }}
-                      className="rounded-[9px] border border-blue-200 bg-card px-[13px] py-[8px] text-caption font-bold text-blue-700 hover:bg-blue-50"
-                    >
-                      {reply}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <p key={message.id} className={USER_BUBBLE}>
-              {message.text}
-            </p>
-          ),
-        )}
-        {busy && pendingText && <p className={cn(USER_BUBBLE, 'opacity-80')}>{pendingText}</p>}
-        {/* 받는 중인 토리 응답. 저장된 응답(위)과 같은 구조라, 저장된 대화로 바뀌어도 자리가 그대로다.
-            ① 보냄: 말풍선에 점 세 개 → ② 작업 줄이 말풍선 위에 붙음 → ③ 점이 답변 글자로 바뀜 */}
-        {showTurn && (
-          <div className="flex items-start gap-[10px] animate-turn-in [animation-delay:100ms] motion-reduce:animate-none">
-            <Tori size={26} className="mt-[4px] shrink-0" />
-            <div className="flex min-w-0 flex-col items-start gap-[8px]">
-              {progress.length > 0 && <TurnLines lines={progress} settled={!!pendingReply} live />}
-              <div className={TORI_BUBBLE}>
-                {pendingReply ? (
-                  <div className={cn(REPLY_BODY, 'animate-fade-in motion-reduce:animate-none')}>
-                    <ReplyText text={pendingReply} partial />
+                {message.id === lastToriId && message.quickReplies && (
+                  <div className="flex flex-wrap gap-[8px] pl-[36px]">
+                    {message.quickReplies.map((reply) => (
+                      <button
+                        key={reply}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          if (reply === '직접 입력') {
+                            composerRef.current?.querySelector('textarea')?.focus()
+                            return
+                          }
+                          void send(reply, false)
+                        }}
+                        className="rounded-[9px] border border-blue-200 bg-card px-[13px] py-[8px] text-caption font-bold text-blue-700 hover:bg-blue-50"
+                      >
+                        {reply}
+                      </button>
+                    ))}
                   </div>
-                ) : (
-                  <TypingDots />
                 )}
               </div>
-            </div>
-          </div>
-        )}
+            ) : (
+              <p key={`${index}:나`} className={USER_BUBBLE}>
+                {message.text}
+              </p>
+            ),
+          )}
+        </div>
       </div>
 
       {busy && (
         // 화면 낭독기는 진행 줄 변화를 여기서 한 번에 듣는다. 답변 조각마다 읽지 않는다.
         // 대화 쪽에 토리 응답이 보이면 같은 뜻을 두 번 보이지 않게 화면에서는 숨긴다.
-        <p role="status" className={cn('px-[24px] text-mute', !notice && showTurn && 'sr-only')}>
+        <p role="status" className={cn('px-[24px] text-mute', !notice && 'sr-only')}>
           {notice ||
             (pendingReply
               ? '토리가 답변을 쓰고 있어요…'
@@ -455,8 +466,14 @@ export function PlanChat({
             Enter로 전송 · Shift+Enter로 줄바꿈
           </p>
         </div>
-        <Button type="submit" loading={busy} disabled={!draft.trim()}>
-          {busy ? '기다리는 중…' : '보내기'}
+        <Button
+          type="submit"
+          className="h-[42px] w-[76px] shrink-0"
+          aria-label={busy ? '토리의 답변을 기다리는 중' : '보내기'}
+          loading={busy}
+          disabled={!draft.trim()}
+        >
+          <span className={busy ? 'sr-only' : undefined}>보내기</span>
         </Button>
       </form>
     </Card>

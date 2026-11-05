@@ -32,9 +32,17 @@ export function LivePlanning() {
   const eventId = params.get('eventId')
   const journal = usePlanningRequestJournal(userId, clubId)
   const [busy, setBusy] = useState(false)
+  const [sending, setSending] = useState(false)
+  // 첫 저장으로 ID가 붙어도 같은 대화를 유지한다. 새 계획을 선택할 때만 새 세션을 만든다.
+  const [newSession, setNewSession] = useState<{ key: string; eventId: string | null }>(() => ({
+    key: crypto.randomUUID(),
+    eventId: null,
+  }))
   const blocked = busy || !!journal.raw
-  const select = (id: string | null, text?: string) =>
+  const select = (id: string | null, text?: string) => {
+    if (!id) setNewSession({ key: crypto.randomUUID(), eventId: null })
     setParams(id ? { eventId: id } : {}, { state: text ? { failedText: text } : null })
+  }
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -67,28 +75,32 @@ export function LivePlanning() {
               처리 결과를 확인해 주세요.
             </p>
           )}
-          {journal.request && journal.request.eventId !== eventId && (
-            <p role="status" className="text-ink2">
-              다른 계획의 처리 결과를 확인해야 해요. 새 요청은 잠가 두었어요.{' '}
-              <Link
-                className="font-semibold text-blue-700 underline"
-                to={`/planning?${new URLSearchParams({ eventId: journal.request.eventId, stage: 'conditions' })}`}
-              >
-                요청한 계획 확인하기
-              </Link>
-            </p>
-          )}
+          {!sending &&
+            journal.request &&
+            journal.request.eventId !== (eventId ?? newSession.eventId) && (
+              <p role="status" className="text-ink2">
+                다른 계획의 처리 결과를 확인해야 해요. 새 요청은 잠가 두었어요.{' '}
+                <Link
+                  className="font-semibold text-blue-700 underline"
+                  to={`/planning?${new URLSearchParams({ eventId: journal.request.eventId, stage: 'conditions' })}`}
+                >
+                  요청한 계획 확인하기
+                </Link>
+              </p>
+            )}
           <Conversation
-            key={`${userId}:${clubId}:${eventId ?? 'new'}`}
+            key={`${userId}:${clubId}:${!eventId || eventId === newSession.eventId ? newSession.key : eventId}`}
             clubId={clubId}
             onBusy={setBusy}
+            onSending={setSending}
             eventId={eventId}
-            onCreated={(id, text) =>
+            onCreated={(id, text) => {
+              setNewSession((session) => ({ ...session, eventId: id }))
               setParams(
                 { eventId: id, stage: 'conditions' },
-                { state: text ? { failedText: text } : null },
+                { replace: true, state: text ? { failedText: text } : null },
               )
-            }
+            }}
             failedText={failedText}
             userId={userId}
           />
@@ -225,6 +237,7 @@ function Conversation({
   failedText,
   userId,
   onBusy,
+  onSending,
 }: {
   clubId: string
   eventId: string | null
@@ -232,6 +245,7 @@ function Conversation({
   failedText: string
   userId: string | undefined
   onBusy: (busy: boolean) => void
+  onSending: (sending: boolean) => void
 }) {
   const navigate = useNavigate()
   const generationDescriptionId = useId()
@@ -251,7 +265,8 @@ function Conversation({
   )
   useEffect(() => {
     onBusy(live.busy)
-  }, [live.busy, onBusy])
+    onSending(live.sending)
+  }, [live.busy, live.sending, onBusy, onSending])
   const [params] = useSearchParams()
   const event = useEventDetail(eventId ?? undefined)
   const [showFailure, setShowFailure] = useState(Boolean(failedText))
@@ -328,9 +343,6 @@ function Conversation({
         <p role="status" className="text-mute">
           먼저 행사 조건을 정하고 초안을 만들어 주세요.
         </p>
-      )}
-      {eventId && !steps.length && params.get('stage') === 'conditions' && (
-        <p className="text-mute">저장된 초안이 없어요. 조건을 정한 뒤 초안을 만들 수 있어요.</p>
       )}
       {generationFailure && !live.busy && (
         <GenerationFailureNotice result={generationFailure} hasPrevious={steps.length > 0} />

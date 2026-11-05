@@ -109,8 +109,7 @@ function snapshotQuery(userId: string | undefined, clubId: string | null, eventI
 function receiptsKey(userId: string | undefined, clubId: string | null, eventId: string | null) {
   return ['planning', 'receipts', userId, clubId, eventId]
 }
-// 조건 패널의 바뀐 칸 강조. 새 계획은 첫 답변 뒤 화면이 새 주소로 넘어가며 패널이 새로 그려지므로
-// 작업 줄처럼 화면 상태가 아니라 계획별 캐시에 둔다.
+// 조건 패널의 바뀐 칸 강조. 같은 탭에서 계획을 바꿨다가 다시 열어도 계획별로 유지한다.
 function flashKey(userId: string | undefined, clubId: string | null, eventId: string | null) {
   return ['planning', 'fact-flash', userId, clubId, eventId]
 }
@@ -130,11 +129,13 @@ export function usePlanningChat(
   onGenerated: (eventId: string, count: number, key: string) => void,
   prepareCreated?: (eventId: string) => Promise<unknown>,
 ) {
+  const [createdId, setCreatedId] = useState<string | null>(null)
+  const activeId = selectedId ?? createdId
   const queryClient = useQueryClient()
-  const generation = useGenerationRequest(userId, clubId, selectedId, onGenerated)
+  const generation = useGenerationRequest(userId, clubId, activeId, onGenerated)
   const [temporaryDraft, setTemporaryDraft] = useState<Draft | null>(null)
   const temporaryDraftRef = useRef<Draft | null>(null)
-  const streamEventId = useRef(selectedId)
+  const streamEventId = useRef(activeId)
   // react-query의 구독 알림을 기다리지 않고 진행 줄과 같은 렌더에서 강조한다.
   const [localFlash, setLocalFlash] = useState<FactFlash | null | undefined>(undefined)
   const updateFlash = (value: FactFlash | null) => {
@@ -151,7 +152,7 @@ export function usePlanningChat(
   const [generationFailure, setGenerationFailure] = useState<S['GenerationResultOut'] | null>(null)
   // 스트림으로 받는 동안만 보이는 임시 표시(#285). done 뒤 저장된 대화로 바뀌면 지운다.
   const [progress, setProgress] = useState<TurnLine[]>(
-    () => queryClient.getQueryData<TurnLine[]>(failureKey(selectedId)) ?? [],
+    () => queryClient.getQueryData<TurnLine[]>(failureKey(activeId)) ?? [],
   )
   const [pendingText, setPendingText] = useState('')
   const [pendingReply, setPendingReply] = useState('')
@@ -205,19 +206,19 @@ export function usePlanningChat(
     },
   }
   const snapshot = useQuery({
-    ...snapshotQuery(userId, clubId, selectedId),
-    enabled: !!clubId && !!selectedId,
+    ...snapshotQuery(userId, clubId, activeId),
+    enabled: !!clubId && !!activeId,
     // 서버가 검토 중이면 결과가 나올 때까지 짧게 다시 불러온다.
     refetchInterval: (q) => (q.state.data?.screen.review?.status === 'REVIEWING' ? 2000 : false),
   })
   const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: snapshotQuery(userId, clubId, selectedId).queryKey })
-  // 이번 화면에서 끝난 턴의 작업 줄. 새 계획은 첫 답변 뒤 대화 영역이 새로 그려지므로
-  // 화면 상태가 아니라 계획별 캐시에 둔다. 서버에 저장하지 않아 새로고침하면 사라진다.
+    queryClient.invalidateQueries({ queryKey: snapshotQuery(userId, clubId, activeId).queryKey })
+  // 이번 화면에서 끝난 턴의 작업 줄. 같은 탭의 계획별 캐시에 둔다.
+  // 서버에 저장하지 않아 새로고침하면 사라진다.
   const receipts = useQuery({
-    queryKey: receiptsKey(userId, clubId, selectedId),
+    queryKey: receiptsKey(userId, clubId, activeId),
     queryFn: () => [] as TurnReceipt[],
-    enabled: !!selectedId,
+    enabled: !!activeId,
     staleTime: Infinity,
     gcTime: Infinity,
   })
@@ -229,17 +230,24 @@ export function usePlanningChat(
     })),
     receipts.data ?? [],
   )
-  const messages = [FIRST_MESSAGE, ...storedMessages]
   const flash = useQuery({
-    queryKey: flashKey(userId, clubId, selectedId),
+    queryKey: flashKey(userId, clubId, activeId),
     queryFn: () => null as FactFlash | null,
-    enabled: !!selectedId,
+    enabled: !!activeId,
     staleTime: Infinity,
     gcTime: Infinity,
   })
   // 저장된 대화에 이번 턴이 들어오면 임시 표시는 같은 화면 갱신에서 숨긴다.
   // 임시 표시를 지우는 일과 다시 불러온 대화를 그리는 일이 따로 일어나도 두 번 보이지 않는다.
-  const turnSaved = pendingBase !== null && storedMessages.length > pendingBase
+  const turnSaved =
+    pendingBase !== null &&
+    storedMessages[pendingBase]?.from === '나' &&
+    storedMessages[pendingBase + 1]?.from === '토리'
+  // 수신 중 재조회에서 사용자 메시지만 먼저 보이더라도 임시 턴을 중복시키거나 지우지 않는다.
+  const messages = [
+    FIRST_MESSAGE,
+    ...(pendingBase !== null && !turnSaved ? storedMessages.slice(0, pendingBase) : storedMessages),
+  ]
   const screen = snapshot.data?.screen
   const currentView = view && view.baseRevision >= (screen?.baseRevision ?? 0) ? view : null
   const revision = currentView?.baseRevision ?? screen?.baseRevision ?? 0
@@ -260,7 +268,7 @@ export function usePlanningChat(
     }
   const facts = toFacts(temporaryDraft ?? savedDraft)
   const send = async (text: string) => {
-    if (locked.current || generation.blocked || (selectedId && !snapshot.data)) return false
+    if (locked.current || generation.blocked || (activeId && !snapshot.data)) return false
     if (!clubId) {
       setError('로그인하고 소속을 선택해 주세요.')
       return false
@@ -270,14 +278,14 @@ export function usePlanningChat(
     setError('')
     setGenerationFailure(null)
     clearPending()
-    queryClient.removeQueries({ queryKey: failureKey(selectedId), exact: true })
+    queryClient.removeQueries({ queryKey: failureKey(activeId), exact: true })
     temporaryDraftRef.current = null
     setTemporaryDraft(null)
     updateFlash(null)
     setPendingText(text)
     const base = storedMessages.length
     setPendingBase(base)
-    let eventId = selectedId
+    let eventId = activeId
     const id = crypto.randomUUID()
     let succeeded = false
     let generated = false
@@ -331,8 +339,8 @@ export function usePlanningChat(
             (result.generationResult.reason || result.reply || '조건을 확인해 주세요.'),
         )
       }
-      if (!selectedId) {
-        // 새 계획: 끝나면 화면이 이 계획 주소로 넘어가며 대화 영역을 새로 그린다.
+      if (!activeId) {
+        // 새 계획: 같은 대화 영역을 유지한 채 이 계획의 주소와 저장 상태를 채택한다.
         // 대화와 화면 진입에 필요한 행사 상세를 함께 준비한다. 대화만 준비하면
         // 상세 조회를 기다리는 동안 전체 대화가 "불러오는 중" 카드로 바뀐다.
         // 실패해도 넘어간 화면이 직접 다시 불러오므로 여기서는 오류로 보지 않는다.
@@ -367,15 +375,17 @@ export function usePlanningChat(
             : '계획 답변을 확인하지 못했어요. 요청이 반영됐을 수 있으니 다시 보내기 전에 확인해 주세요.',
       )
       // 흘려 받은 답변·진행 표시는 저장되지 않았을 수 있다. 저장된 상태를 다시 불러온다.
-      if (selectedId) void snapshot.refetch()
+      if (activeId) void snapshot.refetch()
       return false
     } finally {
       locked.current = false
       void queryClient.invalidateQueries({ queryKey: ['planning', 'drafts', userId, clubId] })
-      if (eventId && !selectedId && !generated && generation.isCurrent()) {
-        // 새 계획은 이 대화 영역이 새 주소의 영역으로 바뀐다. 주소 이동은 다음 화면 갱신에서
-        // 반영되므로, 여기서 임시 표시를 먼저 지우면 그 사이 한 번 빈 대화가 보인다.
-        // 바뀔 때까지 그대로 두고 새 영역이 저장된 대화를 그린다.
+      if (eventId && !activeId && !generated && generation.isCurrent()) {
+        // URL 반영 전 렌더에서도 준비된 캐시를 읽는다. 첫 ID를 채택할 때 입력창과
+        // 말풍선을 다시 마운트하거나 임시 답변만 먼저 지우지 않는다.
+        setCreatedId(eventId)
+        if (succeeded) clearPending()
+        setSending(false)
         onCreated(eventId, succeeded ? undefined : text)
       } else {
         if (succeeded) clearPending()
@@ -384,7 +394,7 @@ export function usePlanningChat(
     }
   }
   const generate = async () => {
-    if (!selectedId || !snapshot.data || locked.current || generation.blocked) return
+    if (!activeId || !snapshot.data || locked.current || generation.blocked) return
     locked.current = true
     setGenerating(true)
     setError('')
@@ -392,13 +402,13 @@ export function usePlanningChat(
     clearPending()
     try {
       const request = await generation.begin(
-        selectedId,
+        activeId,
         'button',
         { baseRevision: revision, useCurrentConditions: false },
         savedDraft,
       )
       const result = await planningApi.generateStream(
-        selectedId,
+        activeId,
         request.body as S['PlanGenerateIn'],
         request.key,
         handlers,
@@ -438,6 +448,7 @@ export function usePlanningChat(
     messages,
     facts,
     factFlash: localFlash === undefined ? (flash.data ?? null) : localFlash,
+    sending,
     busy: sending || generating || generation.blocked || !!generation.flow,
     generationFlow: generation.flow,
     generationFailure,
