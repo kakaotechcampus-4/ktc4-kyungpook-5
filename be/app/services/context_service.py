@@ -57,6 +57,7 @@ class LiveJudgment:
     source_version: int
     extraction_duration: list[int]
     event_failure: dict | None
+    web_failure: dict | None
 
 
 def _failure(tool: str, error: BaseException) -> dict:
@@ -127,6 +128,21 @@ async def judge_live_meeting_segment(
         event_error = None
     except Exception as error:
         event_answer, event_trace, event_error = None, getattr(error, 'trace', None), error
+    web_answer = None
+    web_error = None
+    # 내부 자료·행사 DB가 답하지 못하고 발화가 명시적으로 최신/웹 정보를 요구할 때만
+    # Terra 고정 웹 검색을 호출한다. 잡담·현재 운영 확인에는 외부 검색을 붙이지 않는다.
+    if (
+        not isinstance(judged, Exception)
+        and event_answer is None
+        and judged.route in (JudgeRoute.NONE, JudgeRoute.RAG)
+        and (judged.route == JudgeRoute.NONE or judged.kind == 'NOT_FOUND')
+        and meeting_ai_service.can_search_web(segment.text)
+    ):
+        try:
+            web_answer = await meeting_ai_service.search_web(payload)
+        except Exception as error:
+            web_error = error
     lookup_ok = not isinstance(judged, Exception)
     lookup_failure = None if lookup_ok else _failure("meeting.lookup", judged)
     tools: list[dict] = [] if lookup_ok else [lookup_failure]
@@ -142,6 +158,16 @@ async def judge_live_meeting_segment(
                       'durationMs': event_trace.judge_ms})
     if event_error is not None:
         tools.append(_failure('event.lookup', event_error))
+    if web_answer is not None:
+        tools.append({
+            'tool': 'external.web_search',
+            'status': 'OK',
+            'durationMs': web_answer.duration_ms,
+            'model': 'gpt-6.1-terra',
+            'resultCount': len(web_answer.citations),
+        })
+    elif web_error is not None:
+        tools.append(_failure('external.web_search', web_error))
     # 여기서는 판단 결과만으로 상태를 정한다. 추출이 실패하면 끝낼 때 PARTIAL로 고친다.
     status = ContextDecisionStatus.SUCCEEDED if lookup_ok else ContextDecisionStatus.FAILED
     current = await _locked_segment(session, segment_id)
@@ -179,6 +205,16 @@ async def judge_live_meeting_segment(
         decision.citations = [*(decision.citations or []), *event_answer['citations']]
         if not lookup_ok:
             decision.status = ContextDecisionStatus.PARTIAL
+    if web_answer is not None and status != ContextDecisionStatus.STALE:
+        decision.output = web_answer.answer
+        decision.question = segment.text
+        decision.route = JudgeRoute.LLM
+        decision.kind = JudgeKind.ANSWER
+        decision.citations = list(web_answer.citations)
+        decision.reason_summary = '외부 웹 검색 결과'
+    if web_error is not None and status != ContextDecisionStatus.STALE:
+        decision.status = ContextDecisionStatus.PARTIAL
+        decision.reason_summary = '외부 웹 검색을 완료하지 못했습니다.'
     if event_error is not None and status != ContextDecisionStatus.STALE:
         decision.status = ContextDecisionStatus.PARTIAL if lookup_ok else ContextDecisionStatus.FAILED
         decision.reason_summary = _PARTIAL_REASON
@@ -191,6 +227,7 @@ async def judge_live_meeting_segment(
         segment_id=segment_id, source=source, source_version=source_version,
         extraction_duration=extraction_duration,
         event_failure=_failure('event.lookup', event_error) if event_error else None,
+        web_failure=_failure('external.web_search', web_error) if web_error else None,
     )
 
 
@@ -208,7 +245,7 @@ async def finish_live_meeting_extraction(session: AsyncSession, judged: LiveJudg
     except Exception as error:
         extracted = error
     extraction_ok = not isinstance(extracted, Exception)
-    failures = [failure for failure in (judged.lookup_failure, judged.event_failure) if failure]
+    failures = [failure for failure in (judged.lookup_failure, judged.event_failure, judged.web_failure) if failure]
     if extraction_ok:
         extraction_call = {"tool": "tasks.extract", "status": "OK", "resultCount": len(extracted)}
     else:

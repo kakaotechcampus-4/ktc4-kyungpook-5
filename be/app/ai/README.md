@@ -139,6 +139,22 @@ Agent·노드에서만 `build_chat_model(reasoning={"effort": "none"})`으로 �
 | `AI_EMBEDDING_MODEL` | 사용할 임베딩 모델 |
 | `JEV_BASE_URL` | 회의 판단 API Jev의 배포 주소. 뒤에 `/v1/decisions`를 붙여 부릅니다 |
 | `JEV_API_KEY` | Jev 인증 키. 모델 버전과 임계값은 코드에 고정돼 있어 환경변수로 받지 않습니다 |
+| `WEB_SEARCH_ENABLED` | 외부 웹 검색 사용 여부 |
+| `WEB_SEARCH_API_BASE_URL` / `WEB_SEARCH_API_KEY` | Terra Responses API 배포 주소·키 |
+| `WEB_SEARCH_CONTEXT_SIZE` / `WEB_SEARCH_TIMEOUT_SECONDS` | 검색 문맥 크기(`low` 기본)·제한 시간 |
+
+웹 검색 모델은 `gpt-6.1-terra`로 고정한다. 내부 RAG가 없고 발화가 최신·웹 정보를 명시적으로 요구할 때만 호출하며, URL citation을 회의 카드 출처로 보존한다.
+
+Luna·Terra 비교는 두 모델 배포의 `AI_*`·`JEV_*` 설정을 각각 env 파일로 저장한 뒤 다음처럼 실행한다. 같은 회의 판단 세트와 그 결과의 검색어를 같은 RAG 평가에 다시 넣어 판단 정확도·검색어별 근거·p95·비용을 함께 기록한다.
+
+```bash
+cd be
+uv run python app/ai/scripts/compare_meeting_models.py \
+  --luna-env /secure/luna.env \
+  --terra-env /secure/terra.env \
+  --output-dir /tmp/meeting-model-compare \
+  --holdout
+```
 
 설정은 BE 실행 환경에서 전달하며 AI 모듈 전용 `.env`는 자동 로드하지 않습니다.
 의존성 설치와 실행은 BE에서 통합 관리합니다.

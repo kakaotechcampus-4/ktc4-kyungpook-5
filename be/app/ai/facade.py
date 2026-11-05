@@ -8,6 +8,7 @@
 from .contracts import IndexRecordRequest, IndexRecordResult, RecordDiscoveryRequest
 from .contracts import ExtractReceiptRequest, ExtractReceiptResult
 from .features.meeting.lookup import RecordsLookup
+from .features.meeting.web_search import search_web as search_meeting_web, should_search_web
 from .features.meeting.nodes import judge_utterance as judge_meeting_utterance
 from .features.meeting.schemas import (
     JudgeUtteranceRequest,
@@ -70,6 +71,16 @@ async def judge_utterance(
     return await judge_meeting_utterance(
         request, lookup=RecordsLookup(records), progress=progress
     )
+
+
+async def search_web(request: JudgeUtteranceRequest):
+    """현재성·외부 정보 발화만 Terra 고정 웹 검색으로 답한다."""
+
+    return await search_meeting_web(request)
+
+
+def can_search_web(text: str) -> bool:
+    return should_search_web(text)
 
 
 async def chat_planning(request: "PlanningChatRequest", *,

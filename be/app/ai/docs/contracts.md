@@ -94,6 +94,8 @@ BE는 ANSWER·NOT_FOUND를 도착하는 대로 화면으로 보낸다. 늦게 �
 
 ### 입력과 결과
 
+내부 자료에서 답을 찾지 못한 현재성·웹 요청은 AI 계약의 `NONE` 결과를 바꾸지 않는다. BE가 `can_search_web` 신호를 확인한 뒤 Terra 고정 Responses `web_search`를 호출하고, `ContextDecision.route=LLM`과 `citations=[{type: "web", url, title, text}]`로 화면에 투영한다. 일반 잡담은 외부 검색하지 않는다.
+
 판단과 검색어 구성을 나누는 일은 AI 내부에서 한다(#114). BE는 발화마다 한 번 부르고 결과 하나를 받는다.
 
 ```python
@@ -149,7 +151,7 @@ class JudgeTrace(ContractModel):
 class JudgeUtteranceResult(ContractModel):
     utterance_id: str
     source_version: int    # 판단에 쓴 전사 버전. 요청의 utterance.version을 그대로 돌려준다
-    # 어떤 처리로 갔는지. 지금은 RAG(기록 조회)와 NONE뿐이고 나중에 LLM이 추가된다
+    # 어떤 처리로 갔는지. AI 공개 계약은 RAG/NONE이고, 외부 웹 검색은 BE ContextDecision의 LLM route로 투영한다
     route: Literal["RAG", "NONE"]
     kind: Literal["NO_LOOKUP", "ANSWER", "NOT_FOUND"]
     # 무엇에 대한 답인지. 검색어 구성 단계가 만든 검색어다. NO_LOOKUP이면 None

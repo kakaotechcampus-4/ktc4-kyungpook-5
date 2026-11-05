@@ -46,6 +46,15 @@ async def judge(payload: dict):
     return result
 
 
+def can_search_web(text: str) -> bool:
+    return _public("can_search_web")(text)
+
+
+async def search_web(payload: dict):
+    request = _public("JudgeUtteranceRequest").model_validate(payload)
+    return await _public("search_web")(request)
+
+
 async def extract(payload: dict) -> list[CandidateDraft]:
     request_data = {
         **payload, "timezone": "Asia/Seoul",

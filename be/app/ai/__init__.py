@@ -30,7 +30,7 @@ from .errors import (
     AIRetryableError,
     AITimeoutError,
 )
-from .facade import index_record, judge_utterance, search_related_records
+from .facade import can_search_web, index_record, judge_utterance, search_related_records, search_web
 from .facade import extract_receipt
 from .contracts import ExtractedReceiptRow, ExtractReceiptRequest, ExtractReceiptResult
 from .features.meeting.context import MEETING_CONTEXT_UTTERANCES
@@ -72,6 +72,8 @@ __all__ = (
     "ExtractedReceiptRow",
     # 회의 발화 처리. #113에서 BE와 합의하기 전의 초안이라 바뀔 수 있다 (docs/contracts.md)
     "judge_utterance",
+    "search_web",
+    "can_search_web",
     "JudgeUtteranceRequest",
     "JudgeUtteranceResult",
     "MeetingUtterance",

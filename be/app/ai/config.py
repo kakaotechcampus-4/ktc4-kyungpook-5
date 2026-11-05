@@ -7,6 +7,7 @@
 """
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -142,3 +143,37 @@ class JevSettings(BaseSettings):
 def get_jev_settings() -> JevSettings:
     """환경변수에서 읽은 Jev 설정 재사용"""
     return JevSettings()
+
+
+class WebSearchSettings(BaseSettings):
+    """외부 웹 검색용 Responses API 설정.
+
+    검색 모델은 제품 정책상 gpt-6.1-terra로 고정하고, 배포 주소·키만 운영에서 주입한다.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="WEB_SEARCH_", env_file=".env", extra="ignore"
+    )
+
+    api_base_url: str = ""
+    api_key: SecretStr = SecretStr("")
+    enabled: bool = False
+    context_size: Literal["low", "medium", "high"] = "low"
+    timeout_seconds: float = 30.0
+    model: str = "gpt-6.1-terra"
+
+    def require(self) -> None:
+        if not self.enabled:
+            raise AIConfigError("외부 웹 검색이 비활성화되어 있습니다")
+        missing = []
+        if not self.api_base_url.strip():
+            missing.append("WEB_SEARCH_API_BASE_URL")
+        if not self.api_key.get_secret_value().strip():
+            missing.append("WEB_SEARCH_API_KEY")
+        if missing:
+            raise AIConfigError(f"웹 검색 설정이 비어 있습니다: {', '.join(missing)}")
+
+
+@lru_cache(maxsize=1)
+def get_web_search_settings() -> WebSearchSettings:
+    return WebSearchSettings()

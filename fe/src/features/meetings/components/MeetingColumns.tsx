@@ -108,6 +108,9 @@ export const TranscriptColumn = memo(function TranscriptColumn({
 
 function KindChip({ item }: { item: ToriResult }) {
   if (lookupFailed(item.decision)) return <Chip tone="failed">찾지 못함</Chip>
+  if (item.decision.route === 'LLM' && item.decision.citations?.some((c) => str(c.type) === 'web')) {
+    return <Chip tone="done">웹 검색</Chip>
+  }
   if (item.decision.kind === 'NOT_FOUND') return <Chip>기록에 없음</Chip>
   return <Chip tone="done">찾음</Chip>
 }
@@ -218,6 +221,16 @@ function AnswerCard({
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
+                      {str(citation.url) && (
+                        <a
+                          className="mt-0.5 block break-all text-blue-700 underline"
+                          href={str(citation.url)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          출처 열기
+                        </a>
+                      )}
                   {str(citation.text) && (
                     <p className="mt-0.5 break-words text-ink2">“{str(citation.text)}”</p>
                   )}

@@ -97,8 +97,11 @@ BE는 행사 변화를 감지해 해당 행사 Agent에 신호로 전달합니�
 브라우저 마이크 → WebSocket → BE 음성 처리(VAD로 발화 구간 분할) → Whisper
   → AI: 문맥 관리 → 판단("이 발화에 기록 조회가 필요한가", Jev)
   → 필요하면 검색어 구성(luna) → retrieval → 답변과 출처
+  → 내부 자료가 없고 현재성·웹 요청 신호가 있으면 Terra 고정 web_search → URL 출처 답변
   → BE가 화면으로 전송
 ```
+
+외부 웹 검색은 내부 RAG를 대체하지 않는다. `최신`, `현재`, `오늘`, `웹`, `검색해`처럼 현재성·웹 요청 신호가 있는 `NONE` 또는 내부 자료 `NOT_FOUND`만 Responses API의 `web_search`로 보낸다. 모델은 `gpt-6.1-terra`로 고정하고, 검색 결과의 URL annotation을 회의 카드 출처로 보존한다. 잡담과 현재 운영 확인은 웹 검색하지 않는다.
 
 ```text
 "작년 MT 때 숙소비 얼마 나왔지?"
