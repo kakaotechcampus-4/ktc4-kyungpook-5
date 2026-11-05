@@ -163,6 +163,10 @@ def _is_silence_response(payload: dict, segments: object) -> bool:
         if not isinstance(segment, dict) or "no_speech_prob" not in segment:
             return False
         value = segment.get("no_speech_prob")
+        # MLAPI returns null for this field even in a valid verbose response.
+        # Missing probability means we cannot classify the response as silence.
+        if value is None:
+            return False
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise ValueError("segment.no_speech_prob must be numeric")
         probabilities.append(float(value))

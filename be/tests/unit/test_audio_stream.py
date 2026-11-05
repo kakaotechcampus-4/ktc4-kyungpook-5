@@ -368,6 +368,18 @@ async def test_whisper_skips_silent_audio_before_provider_hallucination() -> Non
     assert called is False
 
 
+async def test_whisper_accepts_provider_null_no_speech_probability() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "회의를 시작합니다.",
+            "segments": [{"text": "회의를 시작합니다.", "no_speech_prob": None}],
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == "회의를 시작합니다."
+
+
 async def test_whisper_falls_back_for_legacy_gateway_options() -> None:
     requests = []
 
