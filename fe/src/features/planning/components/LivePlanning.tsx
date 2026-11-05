@@ -58,7 +58,13 @@ export function LivePlanning() {
         )}
       </header>
       {!clubId ? (
-        <Card className="p-5">로그인하고 소속을 선택해 주세요.</Card>
+        <Card className="space-y-3 p-5">
+          <h2 className="text-h3">로그인과 소속 선택이 필요합니다.</h2>
+          <p className="text-caption text-mute">행사 계획은 선택한 소속의 자료와 함께 저장됩니다.</p>
+          <Link to="/login?next=%2Fplanning" className="text-caption font-semibold text-blue-700 underline">
+            로그인·소속 선택
+          </Link>
+        </Card>
       ) : (
         <>
           {journal.raw && !journal.request && (
