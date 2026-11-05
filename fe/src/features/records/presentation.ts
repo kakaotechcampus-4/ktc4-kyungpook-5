@@ -79,3 +79,53 @@ export function formatFileSize(bytes: number): string {
     ? `${Math.max(1, Math.round(bytes / 1024))} KB`
     : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
+
+// --- 자료함 검색 결과 목록 ---------------------------------------------------------------
+// 순서는 서버가 정한다(record_discovery_service): 제목(파일명) 일치 → 본문 일치 → AI 추천만,
+// 같은 묶음 안에서는 AI 관련도가 높은 순. 여기서는 순서를 바꾸지 않고
+// 분류로 좁히기 · 검색어 강조 · 나온 이유 표시만 정한다.
+type MatchType = 'FILENAME' | 'CONTENT' | 'SEMANTIC'
+
+const MATCH_LABEL: Record<MatchType, string> = {
+  FILENAME: '제목 일치',
+  CONTENT: '본문 일치',
+  SEMANTIC: 'AI 추천',
+}
+
+export function matchLabel(types: readonly MatchType[]): string {
+  return types.map((type) => MATCH_LABEL[type]).join(' · ')
+}
+
+export function filterByCategory<T extends { category: RecordCategory }>(
+  items: T[],
+  category: RecordCategory | null,
+): T[] {
+  return category ? items.filter((item) => item.category === category) : items
+}
+
+// 결과의 분류가 둘 이상일 때만 칩을 보여 준다. 첫 칩은 전체다.
+export function categoryChips(items: Array<{ category: RecordCategory }>) {
+  const chips = RECORD_CATEGORIES.map((entry) => ({
+    value: entry.value as RecordCategory | null,
+    label: entry.label,
+    count: items.filter((item) => item.category === entry.value).length,
+  })).filter((chip) => chip.count > 0)
+  if (chips.length < 2) return []
+  return [{ value: null, label: '전체', count: items.length }, ...chips]
+}
+
+// 발췌 안의 검색어 위치를 나눈다(대소문자 무시). hit인 조각을 강조한다.
+export function highlightParts(text: string, query: string): Array<{ text: string; hit: boolean }> {
+  if (!query) return [{ text, hit: false }]
+  const parts: Array<{ text: string; hit: boolean }> = []
+  const lower = text.toLocaleLowerCase()
+  const needle = query.toLocaleLowerCase()
+  let from = 0
+  for (let at = lower.indexOf(needle); at >= 0; at = lower.indexOf(needle, from)) {
+    if (at > from) parts.push({ text: text.slice(from, at), hit: false })
+    parts.push({ text: text.slice(at, at + query.length), hit: true })
+    from = at + query.length
+  }
+  if (from < text.length || !parts.length) parts.push({ text: text.slice(from), hit: false })
+  return parts
+}

@@ -1,18 +1,83 @@
 import { useState, type FormEvent } from 'react'
 import { downloadRecord } from '@/features/records/api'
 import { useRecordSearch } from '@/features/records/hooks'
-import { formatFileSize, RECORD_STATUS } from '@/features/records/presentation'
+import {
+  categoryChips,
+  filterByCategory,
+  formatFileSize,
+  highlightParts,
+  matchLabel,
+  RECORD_CATEGORIES,
+  RECORD_STATUS,
+} from '@/features/records/presentation'
 import type { components } from '@/shared/api/schema'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Input } from '@/shared/ui/Input'
 
 type Item = components['schemas']['RecordSearchItem']
-const MATCH_LABEL = { FILENAME: '파일명 일치', CONTENT: '본문 일치', SEMANTIC: 'AI 추천' } as const
 
-function SearchResult({ item }: { item: Item }) {
+// 검색 결과를 한 목록으로 보여 준다. 순서는 서버가 정한다(record_discovery_service):
+//   제목(파일명) 일치 → 본문 일치 → AI 추천만, 같은 묶음 안에서는 AI 관련도가 높은 순.
+// 카드마다 왜 나왔는지(제목 일치 · 본문 일치 · AI 추천)를 표시한다.
+function SearchList({ items, query }: { items: Item[]; query: string }) {
+  const [category, setCategory] = useState<Item['category'] | null>(null)
+  const chips = categoryChips(items)
+  const shown = filterByCategory(items, category)
+  return (
+    <div className="space-y-3">
+      {chips.length > 0 && (
+        <div role="group" aria-label="분류로 좁히기" className="flex flex-wrap gap-2">
+          {chips.map((entry) => (
+            <button
+              key={entry.label}
+              type="button"
+              aria-pressed={category === entry.value}
+              onClick={() => setCategory(entry.value)}
+              className={
+                category === entry.value
+                  ? 'rounded-full border border-blue-600 bg-blue-600 px-3 py-1 text-caption font-bold text-white'
+                  : 'rounded-full border border-soft bg-card px-3 py-1 text-caption text-ink2 hover:bg-bg'
+              }
+            >
+              {`${entry.label} ${entry.count}`}
+            </button>
+          ))}
+        </div>
+      )}
+      <ol>
+        {shown.map((item) => (
+          <SearchResult key={item.id} item={item} query={query} />
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+// 발췌 안의 검색어를 굵게 보여 준다(대소문자 무시).
+function Highlight({ text, query }: { text: string; query: string }) {
+  return (
+    <>
+      {highlightParts(text, query).map((part, index) =>
+        part.hit ? (
+          <mark key={index} className="rounded bg-blue-100 px-0.5 font-bold text-blue-700">
+            {part.text}
+          </mark>
+        ) : (
+          <span key={index}>{part.text}</span>
+        ),
+      )}
+    </>
+  )
+}
+
+function SearchResult({ item, query }: { item: Item; query: string }) {
   const [downloading, setDownloading] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [allExcerpts, setAllExcerpts] = useState(false)
+  const category = RECORD_CATEGORIES.find((entry) => entry.value === item.category)?.label
+  const excerpts = allExcerpts ? item.excerpts : item.excerpts.slice(0, 1)
+  const hidden = item.excerpts.length - 1
   return (
     <li className="space-y-3 border-t border-line py-5 first:border-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -33,17 +98,32 @@ function SearchResult({ item }: { item: Item }) {
         </Button>
       </div>
       <p className="text-caption text-mute">
-        {item.fileType} · {formatFileSize(item.size)} · {RECORD_STATUS[item.parseStatus].label}
+        {[category, item.fileType, formatFileSize(item.size), RECORD_STATUS[item.parseStatus].label]
+          .filter(Boolean)
+          .join(' · ')}
+        {' · '}
+        <span className="font-semibold text-blue-700">
+          {matchLabel(item.matchTypes)}
+        </span>
       </p>
-      <p className="text-caption font-semibold text-blue-700">
-        {item.matchTypes.map((type) => MATCH_LABEL[type]).join(' · ')}
-      </p>
-      {item.excerpts.map((excerpt, index) => (
-        <div key={index} className="rounded-lg bg-bg px-4 py-3 text-[14px] leading-6">
-          <p className="whitespace-pre-wrap break-words">{excerpt.text}</p>
-          <p className="mt-1 text-mute">{excerpt.location?.label ?? '위치 정보 없음'}</p>
+      {excerpts.map((excerpt, index) => (
+        <div key={index} className="rounded-lg bg-bg px-4 py-2.5 text-[14px] leading-6">
+          <p className={allExcerpts ? 'whitespace-pre-wrap break-words' : 'line-clamp-2 break-words'}>
+            <Highlight text={excerpt.text} query={query} />
+          </p>
+          <p className="mt-0.5 text-caption text-mute">{excerpt.location?.label ?? '위치 정보 없음'}</p>
         </div>
       ))}
+      {(hidden > 0 || (item.excerpts[0]?.text.length ?? 0) > 120) && (
+        <button
+          type="button"
+          className="text-caption font-semibold text-ink2 underline"
+          aria-expanded={allExcerpts}
+          onClick={() => setAllExcerpts((open) => !open)}
+        >
+          {allExcerpts ? '접기' : hidden > 0 ? `발췌 ${hidden}개 더 · 전체 보기` : '발췌 전체 보기'}
+        </button>
+      )}
       {failed && (
         <p role="alert" className="text-caption text-failed">
           원본을 받지 못했어요. 접근 권한과 파일 상태를 확인해 주세요.
@@ -138,11 +218,7 @@ export function RecordSearch({ clubId, userId }: { clubId: string; userId: strin
             </p>
           )}
           {data.items.length ? (
-            <ul>
-              {data.items.map((item) => (
-                <SearchResult key={item.id} item={item} />
-              ))}
-            </ul>
+            <SearchList key={`${query}:${page}`} items={data.items} query={query} />
           ) : (
             <p className="rounded-lg bg-bg px-4 py-5 text-caption text-ink2">
               일치하는 자료가 없어요. 다른 검색어를 입력해 보세요.
