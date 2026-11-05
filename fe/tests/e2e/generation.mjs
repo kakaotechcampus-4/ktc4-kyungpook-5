@@ -141,7 +141,7 @@ async function fixture({ old = false } = {}) {
   await page.goto(`${origin}/planning?eventId=${event.id}&stage=conditions`)
   await page
     .getByRole('button', {
-      name: old ? '지금 조건으로 다시 만들기' : '지금 조건으로 초안 만들기',
+      name: old ? '이 조건으로 다시 만들기' : '이 조건으로 초안 만들기',
       exact: true,
     })
     .waitFor({ timeout: 10000 })
@@ -189,7 +189,7 @@ const shot = (page, name) =>
 async function clickGenerate(page, old = false) {
   await page
     .getByRole('button', {
-      name: old ? '지금 조건으로 다시 만들기' : '지금 조건으로 초안 만들기',
+      name: old ? '이 조건으로 다시 만들기' : '이 조건으로 초안 만들기',
       exact: true,
     })
     .click()
@@ -235,7 +235,7 @@ try {
           events.push(await r.text().catch(() => ''))
       })
       await page.goto(`${origin}/planning?eventId=${event.id}&stage=conditions`)
-      await page.getByRole('button', { name: '지금 조건으로 초안 만들기', exact: true }).waitFor()
+      await page.getByRole('button', { name: '이 조건으로 초안 만들기', exact: true }).waitFor()
       if (kind === 'button') await clickGenerate(page)
       else {
         await page
@@ -372,12 +372,12 @@ try {
             return original.apply(this, args)
           }
         })
-        await page.getByRole('button', { name: '지금 조건으로 초안 만들기', exact: true }).click()
+        await page.getByRole('button', { name: '이 조건으로 초안 만들기', exact: true }).click()
         await page.getByRole('alert').filter({ hasText: '임시 저장 기능' }).waitFor()
         assert.equal(s.posts.length, 0)
       } else {
         const historyLength = await page.evaluate(() => history.length)
-        await page.getByRole('button', { name: '지금 조건으로 초안 만들기', exact: true }).focus()
+        await page.getByRole('button', { name: '이 조건으로 초안 만들기', exact: true }).focus()
         await page.keyboard.press('Enter')
         await page.keyboard.press('Enter')
         await waitPost(s)
