@@ -80,6 +80,8 @@ export default function MyPage() {
         <MyInfoTab
           profile={profile}
           club={club}
+          clubId={demo ? undefined : (clubId ?? undefined)}
+          canEditClub={user?.role === 'OWNER'}
           linkedAccounts={demo ? 'Google · 카카오' : undefined}
         />
       )}
