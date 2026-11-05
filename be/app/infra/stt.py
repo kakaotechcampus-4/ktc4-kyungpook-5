@@ -18,6 +18,7 @@ import httpx
 # threshold conservative so a real short utterance is not discarded.
 NO_SPEECH_THRESHOLD = 0.6
 MIN_AUDIO_RMS = 450.0
+MIN_VOICED_MS = 160
 
 
 class SttError(Exception):
@@ -117,7 +118,7 @@ class WhisperStt:
 
 
 def _contains_voiced_energy(wav: bytes) -> bool:
-    """Return whether a 16-bit mono WAV contains a frame above the VAD floor."""
+    """Return whether a 16-bit mono WAV contains sustained voiced energy."""
     try:
         with wave.open(io.BytesIO(wav), "rb") as source:
             if source.getnchannels() != 1 or source.getsampwidth() != 2:
@@ -127,6 +128,7 @@ def _contains_voiced_energy(wav: bytes) -> bool:
         return True
     if not pcm:
         return False
+    voiced_ms = 0
     for offset in range(0, len(pcm), 640):
         block = pcm[offset : offset + 640]
         if len(block) < 2:
@@ -134,7 +136,14 @@ def _contains_voiced_energy(wav: bytes) -> bool:
         samples = struct.unpack(f"<{len(block) // 2}h", block[: len(block) - len(block) % 2])
         rms = math.sqrt(sum(sample * sample for sample in samples) / len(samples))
         if rms >= MIN_AUDIO_RMS:
-            return True
+            voiced_ms += len(block) // 2 // 16
+            if voiced_ms >= MIN_VOICED_MS:
+                return True
+        else:
+            # A single noisy frame is enough to trigger the old gate and make
+            # Whisper invent a canned phrase. Require one short, continuous
+            # voiced run before sending audio to the provider.
+            voiced_ms = 0
     return False
 
 
