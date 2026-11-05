@@ -6,6 +6,7 @@ import { useEvents } from '@/features/events/hooks'
 import type { EventStatus, EventSummary } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
 import { Skeleton } from '@/shared/ui/Skeleton'
+import { staggerDelay } from '@/shared/lib/stagger'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { ServerErrorScreen } from '@/shared/ui/StateScreen'
@@ -95,7 +96,15 @@ export default function EventListPage() {
               desc="다른 상태를 골라 보세요."
             />
           ) : (
-            shown.map((event) => <EventCard key={event.id} event={event} />)
+            shown.map((event, i) => (
+              <div
+                key={event.id}
+                className="animate-turn-in motion-reduce:animate-none"
+                style={{ animationDelay: staggerDelay(i) }}
+              >
+                <EventCard event={event} />
+              </div>
+            ))
           )}
         </>
       )}

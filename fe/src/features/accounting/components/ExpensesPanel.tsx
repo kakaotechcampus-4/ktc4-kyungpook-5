@@ -10,6 +10,7 @@ import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
+import { staggerDelay } from '@/shared/lib/stagger'
 
 const SOURCE_LABEL: Record<Expense['source'], string> = {
   MANUAL: '직접 입력',
@@ -125,8 +126,12 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((expense) => (
-                <tr key={expense.id} className="border-t border-line">
+              {rows.map((expense, i) => (
+                <tr
+                  key={expense.id}
+                  className="border-t border-line animate-turn-in motion-reduce:animate-none"
+                  style={{ animationDelay: staggerDelay(i) }}
+                >
                   <td className="whitespace-nowrap px-[22px] py-[16px] text-ink2">
                     {formatDotDate(expense.spentAt)}
                   </td>
