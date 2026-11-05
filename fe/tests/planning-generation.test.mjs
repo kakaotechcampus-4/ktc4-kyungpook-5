@@ -97,9 +97,10 @@ test('later edits are not announced as this request’s generated draft', () => 
 })
 test('journal is scoped and corrupt/unsupported records cannot silently unlock a request', () => {
   const raw = JSON.stringify(request)
-  assert.deepEqual(m.parseRequest(raw, 'u', 'c'), request)
-  assert.equal(m.parseRequest(raw, 'other', 'c'), null)
-  assert.equal(m.parseRequest(raw, 'u', 'other'), null)
+  assert.deepEqual(m.parseRequest(raw, 'u', 'c', 'e'), request)
+  assert.equal(m.parseRequest(raw, 'other', 'c', 'e'), null)
+  assert.equal(m.parseRequest(raw, 'u', 'other', 'e'), null)
+  assert.equal(m.parseRequest(raw, 'u', 'c', 'other-event'), null)
   for (const value of [
     'unavailable',
     '{}',
@@ -107,7 +108,7 @@ test('journal is scoped and corrupt/unsupported records cannot silently unlock a
     JSON.stringify({ ...request, draft: { conditions: {} } }),
     JSON.stringify({ ...request, baseline: { baseRevision: -1, planRevision: 0, steps: [] } }),
   ]) {
-    assert.equal(m.parseRequest(value, 'u', 'c'), null)
+    assert.equal(m.parseRequest(value, 'u', 'c', 'e'), null)
   }
 })
 test('late cleanup preserves another request and original body/key survive storage', () => {
@@ -119,13 +120,38 @@ test('late cleanup preserves another request and original body/key survive stora
   }
   globalThis.window = new EventTarget()
   m.writeRequest(request)
-  assert.deepEqual(m.parseRequest(m.readRequestText('u', 'c'), 'u', 'c').body, request.body)
+  assert.deepEqual(
+    m.parseRequest(m.readRequestText('u', 'c', 'e'), 'u', 'c', 'e').body,
+    request.body,
+  )
   const next = { ...request, key: 'next' }
   m.writeRequest(next)
   m.removeRequest(request)
-  assert.equal(m.parseRequest(m.readRequestText('u', 'c'), 'u', 'c').key, 'next')
+  assert.equal(m.parseRequest(m.readRequestText('u', 'c', 'e'), 'u', 'c', 'e').key, 'next')
   m.removeRequest(next)
-  assert.equal(m.readRequestText('u', 'c'), null)
+  assert.equal(m.readRequestText('u', 'c', 'e'), null)
+})
+test('a pending request locks only its own event (#342)', () => {
+  const data = new Map()
+  globalThis.sessionStorage = {
+    getItem: (k) => data.get(k) ?? null,
+    setItem: (k, v) => data.set(k, v),
+    removeItem: (k) => data.delete(k),
+  }
+  globalThis.window = new EventTarget()
+  m.writeRequest(request)
+  assert.notEqual(m.readRequestText('u', 'c', 'e'), null)
+  assert.equal(m.readRequestText('u', 'c', 'other-event'), null)
+  assert.equal(m.readRequestText('u', 'c', null), null)
+  m.removeRequest(request)
+})
+test('request lookup applies a saved response, waits while processing, releases otherwise (#342)', () => {
+  assert.equal(m.recoveryStep({ status: 'completed', result }), 'apply')
+  assert.equal(m.recoveryStep({ status: 'processing', result: null }), 'wait')
+  assert.equal(m.recoveryStep({ status: 'not_saved', result: null }), 'release')
+  // 저장은 끝났지만 응답을 읽을 수 없다. 잠금을 풀고 저장된 계획을 다시 읽는다.
+  assert.equal(m.recoveryStep({ status: 'completed', result: null }), 'release')
+  assert.equal(m.recoveryStep({ status: 'completed', result: { ...result, draft: {} } }), 'release')
 })
 test('stream cuts never repeat the original POST, including generation_finished', async () => {
   let calls = 0,

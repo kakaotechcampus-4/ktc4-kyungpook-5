@@ -5,6 +5,7 @@ import {
   generatedSnapshotStatus,
   parseRequest,
   readRequestText,
+  recoveryStep,
   removeRequest,
   subscribeRequest,
   writeRequest,
@@ -22,13 +23,29 @@ export const planningSnapshotKey = (
   eventId: string | null,
 ) => ['planning', 'snapshot', userId, clubId, eventId]
 
-export function usePlanningRequestJournal(userId: string | undefined, clubId: string | null) {
+export function usePlanningRequestJournal(
+  userId: string | undefined,
+  clubId: string | null,
+  eventId: string | null,
+) {
   const raw = useSyncExternalStore(
     subscribeRequest,
-    () => readRequestText(userId, clubId),
+    () => readRequestText(userId, clubId, eventId),
     () => null,
   )
-  return { raw, request: parseRequest(raw, userId, clubId) }
+  return { raw, request: parseRequest(raw, userId, clubId, eventId) }
+}
+
+// 결과를 모르는 요청을 다시 조회하는 간격. 처리 중이거나 배포로 서버가 잠시 응답하지 않을 때 쓴다.
+export const LOOKUP_RETRY_MS = 3000
+
+// 끊긴 요청의 결과를 조회로 확인한 뒤 화면에 알리는 내용(#342).
+// result가 있으면 정상 응답을 받은 것처럼 보여 주고, saved가 false면 다시 보내게 안내한다.
+export interface RequestSettled {
+  result?: S['PlanViewOut']
+  saved: boolean
+  // 저장되지 않은 채팅의 원래 문장. 입력창에 되돌려 다시 보내기 쉽게 한다.
+  text?: string
 }
 
 // The chat hook owns the stream. This hook only tracks the request and reads its saved result.
@@ -37,9 +54,10 @@ export function useGenerationRequest(
   clubId: string | null,
   eventId: string | null,
   onGenerated: (eventId: string, count: number, key: string) => void,
+  onSettled: (settled: RequestSettled) => void = () => {},
 ) {
   const queryClient = useQueryClient()
-  const journal = usePlanningRequestJournal(userId, clubId)
+  const journal = usePlanningRequestJournal(userId, clubId, eventId)
   const active = useRef<PlanningRequest | null>(null)
   const mounted = useRef(true)
   const [flow, setFlow] = useState<GenerationFlow | null>(null)
@@ -61,7 +79,7 @@ export function useGenerationRequest(
     }
     if (mounted.current) setFlow({ phase, draft: request.draft })
   }
-  const own = journal.request?.eventId === eventId ? journal.request : null
+  const own = journal.request
   const restoredFlow: GenerationFlow | null =
     own && !active.current
       ? {
@@ -78,7 +96,7 @@ export function useGenerationRequest(
     body: PlanningRequest['body'],
     draft: S['PlanDraftOut'],
   ) => {
-    if (!userId || !clubId || readRequestText(userId, clubId)) throw new Error('REQUEST_LOCKED')
+    if (!userId || !clubId || readRequestText(userId, clubId, id)) throw new Error('REQUEST_LOCKED')
     if (kind === 'button' && mounted.current) setFlow({ phase: 'requesting', draft })
     // Read the steps and revision under the server's existing snapshot lock before POST.
     const baseline = await planningApi.stepsSnapshot(id)
@@ -249,6 +267,74 @@ export function useGenerationRequest(
       reading.current = false
     }
   }
+  // 결과를 모르는 요청(연결 끊김, 새로고침 뒤 남은 탭 기록)을 요청 키로 조회해 푼다(#342).
+  //   채팅 abc 전송 → 배포로 끊김 → GET /plan/requests/abc
+  //     completed → 받았어야 할 응답으로 이어 간다. 초안이면 load()로 확인한 뒤 P2
+  //     processing → 3초 뒤 다시 조회. 그동안 이 행사만 잠긴다
+  //     not_saved → 탭 기록을 지워 잠금을 풀고, 다시 보내 달라고 안내한다
+  // POST를 다시 보내지 않는다. 지워진 키나 오래된 처리 기록이 모델을 한 번 더 실행할 수 있다.
+  const settle = async (request: PlanningRequest, result: S['PlanViewOut']) => {
+    request.result = result
+    request.draft = result.draft
+    if (result.generationResult?.status === 'generated') {
+      active.current = request
+      try {
+        writeRequest(request)
+      } catch {
+        /* load() still verifies the saved snapshot from memory. */
+      }
+      await load(request)
+      return
+    }
+    release(request, { result, saved: true })
+  }
+  const release = (request: PlanningRequest, settled: RequestSettled) => {
+    removeRequest(request)
+    if (active.current?.key === request.key) active.current = null
+    if (mounted.current) setFlow(null)
+    void queryClient.invalidateQueries({
+      queryKey: planningSnapshotKey(userId, clubId, request.eventId),
+    })
+    onSettled(settled)
+  }
+  const shown = flow ?? restoredFlow
+  const unresolved = shown?.phase === 'unknown' ? (active.current ?? own) : null
+  const unresolvedKey = unresolved?.key
+  const settleRef = useRef({ settle, release })
+  settleRef.current = { settle, release }
+  useEffect(() => {
+    if (!unresolved) return
+    const request = unresolved
+    let stopped = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const check = async () => {
+      try {
+        const lookup = await planningApi.request(request.eventId, request.key)
+        if (stopped) return
+        const step = recoveryStep(lookup)
+        if (step === 'apply' && lookup.result)
+          await settleRef.current.settle(request, lookup.result)
+        else if (step === 'release') {
+          const saved = lookup.status === 'completed'
+          const text =
+            !saved && request.kind === 'chat'
+              ? (request.body as S['PlanChatIn']).message
+              : undefined
+          settleRef.current.release(request, { saved, text })
+        } else timer = setTimeout(check, LOOKUP_RETRY_MS)
+      } catch {
+        // 배포 중이면 서버가 잠시 응답하지 않는다. 같은 요청을 다시 묻기만 한다.
+        if (!stopped) timer = setTimeout(check, LOOKUP_RETRY_MS)
+      }
+    }
+    void check()
+    return () => {
+      stopped = true
+      clearTimeout(timer)
+    }
+    // 같은 요청 키에는 조회 루프를 하나만 둔다. 화면이 다시 그려져도 새로 시작하지 않는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unresolvedKey])
   return {
     isCurrent: () => mounted.current,
     begin,

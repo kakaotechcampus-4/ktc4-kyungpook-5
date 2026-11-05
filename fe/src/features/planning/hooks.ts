@@ -10,7 +10,11 @@ import { planningApi } from './api'
 import { PartialPlanSaveError } from './errors'
 import type { ChatMessage, PlanFacts } from './types'
 import type { PlanStreamHandlers } from './stream'
-import { planningSnapshotKey, useGenerationRequest } from './useGenerationRequest'
+import {
+  planningSnapshotKey,
+  useGenerationRequest,
+  type RequestSettled,
+} from './useGenerationRequest'
 import { FIRST_MESSAGE } from './mock'
 import { planningRecordHistory } from './recordReferences'
 import {
@@ -122,6 +126,15 @@ export function usePlanningDrafts(clubId: string | null, userId: string | undefi
     retry: false,
   })
 }
+function generationFailureText(result: S['PlanViewOut']): string {
+  return (
+    (result.generationResult?.status === 'needs_clarification'
+      ? '초안을 만들기 전에 확인할 내용이 있어요. '
+      : '초안을 완성하지 못했어요. ') +
+    (result.generationResult?.reason || result.reply || '조건을 확인해 주세요.')
+  )
+}
+
 export function usePlanningChat(
   clubId: string | null,
   selectedId: string | null,
@@ -130,7 +143,32 @@ export function usePlanningChat(
   onGenerated: (eventId: string, count: number, key: string) => void,
 ) {
   const queryClient = useQueryClient()
-  const generation = useGenerationRequest(userId, clubId, selectedId, onGenerated)
+  // 끊긴 요청의 결과를 조회로 확인했을 때(#342). 저장됐으면 정상 응답처럼 보여 주고,
+  // 저장되지 않았으면 다시 보내 달라고 안내한다. 실패로 표시해 둔 진행 줄은 지운다.
+  const onSettled = ({ result, saved, text }: RequestSettled) => {
+    queryClient.removeQueries({ queryKey: failureKey(selectedId), exact: true })
+    clearPending()
+    setSettled(saved ? 'saved' : 'not_saved')
+    setRetryText(text ?? '')
+    if (result) setView(result)
+    const failure =
+      result?.generationResult && result.generationResult.status !== 'generated'
+        ? result.generationResult
+        : null
+    setGenerationFailure(failure)
+    setError(
+      !saved
+        ? '연결이 끊긴 요청은 처리되지 않았어요. 다시 보내 주세요.'
+        : result && failure
+          ? generationFailureText(result)
+          : '',
+    )
+  }
+  const generation = useGenerationRequest(userId, clubId, selectedId, onGenerated, onSettled)
+  // 끊긴 요청을 조회로 확인한 결과. 새 계획의 첫 메시지가 끊긴 경우 화면의 "결과를 확인해 주세요"
+  // 안내를 저장 확인 뒤에 지우는 데 쓴다.
+  const [settled, setSettled] = useState<'saved' | 'not_saved' | null>(null)
+  const [retryText, setRetryText] = useState('')
   const [temporaryDraft, setTemporaryDraft] = useState<Draft | null>(null)
   const temporaryDraftRef = useRef<Draft | null>(null)
   const streamEventId = useRef(selectedId)
@@ -323,12 +361,7 @@ export function usePlanningChat(
       await generation.finish(result)
       if (result.generationResult) {
         setGenerationFailure(result.generationResult)
-        setError(
-          (result.generationResult.status === 'needs_clarification'
-            ? '초안을 만들기 전에 확인할 내용이 있어요. '
-            : '초안을 완성하지 못했어요. ') +
-            (result.generationResult.reason || result.reply || '조건을 확인해 주세요.'),
-        )
+        setError(generationFailureText(result))
       }
       if (!selectedId) {
         // 새 계획: 끝나면 화면이 이 계획 주소로 넘어가며 대화 영역을 새로 그린다.
@@ -404,12 +437,7 @@ export function usePlanningChat(
       if (result.generationResult?.status !== 'generated') {
         setGenerationFailure(result.generationResult)
         await refresh()
-        setError(
-          (result.generationResult?.status === 'needs_clarification'
-            ? '초안을 만들기 전에 확인할 내용이 있어요. '
-            : '초안을 완성하지 못했어요. ') +
-            (result.generationResult?.reason || result.reply || '조건을 확인해 주세요.'),
-        )
+        setError(generationFailureText(result))
       }
     } catch (cause) {
       const unknown = generation.fail(cause)
@@ -435,6 +463,12 @@ export function usePlanningChat(
     facts,
     factFlash: localFlash === undefined ? (flash.data ?? null) : localFlash,
     busy: sending || generating || generation.blocked || !!generation.flow,
+    // 이 화면에서 스트림을 받는 중인가. 결과를 확인하는 중인 행사가 있어도 다른 계획으로는
+    // 옮길 수 있게, 계획 선택 잠금에는 이 값만 쓴다(#342).
+    streaming: sending || generating,
+    settled,
+    // 입력창을 다시 그릴 때 넣을 문장. 저장되지 않은 채팅이면 그 문장을 되돌린다.
+    retryText,
     generationFlow: generation.flow,
     generationFailure,
     reloadGenerated: generation.load,
