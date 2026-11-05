@@ -11,6 +11,7 @@ import { WorkspaceNavigation } from './AppNavigation'
 
 // select의 특별 항목. 소속 id와 겹치지 않는 값이면 된다.
 const NEW_CLUB = '__new_club__'
+const JOIN_CLUB = '__join_club__'
 
 export function AppLayout() {
   const navigate = useNavigate()
@@ -62,9 +63,10 @@ export function AppLayout() {
           disabled={recording}
           value={clubId ?? ''}
           onChange={(event) => {
-            if (event.target.value === NEW_CLUB) {
+            // 소속을 더하는 두 길. 소속 id 와 겹치지 않는 값이라 같은 select 에 둔다.
+            if (event.target.value === NEW_CLUB || event.target.value === JOIN_CLUB) {
               setDrawerOpen(false)
-              navigate('/clubs/new')
+              navigate(event.target.value === NEW_CLUB ? '/clubs/new' : '/clubs/join')
               return
             }
             selectClub(event.target.value)
@@ -76,6 +78,7 @@ export function AppLayout() {
           <option value="" disabled>소속 선택</option>
           {me.clubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}
           <option value={NEW_CLUB}>+ 새 동아리 만들기</option>
+          <option value={JOIN_CLUB}>+ 초대 코드로 참여</option>
         </select>
         {recording && (
           <span id="club-locked" className="mt-2 block text-[12px] font-medium text-[#aebbd0]">
