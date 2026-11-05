@@ -19,6 +19,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 - [AI 오류 타입](docs/errors.md): 오류 분류와 모델 호출 오류 변환 기준
 - [기록 색인·검색 평가 기록](docs/retrieval-evaluation.md): 청킹·임베딩 측정값과 관찰
 - [회의 어시스턴트 측정 기록](docs/meeting-evaluation.md): 판단 모델·Whisper·지연 측정값과 관찰
+- [운영 기능 측정 기록](docs/operations-evaluation.md): 운영 Action 본문 초안의 코드 검사 통과·수동 확인·시간
 - [계획 단계 카탈로그](docs/planning/legacy/step-catalog.md): 계획안의 단계·행동 기준 목록
 - [작업 규칙](AGENTS.md): 요구사항 → Issue → 구현 → PR 협업 절차
 - [이전 기록](docs/migration.md): 모듈 이전 내역과 BE 팀 후속 작업
@@ -64,6 +65,7 @@ be/app/ai/
 │   ├── errors.md        # AI 오류 타입과 변환 기준
 │   ├── retrieval-evaluation.md # 기록 색인·검색 측정 기록
 │   ├── meeting-evaluation.md # 회의 판단·음성 인식·지연 측정 기록
+│   ├── operations-evaluation.md # 운영 Action 본문 초안 측정 기록 (원본: operations-evaluation-results/)
 │   ├── requirements.md  # 사용자 경험 중심 AI 기능 요구사항 초안
 │   ├── planning/        # 새 설계·단계별 명세·코드 안내, legacy/에 이전 자료 보관
 │   ├── migration.md     # 파일 대응표·BE 팀 후속 작업
