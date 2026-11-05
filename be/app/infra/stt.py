@@ -7,6 +7,8 @@ transcript is produced on provider errors.
 """
 
 import io
+import math
+import struct
 import wave
 
 import httpx
@@ -15,6 +17,7 @@ import httpx
 # Whisper's no-speech score is meaningful only for verbose responses. Keep the
 # threshold conservative so a real short utterance is not discarded.
 NO_SPEECH_THRESHOLD = 0.6
+MIN_AUDIO_RMS = 450.0
 
 
 class SttError(Exception):
@@ -53,6 +56,12 @@ class WhisperStt:
         self.transport = transport
 
     async def transcribe(self, wav: bytes, *, language: str) -> str:
+        # Some MLAPI Whisper deployments return HTTP 200 with a canned phrase
+        # for an entirely silent WAV and ignore no_speech/temperature options.
+        # The VAD uses the same floor, so reject a chunk with no voiced-energy
+        # before it can become a fake transcript.
+        if not _contains_voiced_energy(wav):
+            return ""
         try:
             async with httpx.AsyncClient(
                 timeout=self.timeout_seconds, transport=self.transport
@@ -105,6 +114,28 @@ class WhisperStt:
             raise SttError("STT_PROVIDER_ERROR", "음성 인식 서비스 호출에 실패했습니다.") from exc
         except (KeyError, TypeError, ValueError) as exc:
             raise SttError("STT_INVALID_RESPONSE", "음성 인식 응답 형식이 올바르지 않습니다.") from exc
+
+
+def _contains_voiced_energy(wav: bytes) -> bool:
+    """Return whether a 16-bit mono WAV contains a frame above the VAD floor."""
+    try:
+        with wave.open(io.BytesIO(wav), "rb") as source:
+            if source.getnchannels() != 1 or source.getsampwidth() != 2:
+                return True
+            pcm = source.readframes(source.getnframes())
+    except (EOFError, wave.Error):
+        return True
+    if not pcm:
+        return False
+    for offset in range(0, len(pcm), 640):
+        block = pcm[offset : offset + 640]
+        if len(block) < 2:
+            continue
+        samples = struct.unpack(f"<{len(block) // 2}h", block[: len(block) - len(block) % 2])
+        rms = math.sqrt(sum(sample * sample for sample in samples) / len(samples))
+        if rms >= MIN_AUDIO_RMS:
+            return True
+    return False
 
 
 def _is_silence_response(payload: dict, segments: object) -> bool:
