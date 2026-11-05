@@ -1,4 +1,5 @@
 import {
+  apiDelete,
   apiDownload,
   apiGet,
   apiGetEnvelope,
@@ -41,6 +42,11 @@ export function getRecordCategoryCounts(clubId: string) {
   return apiGet<components['schemas']['RecordCategoryCountsOut']>(
     `/records/category-counts?clubId=${encodeURIComponent(clubId)}`,
   )
+}
+
+// 되돌릴 수 없다. 원본 파일과 검색 색인이 함께 사라진다. 204라 돌려줄 본문이 없다.
+export function deleteRecord(recordId: string) {
+  return apiDelete<void>(`/records/${encodeURIComponent(recordId)}`)
 }
 
 export function retryRecordIndex(recordId: string) {
