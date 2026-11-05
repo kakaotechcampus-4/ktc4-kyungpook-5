@@ -48,6 +48,7 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
     await session.commit()
     semantic_status = 'AVAILABLE' if indexed_count else 'NO_INDEXED_RECORDS'
     semantic = ()
+    assessment_chunks = ()
     answer = None
     if indexed_count:
         try:
@@ -55,6 +56,7 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
                 ai.RecordDiscoveryRequest(club_id=club_id, query=query, limit=SEMANTIC_LIMIT),
                 records=PostgresRecordSearch(club_id),
             )
+            assessment_chunks = semantic[:12]
             if semantic:
                 best_score = semantic[0].score
                 semantic = tuple(
@@ -68,7 +70,7 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
                     from datetime import date
                     assessed = await assess_chunks(
                         RecordSearchRequest(club_id=club_id, query=query, today=date.today(), limit=SEMANTIC_LIMIT),
-                        semantic,
+                        assessment_chunks,
                     )
                     if assessed.facts:
                         seen: set[str] = set()
