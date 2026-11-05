@@ -47,5 +47,10 @@ def test_금지_표현_대괄호_제목_이모지_과다를_잡는다(content, k
     assert judge(request("recruit_full"), content)[key] is False
 
 
+def test_발송_메시지는_이름_자리표시로_시작해도_제목_줄_위반이_아니다():
+    checks = judge(request("fees_missing"), "[이름]님, 겨울 MT 참가비 입금 안내드립니다.\n[계좌]로 입금 부탁드립니다.")
+    assert checks["title_not_bracketed"] is True
+
+
 def test_본문이_없으면_모두_실패로_둔다():
     assert not any(judge(request("recruit_full"), None).values())

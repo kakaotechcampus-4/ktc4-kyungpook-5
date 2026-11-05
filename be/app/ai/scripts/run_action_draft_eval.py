@@ -9,7 +9,8 @@
   placeholder 비어 있는 값을 [ ]로 비웠는지. 공지(NOTICE)에서 장소가 없으면 "장소", 기한이 없으면
               "마감·기한·날짜"가 들어간 자리표시가 있어야 한다. 해당 없는 사례는 null
   forbidden   "발송했", "확정됐" 같은 완료 단정 표현이 없는지
-  title       첫 줄이 대괄호로 시작하지 않고, 행사명이 unknowns에 들어가지 않았는지
+  title       공지(NOTICE)의 첫 줄(제목 줄)이 대괄호로 시작하지 않고, 행사명이 unknowns에 들어가지 않았는지.
+              발송 메시지(EXTERNAL_SEND)는 제목 줄이 없고 "[이름]님"으로 시작하므로 행사명만 본다
   emoji       이모지가 2개 이하인지
 운영진이 조금만 고쳐 바로 올릴 수 있는지(수동 확인)는 drafts-<label>.md를 읽고 평가 문서에 적는다.
 """
@@ -53,10 +54,11 @@ def judge(request: ActionDraftRequest, content: str | None) -> dict:
         any(word in name for name in unknowns for word in words) for words in wants)
 
     first_line = next((line.strip() for line in content.splitlines() if line.strip()), "")
+    bracketed_title = is_notice and first_line.startswith("[")
     return {
         "placeholder": placeholder,
         "forbidden_absent": not any(word in content for word in FORBIDDEN),
-        "title_not_bracketed": not first_line.startswith("[") and request.event.title not in unknowns,
+        "title_not_bracketed": not bracketed_title and request.event.title not in unknowns,
         "emoji_ok": len(_EMOJI.findall(content)) <= 2,
     }
 
