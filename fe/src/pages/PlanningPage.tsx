@@ -107,7 +107,6 @@ function DemoPlanningPage() {
                 if (demo) setGenerating(true)
               }}
             />
-            <PlanningRecordReferences entries={DEMO_RECORD_HISTORY} preview />
             <div className="space-y-3 rounded-xl border border-line bg-card p-5">
               <Button className="w-full" onClick={() => setGenerating(true)}>
                 다음: 흐름 만들기
@@ -116,6 +115,7 @@ function DemoPlanningPage() {
                 일정과 장소는 다음 단계에서 정해도 괜찮아요.
               </p>
             </div>
+            <PlanningRecordReferences entries={DEMO_RECORD_HISTORY} preview />
           </div>
         </div>
       ) : (
