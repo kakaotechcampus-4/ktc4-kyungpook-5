@@ -9,6 +9,8 @@ from app.models.records import Record
 from app.services.record_search_port import PostgresRecordSearch
 
 SEMANTIC_LIMIT = 50
+SEMANTIC_MIN_SCORE = 0.20
+SEMANTIC_MAX_GAP = 0.05
 LEXICAL_ANSWER_LIMIT = 20
 LEXICAL_BLOCK_MAX_CHARS = 4000
 
@@ -53,6 +55,12 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
                 ai.RecordDiscoveryRequest(club_id=club_id, query=query, limit=SEMANTIC_LIMIT),
                 records=PostgresRecordSearch(club_id),
             )
+            if semantic:
+                best_score = semantic[0].score
+                semantic = tuple(
+                    chunk for chunk in semantic
+                    if chunk.score >= SEMANTIC_MIN_SCORE and best_score - chunk.score <= SEMANTIC_MAX_GAP
+                )
             if semantic:
                 try:
                     from app.ai.features.retrieval.nodes import assess_chunks
