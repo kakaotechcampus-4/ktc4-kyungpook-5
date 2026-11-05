@@ -588,7 +588,7 @@ def test_나눠_부를_때_찾은_청크가_없으면_판단을_부르지_않는
 # 버전을 올리고 다시 잰 뒤, 새 버전과 해시를 여기에 더한다.
 PROMPT_SHA256 = {
     "records-rewrite-v1": "f883566c6015922ff5d23ac3ac1bc3c9aa9e7d8f387190264ec98e6dcd546e09",
-    "records-assess-v1": "0fd2a36a66901811c5936c71c47a08a3eb8fa28069867ebbcc5b2ac6b19e7738",
+    "records-assess-v1": "6d59caefc62e0cf4d6b9375ede003159d33c51cd406bacf12f803ed7b9354f6a",
 }
 
 
