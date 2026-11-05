@@ -485,7 +485,7 @@ await store.commit_planning_result(
 | 복원 실패/조건 불일치 | PlanningStateError 또는 입력 ValidationError | 모델 재시도로 해결하려 하지 말고 상태 확인. 자동 초기화 금지 |
 | 이력 한도 초과 | PlanningStateError(code=history_limit) | 결과를 채택하지 않음. 요약/이력 정책 연결 전 제한 안내 |
 | 저장 직전 revision 충돌 | BE의 충돌 판정 | 오래된 AI 결과를 적용하지 않음 |
-| 저장 성공 후 응답 전달 실패 | BE의 완료 요청 기록 | 재전송에서 기존 결과 반환. 모델 재실행 방지 |
+| 저장 성공 후 응답 전달 실패 | BE의 완료 요청 기록 | 요청 키로 결과만 조회(`GET /events/{id}/plan/requests/{key}`, #342). 모델 재실행 방지 |
 
 PlanningStateError는 ValueError 계열이다. 현재 API에서는 상태 JSON 복원 시 직접 발생하고, Pydantic 요청 검증 내부에서는 ValidationError로 감싸질 수 있다. 사용자에게 예외 문자열 전체를 보여주지 않고 실패 유형별 안전한 문구로 변환한다. HTTP 상태 코드와 사용자 문구는 BE/FE가 합의한다.
 

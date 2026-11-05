@@ -499,6 +499,18 @@ class PlanViewOut(CamelModel):
     base_revision: int
 
 
+class PlanRequestOut(CamelModel):
+    """요청 키 하나의 처리 결과 (#342). 응답 도중 연결이 끊긴 FE가 조회한다.
+
+    completed: 저장까지 끝남. result는 그 요청이 받았어야 할 PlanViewOut 그대로다.
+    processing: 아직 처리 중. 잠시 뒤 다시 조회한다.
+    not_saved: 저장되지 않았다. 같은 내용을 새 요청으로 다시 보내도 된다.
+    """
+
+    status: Literal["completed", "processing", "not_saved"]
+    result: PlanViewOut | None = None
+
+
 class ExcludedStepOut(CamelModel):
     code: StepCode
     # 카탈로그 고정 이름 (#198). 그 전에 저장한 계획에는 없어 null이다.
