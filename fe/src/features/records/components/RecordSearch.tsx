@@ -115,6 +115,12 @@ export function RecordSearch({ clubId, userId }: { clubId: string; userId: strin
           <p role="status" className="text-caption text-ink2">
             ‘{query}’ 검색 결과 {meta?.totalCount ?? 0}건
           </p>
+          {data.answer && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-4">
+              <p className="text-caption font-semibold text-blue-800">AI가 자료를 정리했어요</p>
+              <p className="mt-2 whitespace-pre-wrap text-[15px] leading-7 text-ink2">{data.answer}</p>
+            </div>
+          )}
           {data.semanticStatus === 'UNAVAILABLE' && (
             <p role="alert" className="text-caption text-failed">
               AI 추천을 불러오지 못해 파일명과 본문 일치 결과만 표시해요. 다시 검색해 주세요.

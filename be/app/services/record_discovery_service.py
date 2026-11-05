@@ -46,12 +46,26 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
     await session.commit()
     semantic_status = 'AVAILABLE' if indexed_count else 'NO_INDEXED_RECORDS'
     semantic = ()
+    answer = None
     if indexed_count:
         try:
             semantic = await ai.search_related_records(
                 ai.RecordDiscoveryRequest(club_id=club_id, query=query, limit=SEMANTIC_LIMIT),
                 records=PostgresRecordSearch(club_id),
             )
+            if semantic:
+                try:
+                    from app.ai.features.retrieval.nodes import assess_chunks
+                    from app.ai.features.retrieval.schemas import RecordSearchRequest
+                    from datetime import date
+                    assessed = await assess_chunks(
+                        RecordSearchRequest(club_id=club_id, query=query, today=date.today(), limit=SEMANTIC_LIMIT),
+                        semantic,
+                    )
+                    if assessed.facts:
+                        answer = ' '.join(f.content for f in assessed.facts[:4])
+                except ai.AIError:
+                    pass
         except ai.AIError:
             semantic_status = 'UNAVAILABLE'
     if chunks_out is not None:
@@ -114,14 +128,14 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
             filename_only_out.append(record.id)
         items.append({'record': record, 'match_types': types, 'excerpts': excerpts,
                       'semantic_score': match.score if match is not None and 'SEMANTIC' in types else None})
-    # Exact filename/content matches first; stable tie breaks for the same snapshot.
-    items.sort(key=lambda item: (0 if 'FILENAME' in item['match_types'] else 1 if 'CONTENT' in item['match_types'] else 2,
-                                 -(item['semantic_score'] if item['semantic_score'] is not None else -2),
+    # 의미 관련도를 먼저 보여주고, 같은 관련도 안에서 키워드 일치를 앞세운다.
+    items.sort(key=lambda item: (-(item['semantic_score'] if item['semantic_score'] is not None else -2),
+                                 0 if 'FILENAME' in item['match_types'] else 1 if 'CONTENT' in item['match_types'] else 2,
                                  item['record'].file_name.casefold(), item['record'].id))
     total = len(items)
     selected = items[(page - 1) * size:page * size]
     from app.schemas.records import RecordSearchItem
-    return {'items': [RecordSearchItem.model_validate({
+    return {'answer': answer, 'items': [RecordSearchItem.model_validate({
                 **{field: getattr(item['record'], field) for field in RecordSearchItem.model_fields if hasattr(item['record'], field)},
                 'match_types': item['match_types'], 'excerpts': item['excerpts'], 'semantic_score': item['semantic_score'],
             }) for item in selected],

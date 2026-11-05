@@ -3557,6 +3557,8 @@ export interface components {
         RecordParseStatus: "QUEUED" | "PARSING" | "NEEDS_REVIEW" | "COMPLETED" | "INDEXED" | "FAILED";
         /** RecordSearchData */
         RecordSearchData: {
+            /** AI가 검색 근거를 읽고 정리한 답변 */
+            answer?: string | null;
             /** Items */
             items: components["schemas"]["RecordSearchItem"][];
             /**
