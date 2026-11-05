@@ -98,23 +98,14 @@ function DemoPlanningPage() {
         <div className="flex flex-col items-start gap-5 lg:flex-row">
           <PlanChat messages={messages} onSend={send} demo={demo} busy={false} error="" />
           <div className="flex w-full flex-col gap-4 lg:w-[340px] lg:shrink-0">
-            <PlanFacts
-              facts={DEMO_FACTS}
-              readiness={demo ? undefined : { canGenerate: false, reasons: [] }}
-              hideNext
-              unavailable={!demo}
-              onNext={() => {
-                if (demo) setGenerating(true)
-              }}
-            />
-            <div className="space-y-3 rounded-xl border border-line bg-card p-5">
-              <Button className="w-full" onClick={() => setGenerating(true)}>
-                다음: 흐름 만들기
-              </Button>
-              <p className="text-[12px] leading-5 text-mute">
-                일정과 장소는 다음 단계에서 정해도 괜찮아요.
+            <PlanFacts facts={DEMO_FACTS}>
+              <p className="text-caption leading-relaxed text-ink2">
+                예시 조건이에요. 초안을 만든 뒤 단계와 일정을 확인할 수 있어요.
               </p>
-            </div>
+              <Button className="min-h-11 w-full" onClick={() => setGenerating(true)}>
+                이 조건으로 초안 만들기
+              </Button>
+            </PlanFacts>
             <PlanningRecordReferences entries={DEMO_RECORD_HISTORY} preview />
           </div>
         </div>
