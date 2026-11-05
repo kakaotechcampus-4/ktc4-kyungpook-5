@@ -5,6 +5,7 @@ import { useAuthStore } from '@/shared/auth/store'
 import { useRecordingLock } from '@/shared/lib/recordingLock'
 import { Avatar } from '@/shared/ui/Avatar'
 import { Button } from '@/shared/ui/Button'
+import { DemoNotice } from '@/shared/ui/DemoNotice'
 import { Modal } from '@/shared/ui/Modal'
 import { Tori } from '@/shared/ui/Tori'
 import { WorkspaceNavigation } from './AppNavigation'
@@ -157,6 +158,7 @@ export function AppLayout() {
           tabIndex={-1}
           className="min-w-0 flex-1 bg-white px-4 pt-16 pb-11 outline-none sm:px-7 lg:px-10 lg:pt-7"
         >
+          <DemoNotice />
           <Outlet />
         </main>
       </div>
