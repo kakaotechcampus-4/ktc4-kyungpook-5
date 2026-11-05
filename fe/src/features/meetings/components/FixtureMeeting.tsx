@@ -7,6 +7,7 @@ import { MeetingEnded } from './MeetingEnded'
 import { CandidatesModal } from './Suggestions'
 import { EndMeetingModal } from './MeetingConfirm'
 import { fixtureDecisions, fixtureMeeting, fixtureSuggestion, fixtureTranscripts } from '../fixture'
+import { meetingProcessingSteps } from '../timeline'
 
 // 개발용: 서버와 마이크 없이 회의 중 화면 모양만 본다.
 export function FixtureMeeting() {
@@ -26,6 +27,19 @@ export function FixtureMeeting() {
           onRetry={() => undefined}
           onOpenCandidates={() => setCandidatesOpen(true)}
           onOpenRecord={() => undefined}
+          processingSteps={meetingProcessingSteps({
+            transcriptCount: 4,
+            transcriptPending: false,
+            transcriptError: false,
+            answerCount: 2,
+            answerPending: false,
+            answerError: false,
+            candidateCount: 1,
+            candidateSavedCount: 0,
+            candidatePending: false,
+            candidateError: false,
+            extractionError: false,
+          })}
         />
         <CandidatesModal
           open={candidatesOpen}

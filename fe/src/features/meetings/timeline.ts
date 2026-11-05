@@ -140,6 +140,64 @@ export function extractionFailed(decisions: Decision[]) {
   )
 }
 
+export type MeetingProcessingStep = {
+  key: 'transcript' | 'answers' | 'candidates' | 'candidate-save'
+  label: string
+  state: 'done' | 'waiting' | 'failed' | 'empty'
+  detail: string
+}
+
+export function meetingProcessingSteps(input: {
+  transcriptCount: number
+  transcriptPending: boolean
+  transcriptError: boolean
+  answerCount: number
+  answerPending: boolean
+  answerError: boolean
+  candidateCount: number
+  candidateSavedCount: number
+  candidatePending: boolean
+  candidateError: boolean
+  extractionError: boolean
+}): MeetingProcessingStep[] {
+  const transcript = input.transcriptPending
+    ? { state: 'waiting' as const, detail: '저장된 전사를 확인하는 중이에요.' }
+    : input.transcriptError
+      ? { state: 'failed' as const, detail: '전사를 불러오지 못했어요. 다시 확인해 주세요.' }
+      : input.transcriptCount > 0
+        ? { state: 'done' as const, detail: `확정 전사 ${input.transcriptCount}건` }
+        : { state: 'empty' as const, detail: '저장된 발화가 없어요.' }
+  const answers = input.answerPending
+    ? { state: 'waiting' as const, detail: '자료 답변을 확인하는 중이에요.' }
+    : input.answerError
+      ? { state: 'failed' as const, detail: '일부 자료 답변을 처리하지 못했어요.' }
+      : input.answerCount > 0
+        ? { state: 'done' as const, detail: `자료 답변 ${input.answerCount}건` }
+        : { state: 'empty' as const, detail: '자료를 묻거나 답한 내용이 없어요.' }
+  const candidates = input.candidatePending
+    ? { state: 'waiting' as const, detail: '할 일 후보를 확인하는 중이에요.' }
+    : input.candidateError || input.extractionError
+      ? { state: 'failed' as const, detail: '후보를 불러오거나 만드는 데 실패했어요.' }
+      : input.candidateCount > 0
+        ? { state: 'done' as const, detail: `확인할 후보 ${input.candidateCount}건` }
+        : { state: 'empty' as const, detail: '추출된 후보가 없어요.' }
+  const candidateSave =
+    input.candidateCount === 0
+      ? { state: 'empty' as const, detail: '저장할 후보가 없어요.' }
+      : input.candidateSavedCount >= input.candidateCount
+        ? { state: 'done' as const, detail: `후보 ${input.candidateSavedCount}건 저장됨` }
+        : {
+            state: 'waiting' as const,
+            detail: `${input.candidateSavedCount}/${input.candidateCount}건 저장됨 · 확인 필요`,
+          }
+  return [
+    { key: 'transcript', label: '음성 전사', ...transcript },
+    { key: 'answers', label: '자료 답변', ...answers },
+    { key: 'candidates', label: '후보 추출', ...candidates },
+    { key: 'candidate-save', label: '후보 저장', ...candidateSave },
+  ]
+}
+
 export type MeetingView =
   | 'connecting'
   | 'recording'

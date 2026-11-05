@@ -4,11 +4,34 @@ import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 import { Tori } from '@/shared/ui/Tori'
 import { candidateMeta } from '../confirmed'
+import type { MeetingProcessingStep } from '../timeline'
 import type { Suggestion } from '../types'
 import type { MeetingReview } from '../types'
 import { MeetingReviewPanel } from './MeetingReviewPanel'
 
 const SHOWN = 3
+
+function ProcessingStatus({ steps }: { steps: MeetingProcessingStep[] }) {
+  const labels = { done: '완료', waiting: '확인 중', failed: '실패', empty: '없음' } as const
+  const tones = { done: 'done', waiting: 'pending', failed: 'failed', empty: 'neutral' } as const
+  return (
+    <div className="rounded-[12px] border border-line bg-bg p-4" aria-label="회의 처리 상태">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-bold">처리 상태</h2>
+        <span className="text-caption text-mute">단계별로 따로 확인해요</span>
+      </div>
+      <ul className="mt-3 divide-y divide-line">
+        {steps.map((step) => (
+          <li key={step.key} className="flex flex-wrap items-center gap-2 py-2 first:pt-0 last:pb-0">
+            <span className="min-w-[88px] font-semibold">{step.label}</span>
+            <Chip size="sm" tone={tones[step.state]}>{labels[step.state]}</Chip>
+            <span className="text-caption text-ink2">{step.detail}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
 export function MeetingEnded({
   summary,
@@ -27,6 +50,7 @@ export function MeetingEnded({
   onSaveReviewCandidates,
   reviewBusy,
   reviewError,
+  processingSteps,
 }: {
   summary: string
   suggestions: Suggestion[]
@@ -44,6 +68,7 @@ export function MeetingEnded({
   onSaveReviewCandidates?: (version: number, requestId: string, candidates: Array<{ title: string; description: string | null; assigneeMemberId: string | null; dueDate: string | null; evidenceSegmentIds: string[] }>) => Promise<unknown>
   reviewBusy?: boolean
   reviewError?: unknown
+  processingSteps: MeetingProcessingStep[]
 }) {
   return (
     <div className="mx-auto max-w-[1040px] space-y-6">
@@ -122,6 +147,9 @@ export function MeetingEnded({
         <Link to="/meetings" className="mt-4 text-caption font-medium text-blue-700">
           새 회의 시작하기 ›
         </Link>
+      </Card>
+      <Card className="mx-auto max-w-[560px] p-5 text-left">
+        <ProcessingStatus steps={processingSteps} />
       </Card>
       {onStartReview && onSubmitReview && onSaveReviewNames && onCreateReviewDraft && onSaveReviewCandidates && (
         <MeetingReviewPanel
