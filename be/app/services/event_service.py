@@ -189,7 +189,7 @@ async def list_events(
     today = today_kst()
     result = []
     for event in events:
-        states = event_rules.step_states(event.steps)
+        states = event_rules.step_states(event.steps, event_status=event.status)
         current = _current_step(event.steps, states)
         result.append(
             {
@@ -216,7 +216,9 @@ async def _ordered_steps(session: AsyncSession, event_id: str) -> list[Step]:
 async def get_event_detail(session: AsyncSession, *, event: Event) -> dict:
     """L2 헤더. event는 라우터가 권한 확인하며 이미 읽어 둔 행이다."""
     steps = await _ordered_steps(session, event.id)
-    current = _current_step(steps, event_rules.step_states(steps))
+    current = _current_step(
+        steps, event_rules.step_states(steps, event_status=event.status)
+    )
     return {
         **_event_base(event, today_kst()),
         "current_step": (
@@ -227,8 +229,13 @@ async def get_event_detail(session: AsyncSession, *, event: Event) -> dict:
     }
 
 
-async def list_steps(session: AsyncSession, *, event_id: str) -> list[dict]:
-    """행사의 단계를 step_order 순으로, 단계마다 한 일·남은 일을 붙여 돌려준다."""
+async def list_steps(
+    session: AsyncSession, *, event_id: str, event_status: EventStatus
+) -> list[dict]:
+    """행사의 단계를 step_order 순으로, 단계마다 한 일·남은 일을 붙여 돌려준다.
+
+    계획 중 행사는 모든 단계가 TODO다(#336).
+    """
     steps = await _ordered_steps(session, event_id)
     actions = await session.scalars(
         select(Action)
@@ -239,7 +246,7 @@ async def list_steps(session: AsyncSession, *, event_id: str) -> list[dict]:
     for action in actions:
         actions_by_step[action.step_id].append(action)
 
-    states = event_rules.step_states(steps)
+    states = event_rules.step_states(steps, event_status=event_status)
     result = []
     for step in steps:
         step_actions = actions_by_step[step.id]

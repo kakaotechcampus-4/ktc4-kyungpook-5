@@ -203,6 +203,64 @@ async def test_단계가_없는_행사는_진행_정보가_비어_있다(
     assert card["pendingApprovalCount"] == 0
 
 
+async def test_계획_중_행사는_목록_상세_단계_어디에도_현재_단계가_없다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id, status=EventStatus.PLANNING)
+    await add_step(event_id, 10, name="사전 수요 조사")
+    await add_step(event_id, 20, name="참가 신청")
+
+    card = client.get(EVENTS_URL, headers=headers, params={"clubId": club_id}).json()[
+        "data"
+    ][0]
+    detail = client.get(f"{EVENTS_URL}/{event_id}", headers=headers).json()["data"]
+    steps = client.get(f"{EVENTS_URL}/{event_id}/steps", headers=headers).json()["data"]
+
+    assert card["currentStepName"] is None
+    assert card["stepProgress"] == [
+        {"stepOrder": 10, "state": "TODO"},
+        {"stepOrder": 20, "state": "TODO"},
+    ]
+    assert detail["currentStep"] is None
+    assert [s["state"] for s in steps] == ["TODO", "TODO"]
+
+
+async def test_목록은_행사마다_자기_상태로_단계를_계산한다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    planning = await add_event(club_id, status=EventStatus.PLANNING, title="계획 중")
+    await add_step(planning, 10, name="계획 단계")
+    operating = await add_event(club_id, status=EventStatus.ON_GOING, title="운영 중")
+    await add_step(operating, 10, name="운영 단계")
+
+    cards = client.get(EVENTS_URL, headers=headers, params={"clubId": club_id}).json()["data"]
+    by_title = {c["title"]: c for c in cards}
+
+    assert by_title["계획 중"]["currentStepName"] is None
+    assert by_title["운영 중"]["currentStepName"] == "운영 단계"
+
+
+async def test_계획_중_행사는_시작하면_첫_단계가_현재_단계가_된다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(
+        club_id, status=EventStatus.PLANNING, start_date=today_kst() + timedelta(days=30)
+    )
+    first = await add_step(event_id, 10, name="사전 수요 조사")
+    await add_step(event_id, 20)
+
+    before = client.get(f"{EVENTS_URL}/{event_id}", headers=headers).json()["data"]
+    started = client.post(f"{EVENTS_URL}/{event_id}/start", headers=headers, json={})
+    after = client.get(f"{EVENTS_URL}/{event_id}", headers=headers).json()["data"]
+
+    assert before["currentStep"] is None
+    assert started.status_code == 200, started.text
+    assert after["currentStep"] == {"id": first, "stepOrder": 10, "name": "사전 수요 조사"}
+
+
 async def test_인원은_컬럼명이_아닌_headcount로_나간다(
     client: TestClient, app_db: None
 ) -> None:
