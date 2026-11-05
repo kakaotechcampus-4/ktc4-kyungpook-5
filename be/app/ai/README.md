@@ -1,6 +1,6 @@
 # 운영해 · AI 모듈
 
-> **현재 행사계획:** `app.ai.chat_planning`과 `generate_planning_preview`가 조건 대화와 최초 계획 생성을 처리합니다. 제품 BE는 동아리 범위의 실제 검색 port를 주입하고, 사실·출처를 HTTP로 전달하며 마지막 조회도 DB에서 복원합니다(#235, #236). 제품 출처 카드의 FE 연결은 후속입니다. [P1 전달 안내](docs/planning/p1-handoff.md) → [공개 계약](docs/planning/p1-public-contract.md) → [코드 따라가기](docs/planning/walkthrough.md) 순서로 읽습니다.
+> **현재 행사계획:** `app.ai.chat_planning`과 `generate_planning_preview`가 조건 대화와 최초 계획 생성을 처리합니다. 제품 BE는 동아리 범위의 실제 검색 port를 주입하고, 사실·출처를 HTTP로 전달하며 마지막 조회도 DB에서 복원합니다(#235, #236). 제품 FE는 현재 조건과 구분된 참고 카드에서 누적 조회·출처·원본 다운로드를 제공합니다. 격리 DB의 제품 경로를 합성 파일과 고정 모델·임베딩 응답으로 검증했으며, 실제 모델·일반 검색 품질·운영 배포 준비 완료를 뜻하지 않습니다. [P1 전달 안내](docs/planning/p1-handoff.md) → [공개 계약](docs/planning/p1-public-contract.md) → [코드 따라가기](docs/planning/walkthrough.md) 순서로 읽습니다.
 
 AI 팀이 담당하는 BE 내부 모듈입니다. 
 행사 계획·수정, 과거 기록 검색, 운영 중 변경에 대한 대응안 제안, 회의 중 기록 조회를 담당합니다.
@@ -31,7 +31,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 | 최초 계획 생성 | 채팅의 생성 Tool과 버튼 함수가 `generation/`의 공통 생성 Graph 사용 |
 | 공개 경계 | 루트 `contracts.py`, `facade.py`와 `public_workflow.py`에 구현 |
 | 상태 이어가기 | `state_codec.py`가 대화와 Tool 이력, 권유, 마지막 초안을 JSON으로 변환하고 복원 |
-| 제품 연결 | BE의 권한 검사·실제 검색 port·DB 저장·중복/버전 검사·검색 상세 HTTP/복원 연결. 제품 출처 카드는 FE 후속 |
+| 제품 연결 | BE의 권한 검사·실제 검색 port·DB 저장·중복/버전 검사·검색 상세 HTTP/복원과 누적 조회 카드·인증 원본 다운로드 연결. 로컬 격리 환경 검증 범위는 [인계 안내 §10](docs/planning/p1-handoff.md#10-지금-어디까지-확인했나요) 참고 |
 | P2 수정 후 AI 검토 | `app.ai.review_plan_edit`가 수정 내역을 검토해 걱정되는 점을 돌려줌([#177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177)). BE·FE 연결 완료, 자동 보완안 적용은 미구현 |
 | 운영 Agent | 전체 신호 대기와 운영 흐름은 설계 단계 |
 

@@ -275,11 +275,15 @@ asyncio.run(main())
 제품 연결(#235, #236)은 `services/planning_service.py:chat`에서 `app.ai.chat_planning`
 공개 함수에 동아리 범위의 `PostgresRecordSearch`를 주입한다. 아래 검색 경로는 그대로
 사용하고, `_view_out`이 구조화 사실과 출처까지 제품 DTO로 옮긴다. `_save_turn`은
-조건·답변·Agent 상태와 함께 `Conversation.last_record_lookup`을 저장한다.
-GET 계획 화면의 `lastRecordLookup`은 이 스냅샷을 읽으며 AI를 호출하지 않는다.
-이번 턴 검색이 없으면 기존 스냅샷을 유지하고, 새 검색이 실패하거나 근거를 못 찾으면
-그 새 상태로 바꾼다. AI 이력은 여전히 다음 대화·버튼 생성용이고 화면 카드 복원과
-별개다. 제품 출처 카드의 FE 구현은 아직 후속이며 아래 사진은 독립 테스트 UI다.
+조건·답변·Agent 상태와 같은 트랜잭션에서 `Conversation.last_record_lookup`을 저장하고
+`record_lookup_history`에 `{revision, lookup}`을 추가한다. GET 계획 화면의
+`lastRecordLookup`·`recordLookupHistory`는 저장 스냅샷을 읽으며 AI를 호출하지 않는다.
+이번 턴 검색이 없으면 기존 최근 조회와 이력을 유지한다. 새 실패·없음은 최신 상태로
+표시하며 이전 성공은 이전 조회로 보관한다. FE의 `planningRecordHistory()`는 revision을
+확인해 늦은 응답과 중복을 막고 `PlanningRecordReferences`는 현재 조건 아래에서 사실·출처·
+이전 조회·인증 원본 다운로드를 표시한다. AI 이력은 다음 대화·버튼 생성용이고 카드 복원과
+별개다. 현재 제품 검증 범위는 [인계 안내 §10](p1-handoff.md#10-지금-어디까지-확인했나요)을
+따르며 아래 기존 사진과 실제 모델 예시는 독립 테스트 UI의 당시 기록이다.
 
 현재 참가비 25,000원에서 “2025년 봄 MT 참가비는 얼마였어?”라고 묻는 예시다. 실제 샘플 검색에서는 45,000원이 나왔다.
 
