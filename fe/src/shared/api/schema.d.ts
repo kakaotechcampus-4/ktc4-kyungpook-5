@@ -2529,7 +2529,7 @@ export interface components {
         };
         /**
          * EventDetailOut
-         * @description L2 헤더. 목록 카드와 달리 현재 단계를 id까지 내려 Step 모달을 바로 연다.
+         * @description L2 헤더. 목록 카드와 달리 현재 단계를 id까지 내려 Step 모달을 바로 연다. 계획 중(PLANNING)에는 currentStep이 null이다(#336).
          */
         EventDetailOut: {
             /** Id */
@@ -2559,7 +2559,10 @@ export interface components {
             data: components["schemas"]["EventOut"][];
             meta: components["schemas"]["PageMeta"];
         };
-        /** EventOut */
+        /**
+         * EventOut
+         * @description L1 행사 카드. 계획 중(PLANNING)에는 단계 진행 전이라 currentStepName이 null이고 stepProgress가 모두 TODO다(#336).
+         */
         EventOut: {
             /** Id */
             id: string;
@@ -3764,7 +3767,10 @@ export interface components {
             /** Meta */
             meta?: null;
         };
-        /** StepOut */
+        /**
+         * StepOut
+         * @description L2 단계. state는 운영 시작 뒤에만 CURRENT가 생긴다. 계획 중(PLANNING)에는 모두 TODO다(#336).
+         */
         StepOut: {
             /** Id */
             id: string;

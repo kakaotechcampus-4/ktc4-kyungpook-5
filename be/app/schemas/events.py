@@ -155,6 +155,8 @@ class StepProgressOut(CamelModel):
 
 
 class EventOut(CamelModel):
+    """L1 행사 카드. 계획 중(PLANNING)에는 단계 진행 전이라 currentStepName이 null이고 stepProgress가 모두 TODO다(#336)."""
+
     id: str
     title: str
     status: EventStatus
@@ -204,7 +206,7 @@ class CurrentStepOut(CamelModel):
 
 
 class EventDetailOut(CamelModel):
-    """L2 헤더. 목록 카드와 달리 현재 단계를 id까지 내려 Step 모달을 바로 연다."""
+    """L2 헤더. 목록 카드와 달리 현재 단계를 id까지 내려 Step 모달을 바로 연다. 계획 중(PLANNING)에는 currentStep이 null이다(#336)."""
 
     id: str
     title: str
@@ -234,6 +236,8 @@ class RemainingActionOut(CamelModel):
 
 
 class StepOut(CamelModel):
+    """L2 단계. state는 운영 시작 뒤에만 CURRENT가 생긴다. 계획 중(PLANNING)에는 모두 TODO다(#336)."""
+
     id: str
     step_order: int
     # P2는 단계를 묶음(phase)별로 나눠 그리고, 카탈로그 코드로 단계를 구분한다.
