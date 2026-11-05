@@ -71,7 +71,15 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
                         semantic,
                     )
                     if assessed.facts:
-                        answer = ' '.join(f.content for f in assessed.facts[:4])
+                        seen: set[str] = set()
+                        facts = []
+                        for fact in assessed.facts:
+                            content = ' '.join(fact.content.split())
+                            if content and content not in seen:
+                                seen.add(content)
+                                facts.append(content)
+                        if facts:
+                            answer = '\n'.join(f'• {fact}' for fact in facts[:5])
                 except ai.AIError:
                     pass
         except ai.AIError:
