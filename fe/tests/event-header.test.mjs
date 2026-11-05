@@ -35,7 +35,7 @@ function render(status) {
 
 test('planning offers actionable plan edit and cancellation', () => {
   const html = render('PLANNING')
-  assert.match(html, /<button[^>]*>단계 수정<\/button>/)
+  assert.match(html, /<button[^>]*>계획 이어보기<\/button>/)
   assert.match(html, /<button[^>]*>행사 취소<\/button>/)
   const cancelButton = html.match(/<button[^>]*>행사 취소<\/button>/)?.[0]
   assert.doesNotMatch(cancelButton, /\sdisabled(?:\s|=|>)/)
@@ -44,7 +44,7 @@ test('planning offers actionable plan edit and cancellation', () => {
 test('in-progress events can cancel but cannot edit the planning structure', () => {
   const html = render('ON_GOING')
   assert.match(html, />행사 취소<\/button>/)
-  assert.doesNotMatch(html, />단계 수정<\/button>/)
+  assert.doesNotMatch(html, />계획 이어보기<\/button>/)
 })
 
 test('cancelled states lead back to cleanup rather than starting cancellation twice', () => {

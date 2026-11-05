@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import {
   usePlanningChat,
   usePlanningDrafts,
@@ -7,6 +7,10 @@ import {
   useReviewInFlight,
   useStartEvent,
 } from '@/features/planning/hooks'
+import { useEventDetail } from '@/features/events/hooks'
+import { planningStage } from '../reviewModel'
+import { PlanReviewScreen } from './PlanReviewScreen'
+import { PlanStageNav } from './PlanStageNav'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
 import { PlanningRecordReferences } from '@/features/planning/components/PlanningRecordReferences'
@@ -85,7 +89,12 @@ export function LivePlanning() {
             key={`${userId}:${clubId}:${eventId ?? 'new'}`}
             clubId={clubId}
             eventId={eventId}
-            onCreated={select}
+            onCreated={(id, text) =>
+              setParams(
+                { eventId: id, stage: 'conditions' },
+                { state: text ? { failedText: text } : null },
+              )
+            }
             failedText={failedText}
             userId={userId}
           />
@@ -109,29 +118,82 @@ function Conversation({
   userId: string | undefined
 }) {
   const live = usePlanningChat(clubId, eventId, userId, onCreated)
+  const [params] = useSearchParams()
+  const event = useEventDetail(eventId ?? undefined)
   const [showFailure, setShowFailure] = useState(Boolean(failedText))
-  if (eventId && live.snapshot.isLoading)
+  if (eventId && (live.snapshot.isLoading || event.isPending))
     return (
       <Card className="p-5" role="status">
         저장된 계획을 불러오는 중이에요.
       </Card>
     )
-  if (eventId && live.snapshot.isError)
+  if (eventId && (live.snapshot.isError || event.isError))
     return (
       <Card className="p-5" role="alert">
         저장된 계획을 불러오지 못했어요. 권한과 연결을 확인해 주세요.{' '}
-        <button className="underline" onClick={() => void live.snapshot.refetch()}>
+        <button
+          className="underline"
+          onClick={() => {
+            void live.snapshot.refetch()
+            void event.refetch()
+          }}
+        >
           다시 시도
         </button>
       </Card>
     )
   const screen = live.snapshot.data?.screen
-  // 단계 수정 화면에서 저장한 구성이 있으면 그걸 반영해 보여준다(#213 전까지 로컬).
+  // P2와 편집기는 같은 행사에 저장된 최신 단계를 사용한다.
   const steps = live.snapshot.data?.steps ?? []
+  const stage = params.get('stage')
+  if (eventId && event.data && event.data.status !== 'PLANNING') {
+    return <Navigate replace to={`/events/${encodeURIComponent(eventId)}`} />
+  }
+  // 주소를 처음 해석할 때만 기본 화면을 정한다. 생성 완료 자동 전환은 #326에서 잇는다.
+  if (
+    eventId &&
+    screen &&
+    ((stage !== 'review' && stage !== 'conditions') || (stage === 'review' && !steps.length))
+  ) {
+    return (
+      <Navigate
+        replace
+        to={`/planning?${new URLSearchParams({ eventId, stage: planningStage(stage, steps.length > 0) })}`}
+      />
+    )
+  }
+  if (eventId && screen && stage === 'review') {
+    return (
+      <PlanReviewScreen
+        eventId={eventId}
+        screen={screen}
+        steps={steps}
+        messages={live.snapshot.data?.messages ?? []}
+        onReload={() => live.snapshot.refetch()}
+      />
+    )
+  }
   const readiness = live.view?.generationReadiness ?? screen?.generationReadiness ?? null
   const lastMessage = live.snapshot.data?.messages.at(-1)
   return (
     <>
+      <PlanStageNav current="conditions" />
+      {stage === 'review' && !eventId && (
+        <p role="status" className="text-mute">
+          먼저 행사 조건을 정하고 초안을 만들어 주세요.
+        </p>
+      )}
+      {eventId && !steps.length && params.get('stage') === 'conditions' && (
+        <p className="text-mute">저장된 초안이 없어요. 조건을 정한 뒤 초안을 만들 수 있어요.</p>
+      )}
+      {eventId && steps.length > 0 && (
+        <Link
+          className="self-start rounded-lg px-2 py-2 font-semibold text-blue-700 underline underline-offset-4"
+          to={`/planning?${new URLSearchParams({ eventId, stage: 'review' })}`}
+        >
+          기존 초안 검토하기
+        </Link>
+      )}
       <div className="flex flex-col items-start gap-5 lg:flex-row">
         <PlanChat
           messages={live.messages}
@@ -239,7 +301,7 @@ function Conversation({
 
 // 계획 수정 후 AI 검토 (#177). 단계 수정 화면에서 바뀐 채로 저장하면 그 화면이 검토를 요청하고,
 // 여기서는 진행 중·결과·「다시 검토」를 보여준다. 세부 수정만 했으면 「다시 필요」로 바뀐다.
-function PlanReview({ eventId, screen }: { eventId: string; screen: S['PlanScreenOut'] }) {
+export function PlanReview({ eventId, screen }: { eventId: string; screen: S['PlanScreenOut'] }) {
   const requestReview = useRequestPlanReview(eventId)
   const requesting = useReviewInFlight(eventId)
   const review = screen.review ?? null
