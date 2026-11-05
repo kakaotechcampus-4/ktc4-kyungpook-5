@@ -95,9 +95,9 @@ function DemoPlanningPage() {
       <PlanStepper current={step} />
 
       {step === 1 ? (
-        <div className="flex flex-col items-start gap-5 xl:flex-row">
+        <div className="flex flex-col items-start gap-5 lg:flex-row">
           <PlanChat messages={messages} onSend={send} demo={demo} busy={false} error="" />
-          <div className="flex w-full flex-col gap-4 xl:w-[340px] xl:shrink-0">
+          <div className="flex w-full flex-col gap-4 lg:w-[340px] lg:shrink-0">
             <PlanFacts
               facts={DEMO_FACTS}
               readiness={demo ? undefined : { canGenerate: false, reasons: [] }}

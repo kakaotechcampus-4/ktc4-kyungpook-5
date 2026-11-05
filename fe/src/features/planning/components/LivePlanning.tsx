@@ -132,7 +132,7 @@ function Conversation({
   const lastMessage = live.snapshot.data?.messages.at(-1)
   return (
     <>
-      <div className="flex flex-col items-start gap-5 xl:flex-row">
+      <div className="flex flex-col items-start gap-5 lg:flex-row">
         <PlanChat
           messages={live.messages}
           onSend={async (text) => {
@@ -152,7 +152,7 @@ function Conversation({
           persisted={!!eventId}
           initialDraft={failedText}
         />
-        <div className="flex w-full min-w-0 flex-col gap-4 xl:w-[340px] xl:shrink-0">
+        <div className="flex w-full min-w-0 flex-col gap-4 lg:w-[340px] lg:shrink-0">
           {lastMessage?.role === 'USER' && !live.busy && (
             <p role="alert" className="text-failed">
               마지막 답변에 대한 질문을 받지 못했어요. 연결 상태를 확인해 주세요.

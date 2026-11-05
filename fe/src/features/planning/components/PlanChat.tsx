@@ -281,7 +281,7 @@ export function PlanChat({
   const lastToriId = [...messages].reverse().find((m) => m.from === '토리')?.id
 
   return (
-    <Card className="flex h-[min(76vh,760px)] min-h-[440px] w-full min-w-0 flex-col xl:sticky xl:top-6 xl:flex-1">
+    <Card className="flex h-[min(76vh,760px)] min-h-[440px] w-full min-w-0 flex-col lg:sticky lg:top-6 lg:flex-1">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-4 sm:px-6">
         <div className="flex items-center gap-2">
           <Tori size={30} />
