@@ -18,6 +18,7 @@ interface PlanChatProps {
   initialDraft?: string
   busy?: boolean
   error?: string
+  onReload?: () => Promise<unknown>
   // 스트림으로 받는 동안의 임시 표시(#285). 보낸 말, 진행 줄, 흘러나오는 토리 답변.
   pendingText?: string
   progress?: TurnLine[]
@@ -248,6 +249,7 @@ export function PlanChat({
   onSend,
   busy = false,
   error = '',
+  onReload,
   pendingText = '',
   progress = [],
   pendingReply = '',
@@ -258,6 +260,10 @@ export function PlanChat({
 }: PlanChatProps) {
   const [draft, setDraft] = useState(initialDraft)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const errorRef = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    if (error) errorRef.current?.focus()
+  }, [error])
   const followEnd = useRef(true)
   useLayoutEffect(() => {
     const panel = scrollRef.current
@@ -380,9 +386,26 @@ export function PlanChat({
         </div>
       )}
       {error && (
-        <p role="alert" className="px-[24px] text-failed">
-          {error}
-        </p>
+        <>
+          <p
+            ref={errorRef}
+            tabIndex={-1}
+            role="alert"
+            className="px-[24px] text-failed focus:outline-none"
+          >
+            {error}
+          </p>
+          {onReload && (
+            <Button
+              className="mx-6 mt-2 mb-3 self-start"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void onReload()}
+            >
+              저장된 계획 다시 확인
+            </Button>
+          )}
+        </>
       )}
       <form
         className="flex items-center gap-2.5 border-t border-line px-4 py-4 sm:px-5"
@@ -395,6 +418,7 @@ export function PlanChat({
           {/* 기다리는 동안 막지(disabled) 않고 읽기 전용으로 둔다. 막으면 포커스가 빠져
               답변이 끝난 뒤 입력창을 다시 눌러야 한다. 읽기 전용이면 커서가 그대로 남는다. */}
           <Textarea
+            id="planning-chat-answer"
             aria-label="계획 대화 답변"
             aria-describedby="planning-input-help"
             rows={2}

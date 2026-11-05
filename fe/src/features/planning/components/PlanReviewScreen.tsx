@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import type { components } from '@/shared/api/schema'
 import { useRequestPlanReview, useReviewInFlight, useStartEvent } from '../hooks'
@@ -34,6 +34,20 @@ export function PlanReviewScreen({
   onReload: () => Promise<unknown>
 }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const heading = useRef<HTMLHeadingElement>(null)
+  const [completion] = useState(() => {
+    const generated = location.state?.generated as { count?: number; key?: string } | undefined
+    return typeof generated?.count === 'number' && generated.count > 0
+      ? `계획 초안 ${generated.count}단계를 만들었어요`
+      : ''
+  })
+  useEffect(() => {
+    if (!location.state?.focusPlan) return
+    heading.current?.focus()
+    // Consume route feedback so reload/back cannot announce the same completion again.
+    navigate(location.pathname + location.search, { replace: true, state: null })
+  }, [location.pathname, location.search, location.state, navigate])
   const queryClient = useQueryClient()
   const [conversationOpen, setConversationOpen] = useState(false)
   // 편집 중 재조회가 원본 버전을 바꾸지 않도록 선택한 스냅샷을 유지한다.
@@ -72,10 +86,19 @@ export function PlanReviewScreen({
   return (
     <>
       <PlanStageNav current="review" />
+      {completion && (
+        <p role="status" className="sr-only">
+          {completion}
+        </p>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-[21px] font-bold [overflow-wrap:anywhere]">
+            <h2
+              ref={heading}
+              tabIndex={-1}
+              className="focus:outline-none text-[21px] font-bold [overflow-wrap:anywhere]"
+            >
               {conditions.title || '행사 계획'}
             </h2>
             <Chip tone="approved">계획 중</Chip>

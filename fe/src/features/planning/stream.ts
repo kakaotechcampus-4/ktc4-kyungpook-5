@@ -5,31 +5,26 @@
 //   reply_delta  → onReply     (토리 답변 조각을 이어 붙임)
 //   reply_reset  → onReply('') (지금까지 받은 답변 조각을 버림)
 //   done         → PlanViewOut을 돌려줌 (저장까지 끝난 결과)
-//   error        → ApiError로 던짐 (저장하지 않은 결과)
+//   error        → ApiError로 던짐 (오류 종류에 따라 저장 거절/결과 불명 구분)
 //
-// done/error 없이 끊기면 같은 Idempotency-Key·같은 본문으로 다시 요청한다. 서버는 연결이
-// 끊겨도 작업을 끝까지 저장하므로, 처리 중이면 409(IDEMPOTENCY_IN_PROGRESS)가 오고
-// 끝났으면 저장된 결과가 done 하나로 온다.
+// 연결 결과가 불명일 때 POST를 반복하면 실패/만료 키가 모델을 다시 실행할 수 있다.
+// 요청별 읽기 전용 결과 조회 계약 전에는 같은 키여도 자동 재전송하지 않는다 (#326).
 import { apiPostStream } from '@/shared/api/client'
 import { ApiError, type ApiErrorBody } from '@/shared/api/types'
 import type { components } from '@/shared/api/schema'
 import type { PlanProgress } from './types'
+import { validDraft } from './generation'
 
 type PlanView = components['schemas']['PlanViewOut']
 
 export interface PlanStreamHandlers {
   onProgress: (event: PlanProgress) => void
   onReply: (text: string) => void
-  // 끊겨서 다시 확인하는 중. 화면은 임시 표시를 지우고 확인 중임을 알린다.
+  // 결과를 받기 전에 연결이 끊겼다. 화면은 새 요청을 잠그고 결과 불명을 알린다.
   onReconnect: () => void
 }
 
 class StreamCut extends Error {}
-
-// 재시도 간격. 서버 작업(최대 수십 초)이 끝날 때까지 기다릴 수 있게 합쳐 약 1분이다.
-const RETRY_DELAYS_MS = [1000, 2000, 3000, 5000, 5000, 8000, 8000, 10000, 10000, 10000]
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 async function once(
   path: string,
@@ -51,12 +46,30 @@ async function once(
         } else if (event === 'reply_reset') {
           reply = ''
           handlers.onReply('')
-        } else if (event === 'done') result = JSON.parse(data) as PlanView
-        else if (event === 'error') failure = JSON.parse(data) as ApiErrorBody
+        } else if (event === 'done') {
+          const candidate = JSON.parse(data) as PlanView
+          if (
+            !Number.isInteger(candidate?.baseRevision) ||
+            candidate.baseRevision < 0 ||
+            !validDraft(candidate.draft) ||
+            !Array.isArray(candidate.changedFields) ||
+            typeof candidate.generationReadiness?.canGenerate !== 'boolean' ||
+            !Array.isArray(candidate.generationReadiness.reasons) ||
+            (candidate.reply !== null && typeof candidate.reply !== 'string') ||
+            (candidate.generationResult !== null &&
+              !['generated', 'failed', 'needs_clarification'].includes(
+                candidate.generationResult?.status,
+              ))
+          ) {
+            throw new StreamCut()
+          }
+          result = candidate
+        } else if (event === 'error') failure = JSON.parse(data) as ApiErrorBody
       },
     })
   } catch (cause) {
     // 스트림을 열기 전 4xx(ApiError)는 그대로, 네트워크 끊김은 다시 확인할 대상으로 본다.
+    if (result) return result
     if (cause instanceof ApiError) throw cause
     throw new StreamCut()
   }
@@ -71,17 +84,10 @@ export async function streamPlan(
   idempotencyKey: string,
   handlers: PlanStreamHandlers,
 ): Promise<PlanView> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await once(path, body, idempotencyKey, handlers)
-    } catch (cause) {
-      const retryable =
-        cause instanceof StreamCut ||
-        // 앞 요청이 아직 처리 중이다(끊긴 뒤 다시 물었을 때). 끝날 때까지 기다린다.
-        (cause instanceof ApiError && cause.code === 'IDEMPOTENCY_IN_PROGRESS' && attempt > 0)
-      if (!retryable || attempt >= RETRY_DELAYS_MS.length) throw cause
-      handlers.onReconnect()
-      await sleep(RETRY_DELAYS_MS[attempt])
-    }
+  try {
+    return await once(path, body, idempotencyKey, handlers)
+  } catch (cause) {
+    if (cause instanceof StreamCut) handlers.onReconnect()
+    throw cause
   }
 }

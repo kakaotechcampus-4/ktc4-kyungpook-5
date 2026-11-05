@@ -10,6 +10,7 @@ import { planningApi } from './api'
 import { PartialPlanSaveError } from './errors'
 import type { ChatMessage, PlanFacts } from './types'
 import type { PlanStreamHandlers } from './stream'
+import { planningSnapshotKey, useGenerationRequest } from './useGenerationRequest'
 import { FIRST_MESSAGE } from './mock'
 import { planningRecordHistory } from './recordReferences'
 import {
@@ -65,7 +66,7 @@ function shown(field: (typeof fields)[number][0], value: string | number): strin
   if (field === 'eventType') return EVENT_TYPES[value] ?? String(value)
   return String(value)
 }
-function toFacts(draft: Draft): PlanFacts {
+export function toFacts(draft: Draft): PlanFacts {
   const result: PlanFacts = {}
   for (const [field, label] of fields) {
     const value = field === 'startDate' ? schedule(draft) : draft.conditions[field]
@@ -93,7 +94,7 @@ function toFacts(draft: Draft): PlanFacts {
 // 같은 키·같은 요청을 써야 화면이 넘어가자마자 이 값을 그대로 쓴다.
 function snapshotQuery(userId: string | undefined, clubId: string | null, eventId: string | null) {
   return queryOptions({
-    queryKey: ['planning', 'snapshot', userId, clubId, eventId],
+    queryKey: planningSnapshotKey(userId, clubId, eventId),
     queryFn: async () => {
       const [screen, messages, steps] = await Promise.all([
         planningApi.get(eventId!),
@@ -126,8 +127,10 @@ export function usePlanningChat(
   selectedId: string | null,
   userId: string | undefined,
   onCreated: (id: string, failedText?: string) => void,
+  onGenerated: (eventId: string, count: number, key: string) => void,
 ) {
   const queryClient = useQueryClient()
+  const generation = useGenerationRequest(userId, clubId, selectedId, onGenerated)
   const [temporaryDraft, setTemporaryDraft] = useState<Draft | null>(null)
   const temporaryDraftRef = useRef<Draft | null>(null)
   const streamEventId = useRef(selectedId)
@@ -144,6 +147,7 @@ export function usePlanningChat(
   const [sending, setSending] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
+  const [generationFailure, setGenerationFailure] = useState<S['GenerationResultOut'] | null>(null)
   // 스트림으로 받는 동안만 보이는 임시 표시(#285). done 뒤 저장된 대화로 바뀌면 지운다.
   const [progress, setProgress] = useState<TurnLine[]>(
     () => queryClient.getQueryData<TurnLine[]>(failureKey(selectedId)) ?? [],
@@ -167,6 +171,7 @@ export function usePlanningChat(
   const handlers: PlanStreamHandlers = {
     // 같은 작업의 진행 줄은 제자리에서 결과 줄로 바꾼다. 이번 턴의 줄은 모두 남긴다(#290).
     onProgress: (event) => {
+      generation.progress(event)
       turnLines.current = upsertProgress(turnLines.current, event)
       setProgress(turnLines.current)
       if (
@@ -195,7 +200,7 @@ export function usePlanningChat(
       // 서버는 연결이 끊겨도 저장을 계속한다. 마지막 검증 초안과 줄을 유지해
       // 재확인 실패 시 성공 줄도 실패로 바꾸고 패널을 함께 복구할 수 있게 한다.
       setPendingReply('')
-      setNotice('연결이 끊겨 처리 결과를 다시 확인하고 있어요…')
+      setNotice('연결이 끊겨 처리 결과를 확인하지 못했어요.')
     },
   }
   const snapshot = useQuery({
@@ -254,7 +259,7 @@ export function usePlanningChat(
     }
   const facts = toFacts(temporaryDraft ?? savedDraft)
   const send = async (text: string) => {
-    if (locked.current || (selectedId && !snapshot.data)) return false
+    if (locked.current || generation.blocked || (selectedId && !snapshot.data)) return false
     if (!clubId) {
       setError('로그인하고 소속을 선택해 주세요.')
       return false
@@ -262,6 +267,7 @@ export function usePlanningChat(
     locked.current = true
     setSending(true)
     setError('')
+    setGenerationFailure(null)
     clearPending()
     queryClient.removeQueries({ queryKey: failureKey(selectedId), exact: true })
     temporaryDraftRef.current = null
@@ -273,14 +279,21 @@ export function usePlanningChat(
     let eventId = selectedId
     const id = crypto.randomUUID()
     let succeeded = false
+    let generated = false
     try {
       if (!eventId) eventId = (await planningApi.create(clubId)).id
       streamEventId.current = eventId
-      // messageId를 멱등키로도 쓴다. 끊겨서 다시 보내도 같은 턴이 두 번 처리되지 않는다.
+      const request = await generation.begin(
+        eventId,
+        'chat',
+        { messageId: id, message: text, baseRevision: revision },
+        savedDraft,
+      )
+      // messageId를 멱등키와 탭 기록에 함께 쓴다. 연결 단절 때는 자동 재전송하지 않는다.
       const result = await planningApi.chatStream(
         eventId,
-        { messageId: id, message: text, baseRevision: revision },
-        id,
+        request.body as S['PlanChatIn'],
+        request.key,
         handlers,
       )
       setView(result)
@@ -302,6 +315,21 @@ export function usePlanningChat(
           receiptsKey(userId, clubId, eventId),
           (old = []) => [...old, { base, lines }],
         )
+      if (result.generationResult?.status === 'generated') {
+        generated = true
+        await generation.finish(result)
+        return true
+      }
+      await generation.finish(result)
+      if (result.generationResult) {
+        setGenerationFailure(result.generationResult)
+        setError(
+          (result.generationResult.status === 'needs_clarification'
+            ? '초안을 만들기 전에 확인할 내용이 있어요. '
+            : '초안을 완성하지 못했어요. ') +
+            (result.generationResult.reason || result.reply || '조건을 확인해 주세요.'),
+        )
+      }
       if (!selectedId) {
         // 새 계획: 끝나면 화면이 이 계획 주소로 넘어가며 대화 영역을 새로 그린다.
         // 저장된 대화를 먼저 받아 두면 넘어가자마자 그 대화를 그려,
@@ -316,6 +344,7 @@ export function usePlanningChat(
       }
       return true
     } catch (cause) {
+      generation.fail(cause)
       // 성공처럼 보이던 임시 값과 강조를 버리고, 저장된 패널로 돌아간다.
       temporaryDraftRef.current = null
       setTemporaryDraft(null)
@@ -339,7 +368,7 @@ export function usePlanningChat(
     } finally {
       locked.current = false
       void queryClient.invalidateQueries({ queryKey: ['planning', 'drafts', userId, clubId] })
-      if (eventId && !selectedId) {
+      if (eventId && !selectedId && !generated && generation.isCurrent()) {
         // 새 계획은 이 대화 영역이 새 주소의 영역으로 바뀐다. 주소 이동은 다음 화면 갱신에서
         // 반영되므로, 여기서 임시 표시를 먼저 지우면 그 사이 한 번 빈 대화가 보인다.
         // 바뀔 때까지 그대로 두고 새 영역이 저장된 대화를 그린다.
@@ -351,24 +380,48 @@ export function usePlanningChat(
     }
   }
   const generate = async () => {
-    if (!selectedId || !snapshot.data || locked.current) return
+    if (!selectedId || !snapshot.data || locked.current || generation.blocked) return
     locked.current = true
     setGenerating(true)
     setError('')
+    setGenerationFailure(null)
     clearPending()
     try {
+      const request = await generation.begin(
+        selectedId,
+        'button',
+        { baseRevision: revision, useCurrentConditions: false },
+        savedDraft,
+      )
       const result = await planningApi.generateStream(
         selectedId,
-        { baseRevision: revision, useCurrentConditions: false },
-        crypto.randomUUID(),
+        request.body as S['PlanGenerateIn'],
+        request.key,
         handlers,
       )
       setView(result)
-      await refresh()
-      if (result.generationResult?.status !== 'generated')
-        setError(result.reply || '계획을 생성하지 못했어요. 조건을 확인해 주세요.')
-    } catch {
-      setError('계획 생성 결과를 확인하지 못했어요. 다시 불러와 저장 상태를 확인해 주세요.')
+      await generation.finish(result)
+      if (result.generationResult?.status !== 'generated') {
+        setGenerationFailure(result.generationResult)
+        await refresh()
+        setError(
+          (result.generationResult?.status === 'needs_clarification'
+            ? '초안을 만들기 전에 확인할 내용이 있어요. '
+            : '초안을 완성하지 못했어요. ') +
+            (result.generationResult?.reason || result.reply || '조건을 확인해 주세요.'),
+        )
+      }
+    } catch (cause) {
+      const unknown = generation.fail(cause)
+      setError(
+        unknown
+          ? ''
+          : cause instanceof ApiError && cause.code === 'VERSION_CONFLICT'
+            ? '생성한 초안을 저장하지 못했어요. 다른 변경이 있어요. 저장된 계획을 다시 확인해 주세요.'
+            : cause instanceof ApiError && cause.code === 'PLAN_EDITED_CONFLICT'
+              ? '직접 수정한 계획이 있어요. 기존 초안을 확인해 주세요.'
+              : '생성 요청을 처리하지 못했어요. 저장된 계획과 브라우저의 임시 저장 기능을 확인해 주세요.',
+      )
       void refresh()
     } finally {
       clearPending()
@@ -381,7 +434,11 @@ export function usePlanningChat(
     messages,
     facts,
     factFlash: localFlash === undefined ? (flash.data ?? null) : localFlash,
-    busy: sending || generating,
+    busy: sending || generating || generation.blocked || !!generation.flow,
+    generationFlow: generation.flow,
+    generationFailure,
+    reloadGenerated: generation.load,
+    viewCurrentPlan: generation.viewCurrent,
     generating,
     error,
     send,
