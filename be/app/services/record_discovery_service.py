@@ -86,6 +86,8 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
                     pass
         except ai.AIError:
             semantic_status = 'UNAVAILABLE'
+    if not semantic:
+        answer = '질문에 답할 관련 자료를 찾지 못했습니다.'
     if chunks_out is not None:
         chunks_out.extend(semantic)
     if lexical_out is not None:
