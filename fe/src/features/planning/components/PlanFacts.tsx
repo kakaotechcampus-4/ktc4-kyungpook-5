@@ -12,7 +12,6 @@ import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
-import { ToriNote } from '@/shared/ui/ToriNote'
 
 // 막힌 이유를 그대로 보여준다. 모르는 사유가 와도 버튼만 잠그고 문구는 비운다.
 const BLOCK_TEXT: Record<GenerationBlockReason, string> = {
@@ -49,8 +48,6 @@ interface PlanFactsProps {
   facts: Facts
   // 서버가 내려주는 생성 가능 여부. 없으면 같은 규칙으로 화면이 임시 계산한다.
   readiness?: GenerationReadiness
-  // 과거 기록을 봤을 때만 준다.
-  reference?: string
   unavailable?: boolean
   hideNext?: boolean
   onNext: () => void
@@ -74,7 +71,6 @@ function useActiveFlash(flash: FactFlash | null | undefined): FactFlash | null {
 export function PlanFacts({
   facts,
   readiness,
-  reference,
   unavailable = false,
   hideNext = false,
   onNext,
@@ -148,8 +144,6 @@ export function PlanFacts({
           })}
         </div>
       </Card>
-
-      {reference && <ToriNote title="참고한 과거 기록">{reference}</ToriNote>}
 
       {!hideNext && (
         <Card className="flex flex-col gap-[12px] px-[22px] pt-[20px] pb-[22px]">

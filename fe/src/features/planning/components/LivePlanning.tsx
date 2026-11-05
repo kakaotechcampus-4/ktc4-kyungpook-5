@@ -9,6 +9,7 @@ import {
 } from '@/features/planning/hooks'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
+import { PlanningRecordReferences } from '@/features/planning/components/PlanningRecordReferences'
 import { PlanReviewCard } from '@/features/planning/components/PlanReviewCard'
 import { reviewCardState, showGenerationWarnings } from '@/features/planning/reviewState'
 import type { components } from '@/shared/api/schema'
@@ -47,11 +48,13 @@ export function LivePlanning() {
         <Card className="p-5">로그인하고 소속을 선택해 주세요.</Card>
       ) : (
         <>
-          <Card className="flex flex-wrap items-center gap-3 p-4">
-            <label htmlFor="planning-draft">계획 이어보기</label>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line pb-4">
+            <label htmlFor="planning-draft" className="text-caption font-medium text-ink2">
+              계획 이어보기
+            </label>
             <select
               id="planning-draft"
-              className="rounded border border-line p-2"
+              className="min-h-11 min-w-0 max-w-full flex-1 rounded-lg border border-soft bg-card py-2 pr-8 pl-3 text-caption sm:max-w-[360px]"
               value={eventId ?? ''}
               onChange={(event) => select(event.target.value || null)}
             >
@@ -77,7 +80,7 @@ export function LivePlanning() {
                 </button>
               </span>
             )}
-          </Card>
+          </div>
           <Conversation
             key={`${userId}:${clubId}:${eventId ?? 'new'}`}
             clubId={clubId}
@@ -129,7 +132,7 @@ function Conversation({
   const lastMessage = live.snapshot.data?.messages.at(-1)
   return (
     <>
-      <div className="flex flex-col items-start gap-5 lg:flex-row">
+      <div className="flex flex-col items-start gap-5 xl:flex-row">
         <PlanChat
           messages={live.messages}
           onSend={async (text) => {
@@ -149,14 +152,14 @@ function Conversation({
           persisted={!!eventId}
           initialDraft={failedText}
         />
-        <div className="flex w-full min-w-0 flex-col gap-4 lg:w-[340px] lg:shrink-0">
+        <div className="flex w-full min-w-0 flex-col gap-4 xl:w-[340px] xl:shrink-0">
           {lastMessage?.role === 'USER' && !live.busy && (
             <p role="alert" className="text-failed">
               마지막 답변에 대한 질문을 받지 못했어요. 연결 상태를 확인해 주세요.
             </p>
           )}
-          {/* 대화로 정한 조건이 먼저, 그 조건으로 만드는 초안이 아래다(#300).
-              기록 검색 결과는 대화의 작업 줄이 알려 주므로 여기 따로 적지 않는다. */}
+          {/* 현재 조건과 과거 기록을 분리한다. 진행 줄은 이번 턴의 작업,
+              아래 참고 카드는 저장된 사실과 출처를 보여준다. */}
           <PlanFacts
             facts={live.facts}
             flash={live.factFlash}
@@ -164,6 +167,7 @@ function Conversation({
             hideNext
             onNext={() => {}}
           />
+          <PlanningRecordReferences entries={live.recordHistory} />
           <Card className="space-y-4 p-5">
             <h2 className="text-h2">계획 초안</h2>
             <p role="status" className="text-ink2">
@@ -183,6 +187,7 @@ function Conversation({
             </p>
             {/* 채팅 답변을 기다리는 동안은 누를 수만 없게 하고, "만드는 중"은 이 버튼으로 생성할 때만 보인다. */}
             <Button
+              className="w-full"
               loading={live.generating}
               disabled={!eventId || !readiness?.canGenerate || live.busy}
               onClick={() => void live.generate()}

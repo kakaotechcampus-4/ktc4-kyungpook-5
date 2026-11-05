@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LivePlanning } from '@/features/planning/components/LivePlanning'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
+import { PlanningRecordReferences } from '@/features/planning/components/PlanningRecordReferences'
 import { PlanStepper } from '@/features/planning/components/PlanStepper'
 import { PlanSummaryPanel } from '@/features/planning/components/PlanSummaryPanel'
 import { StepFlow } from '@/features/planning/components/StepFlow'
@@ -15,7 +16,7 @@ import {
   DEMO_MESSAGES,
   DEMO_PLAN_META,
   DEMO_PLAN_STEPS,
-  DEMO_REFERENCE,
+  DEMO_RECORD_HISTORY,
   DEMO_SUMMARY,
   DEMO_WARNING,
   EMPTY_SUMMARY,
@@ -94,18 +95,27 @@ function DemoPlanningPage() {
       <PlanStepper current={step} />
 
       {step === 1 ? (
-        <div className="flex flex-col items-start gap-[20px] lg:flex-row">
+        <div className="flex flex-col items-start gap-5 xl:flex-row">
           <PlanChat messages={messages} onSend={send} demo={demo} busy={false} error="" />
-          <div className="w-full lg:w-[320px] lg:shrink-0">
+          <div className="flex w-full flex-col gap-4 xl:w-[340px] xl:shrink-0">
             <PlanFacts
               facts={DEMO_FACTS}
               readiness={demo ? undefined : { canGenerate: false, reasons: [] }}
-              reference={demo ? DEMO_REFERENCE : undefined}
+              hideNext
               unavailable={!demo}
               onNext={() => {
                 if (demo) setGenerating(true)
               }}
             />
+            <PlanningRecordReferences entries={DEMO_RECORD_HISTORY} preview />
+            <div className="space-y-3 rounded-xl border border-line bg-card p-5">
+              <Button className="w-full" onClick={() => setGenerating(true)}>
+                다음: 흐름 만들기
+              </Button>
+              <p className="text-[12px] leading-5 text-mute">
+                일정과 장소는 다음 단계에서 정해도 괜찮아요.
+              </p>
+            </div>
           </div>
         </div>
       ) : (

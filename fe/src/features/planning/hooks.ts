@@ -11,6 +11,7 @@ import { PartialPlanSaveError } from './errors'
 import type { ChatMessage, PlanFacts } from './types'
 import type { PlanStreamHandlers } from './stream'
 import { FIRST_MESSAGE } from './mock'
+import { planningRecordHistory } from './recordReferences'
 import {
   attachReceipts,
   dropSkipped,
@@ -375,6 +376,7 @@ export function usePlanningChat(
       setGenerating(false)
     }
   }
+  const recordHistory = planningRecordHistory(screen, currentView)
   return {
     messages,
     facts,
@@ -387,6 +389,7 @@ export function usePlanningChat(
     snapshot,
     view: currentView,
     revision,
+    recordHistory,
     progress: turnSaved ? [] : progress,
     pendingText: turnSaved ? '' : pendingText,
     pendingReply: turnSaved ? '' : pendingReply,
