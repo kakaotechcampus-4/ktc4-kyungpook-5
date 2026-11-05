@@ -41,6 +41,8 @@ export type StepActor = 'AI' | 'APPROVAL_REQUIRED' | 'MANUAL'
 export interface EventStep {
   id: string
   stepOrder: number
+  // 단계 카탈로그 코드. 서버는 항상 내려주고, 예시 데이터(?demo)에는 없다.
+  code?: string
   name: string
   state: StepState
   deadline: string | null

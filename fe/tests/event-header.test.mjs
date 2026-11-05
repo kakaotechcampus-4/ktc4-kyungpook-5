@@ -24,14 +24,39 @@ await writeFile(output, built.outputFiles[0].contents)
 const { EventHeaderCard } = await import(pathToFileURL(output).href)
 await rm(dir, { recursive: true })
 
-function render(status) {
+function render(status, steps = []) {
   return renderToStaticMarkup(React.createElement(EventHeaderCard, {
     event: { id: 'event-1', title: '행사', status, startDate: null, endDate: null,
       location: null, headcount: null, currentStep: null },
-    steps: [], onSelectStep() {}, onCancelEvent() {}, onViewCancellation() {},
+    steps, onSelectStep() {}, onCancelEvent() {}, onViewCancellation() {},
     onEditPlan() {}, onStartEvent() {}, onCompleteEvent() {},
   }))
 }
+
+// #336 전 서버처럼 계획 중인데도 첫 단계가 CURRENT로 온다.
+const steps = [
+  { id: 's1', stepOrder: 1, name: '사전 수요 조사', state: 'CURRENT', deadline: null },
+  { id: 's2', stepOrder: 2, name: '참가 신청', state: 'TODO', deadline: null },
+]
+
+test('planning header ignores step states', () => {
+  const html = render('PLANNING', steps)
+  assert.doesNotMatch(html, /단계 진행/)
+  assert.doesNotMatch(html, /현재 단계/)
+  assert.doesNotMatch(html, />행사 시작<\/button>/)
+})
+
+test('planning header leads with continuing the plan', () => {
+  const first = render('PLANNING', steps).match(/<button[^>]*>[^<]*<\/button>/)[0]
+  assert.match(first, />계획 이어보기</)
+  assert.match(first, /bg-blue-600/)
+})
+
+test('on-going header keeps progress', () => {
+  const html = render('ON_GOING', steps)
+  assert.match(html, /단계 진행/)
+  assert.match(html, />행사 완료<\/button>/)
+})
 
 test('planning offers actionable plan edit and cancellation', () => {
   const html = render('PLANNING')

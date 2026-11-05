@@ -7,6 +7,7 @@ import { ConfirmationList } from '@/features/events/components/ConfirmationList'
 import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
 import { OperationCases } from '@/features/events/components/OperationCases'
+import { PlanningOverview } from '@/features/events/components/PlanningOverview'
 import { useOperationCases } from '@/features/events/operationCasesHooks'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
 import { ReviewModal } from '@/features/events/components/ReviewModal'
@@ -25,7 +26,6 @@ import {
   useDenyAction,
   useMarkActionDone,
   useResolveAction,
-  useStartEvent,
 } from '@/features/events/hooks'
 import type { EventAction, EventStep } from '@/features/events/types'
 import { toast } from '@/shared/lib/toast'
@@ -42,7 +42,9 @@ export default function EventDetailPage() {
   const toList = `/events${search}`
 
   const demo = useDemo()
-  const startMutation = useStartEvent()
+  // 계획 화면. 초안이 없으면 조건 화면, 있으면 P2로 간다(#325).
+  const planPath = (id: string) =>
+    demo ? '/planning/steps?demo' : `/planning?eventId=${encodeURIComponent(id)}`
   const completeMutation = useCompleteStep()
   const completeEventMutation = useCompleteEvent()
   const cancelMutation = useBeginCancellation()
@@ -196,40 +198,50 @@ export default function EventDetailPage() {
             onSelectStep={(step) => setOpenStepId(step.id)}
             onCancelEvent={() => setCancelOpen(true)}
             onViewCancellation={() => navigate(`/events/${event.id}/cancel${search}`)}
-            onEditPlan={() => navigate(demo ? '/planning/steps?demo' : `/planning?eventId=${encodeURIComponent(event.id)}`)}
-            onStartEvent={demo ? undefined : () => void run(() => startMutation.mutateAsync(event.id), '행사를 시작했어요')}
+            onEditPlan={() => navigate(planPath(event.id))}
             onCompleteEvent={demo ? undefined : () => {
               if (window.confirm('행사를 완료하시겠어요? 완료 후에는 할 일을 처리할 수 없습니다.')) {
                 void run(() => completeEventMutation.mutateAsync(event.id), '행사를 완료했어요')
               }
             }}
           />
-          {!demo && shownId && <OperationCases key={shownId} eventId={shownId} active={event.status === 'ON_GOING'} cases={operationCases.data ?? []} loading={operationCases.isPending} error={operationCases.isError} onReload={() => void operationCases.refetch()} />}
-          <div className="flex items-start gap-[20px]">
-            <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-              {(demo || operationCases.data !== undefined) && <ConfirmationList
-                actions={confirmations}
-                onResolve={(action, choice) => {
-                  if (choice === 'MANUAL') setReviewing(action)
-                  else void resolveConfirmation(action, choice)
-                }}
-                readOnly={!demo && event.status !== 'ON_GOING'}
-              />}
-              <ResolvedActionList
-                actions={resolved?.items ?? []}
-                totalCount={resolved?.totalCount ?? 0}
-              />
+          {/* 계획 중에는 운영용 칸(운영 상황 · 확인 요청 · 처리된 승인 · 현재 단계) 대신 계획 요약을 보여 준다(#337) */}
+          {event.status === 'PLANNING' ? (
+            <PlanningOverview
+              event={event}
+              steps={steps}
+              onContinue={() => navigate(planPath(event.id))}
+            />
+          ) : (
+            <>
+            {!demo && shownId && <OperationCases key={shownId} eventId={shownId} active={event.status === 'ON_GOING'} cases={operationCases.data ?? []} loading={operationCases.isPending} error={operationCases.isError} onReload={() => void operationCases.refetch()} />}
+            <div className="flex items-start gap-[20px]">
+              <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
+                {(demo || operationCases.data !== undefined) && <ConfirmationList
+                  actions={confirmations}
+                  onResolve={(action, choice) => {
+                    if (choice === 'MANUAL') setReviewing(action)
+                    else void resolveConfirmation(action, choice)
+                  }}
+                  readOnly={!demo && event.status !== 'ON_GOING'}
+                />}
+                <ResolvedActionList
+                  actions={resolved?.items ?? []}
+                  totalCount={resolved?.totalCount ?? 0}
+                />
+              </div>
+              {/* 진행 중인 단계가 없으면(계획 중 · 끝난 행사) 오른쪽 칸 없이 왼쪽이 넓어진다 */}
+              {currentIndex >= 0 && (
+                <CurrentStepCard
+                  className="w-[400px] shrink-0"
+                  step={steps[currentIndex]}
+                  position={currentIndex + 1}
+                  onOpen={() => setOpenStepId(steps[currentIndex].id)}
+                />
+              )}
             </div>
-            {/* 진행 중인 단계가 없으면(계획 중 · 끝난 행사) 오른쪽 칸 없이 왼쪽이 넓어진다 */}
-            {currentIndex >= 0 && (
-              <CurrentStepCard
-                className="w-[400px] shrink-0"
-                step={steps[currentIndex]}
-                position={currentIndex + 1}
-                onOpen={() => setOpenStepId(steps[currentIndex].id)}
-              />
-            )}
-          </div>
+            </>
+          )}
           {openStep && (
             <StepModal
               step={openStep}
