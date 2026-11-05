@@ -8,6 +8,7 @@ import { Button } from '@/shared/ui/Button'
 import { DemoNotice } from '@/shared/ui/DemoNotice'
 import { Modal } from '@/shared/ui/Modal'
 import { Tori } from '@/shared/ui/Tori'
+import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
 import { WorkspaceNavigation } from './AppNavigation'
 
 // select의 특별 항목. 소속 id와 겹치지 않는 값이면 된다.
@@ -18,7 +19,7 @@ export function AppLayout() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   useMe()
-  const { me, clubId, selectClub } = useAuthStore()
+  const { me, clubId, user, selectClub } = useAuthStore()
   const recording = useRecordingLock((state) => state.recording)
   const logout = useLogout()
   const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
@@ -81,6 +82,11 @@ export function AppLayout() {
           <option value={NEW_CLUB}>+ 새 동아리 만들기</option>
           <option value={JOIN_CLUB}>+ 초대 코드로 참여</option>
         </select>
+        {user && clubId && (
+          <span className="mt-2 block text-[12px] font-medium text-[#aebbd0]" role="status">
+            운영 범위 · {MEMBER_ROLE_LABEL[user.role] ?? '역할 확인 필요'}
+          </span>
+        )}
         {recording && (
           <span id="club-locked" className="mt-2 block text-[12px] font-medium text-[#aebbd0]">
             녹음을 끝낸 뒤 바꿀 수 있어요
