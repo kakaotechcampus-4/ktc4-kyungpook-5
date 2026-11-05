@@ -10,9 +10,11 @@ from datetime import UTC, date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.core.enums import ActionStatus, ActionType, EventStatus, MemberRole
 from app.db import session as db_session
+from app.models.accounting import Expense
 from app.models.clubs import Member
 from app.models.events import Step
 from app.services import action_service
@@ -324,6 +326,92 @@ async def test_거절된_행동이_남아_있으면_단계를_자동_완료하�
     _post(client, headers, f"/actions/{action_id}/done", {"expectedVersion": 1})
 
     assert _steps(client, headers, event_id)[0]["completedAt"] is None
+
+
+# --- 지출 자동 기록 (#348) ---------------------------------------------------------
+
+
+def _expenses(client: TestClient, headers: dict, club_id: str) -> list[dict]:
+    res = client.get(f"/api/v1/clubs/{club_id}/expenses", headers=headers)
+    assert res.status_code == 200, res.text
+    return res.json()["data"]
+
+
+async def test_승인된_송금_행동을_완료하면_지출이_자동_기록된다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id)
+    action_id = await add_action(
+        event_id, type=ActionType.TRANSFER, title="장소 계약금 송금", amount=120000
+    )
+    _post(client, headers, f"/actions/{action_id}/approve", {"expectedVersion": 1})
+
+    done = _post(client, headers, f"/actions/{action_id}/done", {"expectedVersion": 2})
+
+    assert done.status_code == 200, done.text
+    [expense] = _expenses(client, headers, club_id)
+    assert expense["amount"] == 120000
+    assert expense["source"] == "ACTION"
+    assert expense["eventId"] == event_id
+    assert expense["description"] == "장소 계약금 송금"
+    assert expense["category"] is None
+
+
+async def test_승인이_필요_없는_송금_행동도_바로_완료하면_기록된다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id)
+    action_id = await add_action(
+        event_id, type=ActionType.TRANSFER, approve_needed=False, amount=30000
+    )
+
+    done = _post(client, headers, f"/actions/{action_id}/done", {"expectedVersion": 1})
+
+    assert done.status_code == 200, done.text
+    [expense] = _expenses(client, headers, club_id)
+    assert expense["amount"] == 30000
+    assert expense["source"] == "ACTION"
+    async with db_session.get_sessionmaker()() as session:
+        row = await session.scalar(select(Expense).where(Expense.action_id == action_id))
+    # 완료를 기록한 운영진이 지출을 남긴 사람이다.
+    assert row is not None
+    assert row.created_by == done.json()["data"]["resolvedBy"]["id"]
+
+
+async def test_같은_행동을_두_번_완료해도_지출은_한_건이다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id)
+    action_id = await add_action(event_id, type=ActionType.TRANSFER, amount=50000)
+    _post(client, headers, f"/actions/{action_id}/approve", {"expectedVersion": 1})
+    _post(client, headers, f"/actions/{action_id}/done", {"expectedVersion": 2})
+
+    again = _post(client, headers, f"/actions/{action_id}/done", {"expectedVersion": 3})
+
+    assert again.status_code == 409
+    assert again.json()["error"]["code"] == "ALREADY_RESOLVED"
+    assert len(_expenses(client, headers, club_id)) == 1
+
+
+async def test_금액이_없거나_송금이_아니면_기록하지_않는다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id)
+    no_amount = await add_action(event_id, type=ActionType.TRANSFER, amount=None)
+    contract = await add_action(event_id, type=ActionType.CONTRACT, amount=50000)
+    # 지출 정산의 금액은 예산 한도(event.budget_total)라 실제 지출로 적으면 안 된다.
+    budget_cap = await add_action(event_id, type=ActionType.EXPENSE, amount=500000)
+
+    for action_id in (no_amount, contract, budget_cap):
+        _post(client, headers, f"/actions/{action_id}/approve", {"expectedVersion": 1})
+        done = _post(client, headers, f"/actions/{action_id}/done", {"expectedVersion": 2})
+        assert done.status_code == 200, done.text
+
+    assert _expenses(client, headers, club_id) == []
 
 
 # --- 단계 완료 -------------------------------------------------------------------
