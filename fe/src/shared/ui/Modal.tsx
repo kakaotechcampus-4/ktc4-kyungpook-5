@@ -63,8 +63,9 @@ export function Modal({
       style={{ width }}
       className={cn(
         'flex-col overflow-hidden bg-card p-0 text-ink shadow-[0_12px_36px_rgba(0,0,0,0.18)] backdrop:bg-backdrop open:flex',
+        // modal-drawer: 왼쪽에서 밀려 들어오게 index.css가 잡아 준다.
         placement === 'left'
-          ? 'm-0 h-dvh max-h-dvh max-w-[calc(100vw-48px)] rounded-none'
+          ? 'modal-drawer m-0 h-dvh max-h-dvh max-w-[calc(100vw-48px)] rounded-none'
           : 'm-auto max-h-[calc(100vh-64px)] max-w-[calc(100vw-32px)] rounded-[20px]',
         className,
       )}
