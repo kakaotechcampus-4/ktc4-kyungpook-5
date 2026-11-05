@@ -19,6 +19,14 @@ import httpx
 NO_SPEECH_THRESHOLD = 0.6
 MIN_AUDIO_RMS = 450.0
 MIN_VOICED_MS = 160
+LOGPROB_THRESHOLD = -1.0
+COMPRESSION_RATIO_THRESHOLD = 2.4
+
+# Some Whisper gateways echo this marker as ordinary transcript text. It is a
+# gap, not something a meeting participant said, so it must not become a row.
+UNRECOGNIZED_TRANSCRIPT_MARKERS = frozenset(
+    {"알아듣지 못했어요", "(알아듣지 못했어요)"}
+)
 
 
 class SttError(Exception):
@@ -81,6 +89,8 @@ class WhisperStt:
                         "temperature": "0",
                         "condition_on_previous_text": "false",
                         "no_speech_threshold": str(NO_SPEECH_THRESHOLD),
+                        "logprob_threshold": str(LOGPROB_THRESHOLD),
+                        "compression_ratio_threshold": str(COMPRESSION_RATIO_THRESHOLD),
                     },
                 )
                 if response.status_code in (400, 422):
@@ -107,7 +117,12 @@ class WhisperStt:
                     raise TypeError("transcript.text or text must be a string")
                 if _is_silence_response(payload, segments):
                     return ""
-                return text.strip()
+                if _is_low_confidence_response(segments):
+                    return ""
+                normalized_text = " ".join(text.split())
+                if normalized_text in UNRECOGNIZED_TRANSCRIPT_MARKERS:
+                    return ""
+                return normalized_text
         except httpx.TimeoutException as exc:
             raise SttError("STT_TIMEOUT", "음성 인식 응답 시간이 초과됐습니다.") from exc
         except httpx.HTTPError as exc:
@@ -180,3 +195,31 @@ def _is_silence_response(payload: dict, segments: object) -> bool:
             raise ValueError("segment.no_speech_prob must be numeric")
         probabilities.append(float(value))
     return bool(probabilities) and all(value >= NO_SPEECH_THRESHOLD for value in probabilities)
+
+
+def _is_low_confidence_response(segments: object) -> bool:
+    """Return true for a response whose verbose segments are likely hallucinated."""
+    if not isinstance(segments, list) or not segments:
+        return False
+
+    avg_logprobs: list[float] = []
+    compression_ratios: list[float] = []
+    for segment in segments:
+        if not isinstance(segment, dict):
+            continue
+        avg_logprob = segment.get("avg_logprob")
+        if avg_logprob is not None:
+            if isinstance(avg_logprob, bool) or not isinstance(avg_logprob, (int, float)):
+                raise ValueError("segment.avg_logprob must be numeric")
+            avg_logprobs.append(float(avg_logprob))
+        compression_ratio = segment.get("compression_ratio")
+        if compression_ratio is not None:
+            if isinstance(compression_ratio, bool) or not isinstance(compression_ratio, (int, float)):
+                raise ValueError("segment.compression_ratio must be numeric")
+            compression_ratios.append(float(compression_ratio))
+
+    if avg_logprobs and sum(avg_logprobs) / len(avg_logprobs) < LOGPROB_THRESHOLD:
+        return True
+    return bool(compression_ratios) and any(
+        value > COMPRESSION_RATIO_THRESHOLD for value in compression_ratios
+    )
