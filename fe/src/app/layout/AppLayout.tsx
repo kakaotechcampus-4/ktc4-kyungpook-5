@@ -17,7 +17,7 @@ const JOIN_CLUB = '__join_club__'
 
 export function AppLayout() {
   const navigate = useNavigate()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   useMe()
   const { me, clubId, user, selectClub } = useAuthStore()
   const recording = useRecordingLock((state) => state.recording)
@@ -26,6 +26,7 @@ export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const menuButton = useRef<HTMLButtonElement>(null)
+  const showOnboardingGuide = new URLSearchParams(search).has('demo')
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1024px)')
@@ -147,9 +148,11 @@ export function AppLayout() {
           <div className="flex min-h-0 flex-1 flex-col gap-6 pt-8">
               <WorkspaceNavigation dark collapsed={!sidebarOpen} />
               {sidebarOpen && <>
-              <Button size="sm" variant="secondary" onClick={() => navigate('/onboarding')}>
-                처음 사용 가이드 (임시)
-              </Button>
+              {showOnboardingGuide && (
+                <Button size="sm" variant="secondary" onClick={() => navigate('/onboarding')}>
+                  처음 사용 가이드 (예시)
+                </Button>
+              )}
               {account}
               </>}
           </div>
@@ -179,16 +182,18 @@ export function AppLayout() {
         <div id="mobile-navigation" className="flex min-h-[calc(100dvh-140px)] flex-col gap-8">
           <NavLink to="/dashboard" onClick={() => setDrawerOpen(false)} className="flex items-center gap-2 font-bold"><Tori size={30} />운영해</NavLink>
           <WorkspaceNavigation onNavigate={() => setDrawerOpen(false)} />
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              setDrawerOpen(false)
-              navigate('/onboarding')
-            }}
-          >
-            처음 사용 가이드 (임시)
-          </Button>
+          {showOnboardingGuide && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setDrawerOpen(false)
+                navigate('/onboarding')
+              }}
+            >
+              처음 사용 가이드 (예시)
+            </Button>
+          )}
           <div className="mt-auto rounded-lg bg-[#172333] p-4">{account}</div>
         </div>
       </Modal>
