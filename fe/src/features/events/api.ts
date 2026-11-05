@@ -54,8 +54,6 @@ export async function getEventActionPage(eventId: string, query: string): Promis
   return { items: res.data, totalCount: res.meta?.totalCount ?? res.data.length }
 }
 
-export const startEvent = (eventId: string) =>
-  apiPost<{ id: string; status: EventStatus; title: string; startDate: string | null }>(`/events/${encodeURIComponent(eventId)}/start`)
 export const completeEvent = (eventId: string) =>
   apiPost<{ id: string; status: EventStatus; title: string; startDate: string | null }>(`/events/${encodeURIComponent(eventId)}/complete`)
 export const beginEventCancellation = (eventId: string) =>

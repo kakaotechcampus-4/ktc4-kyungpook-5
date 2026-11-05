@@ -1,4 +1,5 @@
 // L2 상단 카드: 제목 · 상태 · 계획 수정/행사 취소 / 행사일 · 장소 · 참가 · 현재 단계 · 담당 / 스테퍼 · N/M 단계 진행
+// 계획 중에는 단계 진행이 시작되지 않아 현재 단계 · 스테퍼 · N/M을 그리지 않는다(#337).
 import { StepStepper } from '@/features/events/components/StepStepper'
 import type { EventDetail, EventStep } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
@@ -16,7 +17,6 @@ interface EventHeaderCardProps {
   onCancelEvent: () => void
   onViewCancellation: () => void
   onEditPlan: () => void
-  onStartEvent?: () => void
   onCompleteEvent?: () => void
 }
 
@@ -27,9 +27,9 @@ export function EventHeaderCard({
   onCancelEvent,
   onViewCancellation,
   onEditPlan,
-  onStartEvent,
   onCompleteEvent,
 }: EventHeaderCardProps) {
+  const planning = event.status === 'PLANNING'
   // 진행 중인 단계까지 센다(완료 + 진행 중)
   const reached = steps.filter((s) => s.state !== 'TODO').length
 
@@ -37,7 +37,9 @@ export function EventHeaderCard({
     { label: '행사일', value: formatDateRange(event.startDate, event.endDate) },
     { label: '장소', value: event.location ?? '—' },
     { label: '참가', value: event.headcount ? `${event.headcount}명` : '—' },
-    { label: '현재 단계', value: event.currentStep?.name ?? '—', accent: true },
+    ...(planning
+      ? []
+      : [{ label: '현재 단계', value: event.currentStep?.name ?? '—', accent: true }]),
   ]
 
   return (
@@ -48,14 +50,10 @@ export function EventHeaderCard({
           <Chip tone={EVENT_STATUS_TONE[event.status]}>{EVENT_STATUS_LABEL[event.status]}</Chip>
         </div>
         <div className="flex flex-wrap gap-[8px]">
-          {event.status === 'PLANNING' && onStartEvent && (
-            <Button onClick={onStartEvent}>행사 시작</Button>
-          )}
+          {/* 계획 중 행사는 P2 계획 검토의 「운영 시작」에서 시작한다(#337) */}
+          {planning && <Button onClick={onEditPlan}>계획 이어보기</Button>}
           {event.status === 'ON_GOING' && onCompleteEvent && (
             <Button onClick={onCompleteEvent}>행사 완료</Button>
-          )}
-          {event.status === 'PLANNING' && (
-            <Button variant="secondary" onClick={onEditPlan}>계획 이어보기</Button>
           )}
           {(event.status === 'PLANNING' || event.status === 'ON_GOING') && (
             <Button variant="secondary" onClick={onCancelEvent}>행사 취소</Button>
@@ -76,7 +74,7 @@ export function EventHeaderCard({
       </dl>
 
       {/* 단계가 아직 없으면(계획 확정 전) 구분선부터 통째로 숨긴다 */}
-      {steps.length > 0 && (
+      {!planning && steps.length > 0 && (
         <>
           <hr className="border-line" />
           <div className="flex items-center gap-[22px]">

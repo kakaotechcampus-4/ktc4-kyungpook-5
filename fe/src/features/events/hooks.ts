@@ -15,7 +15,6 @@ import {
   denyAction,
   markActionDone,
   resolveAction,
-  startEvent,
   getCancelTasks,
   completeCancelTask,
   beginEventCancellation,
@@ -179,10 +178,6 @@ export function useStepActions(eventId: string | undefined, stepId: string | und
   })
 }
 
-export function useStartEvent() {
-  const client = useQueryClient()
-  return useMutation({ mutationFn: startEvent, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
-}
 export function useCompleteStep() {
   const client = useQueryClient()
   return useMutation({ mutationFn: completeStep, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
