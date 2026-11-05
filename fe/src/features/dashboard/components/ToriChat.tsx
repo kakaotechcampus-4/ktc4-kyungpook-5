@@ -10,6 +10,16 @@ import { Tori } from '@/shared/ui/Tori'
 
 type Result = components['schemas']['ToriMessageOut']
 type Turn = { id: string; message: string; result: Result }
+type PendingClarification = {
+  turnId: string
+  originalQuestion: string
+  question: string
+  options: string[]
+}
+type QueuedMessage = {
+  message: string
+  clarification: PendingClarification | null
+}
 const formatTime = (value: string | null) =>
   value
     ? new Intl.DateTimeFormat('ko-KR', {
@@ -396,8 +406,13 @@ export function ToriChat({
     options: string[]
   } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [activeQuestion, setActiveQuestion] = useState('')
+  const [queuedQuestions, setQueuedQuestions] = useState<string[]>([])
   const [error, setError] = useState('')
-  const locked = useRef(false)
+  const queue = useRef<QueuedMessage[]>([])
+  const processing = useRef(false)
+  const pendingRef = useRef<PendingClarification | null>(null)
+  const conversationStarted = useRef(false)
   const conversation = useRef<HTMLDivElement>(null)
   const latestReply = useRef<HTMLDivElement>(null)
   const followLatest = useRef(true)
@@ -417,51 +432,72 @@ export function ToriChat({
       setHasUnseenReply(true)
     }
   }, [turns])
-  const send = async (text: string) => {
-    const message = text.trim()
-    if (!clubId || !message || locked.current) return
-    locked.current = true
-    if (turns.length === 0) onConversationStarted?.()
+  pendingRef.current = pending
+
+  const processQueue = async () => {
+    if (!clubId || processing.current) return
+    processing.current = true
     setBusy(true)
-    setError('')
-    setDraft(message)
     try {
-      const result = await dashboardApi.message(clubId, {
-        message,
-        ...(pending
-          ? {
-              clarificationContext: {
-                originalQuestion: pending.originalQuestion,
-                question: pending.question,
-                options: pending.options,
-              },
-            }
-          : {}),
-      })
-      const id = crypto.randomUUID()
-      setTurns((items) => [...items, { id, message, result }])
-      if (pending && result.recordAnswer?.status === 'failed') return
-      setPending(
-        result.clarification
-          ? {
-              turnId: id,
-              originalQuestion: result.clarification.originalQuestion,
-              question: result.clarification.question,
-              options: result.clarification.options ?? [],
-            }
-          : null,
-      )
-      setDraft('')
-    } catch (cause) {
-      setError(
-        cause instanceof ApiError && cause.code === 'AI_MISCONFIGURED'
-          ? '토리 대화 설정을 확인하고 있어요. 잠시 후 다시 시도해 주세요.'
-          : '답변을 가져오지 못했어요. 연결을 확인하고 다시 시도해 주세요.',
-      )
+      while (queue.current.length > 0) {
+        const item = queue.current.shift()
+        if (!item) break
+        setQueuedQuestions(queue.current.map(({ message }) => message))
+        setActiveQuestion(item.message)
+        setError('')
+        try {
+          const result = await dashboardApi.message(clubId, {
+            message: item.message,
+            ...(item.clarification
+              ? {
+                  clarificationContext: {
+                    originalQuestion: item.clarification.originalQuestion,
+                    question: item.clarification.question,
+                    options: item.clarification.options,
+                  },
+                }
+              : {}),
+          })
+          const id = crypto.randomUUID()
+          setTurns((items) => [...items, { id, message: item.message, result }])
+          if (item.clarification && result.recordAnswer?.status === 'failed') continue
+          const nextPending = result.clarification
+            ? {
+                turnId: id,
+                originalQuestion: result.clarification.originalQuestion,
+                question: result.clarification.question,
+                options: result.clarification.options ?? [],
+              }
+            : null
+          pendingRef.current = nextPending
+          setPending(nextPending)
+        } catch (cause) {
+          setError(
+            cause instanceof ApiError && cause.code === 'AI_MISCONFIGURED'
+              ? '토리 대화 설정을 확인하고 있어요. 잠시 후 다시 시도해 주세요.'
+              : '답변을 가져오지 못했어요. 연결을 확인하고 다시 시도해 주세요.',
+          )
+        }
+      }
     } finally {
-      locked.current = false
+      processing.current = false
       setBusy(false)
+      setActiveQuestion('')
+      setQueuedQuestions([])
     }
+  }
+
+  const send = (text: string) => {
+    const message = text.trim()
+    if (!clubId || !message) return
+    if (!conversationStarted.current) {
+      conversationStarted.current = true
+      onConversationStarted?.()
+    }
+    queue.current.push({ message, clarification: pendingRef.current })
+    setQueuedQuestions(queue.current.map(({ message: queuedMessage }) => queuedMessage))
+    setDraft('')
+    void processQueue()
   }
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -568,7 +604,7 @@ export function ToriChat({
       )}
       {busy && (
         <div className="pb-4">
-          <ThinkingStatus message={draft} />
+          <ThinkingStatus message={activeQuestion} />
         </div>
       )}
       {error && (
@@ -591,6 +627,7 @@ export function ToriChat({
               className="text-blue-700 underline"
               disabled={busy}
               onClick={() => {
+                pendingRef.current = null
                 setPending(null)
                 setError('')
               }}
@@ -604,7 +641,7 @@ export function ToriChat({
           className="min-h-[72px] bg-card text-[16px] sm:text-[14px]"
           rows={2}
           maxLength={1000}
-          disabled={!clubId || busy}
+          disabled={!clubId}
           placeholder={clubId ? '궁금한 내용을 입력해 주세요' : '로그인하고 소속을 선택해 주세요'}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -627,10 +664,12 @@ export function ToriChat({
           <p className="text-caption text-mute">
             Enter로 전송 · Shift+Enter로 줄바꿈
             <br />
-            대화는 새로고침하면 사라져요.
+            {queuedQuestions.length > 0
+              ? `질문 ${queuedQuestions.length}개가 순서대로 처리돼요.`
+              : '대화는 새로고침하면 사라져요.'}
           </p>
-          <Button type="submit" loading={busy} disabled={!clubId || !draft.trim()}>
-            {busy ? '기다리는 중…' : '보내기'}
+          <Button type="submit" disabled={!clubId || !draft.trim()}>
+            {busy ? '질문 추가' : '보내기'}
           </Button>
         </div>
       </form>
