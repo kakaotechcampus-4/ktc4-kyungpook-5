@@ -13,10 +13,6 @@ cd /opt/unyounghae
   exit 1
 }
 
-# Remove only stale images owned by this service; keep volumes, containers and bind-mounted app data.
-docker image ls --format '{{.Repository}}:{{.Tag}}' \
-  | awk '/\/unyounghae-(api|web):[^<]+$/ {print}' \
-  | xargs -r docker image rm --no-prune || true
 # Check the filesystem Docker actually uses before pulling or switching anything.
 docker_root=$(docker info --format '{{.DockerRootDir}}')
 available_kb=$(df -Pk "$docker_root" | awk 'NR == 2 {print $4}')
