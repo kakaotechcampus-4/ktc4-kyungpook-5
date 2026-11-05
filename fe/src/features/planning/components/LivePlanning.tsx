@@ -348,6 +348,7 @@ function Conversation({
           progress={live.progress}
           pendingReply={live.pendingReply}
           notice={live.notice}
+          historyUsage={live.view?.historyUsage ?? screen?.historyUsage ?? null}
           error={
             (!generationFailure ? live.error : '') ||
             (showFailure ? '이전 요청 결과를 확인해 주세요. 서버에 반영됐을 수 있어요.' : '')
