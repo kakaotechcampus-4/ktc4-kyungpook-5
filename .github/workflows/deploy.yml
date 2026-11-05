@@ -126,8 +126,8 @@ jobs:
           printf %s '$bootstrap_b64' | base64 -d > /opt/unyounghae/bootstrap-instance.sh
           printf %s '$script_b64' | base64 -d > /opt/unyounghae/remote-deploy.sh
           bash /opt/unyounghae/bootstrap-instance.sh
-  docker image ls --format '{{.Repository}}:{{.Tag}}' | awk '/\/unyounghae-(api|web):[^<]+$/ {print}' | xargs -r docker image rm --no-prune || true
-  AWS_REGION=ap-northeast-2 BACKEND_IMAGE='$BACKEND_IMAGE' FRONTEND_IMAGE='$FRONTEND_IMAGE' SITE_ADDRESS='$site_address' ACME_EMAIL='$ACME_EMAIL' bash /opt/unyounghae/remote-deploy.sh"
+          docker image ls --format '{{.Repository}}:{{.Tag}}' | awk '/\/unyounghae-(api|web):[^<]+$/ {print}' | xargs -r docker image rm --no-prune || true
+          AWS_REGION=ap-northeast-2 BACKEND_IMAGE='$BACKEND_IMAGE' FRONTEND_IMAGE='$FRONTEND_IMAGE' SITE_ADDRESS='$site_address' ACME_EMAIL='$ACME_EMAIL' bash /opt/unyounghae/remote-deploy.sh"
           jq -n --arg command "$command_text" '{commands: [$command]}' > "$RUNNER_TEMP/ssm-parameters.json"
           command_id=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
