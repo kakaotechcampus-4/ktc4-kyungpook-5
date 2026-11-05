@@ -281,9 +281,12 @@ export function PlanChat({
   const lastToriId = [...messages].reverse().find((m) => m.from === '토리')?.id
 
   return (
-    <Card className="flex h-[min(70vh,700px)] min-h-[380px] w-full min-w-0 flex-col lg:flex-1">
-      <header className="flex items-center justify-between border-b border-line px-[24px] py-[18px]">
-        <h2 className="text-h2 text-ink">토리와 계획 잡기</h2>
+    <Card className="flex h-[min(76vh,760px)] min-h-[440px] w-full min-w-0 flex-col xl:sticky xl:top-6 xl:flex-1">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-4 sm:px-6">
+        <div className="flex items-center gap-2">
+          <Tori size={30} />
+          <h2 className="text-h3 text-ink">토리와 계획 잡기</h2>
+        </div>
         <span className="text-[12px] text-mute">
           {demo
             ? '화면 미리보기'
@@ -302,7 +305,7 @@ export function PlanChat({
           const panel = event.currentTarget
           followEnd.current = panel.scrollHeight - panel.scrollTop - panel.clientHeight < 48
         }}
-        className="flex min-h-0 flex-1 flex-col gap-[14px] overflow-y-auto px-[24px] pt-[20px] pb-[18px]"
+        className="planning-conversation flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pt-5 pb-5 sm:px-6"
       >
         {messages.map((message) =>
           message.from === '토리' ? (
@@ -382,7 +385,7 @@ export function PlanChat({
         </p>
       )}
       <form
-        className="flex items-center gap-[10px] border-t border-line px-[20px] py-[16px]"
+        className="flex items-center gap-2.5 border-t border-line px-4 py-4 sm:px-5"
         onSubmit={(e) => {
           e.preventDefault()
           void send(draft, true)
@@ -421,7 +424,7 @@ export function PlanChat({
             Enter로 전송 · Shift+Enter로 줄바꿈
           </p>
         </div>
-        <Button type="submit" loading={busy}>
+        <Button type="submit" loading={busy} disabled={!draft.trim()}>
           {busy ? '기다리는 중…' : '보내기'}
         </Button>
       </form>

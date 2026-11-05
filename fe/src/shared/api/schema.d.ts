@@ -3149,6 +3149,8 @@ export interface components {
             baseRevision: number;
             generationReadiness?: components["schemas"]["GenerationReadinessOut"] | null;
             lastRecordLookup?: components["schemas"]["RecordLookupOut"] | null;
+            /** Recordlookuphistory */
+            recordLookupHistory?: components["schemas"]["RecordLookupHistoryOut"][];
             /** Planrevision */
             planRevision: number;
             review: components["schemas"]["PlanReviewOut"] | null;
@@ -3507,6 +3509,12 @@ export interface components {
             /** Data */
             data: components["schemas"]["RecordOut"][];
             meta: components["schemas"]["PageMeta"];
+        };
+        /** RecordLookupHistoryOut */
+        RecordLookupHistoryOut: {
+            /** Revision */
+            revision: number;
+            lookup: components["schemas"]["RecordLookupOut"];
         };
         /** RecordLookupOut */
         RecordLookupOut: {

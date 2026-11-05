@@ -135,6 +135,16 @@ def _record_lookup_out(lookup: "ai.RecordLookupResult | None") -> dict | None:
     return lookup.model_dump(mode="json") if lookup is not None else None
 
 
+def _record_lookup_history(conversation: Conversation) -> list[dict]:
+    # Existing conversations only have the last snapshot. Do not infer older
+    # lookups from private AI history or assign a made-up search timestamp.
+    if conversation.record_lookup_history:
+        return list(conversation.record_lookup_history)
+    if conversation.last_record_lookup is not None:
+        return [{"revision": 0, "lookup": conversation.last_record_lookup}]
+    return []
+
+
 def _view_out(result: "ai.PlanningPublicResult", *, base_revision: int) -> dict:
     view = result.view
     record_lookup = _record_lookup_out(view.record_lookup)
@@ -298,7 +308,12 @@ async def _save_turn(
     conversation.resume_state = result.next_state.model_dump(mode="json")
     # null은 이번 턴 미조회다. 새 실패/없음은 저장하되 옛 성공을 최신으로 보이지 않는다.
     if result.view.record_lookup is not None:
+        history = _record_lookup_history(conversation)
         conversation.last_record_lookup = _record_lookup_out(result.view.record_lookup)
+        conversation.record_lookup_history = [
+            *history,
+            {"revision": new_base_revision, "lookup": conversation.last_record_lookup},
+        ]
     # AI는 base_revision을 올리지 않고 받은 값을 그대로 돌려준다(p1-handoff.md §4).
     # 버전 증가는 BE 책임이다.
     conversation.base_revision = new_base_revision
@@ -656,6 +671,7 @@ async def get_plan_screen(
     return {
         "draft": _draft_out(draft),
         "last_record_lookup": conversation.last_record_lookup if conversation is not None else None,
+        "record_lookup_history": _record_lookup_history(conversation) if conversation is not None else [],
         "warnings": [w.get("message", "") for w in (event.plan_warnings or [])],
         # #198 이전에 저장한 행에는 name이 없다 — 스키마가 null로 받는다.
         "excluded_steps": event.plan_excluded_steps or [],

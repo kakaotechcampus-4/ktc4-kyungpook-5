@@ -148,6 +148,22 @@ body {
   outline-offset: 2px;
 }
 
+.planning-conversation {
+  scrollbar-color: var(--color-soft) transparent;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+
+.planning-conversation::selection,
+.planning-conversation *::selection {
+  background: var(--color-blue-100);
+  color: var(--color-blue-900);
+}
+
+textarea[aria-label='계획 대화 답변'] {
+  caret-color: var(--color-blue-600);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

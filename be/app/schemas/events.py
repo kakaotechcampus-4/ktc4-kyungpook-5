@@ -452,6 +452,11 @@ class RecordLookupOut(CamelModel):
     result: RecordEvidenceOut | None = None
 
 
+class RecordLookupHistoryOut(CamelModel):
+    revision: int
+    lookup: RecordLookupOut
+
+
 class HistoryUsageOut(CamelModel):
     """대화 이력 사용량 (#194). Tool 메시지까지 센 값이라 남은 대화 횟수가 아니다."""
 
@@ -539,6 +544,7 @@ class PlanScreenOut(CamelModel):
     base_revision: int
     generation_readiness: GenerationReadinessOut | None = None
     last_record_lookup: RecordLookupOut | None = None
+    record_lookup_history: list[RecordLookupHistoryOut] = Field(default_factory=list)
     # 계획 편집 버전 (#177). review.reviewedRevision과 비교해 검토가 지금 계획 기준인지 본다.
     plan_revision: int
     # 초안 생성 전이면 null.

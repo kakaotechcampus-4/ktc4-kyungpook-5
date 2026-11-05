@@ -181,6 +181,9 @@ async def test_real_scope_lookup_resume_accept_and_button_sources(client, contex
     calls = models.agent_calls, models.search_calls
     assert chat(client, headers, event_id, 1, "u-search", "2025 봄 MT 참가비는?", key) == found
     assert screen(client, headers, event_id)["lastRecordLookup"] == lookup
+    assert screen(client, headers, event_id)["recordLookupHistory"] == [
+        {"revision": 2, "lookup": lookup}
+    ]
     assert (models.agent_calls, models.search_calls) == calls
 
     # 현재 조건 변경은 검색과 분리하고, 새 DB 세션에서 복원된 Tool 이력을 읽는다.
@@ -192,6 +195,7 @@ async def test_real_scope_lookup_resume_accept_and_button_sources(client, contex
     assert accepted["draft"]["conditions"]["feePerPerson"] == 45000
     assert accepted["recordLookup"] is None
     assert screen(client, headers, event_id)["lastRecordLookup"] == lookup
+    assert len(screen(client, headers, event_id)["recordLookupHistory"]) == 1
 
     generation_inputs = []
     async def generate(request):
@@ -207,6 +211,7 @@ async def test_real_scope_lookup_resume_accept_and_button_sources(client, contex
     assert generation_inputs[0].reference_facts[0].sources[0].record_id == record_id
     assert models.search_calls == calls[1]  # 버튼과 조회 복원은 재검색하지 않는다.
     assert screen(client, headers, event_id)["lastRecordLookup"] == lookup
+    assert len(screen(client, headers, event_id)["recordLookupHistory"]) == 1
     async with db_session.get_sessionmaker()() as session:
         conversation = await session.scalar(select(Conversation).where(Conversation.event_id == event_id))
         restored = ai.parse_resume_state(json.dumps(conversation.resume_state))
@@ -237,6 +242,10 @@ async def test_new_lookup_replaces_previous_success_without_changing_conditions(
     assert lookup["status"] == ("available" if outcome == "conflict" else outcome)
     assert latest["draft"]["conditions"]["feePerPerson"] == 25000
     assert screen(client, headers, event_id)["lastRecordLookup"] == lookup
+    history = screen(client, headers, event_id)["recordLookupHistory"]
+    assert history[-1]["lookup"] == lookup
+    assert len(history) == 2
+    assert history[0]["lookup"]["status"] == "available"
     if outcome == "conflict":
         assert lookup["result"]["notFound"] == ["숙소비 세부 내역"]
         assert len(lookup["result"]["conflicts"][0]["values"]) == 2
@@ -333,5 +342,28 @@ async def test_lookup_migration_preserves_existing_conversation(client, context,
             row = await session.scalar(select(Conversation).where(Conversation.event_id == event_id))
             assert row.resume_state == state_before and row.base_revision == revision
             assert row.last_record_lookup is None
+    finally:
+        await anyio.to_thread.run_sync(partial(command.upgrade, alembic_cfg, "head"))
+
+
+async def test_history_migration_restores_only_the_existing_last_lookup(client, context, alembic_cfg):
+    headers, club_id, event_id = setup(client, context)
+    upload(client, headers, club_id, event_id)
+    context.lookup()
+    found = chat(client, headers, event_id, 1, "u-legacy", "작년 참가비는?")
+    await db_session.get_engine().dispose()
+    try:
+        await anyio.to_thread.run_sync(partial(command.downgrade, alembic_cfg, "20261103_operation_cases"))
+        await anyio.to_thread.run_sync(partial(command.upgrade, alembic_cfg, "head"))
+        restored = screen(client, headers, event_id)
+        assert restored["lastRecordLookup"] == found["recordLookup"]
+        assert restored["recordLookupHistory"] == [{"revision": 0, "lookup": found["recordLookup"]}]
+        context.lookup("new")
+        latest = chat(client, headers, event_id, 2, "u-after-migration", "다시 찾아줘")
+        history = screen(client, headers, event_id)["recordLookupHistory"]
+        assert history == [
+            {"revision": 0, "lookup": found["recordLookup"]},
+            {"revision": 3, "lookup": latest["recordLookup"]},
+        ]
     finally:
         await anyio.to_thread.run_sync(partial(command.upgrade, alembic_cfg, "head"))

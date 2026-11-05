@@ -43,6 +43,8 @@ class Conversation(IdMixin, TimestampMixin, Base):
     generation_readiness: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
     # 화면용 마지막 조회. 미조회 턴에는 유지하며 AI 내부 상태와 별도로 복원한다 (#236).
     last_record_lookup: Mapped[dict[str, Any] | None] = mapped_column(JsonB)
+    # 화면용 조회 이력. AI 내부 대화 한도와 별개로 과거 출처를 다시 열 수 있게 보관한다.
+    record_lookup_history: Mapped[list[dict[str, Any]] | None] = mapped_column(JsonB)
 
     member: Mapped["Member"] = relationship()
     event: Mapped["Event"] = relationship(back_populates="conversations")
