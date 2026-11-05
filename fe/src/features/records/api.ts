@@ -35,6 +35,14 @@ export function getRecords(clubId: string, page: number, category?: RecordCatego
   return apiGetPage<ClubRecord, components['schemas']['PageMeta']>(`/records?${params}`)
 }
 
+// 칩 건수. 분류마다 1페이지를 받던 것을 이 한 번으로 대신한다(#287).
+// 자료가 없는 분류도 0으로 채워 오므로 화면에서 빈 칸을 메울 필요가 없다.
+export function getRecordCategoryCounts(clubId: string) {
+  return apiGet<components['schemas']['RecordCategoryCountsOut']>(
+    `/records/category-counts?clubId=${encodeURIComponent(clubId)}`,
+  )
+}
+
 export function retryRecordIndex(recordId: string) {
   return apiPost<RecordDetail>(`/records/${encodeURIComponent(recordId)}/index`)
 }

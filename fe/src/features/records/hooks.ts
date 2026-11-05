@@ -1,6 +1,7 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getRecord,
+  getRecordCategoryCounts,
   getRecords,
   retryRecordIndex,
   searchRecords,
@@ -16,10 +17,11 @@ import type {
 import { ApiError } from '@/shared/api/types'
 
 const listKey = (clubId: string) => ['records', clubId, 'list'] as const
+const countsKey = (clubId: string) => ['records', clubId, 'category-counts'] as const
 
 // 분류는 listKey 뒤에 붙여, 업로드 뒤 listKey 무효화가 모든 분류 목록에 닿게 한다.
-// 칩 건수 때문에 분류마다 같이 받으므로, 30초 안의 칩 전환·재진입·창 포커스로는 다시 받지 않는다.
-// 30초가 지나면 창 포커스로 다시 받아, 다른 탭이나 팀원이 올린 자료도 돌아왔을 때 보인다.
+// 30초 안의 칩 전환·재진입·창 포커스로는 다시 받지 않는다. 30초가 지나면 창 포커스로
+// 다시 받아, 다른 탭이나 팀원이 올린 자료도 돌아왔을 때 보인다.
 const listQuery = (clubId: string, page: number, category?: RecordCategory) => ({
   queryKey: [...listKey(clubId), category ?? 'ALL', page] as const,
   queryFn: () => getRecords(clubId, page, category),
@@ -35,31 +37,34 @@ export function useRecordUploads(clubId: string, page: number, category?: Record
   const upload = useMutation({
     mutationFn: (input: Omit<UploadRecordInput, 'clubId'>) => uploadRecord({ ...input, clubId }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: listKey(clubId) })
+      // 목록과 칩 건수가 함께 달라진다. 키 앞부분을 지워 둘 다 닿게 한다.
+      void queryClient.invalidateQueries({ queryKey: ['records', clubId] })
     },
   })
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['records', clubId] })
   return { records, upload, refresh }
 }
 
-const COUNT_FILTERS: RecordFilter[] = ['ALL', ...RECORD_CATEGORIES.map((item) => item.value)]
-
-// 칩 건수. 분류마다 1페이지를 받아 totalCount를 읽는다. 목록과 같은 키라 칩을 바꾸면 캐시로 바로 뜬다.
-// meta가 없으면 받은 행 수로 대신한다(패널의 페이지 계산과 같은 기준).
-// ponytail: 분류 수만큼 요청한다(지금 6번). 분류가 늘면 BE에 분류별 건수 API를 요청한다.
+// 칩 건수. 분류마다 1페이지를 받아 totalCount를 읽던 것을 한 번의 호출로 바꿨다(#287, #288).
+// 자료가 없는 분류도 0으로 채워 오므로 화면이 빈 칸을 메울 필요가 없다.
+//
+// 생성 타입의 byCategory는 {[key: string]: number}라 분류 키로 좁혀 쓴다.
 export function useRecordCounts(clubId: string) {
-  return useQueries({
-    queries: COUNT_FILTERS.map((filter) =>
-      listQuery(clubId, 1, filter === 'ALL' ? undefined : filter),
-    ),
-    combine: (results) =>
-      Object.fromEntries(
-        COUNT_FILTERS.map((filter, index) => {
-          const page = results[index].data
-          return [filter, page ? (page.meta?.totalCount ?? page.data.length) : undefined]
-        }),
-      ) as Record<RecordFilter, number | undefined>,
+  const counts = useQuery({
+    queryKey: countsKey(clubId),
+    queryFn: () => getRecordCategoryCounts(clubId),
+    enabled: Boolean(clubId),
+    retry: false,
+    staleTime: 30_000,
   })
+  // 아직 못 받았으면 전부 undefined다 — 화면이 칩에서 건수를 숨긴다.
+  const data = counts.data
+  return {
+    ALL: data?.all,
+    ...(Object.fromEntries(
+      RECORD_CATEGORIES.map(({ value }) => [value, data?.byCategory[value]]),
+    ) as Record<RecordCategory, number | undefined>),
+  } as Record<RecordFilter, number | undefined>
 }
 
 export function useRetryRecordIndex(clubId: string, recordId: string) {
