@@ -277,6 +277,8 @@ export function usePlanningChat(
     setPendingText(text)
     const base = storedMessages.length
     setPendingBase(base)
+    // 보내기 전 대화 이력 사용량. 실패 원인을 추정할 때 쓴다(#329).
+    const usage = currentView?.historyUsage ?? screen?.historyUsage
     let eventId = selectedId
     const id = crypto.randomUUID()
     let succeeded = false
@@ -353,18 +355,24 @@ export function usePlanningChat(
       temporaryDraftRef.current = null
       setTemporaryDraft(null)
       updateFlash(null)
-      const failed = failedLines(turnLines.current)
+      // 이력 한도로 저장 단계에서 거절되면 아무것도 반영되지 않는다(#329). 오류 코드는 다른 계획 상태
+      // 오류와 같아서, 보내기 전 사용량이 한도 근처였는지로 원인을 추정한다.
+      const historyLimit =
+        cause instanceof ApiError && cause.code === 'PLANNING_STATE_CONFLICT' && !!usage?.nearLimit
+      const failed = failedLines(turnLines.current, historyLimit)
       turnLines.current = failed
       setProgress(failed)
       setPendingBase(null)
       setPendingReply('')
       if (eventId) queryClient.setQueryData(failureKey(eventId), failed)
       setError(
-        cause instanceof ApiError && cause.code === 'VERSION_CONFLICT'
-          ? '다른 변경이 있어요. 계획을 다시 불러온 뒤 확인해 주세요.'
-          : cause instanceof ApiError && cause.code === 'AI_UNAVAILABLE'
-            ? '답변 서비스를 이용할 수 없어요. 잠시 후 다시 시도해 주세요.'
-            : '계획 답변을 확인하지 못했어요. 요청이 반영됐을 수 있으니 다시 보내기 전에 확인해 주세요.',
+        historyLimit
+          ? '대화가 길어져 이번 요청을 저장하지 못했어요. 반영된 내용은 없어요.'
+          : cause instanceof ApiError && cause.code === 'VERSION_CONFLICT'
+            ? '다른 변경이 있어요. 계획을 다시 불러온 뒤 확인해 주세요.'
+            : cause instanceof ApiError && cause.code === 'AI_UNAVAILABLE'
+              ? '답변 서비스를 이용할 수 없어요. 잠시 후 다시 시도해 주세요.'
+              : '계획 답변을 확인하지 못했어요. 요청이 반영됐을 수 있으니 다시 보내기 전에 확인해 주세요.',
       )
       // 흘려 받은 답변·진행 표시는 저장되지 않았을 수 있다. 저장된 상태를 다시 불러온다.
       if (selectedId) void snapshot.refetch()

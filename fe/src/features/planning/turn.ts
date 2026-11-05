@@ -67,16 +67,19 @@ export function finishedLines(lines: TurnLine[]): TurnLine[] {
 }
 
 // 저장 전 실패한 요청의 성공 줄은 실패 표시로 바꾼다. 값은 저장된 패널로 복구한다.
-export function failedLines(lines: TurnLine[]): TurnLine[] {
+// 이력 한도로 거절된 턴은 반영되지 않은 것이 확실해 그 이유를 적는다(#329).
+export function failedLines(lines: TurnLine[], historyLimit = false): TurnLine[] {
   return lines
     .filter((line) => line.status !== 'skipped')
     .map((line) => ({
       ...line,
       conditionDraft: undefined,
       status: 'failed',
-      text: line.kind.startsWith('condition_')
-        ? '조건 반영을 확인하지 못했어요'
-        : '처리 결과를 확인하지 못했어요',
+      text: historyLimit
+        ? '대화가 길어져 반영하지 못했어요'
+        : line.kind.startsWith('condition_')
+          ? '조건 반영을 확인하지 못했어요'
+          : '처리 결과를 확인하지 못했어요',
     }))
 }
 
