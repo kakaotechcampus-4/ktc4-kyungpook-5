@@ -70,7 +70,7 @@ export default function MyPage() {
             onClick={() => setTab(item)}
             aria-current={item === tab}
             className={cn(
-              'rounded-[9px] px-[18px] py-[10px] text-[13px]',
+              'rounded-[9px] px-[18px] py-[10px] text-[13px] transition-colors duration-150 motion-reduce:transition-none',
               item === tab
                 ? 'bg-blue-600 font-bold text-white'
                 : 'font-medium text-ink2 hover:bg-bg',

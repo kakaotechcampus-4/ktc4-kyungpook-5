@@ -75,7 +75,7 @@ export default function EventListPage() {
                 aria-pressed={filter === value}
                 onClick={() => setFilter(value)}
                 className={cn(
-                  'rounded-[10px] border px-[14px] py-[9px] text-[12.5px]',
+                  'rounded-[10px] border px-[14px] py-[9px] text-[12.5px] transition-colors duration-150 motion-reduce:transition-none',
                   filter === value
                     ? 'border-blue-600 bg-blue-600 font-bold text-white'
                     : 'border-soft bg-card font-medium text-ink2 hover:bg-bg',

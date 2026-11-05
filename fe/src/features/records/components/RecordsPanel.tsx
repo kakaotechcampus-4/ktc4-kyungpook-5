@@ -251,7 +251,7 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
                 if (upload.isSuccess) upload.reset()
               }}
               className={cn(
-                'rounded-[8px] border px-[11px] py-[6px] text-[12px]',
+                'rounded-[8px] border px-[11px] py-[6px] text-[12px] transition-colors duration-150 motion-reduce:transition-none',
                 filter === value
                   ? 'border-blue-600 bg-blue-600 font-bold text-white'
                   : 'border-soft bg-card font-medium text-ink2 hover:bg-bg',
