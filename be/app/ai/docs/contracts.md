@@ -412,6 +412,43 @@ BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(cl
 
 결과 `status=clarification`이면 질문 한 개와 선택지 최대 3개를 반환한다. `status=suggestion`이면 최대 1000자 요약과 1~5개 후속 제안(각 최대 500자)을 반환한다. 이미 답을 받은 요청에서 모델이 다시 질문하면 `AIInvalidResponseError`를 반환해 반복 질문을 막는다. 빈 값·길이·상태별 필드 불일치는 거절하며 모델 오류는 AI 오류로 전파한다. 내용은 제안일 뿐 실제 예약·발송·결제·계획 수정이나 확인을 실행하지 않는다. BE는 질문·답·결과를 보관하고 실패·재시도를 구분하며, 모델 호출 전후 소속 및 행사 상태를 검증한다. 사용자 상황과 답은 지시가 아닌 데이터이며 모델의 의미적 정확성은 보장하지 않는다.
 
+## 운영 Action 본문 초안 (#333)
+
+> 상태: 입력·출력 형식과 이름만 공개했다. 본문 작성 구현은 #333에서 진행하며, 그전까지 `draft_action_content`는 `NotImplementedError`를 낸다. 호출 시점·저장은 BE #334, 화면은 FE #335가 맡는다.
+
+행사가 운영 중(`ON_GOING`)일 때 어떤 단계가 현재 단계가 되면, BE가 그 단계의 공지(`NOTICE`)·발송(`EXTERNAL_SEND`) Action마다 `await app.ai.draft_action_content(request)`를 부른다. AI는 본문 초안만 돌려주고 저장·상태 변경·게시는 하지 않는다. 운영진이 고친 뒤 승인하고 앱 밖에서 직접 올린다.
+
+```python
+request = ActionDraftRequest(
+    club_name="경북대 등산 동아리",
+    event=ActionDraftEvent(title="봄 MT", event_type="MT",
+                           start_date=date(2026, 5, 10), end_date=date(2026, 5, 11),
+                           location="가평", expected_headcount=40, fee_per_person=45000),
+    step=ActionDraftStep(code="RECRUIT_NOTICE", name="모집 공지", starts_on=None, deadline=date(2026, 5, 1)),
+    action=ActionDraftAction(type="NOTICE", title="모집 공지 올리기", due_date=date(2026, 5, 1), amount=None),
+    today=date(2026, 4, 20),
+)
+result = await app.ai.draft_action_content(request)
+# result.content  == "📢 봄 MT 참가자 모집\n5월 10일(토)~11일(일) 가평으로 MT를 갑니다!\n참가비: 45,000원 / 신청 마감: 5월 1일\n신청 방법: [신청 링크]"
+# result.unknowns == ("신청 링크",)
+```
+
+입력 `ActionDraftRequest`는 모두 BE가 Event·Step·Action·Club 테이블에서 채운다. P1 대화 상태는 넘기지 않는다.
+
+| 칸 | 내용 |
+| --- | --- |
+| `club_name` | 동아리 이름 (최대 100자) |
+| `event` | 행사명, 유형, **시작일(필수)**, 종료일, 장소, 예상 인원, 1인 참가비(`fee_per_person`). 운영을 시작한 행사에는 시작일이 항상 있다. 예상 인원은 실제 참가 인원도 정원도 아니다. 총예산은 넣지 않는다 |
+| `step` | 단계 코드, 단계 이름, 시작일(`starts_on`), 마감일(`deadline`) |
+| `action` | 종류(`NOTICE`·`EXTERNAL_SEND`만, 그 밖은 거절), 제목, 기한(`due_date`), 금액(`amount`) |
+| `today` | 오늘 날짜 |
+
+날짜는 모두 **한국 시간 날짜**다. `Step.starts_at`·`deadline`은 시각과 시간대가 있는 값이라 BE가 한국 시간 날짜로 바꿔 넘긴다(예: `2026-04-30T15:00:00Z` → `2026-05-01`). 시각을 넘기면 모델이 "오후 11시 59분 마감"처럼 받아 써서, 운영진이 정하지 않은 시각이 공지에 들어간다.
+
+결과 `ActionDraftResult`는 `content`(1~1,500자)와 `unknowns`다. `unknowns`는 모델이 따로 쓰는 값이 아니라 본문의 `[ ]` 자리표시를 나온 순서대로(같은 글자는 한 번) 뽑은 값이다. 그래서 화면의 "비워 둔 곳"이 본문과 항상 같고, 결과를 만들 때 `unknowns`를 넘기면 거절한다. 본문에서 대괄호는 자리표시에만 쓰며 공지 제목 줄은 `📢 봄 MT 참가자 모집`처럼 쓴다. `model_dump()`에는 `unknowns`가 함께 담긴다.
+
+오류: 모델 호출 실패는 다른 AI 호출처럼 `AIRetryableError` 계열로 전달된다. 본문에 입력에 없는 금액·날짜·시각이 있으면 AI가 한 번 다시 쓰게 하고, 그래도 남으면 `AIInvalidResponseError`를 낸다. `AIInvalidResponseError`는 `AIRetryableError`의 하위 타입이므로 BE는 이 오류를 먼저 구분해야 한다. 검사 규칙과 판정 예시는 #333에 있다.
+
 ## 영수증 이미지 추출
 
 `await app.ai.extract_receipt(ExtractReceiptRequest(file_name=..., mime_type=..., image_bytes=...))`는 이미지 한 장의 검토용 `ExtractReceiptResult.rows`를 반환한다. 각 `ExtractedReceiptRow`는 `spent_at`(날짜), `merchant`, `amount`(원 정수), `category`, `description`이며 읽지 못한 값은 `None`이다. 이미지에 없는 연도나 합산 금액은 추정하지 않는다. 분류도 근거가 없으면 비운다. 이미지 속 지시는 데이터다. 파일명은 식별용이고 판단 근거가 아니다.
