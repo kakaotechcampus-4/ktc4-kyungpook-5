@@ -74,7 +74,7 @@ interface MembersTabProps {
   total: number
   onAddClick: () => void
   canAdd?: boolean
-  // 운영진 초대 코드 만들기. 회장·임원에게만 준다 — 서버도 그 둘만 받는다.
+  // 임원 초대 코드 만들기. 회장·임원에게만 준다 — 서버도 그 둘만 받는다.
   onInviteClick?: () => void
   onResolveRequest: (id: string) => void
 }
@@ -128,7 +128,7 @@ export function MembersTab({
             <span className="flex gap-[8px]">
               {onInviteClick && (
                 <Button variant="secondary" onClick={onInviteClick}>
-                  운영진 초대
+                  임원 초대
                 </Button>
               )}
               <Button onClick={onAddClick} disabled={!canAdd}>+ 직접 추가</Button>
@@ -140,7 +140,7 @@ export function MembersTab({
           </p>
           {!canAdd && (
             <p className="text-[12px] text-mute">
-              명단에 직접 추가하는 기능은 아직 준비 중이에요. 운영진은 초대 코드로 부를 수 있어요.
+              명단에 직접 추가하는 기능은 아직 준비 중이에요. 임원은 초대 코드로 부를 수 있어요.
             </p>
           )}
         </div>
