@@ -29,6 +29,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test deployment script
+        run: |
+          bash -n deploy/remote-deploy.sh
+          python3 -m unittest discover -s deploy/tests -v
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
