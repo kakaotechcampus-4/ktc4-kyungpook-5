@@ -235,8 +235,14 @@ function Conversation({
 }) {
   const navigate = useNavigate()
   const generationDescriptionId = useId()
+  // 생성 중 「대화로 돌아가기」(#327). 화면만 바꾸고 요청은 이 훅에서 계속 받는다.
+  const [away, showChat] = useState(false)
+  const awayNote = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    if (away) awayNote.current?.focus()
+  }, [away])
   const prefetchEventDetail = usePrefetchEventDetail()
-  const live = usePlanningChat(
+  const chat = usePlanningChat(
     clubId,
     eventId,
     userId,
@@ -249,6 +255,10 @@ function Conversation({
     },
     prefetchEventDetail,
   )
+  // 대화로 돌아가 있으면 생성 화면 대신 P1을 그린다. 잠금은 chat.busy가 그대로 건다.
+  const live = away ? { ...chat, generationFlow: null } : chat
+  // 새 요청은 생성 화면부터 보인다.
+  const beginRequest = () => showChat(false)
   useEffect(() => {
     onBusy(live.busy)
   }, [live.busy, onBusy])
@@ -263,6 +273,7 @@ function Conversation({
           flow={live.generationFlow}
           onReload={live.reloadGenerated}
           onViewCurrent={live.viewCurrentPlan}
+          onBackToChat={() => showChat(true)}
         />
       </>
     )
@@ -321,9 +332,22 @@ function Conversation({
   const readiness = live.view?.generationReadiness ?? screen?.generationReadiness ?? null
   const lastMessage = live.snapshot.data?.messages.at(-1)
   const generationFailure = live.generationFailure
+  const flow = chat.generationFlow
   return (
     <>
       <PlanStageNav current="conditions" />
+      {away && flow && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-blue-50 px-4 py-3">
+          <p ref={awayNote} tabIndex={-1} className="break-keep text-ink focus:outline-none">
+            {['requesting', 'generating', 'verifying', 'loading'].includes(flow.phase)
+              ? '초안을 만들고 있어요. 생성은 계속되고, 끝날 때까지 새 대화와 생성은 잠가 둘게요.'
+              : '초안 생성 결과를 확인해야 해요.'}
+          </p>
+          <Button size="sm" variant="secondary" onClick={() => showChat(false)}>
+            생성 화면 보기
+          </Button>
+        </div>
+      )}
       {stage === 'review' && !eventId && (
         <p role="status" className="text-mute">
           먼저 행사 조건을 정하고 초안을 만들어 주세요.
@@ -339,6 +363,7 @@ function Conversation({
         <PlanChat
           messages={live.messages}
           onSend={async (text) => {
+            beginRequest()
             const success = await live.send(text)
             if (success) setShowFailure(false)
             return success
@@ -392,7 +417,10 @@ function Conversation({
               aria-describedby={generationDescriptionId}
               loading={live.generating}
               disabled={!eventId || !readiness?.canGenerate || live.busy}
-              onClick={() => void live.generate()}
+              onClick={() => {
+                beginRequest()
+                void live.generate()
+              }}
             >
               {live.generating
                 ? '초안을 만드는 중…'
@@ -400,7 +428,8 @@ function Conversation({
                   ? '이 조건으로 다시 만들기'
                   : '이 조건으로 초안 만들기'}
             </Button>
-            {eventId && steps.length > 0 && (
+            {/* 생성 중에는 지난 초안으로 가는 길을 닫는다. */}
+            {eventId && steps.length > 0 && !flow && (
               <Link
                 className="self-center rounded-lg px-2 py-2 text-caption font-semibold text-blue-700 underline underline-offset-4 hover:bg-blue-50"
                 to={`/planning?${new URLSearchParams({ eventId, stage: 'review' })}`}
