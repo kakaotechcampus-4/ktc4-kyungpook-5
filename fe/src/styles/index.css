@@ -152,66 +152,46 @@ body {
   @apply bg-bg font-sans text-body text-ink;
 }
 
-/* 모달이 열리고 닫힐 때(#353). <dialog>라 JS 타이머 없이 CSS만으로 한다 —
-   display가 none으로 가는 것을 allow-discrete로 늦춰, 닫히는 동안에도 보인다.
-   @starting-style은 열리기 직전의 값이다. 이 둘이 없으면 열 때만 움직이고
-   닫을 때는 그냥 사라진다.
+/* 모달이 열릴 때(#353). 배경은 서서히 덮이고, 패널은 아래에서 살짝 떠오른다.
+   가운데 모달과 왼쪽 서랍(placement="left")은 들어오는 방향이 다르다.
 
-   움직임은 0.18초, 튀는 곡선은 쓰지 않는다 — --animate-* 토큰의 규칙과 같다.
-   「움직임 줄이기」에서는 전부 끈다. 그때도 열리고 닫히는 것 자체는 그대로다. */
+   닫힐 때는 움직이지 않는다. <dialog>를 닫는 동안 보이게 하려면 display·overlay를
+   allow-discrete로 전환해야 하는데, 이 화면의 모달은 Tailwind의 open:flex로 display를
+   따로 쥐고 있어 둘이 부딪힌다. 실제로 걸어 보니 다시 열었을 때 opacity가 0에 멈추거나
+   배경 덮개가 top layer에서 빠지는 일이 있었다. 들어올 때만 움직이는 쪽이 안전하다.
+
+   0.18초, 튀지 않는 곡선 — --animate-* 토큰의 기존 규칙과 같다.
+   「움직임 줄이기」면 전부 끈다. 그때도 열리고 닫히는 것 자체는 그대로다. */
 @media (prefers-reduced-motion: no-preference) {
-  dialog {
-    opacity: 1;
-    transform: none;
-    transition:
-      opacity 180ms ease-out,
-      transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
-      display 180ms allow-discrete,
-      overlay 180ms allow-discrete;
+  dialog[open] {
+    animation: modal-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
   }
-
-  /* 닫힌 모습 = 열리기 직전의 모습. 가운데 모달은 아래에서 떠오르고,
-     왼쪽에 붙는 서랍(placement="left")은 왼쪽에서 밀려 들어온다. */
-  dialog:not([open]) {
-    opacity: 0;
-    transform: translateY(8px) scale(0.98);
+  dialog.modal-drawer[open] {
+    animation: drawer-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
   }
-  @starting-style {
-    dialog[open] {
-      opacity: 0;
-      transform: translateY(8px) scale(0.98);
-    }
-  }
-
-  dialog.modal-drawer:not([open]) {
-    transform: translateX(-16px);
-  }
-  @starting-style {
-    dialog.modal-drawer[open] {
-      transform: translateX(-16px);
-    }
-  }
-
-  dialog::backdrop {
-    opacity: 1;
-    transition:
-      opacity 180ms ease-out,
-      display 180ms allow-discrete,
-      overlay 180ms allow-discrete;
-  }
-  dialog:not([open])::backdrop {
-    opacity: 0;
-  }
-  @starting-style {
-    dialog[open]::backdrop {
-      opacity: 0;
-    }
+  dialog[open]::backdrop {
+    animation: backdrop-in 180ms ease-out;
   }
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-blue-600);
-  outline-offset: 2px;
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
 }
 
 .planning-conversation {
