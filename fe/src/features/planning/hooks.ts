@@ -125,6 +125,9 @@ export function usePlanningDrafts(clubId: string | null, userId: string | undefi
     retry: false,
   })
 }
+// 끊긴 채팅의 결과를 대화 화면에서 확인하는 동안 보이는 안내(#368).
+export const CHECKING_NOTICE =
+  '연결이 끊겨 응답을 받지 못했어요. 서버에 저장됐는지 확인하고 있어요. 확인하는 동안 이 계획의 새 대화와 생성은 잠가 둘게요.'
 function generationFailureText(result: S['PlanViewOut']): string {
   return (
     (result.generationResult?.status === 'needs_clarification'
@@ -152,6 +155,9 @@ export function usePlanningChat(
     clearPending()
     setSettled(saved ? 'saved' : 'not_saved')
     setRetryText(text ?? '')
+    // 대화 화면에서 확인한 채팅은 입력창이 다시 그려지지 않는다(#368). 실패로 되돌려 둔 문장을
+    // 결과에 맞춰 바꾼다. 저장됐으면 비워 같은 말을 두 번 보내지 않게 한다.
+    setDraftReset({ text: text ?? '' })
     if (result) setView(result)
     const failure =
       result?.generationResult && result.generationResult.status !== 'generated'
@@ -171,6 +177,7 @@ export function usePlanningChat(
   // 안내를 저장 확인 뒤에 지우는 데 쓴다.
   const [settled, setSettled] = useState<'saved' | 'not_saved' | null>(null)
   const [retryText, setRetryText] = useState('')
+  const [draftReset, setDraftReset] = useState<{ text: string } | null>(null)
   const [temporaryDraft, setTemporaryDraft] = useState<Draft | null>(null)
   const temporaryDraftRef = useRef<Draft | null>(null)
   const streamEventId = useRef(activeId)
@@ -506,7 +513,10 @@ export function usePlanningChat(
     progress: turnSaved ? [] : progress,
     pendingText: turnSaved ? '' : pendingText,
     pendingReply: turnSaved ? '' : pendingReply,
-    notice,
+    // 초안 생성이 시작되지 않은 채팅이 끊기면 대화 화면에서 결과를 확인한다(#368).
+    checking: generation.checking,
+    notice: generation.checking ? CHECKING_NOTICE : notice,
+    draftReset,
   }
 }
 

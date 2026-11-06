@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { usePlanningChat, usePlanningDrafts } from '@/features/planning/hooks'
+import { CHECKING_NOTICE, usePlanningChat, usePlanningDrafts } from '@/features/planning/hooks'
 import { useEventDetail, usePrefetchEventDetail } from '@/features/events/hooks'
 import { planningStage } from '../reviewModel'
 import { PlanReviewScreen } from './PlanReviewScreen'
@@ -304,6 +304,14 @@ function Conversation({
   }, [live.streaming, onBusy])
   const [params] = useSearchParams()
   const event = useEventDetail(eventId ?? undefined)
+  // 확인 중에 행사 상세를 못 불러왔다면 확인이 끝난 뒤 다시 불러온다(#368). 대화는 조회가 끝날 때
+  // 다시 불러오지만 행사 상세는 따로 불러야 한다.
+  const checking = live.checking
+  const reloadEvent = event.refetch
+  const eventMissing = event.isError && event.data === undefined
+  useEffect(() => {
+    if (!checking && eventMissing) void reloadEvent()
+  }, [checking, eventMissing, reloadEvent])
   const [showFailure, setShowFailure] = useState(Boolean(failedText))
   // 끊긴 첫 메시지가 저장된 것으로 확인되면 "결과를 확인해 주세요" 안내를 내린다(#342).
   if (showFailure && live.settled === 'saved') setShowFailure(false)
@@ -319,13 +327,29 @@ function Conversation({
         />
       </>
     )
+  // 끊긴 채팅을 확인하는 중인데 서버가 아직 응답하지 않아 저장된 대화를 못 불러온 경우(#368).
+  // 예: 배포 중 새로고침. 오류 카드 대신 확인 중임을 알리고, 확인이 끝나면 다시 불러온다.
+  if (eventId && live.checking && (!live.snapshot.data || event.data === undefined))
+    return (
+      <>
+        <PlanStageNav current="conditions" />
+        <Card className="p-5" role="status">
+          {CHECKING_NOTICE}
+        </Card>
+      </>
+    )
   if (eventId && (live.snapshot.isLoading || event.isPending))
     return (
       <Card className="p-5" role="status">
         저장된 계획을 불러오는 중이에요.
       </Card>
     )
-  if (eventId && (live.snapshot.isError || event.isError))
+  // 이미 불러온 계획이 있으면 다시 불러오기가 실패해도 대화를 그대로 보인다. 끊긴 채팅을 확인하는
+  // 동안(#368) 서버가 응답하지 않아도 대화 화면이 오류 카드로 바뀌지 않게 한다.
+  if (
+    eventId &&
+    ((live.snapshot.isError && !live.snapshot.data) || (event.isError && event.data === undefined))
+  )
     return (
       <Card className="p-5" role="alert">
         저장된 계획을 불러오지 못했어요. 권한과 연결을 확인해 주세요.{' '}
@@ -430,8 +454,12 @@ function Conversation({
           notice={live.notice}
           historyUsage={live.view?.historyUsage ?? screen?.historyUsage ?? null}
           error={
-            (!generationFailure ? live.error : '') ||
-            (showFailure ? '이전 요청 결과를 확인해 주세요. 서버에 반영됐을 수 있어요.' : '')
+            // 끊긴 채팅을 확인하는 동안에는 확인 중 안내(notice)만 보인다(#368). 결과가 나오면
+            // 저장됨·저장 안 됨에 맞는 문구로 바뀐다.
+            live.checking
+              ? ''
+              : (!generationFailure ? live.error : '') ||
+                (showFailure ? '이전 요청 결과를 확인해 주세요. 서버에 반영됐을 수 있어요.' : '')
           }
           onReload={
             eventId ? () => Promise.all([live.snapshot.refetch(), event.refetch()]) : undefined
@@ -442,6 +470,8 @@ function Conversation({
             // 저장된 것으로 확인됐으면 다시 보내지 않게 비운다(#342).
             live.retryText || (live.settled === 'saved' ? '' : failedText)
           }
+          // 대화 화면에서 확인한 채팅은 입력창이 다시 그려지지 않아 이 값으로 맞춘다(#368).
+          draftReset={live.draftReset}
         />
         <div className="flex w-full min-w-0 flex-col gap-4 lg:w-[340px] lg:shrink-0">
           {lastMessage?.role === 'USER' && !live.busy && (
@@ -489,7 +519,7 @@ function Conversation({
                   : '이 조건으로 초안 만들기'}
             </Button>
             {/* 생성 중에는 지난 초안으로 가는 길을 닫고, 완료 안내가 있으면 그 링크 하나만 둔다. */}
-            {eventId && steps.length > 0 && !flow && !ready && (
+            {eventId && steps.length > 0 && !flow && !live.checking && !ready && (
               <Link
                 className="self-center rounded-lg px-2 py-2 text-caption font-semibold text-blue-700 underline underline-offset-4 hover:bg-blue-50"
                 to={`/planning?${new URLSearchParams({ eventId, stage: 'review' })}`}
