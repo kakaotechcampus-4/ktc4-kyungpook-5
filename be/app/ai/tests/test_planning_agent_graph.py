@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from app.ai.errors import AIInvalidResponseError, AIRetryableError
 from app.ai.features.planning.agent.graph import run_planning_agent_turn
-from app.ai.features.planning.agent.nodes import PROMPT, TOOL_NAME, condition_tool_schema
+from app.ai.features.planning.agent.nodes import PERSONA_PROMPT, PROMPT, TOOL_NAME, condition_tool_schema
 from app.ai.features.planning.agent.schemas import PlanningAgentTurnInput
 from app.ai.features.planning.agent.state import PlanningDraft
 from app.ai.features.planning.schemas import PlanningConditions, PlanningMessage
@@ -185,6 +185,8 @@ def test_first_system_message_is_identical_across_turns_and_calls_for_provider_c
     assert all(isinstance(m[0], SystemMessage) and m[0].content == PROMPT for m in calls)
     contexts = [m[-1] for m in calls]
     assert all(isinstance(m, SystemMessage) and m.content.startswith("현재 실행 문맥(JSON 데이터):\n") for m in contexts)
+    assert "토리" in PERSONA_PROMPT
+    assert all(m.content.endswith(PERSONA_PROMPT) for m in contexts)
     assert '"current_message_id": "u1"' in contexts[0].content and '"current_message_id": "u9"' in contexts[2].content
     assert '"fee_per_person": 25000' in contexts[0].content and '"fee_per_person": 30000' in contexts[1].content
     # 같은 턴 2번째 호출은 1번째 호출의 실행 문맥만 빼고 앞부분을 그대로 이어 쓴다.

@@ -37,9 +37,7 @@ CONTROLS = tuple(case for case in BOUNDARY_CASES if case.id != 'generation_only'
 
 def legacy_v7_messages(context, messages, *, allow_tools):
     """planning-agent-v7의 메시지 순서. 실행 문맥을 지시문 뒤에 붙여 첫 시스템 메시지 하나로 보낸다."""
-    instruction = nodes.PROMPT + "\n\n현재 실행 문맥(JSON 데이터):\n" + json.dumps(context, ensure_ascii=False)
-    if not allow_tools:
-        instruction += "\n" + nodes.TOOL_LIMIT_NOTICE
+    instruction = nodes.PROMPT + "\n\n" + nodes.agent_context_text(context, allow_tools=allow_tools)
     return [SystemMessage(content=instruction), *messages]
 
 
@@ -118,11 +116,13 @@ async def run_session(output_dir: Path, *, session_id, rounds=10, controls=1, in
     report = dict(
         report_version=1, session_id=session_id, status='running', started_at=now(),
         purpose='#269 실행 문맥 위치 v7/v8 번갈아 비교', variants=dict(
-            v7='planning-agent-v7: 지시문 + 실행 문맥을 첫 시스템 메시지 하나로',
-            v8='planning-agent-v8: 지시문만 첫 시스템 메시지, 실행 문맥은 맨 끝 시스템 메시지'),
+            v7='v7 메시지 순서: 지시문 + 실행 문맥을 첫 시스템 메시지 하나로',
+            v8='v8 메시지 순서: 지시문만 첫 시스템 메시지, 실행 문맥은 맨 끝 시스템 메시지'),
         scope='지시문·Tool 스키마·모델 설정은 같고 메시지 순서만 다르다',
         fixture_sha256=hashlib.sha256(DEFAULT_FIXTURE.read_bytes()).hexdigest(),
         prompt_sha256=hashlib.sha256(nodes.PROMPT.encode()).hexdigest(),
+        persona_prompt_sha256=hashlib.sha256(nodes.PERSONA_PROMPT.encode()).hexdigest(),
+        prompt_version=nodes.PROMPT_VERSION,
         script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         profile=dict(rounds=rounds, controls=controls, interval_seconds=interval, concurrency=1,
                      case_ids=CASE_IDS, control_ids=[case.id for case in CONTROLS]),
@@ -145,7 +145,7 @@ async def run_session(output_dir: Path, *, session_id, rounds=10, controls=1, in
                 request_data = request.model_dump(mode='json')
                 append_event(stream, dict(event='started', started_at=now(), **identity, request=request_data,
                                           request_sha256=hashlib.sha256(json_text(request_data).encode()).hexdigest()))
-                # 이 요청 동안만 메시지 순서를 바꾼다. 끝나면 현재 코드(v8)로 돌아간다.
+                # 이 요청 동안만 메시지 순서를 바꾼다. 끝나면 현재 코드로 돌아간다.
                 with patch.object(nodes, 'agent_messages', LAYOUTS[variant]):
                     if kind == 'latency':
                         measured, interrupted = await measure_attempt(by_id[case_id], request, chat_planning)
