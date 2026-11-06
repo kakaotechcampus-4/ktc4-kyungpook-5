@@ -273,12 +273,12 @@ try {
   draft.conditions.location = null
   draft.deferredTopics = ['dates']
   await page.reload()
-  await card.getByText('장소를 알려 주거나 아직 미정이라고 말해 주세요.').waitFor()
+  await card.getByText('장소를 정하면 초안을 만들 수 있어요.', { exact: false }).waitFor()
   assert.equal(
     await card.getByRole('button', { name: '이 조건으로 초안 만들기', exact: true }).isDisabled(),
     true,
   )
-  assert.match(await row('장소').innerText(), /아직이에요/)
+  assert.match(await row('장소').innerText(), /필요해요/)
   await screenshot(page, 'blocked-1280')
   readiness = null
   await page.reload()
