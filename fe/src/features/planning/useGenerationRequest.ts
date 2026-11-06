@@ -16,6 +16,7 @@ import {
 import type { PlanProgress } from './types'
 import type { components } from '@/shared/api/schema'
 import { ApiError } from '@/shared/api/types'
+import { withViewTransition } from '@/shared/lib/viewTransition'
 
 type S = components['schemas']
 export const planningSnapshotKey = (
@@ -63,6 +64,8 @@ export function useGenerationRequest(
   const mounted = useRef(true)
   const [flow, setFlow] = useState<GenerationFlow | null>(null)
   const reading = useRef(false)
+  // 생성 화면이 이미 떠 있는가. 처음 띄우는 순간에만 화면 전환 움직임을 준다.
+  const visible = useRef(false)
   useEffect(() => {
     mounted.current = true
     return () => {
@@ -98,7 +101,9 @@ export function useGenerationRequest(
     draft: S['PlanDraftOut'],
   ) => {
     if (!userId || !clubId || readRequestText(userId, clubId, id)) throw new Error('REQUEST_LOCKED')
-    if (kind === 'button' && mounted.current) setFlow({ phase: 'requesting', draft })
+    // 버튼은 누른 순간 생성 화면으로 바뀐다. 오른쪽 조건 카드가 생성 화면으로 이어지게 한다.
+    if (kind === 'button' && mounted.current)
+      withViewTransition(() => setFlow({ phase: 'requesting', draft }))
     // Read the steps and revision under the server's existing snapshot lock before POST.
     const baseline = await planningApi.stepsSnapshot(id)
     if (!mounted.current) throw new Error('REQUEST_LEFT')
@@ -139,8 +144,12 @@ export function useGenerationRequest(
     if (event.conditionDraft) request.draft = event.conditionDraft
     if (event.kind === 'generation_started') {
       request.started = true
-      show('generating', request)
-    } else if (event.kind === 'generation_finished') show('verifying', request)
+      // 채팅은 이 순간 대화 화면에서 생성 화면으로 바뀐다. 조건 카드가 생성 화면으로 이어지게 한다.
+      if (visible.current) show('generating', request)
+      else withViewTransition(() => show('generating', request))
+    } else if (event.kind === 'generation_finished' && event.status === 'completed')
+      // 실패한 생성은 저장할 것이 없다. 「초안 작성」에서 멈춘 것으로 보이게 다음 줄로 넘기지 않는다.
+      show('verifying', request)
     // Keep the original key/body and the last validated conditions on tab reload.
     try {
       writeRequest(request)
@@ -299,6 +308,7 @@ export function useGenerationRequest(
     onSettled(settled)
   }
   const shown = flow ?? restoredFlow
+  visible.current = !!shown
   const unresolved = shown?.phase === 'unknown' ? (active.current ?? own) : null
   // 초안 생성이 시작되지 않은 채팅은 초안 생성 화면을 띄우지 않고 대화 화면에서 확인한다(#368).
   // 조회와 잠금(blocked)은 그대로 두고, 화면에 넘기는 flow만 비운다.
