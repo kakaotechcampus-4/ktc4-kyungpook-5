@@ -104,3 +104,45 @@ export function draftSentences(actions: EventAction[]): string[] {
     return []
   })
 }
+
+// ── 단계가 넘어간 순간 ──
+// 단계는 「단계 완료로 표시」로도 끝나지만, 마지막 일을 「게시했습니다」 등으로 끝내면 서버가 자동으로
+// 완료한다. 그래서 버튼이 아니라 다시 불러온 단계 목록에서 현재 단계가 앞으로 바뀐 것을 보고 알린다.
+
+// 직전에 본 현재 단계. 모든 단계가 끝났으면 stepId가 null이다.
+export interface CurrentMark {
+  eventId: string
+  stepId: string | null
+}
+
+export interface StepAdvance {
+  done: { id: string; position: number; name: string }
+  // 새로 진행 중이 된 단계. 마지막 단계였으면 없다.
+  next?: { id: string; position: number; name: string }
+}
+
+export function currentMark(eventId: string, steps: EventStep[]): CurrentMark {
+  return { eventId, stepId: steps.find((s) => s.state === 'CURRENT')?.id ?? null }
+}
+
+// 처음 열었을 때, 다른 행사로 옮겼을 때, 현재 단계가 그대로일 때는 null이다.
+// 직전 현재 단계가 완료(DONE)로 바뀐 경우만 넘어간 것으로 본다.
+export function stepAdvance(
+  prev: CurrentMark | null,
+  eventId: string,
+  steps: EventStep[],
+): StepAdvance | null {
+  if (!prev || prev.eventId !== eventId || !prev.stepId) return null
+  const now = currentMark(eventId, steps).stepId
+  if (now === prev.stepId) return null
+  const doneIndex = steps.findIndex((s) => s.id === prev.stepId)
+  if (doneIndex < 0 || steps[doneIndex].state !== 'DONE') return null
+  const nextIndex = now ? steps.findIndex((s) => s.id === now) : -1
+  return {
+    done: { id: steps[doneIndex].id, position: doneIndex + 1, name: steps[doneIndex].name },
+    next:
+      nextIndex >= 0
+        ? { id: steps[nextIndex].id, position: nextIndex + 1, name: steps[nextIndex].name }
+        : undefined,
+  }
+}

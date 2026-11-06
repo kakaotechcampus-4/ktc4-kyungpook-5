@@ -94,7 +94,10 @@ export function Modal({
         {subtitle && <p className="text-[12px] text-mute">{subtitle}</p>}
       </header>
 
-      <div className="flex flex-1 flex-col gap-[15px] overflow-y-auto px-[28px] pt-[22px] pb-[24px] short:flex-none short:overflow-visible">
+      {/* 기본 높이는 내용 높이(flex-basis auto)로 두고, 모달 최대 높이에 닿을 때만 줄어들며 스크롤한다.
+          flex-1(기준 0%)로 두면 높이가 정해지지 않은 모달에서 브라우저에 따라 본문 높이가 0으로 잡혀
+          여백만 남는다(일부 브라우저에서 "이 단계에서 한 일" 아래·보낼 내용이 잘리던 문제, #370). */}
+      <div className="flex min-h-0 flex-auto flex-col gap-[15px] overflow-y-auto px-[28px] pt-[22px] pb-[24px] short:flex-none short:overflow-visible">
         {children}
       </div>
 

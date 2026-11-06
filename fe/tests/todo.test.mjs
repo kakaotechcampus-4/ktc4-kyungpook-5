@@ -10,7 +10,7 @@ const { outputFiles } = await build({
   format: 'esm',
   alias: { '@': new URL('../src', import.meta.url).pathname },
 })
-const { draftSentences, todoKind, todoList, toriSummary } = await import(
+const { currentMark, draftSentences, stepAdvance, todoKind, todoList, toriSummary } = await import(
   `data:text/javascript;base64,${Buffer.from(outputFiles[0].text).toString('base64')}`
 )
 
@@ -95,4 +95,35 @@ test('현재 단계 카드에는 토리가 쓰는 중이거나 써 둔 초안만
     ]),
     ['「모집 공지」 초안을 써 뒀어요.', '「안내 문자」 초안을 쓰고 있어요.'],
   )
+})
+
+test('현재 단계가 완료로 바뀌면 끝난 단계와 다음 단계를 알려 준다', () => {
+  const before = [
+    { id: 'a', name: '담당 배치', state: 'CURRENT' },
+    { id: 'b', name: '모집 공지', state: 'TODO' },
+  ]
+  const after = [
+    { id: 'a', name: '담당 배치', state: 'DONE' },
+    { id: 'b', name: '모집 공지', state: 'CURRENT' },
+  ]
+  const allDone = after.map((s) => ({ ...s, state: 'DONE' }))
+  const mark = currentMark('evt', before)
+  assert.deepEqual(stepAdvance(mark, 'evt', after), {
+    done: { id: 'a', position: 1, name: '담당 배치' },
+    next: { id: 'b', position: 2, name: '모집 공지' },
+  })
+  // 마지막 단계가 끝나면 다음 단계가 없다
+  assert.deepEqual(stepAdvance(currentMark('evt', after), 'evt', allDone), {
+    done: { id: 'b', position: 2, name: '모집 공지' },
+    next: undefined,
+  })
+})
+
+test('처음 열었을 때·다른 행사·그대로일 때는 알리지 않는다', () => {
+  const steps = [{ id: 'a', name: '담당 배치', state: 'CURRENT' }]
+  assert.equal(stepAdvance(null, 'evt', steps), null)
+  assert.equal(stepAdvance(currentMark('other', steps), 'evt', steps), null)
+  assert.equal(stepAdvance(currentMark('evt', steps), 'evt', steps), null)
+  // 직전 현재 단계가 완료가 아닌데 사라진 경우(목록이 바뀜)도 넘어간 것으로 보지 않는다
+  assert.equal(stepAdvance({ eventId: 'evt', stepId: 'gone' }, 'evt', steps), null)
 })

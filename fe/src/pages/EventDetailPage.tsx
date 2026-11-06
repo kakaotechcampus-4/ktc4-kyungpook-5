@@ -1,5 +1,5 @@
 // L2 행사 상세: 한 행사의 단계 진행, 지금 할 일, 처리 기록을 본다.
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AnswerModal } from '@/features/events/components/AnswerModal'
 import { CancelConfirmModal } from '@/features/events/components/CancelConfirmModal'
@@ -13,7 +13,7 @@ import { ReviewModal } from '@/features/events/components/ReviewModal'
 import { StepDoneMoment, type StepDone } from '@/features/events/components/StepDoneMoment'
 import { StepModal } from '@/features/events/components/StepModal'
 import { TodoList } from '@/features/events/components/TodoList'
-import { draftSentences, todoList } from '@/features/events/todo'
+import { currentMark, draftSentences, stepAdvance, todoList, type CurrentMark } from '@/features/events/todo'
 import {
   useDemo,
   useEventDetail,
@@ -179,26 +179,24 @@ export default function EventDetailPage() {
     return success
   }
 
-  // 완료 요청과 그 뒤 목록 다시 불러오기가 끝날 때까지 버튼에 도는 표시를 둔다
+  // 완료 요청이 끝날 때까지 버튼에 도는 표시를 둔다
   const [completingId, setCompletingId] = useState<string | null>(null)
   const completeStep = async (step: EventStep) => {
     setCompletingId(step.id)
     try {
       const result = demo ? null : await completeMutation.mutateAsync(step.id)
-      // 다음 단계가 시작되면 서버가 응답 전에 공지·발송 초안을 「쓰는 중」으로 바꿔 둔다.
-      // 다시 불러온 목록에 쓰는 중인 일이 있을 때만 토리가 시작했다고 알린다.
-      const fresh = demo ? undefined : (await todoQuery.refetch()).data
-      const drafting = (fresh ?? []).some((a) => a.contentStatus === 'DRAFTING' && a.stepId !== step.id)
-      // 완료 순간은 화면 가운데에 잠깐 띄운다. 남은 일이 있다는 경고만 토스트로 남긴다.
-      const index = steps.findIndex((s) => s.id === step.id)
-      const next = steps.slice(index + 1).find((s) => s.state !== 'DONE')
       setOpenStepId(null)
-      setStepDone({
-        key: Date.now(),
-        done: { position: index + 1, name: step.name },
-        next: next && { position: steps.indexOf(next) + 1, name: next.name },
-        drafting,
-      })
+      // 완료 카드는 아래 효과가 다시 불러온 단계 목록을 보고 띄운다. 시연은 단계가 바뀌지 않아 여기서 띄운다.
+      if (demo) {
+        const index = steps.findIndex((s) => s.id === step.id)
+        const next = steps.slice(index + 1).find((s) => s.state !== 'DONE')
+        setStepDone({
+          key: Date.now(),
+          done: { position: index + 1, name: step.name },
+          next: next && { position: steps.indexOf(next) + 1, name: next.name },
+          drafting: false,
+        })
+      }
       if (result?.pendingActionCount)
         toast.show({
           kind: 'done',
@@ -211,6 +209,31 @@ export default function EventDetailPage() {
       setCompletingId(null)
     }
   }
+
+  // 단계가 넘어간 순간에 완료 카드를 띄운다. 「단계 완료로 표시」뿐 아니라 마지막 일을 끝내 서버가
+  // 단계를 자동으로 완료한 경우도 같다. 처음 열었을 때와 다른 행사로 옮겼을 때는 띄우지 않는다.
+  const markRef = useRef<CurrentMark | null>(null)
+  const refetchTodo = todoQuery.refetch
+  useEffect(() => {
+    const loaded = stepsQuery.data
+    if (!loaded || !eventId) return
+    const advance = stepAdvance(markRef.current, eventId, loaded)
+    markRef.current = currentMark(eventId, loaded)
+    if (!advance) return
+    // 끝난 단계의 모달이 열려 있으면 닫는다. 모달은 화면 맨 위 층이라 완료 카드를 가린다.
+    setOpenStepId((id) => (id === advance.done.id ? null : id))
+    const { done, next } = advance
+    // 다음 단계가 시작되면 서버가 응답 전에 공지·발송 초안을 「쓰는 중」으로 바꿔 둔다.
+    // 다시 불러온 목록에 다음 단계의 쓰는 중인 글이 있을 때만 토리가 시작했다고 알린다.
+    void refetchTodo().then((fresh) =>
+      setStepDone({
+        key: Date.now(),
+        done: { position: done.position, name: done.name },
+        next: next && { position: next.position, name: next.name },
+        drafting: !!next && (fresh.data ?? []).some((a) => a.stepId === next.id && a.contentStatus === 'DRAFTING'),
+      }),
+    )
+  }, [stepsQuery.data, eventId, refetchTodo])
 
   const permissionError = [detailQuery, stepsQuery, resolvedQuery, todoQuery, operationCases].some(
     (query) => query.isError && query.error instanceof ApiError && ['UNAUTHORIZED', 'FORBIDDEN'].includes(query.error.code),
