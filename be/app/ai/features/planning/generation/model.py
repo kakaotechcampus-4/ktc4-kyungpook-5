@@ -1,7 +1,8 @@
 """긴 계획 JSON에 필요한 출력 한도와 추론 깊이를 대화 모델과 분리한다."""
 
 from ....config import AISettings
-from ....llm import ainvoke_structured, build_chat_model
+from ....llm import ainvoke_structured, astream_structured, build_chat_model
+from ....llm_stream import FirstTextCallback
 
 
 PLAN_MAX_OUTPUT_TOKENS = 8192
@@ -24,5 +25,9 @@ def build_plan_model(settings: AISettings | None = None, **overrides):
                                          "reasoning": PLAN_REASONING, **overrides})
 
 
-async def invoke_plan_composition(messages, schema):
-    return await ainvoke_structured(messages, schema, model=build_plan_model())
+async def invoke_plan_composition(messages, schema, *, on_writing: FirstTextCallback | None = None):
+    # 진행 알림을 받을 곳이 있을 때만 조각을 직접 모아 첫 글자 도착을 알린다(#388).
+    # 없으면 기존처럼 완성본만 받는다. 두 경로의 결과·오류는 같다(test_structured_output).
+    if on_writing is None:
+        return await ainvoke_structured(messages, schema, model=build_plan_model())
+    return await astream_structured(messages, schema, on_first_text=on_writing, model=build_plan_model())

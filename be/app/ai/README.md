@@ -83,6 +83,7 @@ be/app/ai/
 계획 대화·버튼 생성은 선택적인 `progress=PlanningProgressPort`로 실제 조건 변경·검색·생성
 진행을 알릴 수 있습니다(#266, #279). 결과와 저장 상태는 기존 계약을 유지하며, 생략하면
 기존 모델 호출 방식을 사용합니다. 포트를 전달하면 최종 답변의 텍스트 조각도 전달합니다(#280).
+생성 모델이 초안의 첫 글자를 보낸 순간도 `generation_writing`으로 알립니다(#388).
 BE는 이 포트를 `POST /events/{id}/plan/chat/stream`·`/plan/generate/stream`(SSE)으로 연결했습니다(#284). 제품 FE 행사계획 화면이 진행 줄(진행 중 도는 표시, 완료 초록 체크)과 답변 점진 표시를 보여 줍니다(#285). 끊기면 POST를 다시 보내지 않고 요청 키로 결과만 조회합니다(#342).
 이벤트와 저장 완료의 차이는 [공개 계약](docs/planning/p1-public-contract.md)을 따릅니다.
 
@@ -111,6 +112,7 @@ BE는 이 포트를 `POST /events/{id}/plan/chat/stream`·`/plan/generate/stream
 유지할 때는 온도 대신 프롬프트와 구조화 출력을 사용합니다.
 
 구조화 출력은 `await ainvoke_structured(messages, Schema)`로, 임베딩은 `await aembed_texts(texts)`로 호출합니다.
+조각을 받는 동안 첫 글자 도착을 알려야 하면 `astream_structured(..., on_first_text=콜백, model=스트리밍 모델)`을 씁니다. 결과·오류는 `ainvoke_structured`와 같습니다(행사계획 생성의 「작성 중」 신호, #388).
 실패하면 AI 오류 타입으로 올라오며, 변환 기준은 [AI 오류 타입](docs/errors.md)을 따릅니다.
 
 호출 경로는 Responses API(`/v1/responses`)로 고정합니다.

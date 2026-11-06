@@ -2,7 +2,8 @@
 //
 // 「이 조건으로 초안 만들기」 → 생성 화면
 //   ✓ 조건 확인
-//   ● 초안 작성 12초      ← generation_started부터 1초씩 센다
+//   ● 초안 작성  토리가 생각 중이에요  3초      ← generation_started부터 1초씩 센다
+//   ● 초안 작성  초안을 작성하는 중이에요  7초  ← generation_writing(모델이 첫 글자를 보냄, #388)
 //   ○ 저장 확인
 //   ○ 계획 불러오기
 // → 모두 ✓ → "초안이 준비됐어요" → DONE_HOLD_MS 뒤 계획 검토로(「바로 보기」로 먼저 갈 수 있다)
@@ -12,6 +13,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import {
   GENERATION_ROWS,
+  draftingNote,
   generationCopy,
   generationRows,
   regenerationCopy,
@@ -171,6 +173,7 @@ export function GenerationScreen({
         : (regenerate && regenerationCopy[flow.phase]) || generationCopy[flow.phase]
   const waiting = !ending && WAITING.includes(flow.phase)
   const rows = generationRows(phase, ending?.kind === 'failed' ? ending.stoppedAt : undefined)
+  const note = draftingNote(flow, ending !== null)
   const facts = toFacts(flow.draft)
   const budgetMeta = flow.draft.conditionMeta.budgetTotal ?? flow.draft.conditionMeta.budget_total
   const budgetLater = flow.draft.deferredTopics.includes('budget_total')
@@ -243,6 +246,15 @@ export function GenerationScreen({
                     {label}
                   </span>
                   <span className="sr-only">{STATE_TEXT[state]}</span>
+                  {/* 문구가 바뀔 때만 살짝 올라온다. 바뀔 때마다 소리 내 알리지는 않고, 목록을 읽을 때 함께 읽힌다. */}
+                  {index === 1 && note && (
+                    <span
+                      key={note}
+                      className="min-w-0 animate-turn-in break-keep text-caption text-ink2 motion-reduce:animate-none"
+                    >
+                      {note}
+                    </span>
+                  )}
                   {index === 1 && seconds > 0 && (
                     <span className="text-caption text-mute tabular-nums" aria-hidden>
                       {seconds}초

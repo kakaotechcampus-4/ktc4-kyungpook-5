@@ -491,8 +491,9 @@ class PlanProgressOut(CamelModel):
     operation_id: str
     kind: Literal[
         "condition_started", "condition_applied", "search_started", "search_finished",
-        "generation_started", "generation_finished",
+        "generation_started", "generation_writing", "generation_finished",
     ]
+    # generation_writing은 같은 operationId의 생성 줄이 생각을 마치고 초안을 쓰기 시작했다는 뜻이다(running, #388).
     # skipped는 같은 operationId의 running 줄을 지우라는 뜻이다(조건 거절·같은 값, #290).
     # empty는 정상으로 끝났지만 찾은 것이 없다는 뜻이다(기록 검색 자료 없음, #300).
     status: Literal["running", "completed", "failed", "skipped", "empty"]

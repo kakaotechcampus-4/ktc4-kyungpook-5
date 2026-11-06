@@ -85,6 +85,19 @@ test('generation rows only check the stages that actually passed', () => {
   assert.equal(rows('failed', 'loading'), 'done done done failed')
 })
 
+// 「초안 작성」 옆 문구는 서버 신호로만 바뀐다(#388). 시작을 보지 못한 화면에는 붙이지 않는다.
+test('drafting note follows generation_started then generation_writing only', () => {
+  const note = (flow, ended = false) => m.draftingNote({ draft, ...flow }, ended)
+  assert.equal(note({ phase: 'generating' }), '토리가 생각 중이에요')
+  assert.equal(note({ phase: 'generating', writing: true }), '초안을 작성하는 중이에요')
+  // 다음 줄로 넘어갔거나 끝났으면 문구를 지운다. 걸린 시간만 남는다
+  assert.equal(note({ phase: 'verifying', writing: true }), null)
+  assert.equal(note({ phase: 'generating', writing: true }, true), null)
+  // 새로고침 뒤 결과를 확인하는 화면은 생성 시작을 보지 못했다
+  assert.equal(note({ phase: 'unknown' }), null)
+  assert.equal(note({ phase: 'requesting' }), null)
+})
+
 test('generated receipt and new coherent saved snapshot are both required', () => {
   assert.equal(m.generatedSnapshotStatus(request, result, fresh), 'new')
   for (const steps of [

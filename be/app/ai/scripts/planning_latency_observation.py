@@ -234,13 +234,14 @@ def install_observers():
     original_compose, original_validate = generation_graph.compose_plan, generation_graph.validate_plan
 
     @wraps(original_compose)
-    async def compose(state, *, invoke):
+    async def compose(state, *, invoke, **kwargs):
+        # kwargs: 진행 알림용 on_writing(#388) 등 관측과 무관한 인자를 그대로 넘긴다.
         trace = CURRENT_TRACE.get()
         if trace is None:
-            return await original_compose(state, invoke=invoke)
+            return await original_compose(state, invoke=invoke, **kwargs)
         with trace.span('compose_plan'):
             # 기본 인자로 이미 묶인 invoke도 여기서 감싸 누락 없이 시도를 센다.
-            return await original_compose(state, invoke=wrap_async(invoke, 'generation_model'))
+            return await original_compose(state, invoke=wrap_async(invoke, 'generation_model'), **kwargs)
 
     @wraps(original_validate)
     def validate(state):

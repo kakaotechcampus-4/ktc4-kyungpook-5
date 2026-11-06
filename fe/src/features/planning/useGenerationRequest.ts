@@ -66,6 +66,8 @@ export function useGenerationRequest(
   const reading = useRef(false)
   // 생성 화면이 이미 떠 있는가. 처음 띄우는 순간에만 화면 전환 움직임을 준다.
   const visible = useRef(false)
+  // 이번 생성에서 generation_writing을 받았는가(#388). 요청 기록에는 남기지 않는다(새로고침 뒤에는 모른다).
+  const writing = useRef(false)
   useEffect(() => {
     mounted.current = true
     return () => {
@@ -81,7 +83,8 @@ export function useGenerationRequest(
         /* The earlier journal remains locked. */
       }
     }
-    if (mounted.current) setFlow({ phase, draft: request.draft })
+    if (mounted.current)
+      setFlow({ phase, draft: request.draft, writing: phase === 'generating' && writing.current })
   }
   const own = journal.request
   const restoredFlow: GenerationFlow | null =
@@ -144,9 +147,14 @@ export function useGenerationRequest(
     if (event.conditionDraft) request.draft = event.conditionDraft
     if (event.kind === 'generation_started') {
       request.started = true
+      writing.current = false
       // 채팅은 이 순간 대화 화면에서 생성 화면으로 바뀐다. 조건 카드가 생성 화면으로 이어지게 한다.
       if (visible.current) show('generating', request)
       else withViewTransition(() => show('generating', request))
+    } else if (event.kind === 'generation_writing' && request.started) {
+      // 모델이 초안 첫 글자를 보냈다. 같은 「초안 작성」 줄의 옆 문구만 바꾼다.
+      writing.current = true
+      show('generating', request)
     } else if (event.kind === 'generation_finished' && event.status === 'completed')
       // 실패한 생성은 저장할 것이 없다. 「초안 작성」에서 멈춘 것으로 보이게 다음 줄로 넘기지 않는다.
       show('verifying', request)

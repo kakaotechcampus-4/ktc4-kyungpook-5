@@ -778,7 +778,7 @@ class PlanningProgress(ContractModel):
 
     operation_id: NonBlankStr
     kind: Literal["condition_started", "condition_applied", "search_started", "search_finished",
-                  "generation_started", "generation_finished"]
+                  "generation_started", "generation_writing", "generation_finished"]
     # skipped: 시작한 작업이 보여 줄 결과 없이 끝났다(조건 거절·같은 값). 화면은 그 줄을 지운다.
     # empty: 작업은 정상으로 끝났지만 찾은 것이 없다(기록 검색 자료 없음). 화면은 실패와 구분해 남긴다.
     status: Literal["running", "completed", "failed", "skipped", "empty"]
@@ -788,7 +788,8 @@ class PlanningProgress(ContractModel):
 
     @model_validator(mode="after")
     def _consistent_progress(self) -> Self:
-        allowed = ({"running"} if self.kind.endswith("_started") else
+        # generation_writing: 같은 생성 작업이 생각을 마치고 초안 글자를 쓰기 시작했다(#388). 아직 진행 중이다.
+        allowed = ({"running"} if self.kind.endswith("_started") or self.kind == "generation_writing" else
                    {"completed", "skipped"} if self.kind == "condition_applied" else
                    {"completed", "empty", "failed"} if self.kind == "search_finished" else
                    {"completed", "failed"})

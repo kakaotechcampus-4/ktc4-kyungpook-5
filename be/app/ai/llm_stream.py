@@ -7,6 +7,8 @@ from langchain_core.messages import AIMessage, AIMessageChunk, message_chunk_to_
 TextCallback = Callable[[str], Awaitable[None]]
 ResetCallback = Callable[[], Awaitable[None]]
 ToolStartCallback = Callable[[str, str], Awaitable[None]]
+# 구조화 출력의 첫 글자 도착(#388). 내용은 넘기지 않는다.
+FirstTextCallback = Callable[[], Awaitable[None]]
 
 
 def final_answer_text(message: AIMessage) -> str:

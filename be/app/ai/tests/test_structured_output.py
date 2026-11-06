@@ -20,7 +20,7 @@ from app.ai.errors import (
     AIRetryableError,
     AITimeoutError,
 )
-from app.ai.llm import ainvoke_structured, build_chat_model
+from app.ai.llm import ainvoke_structured, astream_structured, build_chat_model
 
 API_KEY = "super-secret-key"
 
@@ -244,3 +244,108 @@ def test_오류_메시지에_키와_요청_원문을_남기지_않는다():
 
     assert API_KEY not in str(error.value)
     assert request_text not in str(error.value)
+
+
+# --- astream_structured (#388): 조각을 직접 모으며 첫 글자 도착을 알리는 경로 ---
+
+def _real_stream(text, *, pieces=3, status="completed", reason=None, terminal=True):
+    """실제 생성 응답 순서를 줄여 만든 스트림: 시작 → 추론 블록(글자 없음) → 글자 조각 여러 개 → 끝."""
+    reasoning = {"type": "reasoning", "id": "rs_test", "summary": []}
+    message = {"type": "message", "id": "msg_test", "status": "completed", "role": "assistant",
+               "content": [{"type": "output_text", "text": text, "annotations": []}]}
+    final = {**_response([]), "output": [reasoning, message], "status": status,
+             "text": {"format": {"type": "json_schema", "name": "Draft",
+                                 "schema": Draft.model_json_schema(), "strict": True}}}
+    if reason:
+        final["incomplete_details"] = {"reason": reason}
+    size = max(1, -(-len(text) // pieces))
+    events = [dict(type="response.created", response={**final, "status": "in_progress", "output": []}),
+              dict(type="response.output_item.added", output_index=0, item=reasoning),
+              dict(type="response.output_item.done", output_index=0, item=reasoning),
+              *(dict(type="response.output_text.delta", output_index=1, content_index=0,
+                     item_id="msg_test", delta=text[i:i + size]) for i in range(0, len(text), size))]
+    if terminal:
+        events.append(dict(type=f"response.{status}", response=final))
+    body = "".join(f"event: {e['type']}\ndata: {json.dumps(dict(e, sequence_number=i))}\n\n"
+                   for i, e in enumerate(events))
+    return httpx.Response(200, text=body, headers={"content-type": "text/event-stream"})
+
+
+def _stream_call(handler, messages="다음 달에 MT를 가고 싶어"):
+    """astream_structured를 부르고 (결과 또는 예외, 첫 글자 알림 횟수)를 돌려준다."""
+    settings = AISettings(api_base_url="https://example.test/v1", api_key=API_KEY, model="gpt-5.6-terra")
+    model = build_chat_model(settings, max_retries=0, streaming=True,
+                             http_async_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    calls = []
+
+    async def first_text():
+        calls.append("first_text")
+
+    try:
+        result = asyncio.run(astream_structured(messages, Draft, on_first_text=first_text, model=model))
+    except Exception as error:
+        result = error
+    return result, len(calls)
+
+
+def _invoke_call(handler):
+    try:
+        return _call(handler, streaming=True)
+    except Exception as error:
+        return error
+
+
+def test_조각을_모아_같은_객체를_돌려주고_첫_글자에서_한_번만_알린다():
+    result, first_texts = _stream_call(lambda request: _real_stream(json.dumps(VALID), pieces=5))
+    assert result == Draft.model_validate(VALID)
+    # 시작·추론 블록 조각에서는 알리지 않고, 글자 조각 5개 중 첫 조각에서 한 번만 알린다.
+    assert first_texts == 1
+
+
+@pytest.mark.parametrize("response", [
+    lambda: _real_stream(json.dumps(VALID)),
+    lambda: _real_stream(json.dumps(VALID), status="incomplete", reason="max_output_tokens"),
+    lambda: _real_stream('{"title": "끊김', status="incomplete", reason="max_output_tokens"),
+    lambda: _real_stream(json.dumps(VALID), status="incomplete", reason="content_filter"),
+    lambda: _real_stream(json.dumps(VALID), terminal=False),
+    lambda: _real_stream(json.dumps({"title": "봄 MT"})),
+    lambda: _real_stream('{"title": "봄'),
+    lambda: _status(429), lambda: _status(503), lambda: _status(401), lambda: _status(400),
+], ids=["정상", "출력한도", "출력한도_잘린JSON", "다른_미완성", "종료신호_없음", "필드_누락", "잘린JSON",
+        "429", "503", "401", "400"])
+def test_두_경로는_같은_응답에_같은_결과나_같은_오류를_낸다(response):
+    """생성 모델의 결과·실패 종류가 바꾸기 전과 같아야 한다(#388 완료 조건)."""
+    by_invoke = _invoke_call(lambda request: response())
+    by_stream, _ = _stream_call(lambda request: response())
+    assert type(by_stream) is type(by_invoke)
+    if not isinstance(by_invoke, Exception):
+        assert by_stream == by_invoke
+    else:
+        assert str(by_stream) == str(by_invoke)
+
+
+def test_글자가_오기_전에_끝난_응답은_알리지_않는다():
+    result, first_texts = _stream_call(lambda request: _real_stream("", status="incomplete", reason="max_output_tokens"))
+    assert isinstance(result, AIOutputLimitError)
+    assert first_texts == 0
+
+
+def test_스트림_응답_시간_초과도_AITimeoutError():
+    result, first_texts = _stream_call(_raise(httpx.ReadTimeout("timeout")))
+    assert isinstance(result, AITimeoutError) and first_texts == 0
+
+
+def test_두_경로는_게이트웨이에_같은_요청을_보낸다():
+    """받는 방식만 다르고 모델이 받는 요청은 같다. 그래서 초안 내용(계획 검증 결과)은 경로와 무관하다(#388)."""
+    bodies = {}
+
+    def record(name):
+        def handler(request):
+            bodies[name] = json.loads(request.content)
+            return _real_stream(json.dumps(VALID))
+        return handler
+
+    _invoke_call(record("invoke"))
+    _stream_call(record("stream"))
+    assert bodies["invoke"] == bodies["stream"]
+    assert bodies["stream"]["stream"] is True

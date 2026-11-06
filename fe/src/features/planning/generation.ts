@@ -13,6 +13,8 @@ export type GenerationPhase =
 export interface GenerationFlow {
   phase: GenerationPhase
   draft: S['PlanDraftOut']
+  // 이번 화면에서 generation_writing을 받았는가(#388). 모델이 초안 첫 글자를 보낸 뒤다.
+  writing?: boolean
 }
 export interface PlanningRequest {
   version: 1
@@ -231,6 +233,15 @@ export function generationRows(
   if (phase === 'load-failed' || phase === 'unconfirmed' || phase === 'changed')
     return states(3, 'failed')
   return states(ROW_OF[phase] ?? 0, 'active')
+}
+
+// 「초안 작성」 줄 옆 문구(#388). 서버가 보낸 신호로만 바꾼다.
+//   generation_started 받음          → 토리가 생각 중이에요     (모델이 추론하는 동안, 실측 p50 4~5초)
+//   generation_writing 받음          → 초안을 작성하는 중이에요 (첫 글자부터 끝까지, 실측 p50 7~8초)
+//   그 밖(다음 줄로 넘어감·새로고침 뒤 확인) → 없음. 시작을 보지 못했으면 지어내지 않는다
+export function draftingNote(flow: GenerationFlow, ended: boolean): string | null {
+  if (ended || flow.phase !== 'generating') return null
+  return flow.writing ? '초안을 작성하는 중이에요' : '토리가 생각 중이에요'
 }
 
 // 지금 초안이 있는데 다시 만드는 경우의 문구. 첫 생성과 같은 말을 쓰면 지금 초안이 어떻게 되는지 알 수 없다.
