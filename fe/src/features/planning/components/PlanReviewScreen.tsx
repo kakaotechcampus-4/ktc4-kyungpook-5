@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import type { components } from '@/shared/api/schema'
 import { useRequestPlanReview, useReviewInFlight, useStartEvent } from '../hooks'
+import { usePrefetchEventPage } from '@/features/events/hooks'
 import { currentExcluded, reviewGroups } from '../reviewModel'
 import { reviewCardState, showGenerationWarnings } from '../reviewState'
 import { PlanReviewCard } from './PlanReviewCard'
@@ -16,8 +17,15 @@ import { Chip } from '@/shared/ui/Chip'
 import { ToriNote } from '@/shared/ui/ToriNote'
 import { formatDateRange, formatMonthDay } from '@/shared/lib/format'
 import { ApiError } from '@/shared/api/types'
+import { EVENT_STATUS_LABEL, EVENT_STATUS_TONE } from '@/shared/lib/labels'
 
 type S = components['schemas']
+// 운영 시작이 끝난 뒤 「시작했어요」를 보이고 행사 상세로 넘어가기까지의 시간.
+// 그동안 행사 상세 화면의 조회를 미리 받아 두어, 넘어간 화면이 처음부터 진행 중으로 그려진다.
+// 시간은 index.css의 --animate-hold-bar를 쓰는 쪽이 animation-duration으로 넣는다.
+export const START_HOLD_MS = 1400
+// 시간이 지났는데 조회가 덜 끝났으면 이만큼까지 더 기다린다. 그 뒤에는 상세 화면이 마저 불러온다.
+const START_WAIT_MAX_MS = 1500
 const actorLabel = (actor: string) =>
   ({ AI: 'AI 실행', APPROVAL_REQUIRED: '승인 필요', MANUAL: '직접 수행' })[actor] ?? actor
 // 왼쪽 날짜 줄이 시작일(없으면 마감일)을 보이므로 칸 안에는 나머지 하나만 적는다.
@@ -35,11 +43,14 @@ export function PlanReviewScreen({
   screen,
   steps,
   onReload,
+  onStarted,
 }: {
   eventId: string
   screen: S['PlanScreenOut']
   steps: S['PlannedStepOut'][]
   onReload: () => Promise<unknown>
+  // 서버가 운영 시작을 받아들인 순간. 부모가 상태가 바뀐 행사를 곧바로 다른 화면으로 보내지 않게 한다.
+  onStarted?: () => void
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -68,6 +79,32 @@ export function PlanReviewScreen({
   // 안내에 「행사 상세 열기」를 같이 둘지. 상태가 바뀌었을 때만 그쪽이 더 아는 것이 많다.
   const [noticeNeedsEvent, setNoticeNeedsEvent] = useState(false)
   const start = useStartEvent(eventId)
+  const prefetchEventPage = usePrefetchEventPage()
+  const prefetched = useRef<Promise<unknown>>(Promise.resolve())
+  const eventPath = `/events/${encodeURIComponent(eventId)}`
+  // 운영을 시작했다. 오른쪽 칸이 확인 상태로 바뀌고 START_HOLD_MS 뒤 행사 상세로 넘어간다.
+  const [started, setStarted] = useState(false)
+  const startedBox = useRef<HTMLDivElement>(null)
+  // 제목과 상태 칩이 행사 상세 머리 카드의 같은 자리로 옮겨 가고 나머지는 겹쳐 바뀐다(index.css의 event-title).
+  const openEvent = () => navigate(eventPath, { viewTransition: true })
+  const openEventRef = useRef(openEvent)
+  openEventRef.current = openEvent
+  useEffect(() => {
+    if (!started) return
+    // 누르던 「운영 시작」 버튼이 사라지므로 초점을 「바로 보기」로 옮긴다.
+    startedBox.current?.querySelector('button')?.focus()
+    let gone = false
+    const timer = setTimeout(() => {
+      const ceiling = new Promise((resolve) => setTimeout(resolve, START_WAIT_MAX_MS))
+      void Promise.race([prefetched.current, ceiling]).then(() => {
+        if (!gone) openEventRef.current()
+      })
+    }, START_HOLD_MS)
+    return () => {
+      gone = true
+      clearTimeout(timer)
+    }
+  }, [started])
   const requestReview = useRequestPlanReview(eventId)
   const requesting = useReviewInFlight(eventId)
   const review = screen.review ?? null
@@ -78,6 +115,7 @@ export function PlanReviewScreen({
   const warningsShown =
     showGenerationWarnings(screen.planRevision, review) && screen.warnings.length > 0
   const blockerId = useId()
+  const holdNoteId = useId()
   // 운영 시작을 막는 조건. 서버도 같은 두 가지(시작일·단계 하나 이상)로 막는다.
   const startBlocker = !conditions.startDate
     ? {
@@ -103,8 +141,6 @@ export function PlanReviewScreen({
     setNoticeNeedsEvent(false)
     try {
       await start.mutateAsync()
-      await queryClient.invalidateQueries({ queryKey: ['events'] })
-      navigate(`/events/${encodeURIComponent(eventId)}`)
     } catch (cause) {
       setNotice(
         cause instanceof ApiError && ['VALIDATION_FAILED', 'PLAN_INCOMPLETE'].includes(cause.code)
@@ -119,8 +155,15 @@ export function PlanReviewScreen({
           cause instanceof ApiError && ['VALIDATION_FAILED', 'PLAN_INCOMPLETE'].includes(cause.code)
         ),
       )
+      return
     }
+    onStarted?.()
+    setStarted(true)
+    // 기다리는 동안 행사 목록을 새로 표시하고 행사 상세 화면의 조회를 받아 둔다. 못 받아도 상세 화면이 다시 부른다.
+    void queryClient.invalidateQueries({ queryKey: ['events'] })
+    prefetched.current = prefetchEventPage(eventId).catch(() => undefined)
   }
+  const status = started ? 'ON_GOING' : 'PLANNING'
   return (
     <>
       <PlanStageNav current="review" eventId={eventId} canReview />
@@ -155,11 +198,25 @@ export function PlanReviewScreen({
             <h2
               ref={heading}
               tabIndex={-1}
-              className="focus:outline-none text-[21px] font-bold [overflow-wrap:anywhere]"
+              className={cn(
+                'focus:outline-none text-[21px] font-bold [overflow-wrap:anywhere]',
+                // 행사 상세로 넘어갈 때만 이름을 붙인다. 행사 조건 ↔ 계획 검토 전환에서는 화면과 함께 겹쳐 바뀐다.
+                started && '[view-transition-name:event-title]',
+              )}
             >
               {conditions.title || '행사 계획'}
             </h2>
-            <Chip tone="approved">계획 중</Chip>
+            {/* 운영 시작이 끝나면 서버 결과대로 「진행 중」으로 바꾼다. 행사 상세의 같은 칩으로 이어진다. */}
+            <Chip
+              key={status}
+              tone={EVENT_STATUS_TONE[status]}
+              className={cn(
+                started &&
+                  'animate-check-in [view-transition-name:event-status] motion-reduce:animate-none',
+              )}
+            >
+              {EVENT_STATUS_LABEL[status]}
+            </Chip>
           </div>
           {/* 값 사이는 「|」로 나눈다. 띄어쓰기만으로는 「경북대 백호관 100명」처럼 붙어 읽힌다.
               시작일은 운영 시작을 막는 유일한 조건이라, 비어 있으면 오른쪽 운영 시작 칸의 안내와 같은 색으로 둔다. */}
@@ -207,7 +264,8 @@ export function PlanReviewScreen({
         />
       ) : (
         <div className="grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_272px]">
-          <Card className="min-w-0 p-4 sm:p-6">
+          {/* 운영을 시작한 뒤 넘어가기까지는 단계를 고칠 수 없다. 서버도 계획 중일 때만 받는다. */}
+          <Card className="min-w-0 p-4 sm:p-6" inert={started}>
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-h2">준비 순서</h2>
               <Button
@@ -363,7 +421,7 @@ export function PlanReviewScreen({
           <aside className="grid min-w-0 gap-4 xl:sticky xl:top-5">
             {/* 이 화면의 끝은 운영 시작이다. 맨 위에 두고, 막는 이유와 고치러 가는 길을 버튼 바로 위에 붙인다.
               예전에는 버튼 밑 작은 글자였고, 그 글자가 가리키던 「행사 조건 수정」 버튼은 단계 토글로 바뀌어 없었다. */}
-            <Card className="flex flex-col gap-4 p-5">
+            <Card className="relative flex flex-col gap-4 overflow-hidden p-5">
               {/* 예전 「계획 요약」 상자를 한 줄로 줄였다. 좁은 열에서는 항목 단위로만 줄을 바꾼다. */}
               <div className="flex flex-col gap-1 tabular-nums">
                 <p className="text-caption font-semibold text-ink">
@@ -383,7 +441,7 @@ export function PlanReviewScreen({
                   ))}
                 </p>
               </div>
-              {startBlocker && (
+              {startBlocker && !started && (
                 <div
                   id={blockerId}
                   className="flex items-start gap-[10px] rounded-[10px] border border-pending-line bg-pending-bg px-[14px] py-[12px] text-pending"
@@ -413,20 +471,60 @@ export function PlanReviewScreen({
                   </span>
                 </div>
               )}
-              <div className="flex flex-col gap-2">
-                <Button
-                  className="w-full"
-                  loading={start.isPending}
-                  disabled={!!startBlocker}
-                  aria-describedby={startBlocker ? blockerId : undefined}
-                  onClick={() => void begin()}
+              {started ? (
+                <div
+                  ref={startedBox}
+                  className="flex animate-turn-in flex-col gap-3 motion-reduce:animate-none"
                 >
-                  운영 시작
-                </Button>
-                <p className="text-label leading-relaxed text-mute">
-                  행사를 진행 중으로 전환해요. 실행·발송은 별도 승인이 필요해요.
-                </p>
-              </div>
+                  <p role="status" className="flex items-center gap-2 text-body-strong text-ink">
+                    <svg
+                      aria-hidden
+                      viewBox="0 0 18 18"
+                      className="size-[18px] shrink-0 animate-check-in text-done motion-reduce:animate-none"
+                      fill="none"
+                    >
+                      <circle cx="9" cy="9" r="9" className="fill-done-bg" />
+                      <path
+                        d="M5.2 9.3 7.9 12l4.9-5.6"
+                        stroke="currentColor"
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    운영을 시작했어요
+                  </p>
+                  <Button className="w-full" aria-describedby={holdNoteId} onClick={openEvent}>
+                    바로 보기
+                  </Button>
+                  <p id={holdNoteId} className="text-label leading-relaxed text-mute">
+                    곧 행사 상세로 넘어가요.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Button
+                    className="w-full"
+                    loading={start.isPending}
+                    disabled={!!startBlocker}
+                    aria-describedby={startBlocker ? blockerId : undefined}
+                    onClick={() => void begin()}
+                  >
+                    운영 시작
+                  </Button>
+                  <p className="text-label leading-relaxed text-mute">
+                    행사를 진행 중으로 전환해요. 실행·발송은 별도 승인이 필요해요.
+                  </p>
+                </div>
+              )}
+              {/* 행사 상세로 넘어가기까지 남은 시간. 카드 위 가장자리에서 줄어든다. 움직임 줄이기면 숨긴다. */}
+              {started && (
+                <span
+                  aria-hidden
+                  style={{ animationDuration: `${START_HOLD_MS}ms` }}
+                  className="absolute inset-x-0 top-0 h-[3px] origin-left animate-hold-bar bg-blue-600 motion-reduce:hidden"
+                />
+              )}
               {notice && (
                 <p role="alert" className="text-caption text-failed">
                   {notice}{' '}

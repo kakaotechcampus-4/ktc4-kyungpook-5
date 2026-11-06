@@ -341,6 +341,7 @@ function Conversation({
   }, [live.streaming, onBusy])
   const [params] = useSearchParams()
   const event = useEventDetail(eventId ?? undefined)
+  const [handingOff, setHandingOff] = useState(false)
   // 확인 중에 행사 상세를 못 불러왔다면 확인이 끝난 뒤 다시 불러온다(#368). 대화는 조회가 끝날 때
   // 다시 불러오지만 행사 상세는 따로 불러야 한다.
   const checking = live.checking
@@ -461,7 +462,14 @@ function Conversation({
   const screen = live.snapshot.data?.screen
   // P2와 편집기는 같은 행사에 저장된 최신 단계를 사용한다.
   const steps = savedSteps
-  if (eventId && event.data && event.data.status !== 'PLANNING') {
+  // 운영 시작이 끝난 뒤 계획 검토가 「시작했어요」를 보이는 동안에는 행사 상세로 바로 보내지 않는다.
+  // 넘어가는 일은 PlanReviewScreen이 맡는다. 그사이 행사 조건으로 옮기면 평소처럼 행사 상세로 보낸다.
+  if (
+    eventId &&
+    event.data &&
+    event.data.status !== 'PLANNING' &&
+    !(handingOff && stage === 'review')
+  ) {
     return <Navigate replace to={`/events/${encodeURIComponent(eventId)}`} />
   }
   // 최초 주소 해석과 생성 성공 이동은 구분한다. 성공은 검증된 스냅샷을 받은 뒤 replace한다.
@@ -484,6 +492,7 @@ function Conversation({
         screen={screen}
         steps={steps}
         onReload={() => live.snapshot.refetch()}
+        onStarted={() => setHandingOff(true)}
       />
     )
   }
