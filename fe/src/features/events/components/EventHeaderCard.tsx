@@ -46,8 +46,14 @@ export function EventHeaderCard({
     <Card className="flex flex-col gap-[18px] px-[26px] pt-[24px] pb-[26px]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-[11px]">
-          <h1 className="text-[26px] font-bold">{event.title}</h1>
-          <Chip tone={EVENT_STATUS_TONE[event.status]}>{EVENT_STATUS_LABEL[event.status]}</Chip>
+          {/* 계획 검토에서 운영을 시작하면 그 화면의 제목과 상태 칩이 이 자리로 옮겨 온다(index.css의 event-title) */}
+          <h1 className="text-[26px] font-bold [view-transition-name:event-title]">{event.title}</h1>
+          <Chip
+            tone={EVENT_STATUS_TONE[event.status]}
+            className="[view-transition-name:event-status]"
+          >
+            {EVENT_STATUS_LABEL[event.status]}
+          </Chip>
         </div>
         <div className="flex flex-wrap gap-[8px]">
           {/* 계획 중 행사는 P2 계획 검토의 「운영 시작」에서 시작한다(#337) */}

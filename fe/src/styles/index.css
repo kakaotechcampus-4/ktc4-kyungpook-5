@@ -331,9 +331,20 @@ textarea[aria-label='계획 대화 답변'] {
   animation-duration: 320ms;
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
+/* 계획 검토 → 행사 상세(운영 시작 뒤, PlanReviewScreen의 START_HOLD_MS).
+   event-title   계획 검토의 행사 제목 ↔ 행사 상세 머리 카드의 제목. 21px에서 26px로 커지며 옮겨 간다.
+   event-status  바로 옆 상태 칩. 막 「진행 중」으로 바뀐 칩이 상세 화면의 같은 칩 자리로 간다.
+   나머지 화면(root)은 위와 같이 짧게 겹쳐 바뀐다. */
+::view-transition-group(event-title),
+::view-transition-group(event-status) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(plan-generation),
-  ::view-transition-group(plan-stage-pill) {
+  ::view-transition-group(plan-stage-pill),
+  ::view-transition-group(event-title),
+  ::view-transition-group(event-status) {
     animation: none;
   }
 }

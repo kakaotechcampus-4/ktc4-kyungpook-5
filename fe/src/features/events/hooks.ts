@@ -80,6 +80,58 @@ export function usePrefetchEventDetail() {
     })
 }
 
+const eventStepsKey = (
+  userId: string | undefined,
+  clubId: string | null,
+  eventId: string | undefined,
+  demo: boolean,
+) => ['events', userId, clubId, eventId, 'steps', demo]
+const todoActionsKey = (
+  userId: string | undefined,
+  clubId: string | null,
+  eventId: string | undefined,
+  demo: boolean,
+) => ['events', userId, clubId, eventId, 'actions', 'todo', demo]
+const resolvedActionsKey = (
+  userId: string | undefined,
+  clubId: string | null,
+  eventId: string | undefined,
+  demo: boolean,
+) => ['events', userId, clubId, eventId, 'actions', 'resolved', demo]
+const TODO_QUERY = 'status=PENDING,APPROVED,FAILED&size=100'
+const RESOLVED_QUERY = 'status=APPROVED,DONE,DENIED&excludeType=CONFIRMATION&size=3'
+
+// 운영 시작 뒤 행사 상세로 넘어가기 전에 그 화면이 기다리는 조회(상세·단계·지금 할 일·처리 기록)를 받아 둔다.
+// 상세 화면은 넷이 모두 오기 전에는 아무것도 그리지 않는다. 하나라도 비면 넘어가는 순간 빈 화면이 보인다.
+export function usePrefetchEventPage() {
+  const client = useQueryClient()
+  const userId = useAuthStore((state) => state.me?.id)
+  const clubId = useAuthStore((state) => state.clubId)
+  return (eventId: string) =>
+    Promise.all([
+      client.fetchQuery({
+        queryKey: eventDetailKey(userId, clubId, eventId, false),
+        queryFn: () => getEventDetail(eventId),
+        retry: false,
+      }),
+      client.fetchQuery({
+        queryKey: eventStepsKey(userId, clubId, eventId, false),
+        queryFn: () => getEventSteps(eventId),
+        retry: false,
+      }),
+      client.fetchQuery({
+        queryKey: todoActionsKey(userId, clubId, eventId, false),
+        queryFn: () => getEventActions(eventId, TODO_QUERY),
+        retry: false,
+      }),
+      client.fetchQuery({
+        queryKey: resolvedActionsKey(userId, clubId, eventId, false),
+        queryFn: () => getEventActionPage(eventId, RESOLVED_QUERY),
+        retry: false,
+      }),
+    ])
+}
+
 // 없는 행사면 null(초기 화면)
 export function useEventDetail(eventId: string | undefined) {
   const demo = useDemo()
@@ -98,7 +150,7 @@ export function useEventSteps(eventId: string | undefined) {
   const userId = useAuthStore((state) => state.me?.id)
   const clubId = useAuthStore((state) => state.clubId)
   return useQuery({
-    queryKey: ['events', userId, clubId, eventId, 'steps', demo],
+    queryKey: eventStepsKey(userId, clubId, eventId, demo),
     queryFn: async (): Promise<EventStep[]> =>
       demo ? (DEMO_STEPS[eventId!] ?? []) : await getEventSteps(eventId!),
     enabled: !!eventId && (demo || Boolean(userId && clubId)),
@@ -112,11 +164,9 @@ export function useTodoActions(eventId: string | undefined) {
   const userId = useAuthStore((state) => state.me?.id)
   const clubId = useAuthStore((state) => state.clubId)
   return useQuery({
-    queryKey: ['events', userId, clubId, eventId, 'actions', 'todo', demo],
+    queryKey: todoActionsKey(userId, clubId, eventId, demo),
     queryFn: async (): Promise<EventAction[]> =>
-      demo
-        ? demoTodoActions(eventId!)
-        : await getEventActions(eventId!, 'status=PENDING,APPROVED,FAILED&size=100'),
+      demo ? demoTodoActions(eventId!) : await getEventActions(eventId!, TODO_QUERY),
     enabled: !!eventId && (demo || Boolean(userId && clubId)),
     // 토리가 초안을 쓰는 동안만 몇 초마다 다시 조회한다(#335)
     refetchInterval: (query) => draftPollInterval(query.state.data),
@@ -131,11 +181,9 @@ export function useResolvedActions(eventId: string | undefined) {
   const userId = useAuthStore((state) => state.me?.id)
   const clubId = useAuthStore((state) => state.clubId)
   return useQuery({
-    queryKey: ['events', userId, clubId, eventId, 'actions', 'resolved', demo],
+    queryKey: resolvedActionsKey(userId, clubId, eventId, demo),
     queryFn: async (): Promise<ActionPage> =>
-      demo
-        ? (DEMO_RESOLVED[eventId!] ?? NO_ACTIONS)
-        : getEventActionPage(eventId!, 'status=APPROVED,DONE,DENIED&excludeType=CONFIRMATION&size=3'),
+      demo ? (DEMO_RESOLVED[eventId!] ?? NO_ACTIONS) : getEventActionPage(eventId!, RESOLVED_QUERY),
     enabled: !!eventId && (demo || Boolean(userId && clubId)),
   })
 }
