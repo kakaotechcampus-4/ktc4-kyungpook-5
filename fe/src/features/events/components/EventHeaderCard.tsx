@@ -1,4 +1,4 @@
-// L2 상단 카드: 제목 · 상태 · 계획 수정/행사 취소 / 행사일 · 장소 · 참가 · 현재 단계 · 담당 / 스테퍼 · N/M 단계 진행
+// L2 상단 카드: 제목 · 상태 · 계획 이어보기/행사 완료/행사 취소 / 행사일 · 장소 · 참가 · 현재 단계 · 담당 / 스테퍼 · N/M 단계 진행
 // 계획 중에는 단계 진행이 시작되지 않아 현재 단계 · 스테퍼 · N/M을 그리지 않는다(#337).
 import { StepStepper } from '@/features/events/components/StepStepper'
 import type { EventDetail, EventStep } from '@/features/events/types'
@@ -55,7 +55,8 @@ export function EventHeaderCard({
           {event.status === 'ON_GOING' && onCompleteEvent && (
             <Button onClick={onCompleteEvent}>행사 완료</Button>
           )}
-          {(event.status === 'PLANNING' || event.status === 'ON_GOING') && (
+          {/* 취소 정리(참가자 안내·예약 취소·환불)는 운영을 시작한 뒤에야 할 일이 생겨 진행 중에만 연다 */}
+          {event.status === 'ON_GOING' && (
             <Button variant="secondary" onClick={onCancelEvent}>행사 취소</Button>
           )}
           {(event.status === 'CANCELLING' || event.status === 'CANCELLED') && (
