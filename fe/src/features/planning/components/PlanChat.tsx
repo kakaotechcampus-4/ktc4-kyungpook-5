@@ -338,9 +338,10 @@ export function PlanChat({
           <Tori size={30} />
           <h2 className="text-h3 text-ink">토리와 계획 잡기</h2>
         </div>
-        {/* 저장된 대화에는 따로 알릴 것이 없다. 새 계획에서만 첫 메시지의 결과를 알린다. */}
+        {/* 저장된 대화에는 따로 알릴 것이 없다. 새 계획에서만 첫 메시지의 결과를 알린다.
+            한 문장이 두 줄로 쪼개지지 않게 한다. 자리가 모자라면 문장째 제목 아래 줄로 내려간다. */}
         {(demo || !persisted) && (
-          <span className="max-w-[180px] shrink-0 text-right text-[12px] text-mute">
+          <span className="text-[12px] whitespace-nowrap text-mute">
             {demo ? '화면 미리보기' : '첫 메시지를 보내면 계획이 만들어져요'}
           </span>
         )}
