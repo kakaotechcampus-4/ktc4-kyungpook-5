@@ -376,11 +376,12 @@ export function usePlanningChat(
         await generation.finish(result)
         return true
       }
-      await generation.finish(result)
+      // 실패 이유를 먼저 넣는다. 생성 화면이 닫히는 같은 화면 갱신에서 그 자리에 실패를 보여 줄 수 있다.
       if (result.generationResult) {
         setGenerationFailure(result.generationResult)
         setError(generationFailureText(result))
       }
+      await generation.finish(result)
       if (!activeId) {
         // 새 계획: 같은 대화 영역을 유지한 채 이 계획의 주소와 저장 상태를 채택한다.
         // 대화와 화면 진입에 필요한 행사 상세를 함께 준비한다. 대화만 준비하면
@@ -462,12 +463,14 @@ export function usePlanningChat(
         handlers,
       )
       setView(result)
-      await generation.finish(result)
-      if (result.generationResult?.status !== 'generated') {
+      // 실패 이유를 먼저 넣는다. 생성 화면이 닫히는 같은 화면 갱신에서 그 자리에 실패를 보여 줄 수 있다.
+      const failed = result.generationResult?.status !== 'generated'
+      if (failed) {
         setGenerationFailure(result.generationResult)
-        await refresh()
         setError(generationFailureText(result))
       }
+      await generation.finish(result)
+      if (failed) await refresh()
     } catch (cause) {
       const unknown = generation.fail(cause)
       setError(

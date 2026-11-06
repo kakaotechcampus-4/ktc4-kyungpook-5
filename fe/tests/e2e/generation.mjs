@@ -467,7 +467,9 @@ try {
           '행사 날짜를 확인해 주세요.',
         )
         if (mode === 'clarification') {
+          // 생성 화면에서 이유를 먼저 보이고, 「대화로 돌아가기」로 P1의 안내로 돌아간다.
           await waitTitle(page, '초안을 만들기 전에 확인할 내용이 있어요')
+          await page.getByRole('button', { name: '대화로 돌아가기', exact: true }).click()
           await page.getByRole('button', { name: '조건 이어서 정하기', exact: true }).click()
           assert.equal(await page.locator(':focus').getAttribute('aria-label'), '계획 대화 답변')
         } else await page.getByRole('button', { name: '보내기', exact: true }).waitFor()
@@ -475,7 +477,11 @@ try {
         s.start()
         await waitTitle(page, '초안을 만들고 있어요')
         s.finish(mode === 'failed' ? 'failed' : 'completed')
-        await waitTitle(page, '생성 결과를 확인하고 있어요')
+        // 실패한 생성은 저장할 것이 없어 「초안 작성」에 머문다.
+        await waitTitle(
+          page,
+          mode === 'failed' ? '초안을 만들고 있어요' : '생성 결과를 확인하고 있어요',
+        )
         if (mode === 'unknown') {
           s.response.destroy()
           await waitTitle(page, '처리 결과를 확인하지 못했어요')
@@ -488,6 +494,8 @@ try {
           s.response.end(
             eventLine('error', { code: 'VERSION_CONFLICT', message: 'fixture concurrent edit' }),
           )
+          await waitTitle(page, '초안 생성을 마치지 못했어요')
+          await page.getByRole('button', { name: '대화로 돌아가기', exact: true }).click()
           await page.getByRole('alert').filter({ hasText: '저장하지 못했어요' }).waitFor()
           await page.getByRole('button', { name: '저장된 계획 다시 확인', exact: true }).click()
           assert.equal(s.posts.length, 1)
@@ -496,8 +504,11 @@ try {
           s.done('failed', '생성된 초안이 단계·날짜·근거 검증을 통과하지 못했어요.')
           await waitTitle(page, '초안을 완성하지 못했어요')
           await shot(page, 'fixture-generation-failed-1280')
+          await page.getByRole('button', { name: '대화로 돌아가기', exact: true }).click()
         } else {
           s.done()
+          // 완료를 생성 화면에서 잠시 보인 뒤(DONE_HOLD_MS) 계획 검토로 넘어간다.
+          await waitTitle(page, '초안이 준비됐어요')
           await waitTitle(page, '준비 순서')
           assert.equal(await page.locator(':focus').innerText(), draft.conditions.title)
         }

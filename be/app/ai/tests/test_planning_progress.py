@@ -149,8 +149,10 @@ def test_change_then_generate_and_duplicate_generate_only_report_one_generation(
     model = Model()
     result = run_turn(req, [change_call(req, "headcount", 60), gen_call(req, id="g1"), gen_call(req, id="g2")],
                       progress=port, model=model)
-    assert [e.kind for e in port.events] == ["condition_applied", "generation_started", "generation_finished"]
-    assert [e.operation_id for e in port.events[1:]] == ["g1", "g1"]
+    assert [e.kind for e in port.events] == ["condition_applied", "generation_started", "generation_writing",
+                                             "generation_finished"]
+    assert [e.operation_id for e in port.events[1:]] == ["g1", "g1", "g1"]
+    assert port.events[2].text == "초안을 작성하는 중이에요"
     assert port.events[-1].text == f"초안 {len(result.generation_result.preview.steps)}단계를 만들었어요"
     assert len(model.calls) == 1
 
@@ -169,7 +171,8 @@ def test_button_success_failure_block_and_reuse(monkeypatch):
     monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=model))
     req = button(public_request())
     result = asyncio.run(ai.generate_planning_preview(req, progress=port))
-    assert [e.status for e in port.events] == ["running", "completed"]
+    assert [e.kind for e in port.events] == ["generation_started", "generation_writing", "generation_finished"]
+    assert [e.status for e in port.events] == ["running", "running", "completed"]
     assert {e.operation_id for e in port.events} == {req.request_id}
     port.events.clear()
     again = req.model_copy(update={"resume_state": result.next_state})
@@ -187,9 +190,9 @@ def test_button_success_failure_block_and_reuse(monkeypatch):
 def test_mismatched_generation_result_is_not_announced_as_success(monkeypatch):
     port = Recorder()
 
-    async def wrong_basis(req):
+    async def wrong_basis(req, **kwargs):
         assert port.events[-1].kind == "generation_started"
-        result = await run_plan_generation(req, invoke=Model())
+        result = await run_plan_generation(req, invoke=Model(), **kwargs)
         wrong = result.preview.model_copy(update={"basis_draft": ai.PlanningDraft()})
         return result.model_copy(update={"preview": wrong})
 
@@ -262,7 +265,7 @@ def test_button_port_failure_preserves_result(monkeypatch):
     monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=Model()))
     baseline = asyncio.run(ai.generate_planning_preview(req))
 
-    async def fixed(*args):
+    async def fixed(*args, **kwargs):
         return baseline.view.generation_result
 
     monkeypatch.setattr(workflow, "run_plan_generation", fixed)
@@ -287,6 +290,9 @@ def test_progress_contract_rejects_false_completion_and_is_public():
     ("search_finished", "empty", True),         # 자료 없음: 회색 대시로 남긴다(#300)
     ("condition_applied", "empty", False),      # 조건은 결과가 없으면 skipped다
     ("generation_finished", "empty", False),
+    ("generation_writing", "running", True),    # 생각을 마치고 쓰는 중: 아직 진행 중이다(#388)
+    ("generation_writing", "completed", False), # 쓰기 시작은 완료가 아니다
+    ("generation_writing", "failed", False),
 ])
 def test_condition_start_and_skip_contract(kind, status, ok):
     make = lambda: ai.PlanningProgress(operation_id="c1", kind=kind, status=status, text="문구")
@@ -325,3 +331,44 @@ def test_condition_payload_is_for_condition_completion_only(kind, status):
     with pytest.raises(ValidationError, match="조건 초안"):
         ai.PlanningProgress(operation_id="c1", kind=kind, status=status, text="문구",
                             condition_draft=ai.PlanningDraft())
+
+
+# --- 생각 중 → 작성 중 신호 (#388) ---
+
+def test_writing_signal_only_with_port_and_without_port_uses_existing_call(monkeypatch):
+    """포트가 없으면 생성 모델에 on_writing을 넘기지 않는다 → 기존 ainvoke_structured 경로. 결과는 같다."""
+    model = Model()
+    monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=model))
+    req = button(public_request())
+    without = asyncio.run(ai.generate_planning_preview(req))
+    port = Recorder()
+    with_port = asyncio.run(ai.generate_planning_preview(req.model_copy(update={"request_id": "click-2"}), progress=port))
+    assert model.writing_passed == [False, True]
+    assert without.view.generation_result.status == with_port.view.generation_result.status == "generated"
+    assert [e.kind for e in port.events].count("generation_writing") == 1
+
+
+def test_output_limit_after_writing_reports_failure_after_writing(monkeypatch):
+    """첫 글자가 온 뒤 출력 한도로 끊기면 작성 중 → 실패 순서다. 실패 문구·이유는 바꾸기 전과 같다."""
+    async def cut_after_first_text(messages, schema, *, on_writing=None):
+        await on_writing()
+        raise ai.AIOutputLimitError("limit")
+
+    monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=cut_after_first_text))
+    port = Recorder()
+    result = asyncio.run(ai.generate_planning_preview(button(public_request()), progress=port))
+    assert [(e.kind, e.status) for e in port.events] == [
+        ("generation_started", "running"), ("generation_writing", "running"), ("generation_finished", "failed")]
+    assert result.view.generation_result.reason == "모델 응답이 출력 한도에서 끊겨 초안을 완성하지 못했어요."
+
+
+def test_broken_port_during_writing_keeps_generation(monkeypatch):
+    model = Model()
+    monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=model))
+    req = button(public_request())
+    baseline = asyncio.run(ai.generate_planning_preview(req))
+    broken = asyncio.run(ai.generate_planning_preview(req, progress=Recorder(broken=True)))
+    # 초안 ID는 생성마다 새로 만들므로 그 밖의 결과를 비교한다.
+    strip = lambda r: r.view.generation_result.preview.model_dump(exclude={"id"})
+    assert strip(broken) == strip(baseline)
+    assert model.writing_passed == [False, True]

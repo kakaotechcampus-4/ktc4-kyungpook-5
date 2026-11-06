@@ -1,13 +1,13 @@
 // P1 오른쪽: 대화에서 정해진 것이 쌓이는 자리. 여섯 항목으로 고정이라 화면이 흔들리지 않는다.
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { flashLeft, type FactFlash } from '@/features/planning/factFlash'
-import type { PlanFactStatus, PlanFacts as Facts } from '@/features/planning/types'
+import type { PlanFactKey, PlanFactStatus, PlanFacts as Facts } from '@/features/planning/types'
 import { PLAN_FACT_KEYS } from '@/features/planning/types'
 import { cn } from '@/shared/lib/cn'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 
-function Mark({ status }: { status: PlanFactStatus }) {
+function Mark({ status, required }: { status: PlanFactStatus; required?: boolean }) {
   if (status === '확정') {
     return (
       <span
@@ -38,6 +38,13 @@ function Mark({ status }: { status: PlanFactStatus }) {
       </span>
     )
   }
+  if (required)
+    return (
+      <span
+        aria-hidden
+        className="block size-[18px] shrink-0 rounded-full border-[1.5px] border-pending-line bg-pending-bg"
+      />
+    )
   return <span aria-hidden className="block size-[18px] shrink-0 rounded-full bg-track" />
 }
 
@@ -47,6 +54,9 @@ interface PlanFactsProps {
   children?: ReactNode
   // 조건 완료 또는 저장 결과 보정으로 바뀐 칸(#302). 그 칸만 옅은 파란 배경이 잠시 켜졌다 사라진다.
   flash?: FactFlash | null
+  // 초안을 만들려면 먼저 정해야 하는 칸(서버 생성 판정의 이유). 값이 없으면 「필요해요」로 보인다.
+  needed?: readonly PlanFactKey[]
+  className?: string
 }
 
 // 강조가 켜져 있는 동안의 값. 남은 시간이 지나면 비워 다시 그릴 때 지난 강조가 켜지지 않게 한다.
@@ -62,7 +72,7 @@ function useActiveFlash(flash: FactFlash | null | undefined): FactFlash | null {
   return flash !== expired && flashLeft(flash, Date.now()) ? (flash ?? null) : null
 }
 
-export function PlanFacts({ facts, children, flash }: PlanFactsProps) {
+export function PlanFacts({ facts, children, flash, needed, className }: PlanFactsProps) {
   const titleId = useId()
   const active = useActiveFlash(flash)
   // 주소 이동으로 다시 그려져도 이미 지난 시간만큼 색이 사라진 지점에서 이어 간다.
@@ -72,7 +82,7 @@ export function PlanFacts({ facts, children, flash }: PlanFactsProps) {
     <Card
       role="region"
       aria-labelledby={titleId}
-      className="flex w-full min-w-0 flex-col gap-4 px-[22px] pt-5 pb-[22px]"
+      className={cn('flex w-full min-w-0 flex-col gap-4 px-[22px] pt-5 pb-[22px]', className)}
     >
       <h2 id={titleId} className="text-h2 text-ink">
         이번 행사 조건
@@ -86,6 +96,7 @@ export function PlanFacts({ facts, children, flash }: PlanFactsProps) {
           const status = fact?.status ?? '미정'
           const settled = status === '확정' || status === '잠정'
           const flashing = active?.keys.includes(key)
+          const required = !settled && status !== '나중에' && !fact?.value && needed?.includes(key)
           return (
             <div
               key={key}
@@ -102,7 +113,7 @@ export function PlanFacts({ facts, children, flash }: PlanFactsProps) {
                   />
                 )}
                 <span className="relative">
-                  <Mark status={status} />
+                  <Mark status={status} required={required} />
                 </span>
                 <span className="relative">{key}</span>
               </dt>
@@ -110,11 +121,17 @@ export function PlanFacts({ facts, children, flash }: PlanFactsProps) {
                 <span
                   className={cn(
                     'min-w-0 break-keep text-caption [overflow-wrap:anywhere]',
-                    settled ? 'font-bold text-ink' : 'text-mute',
+                    settled
+                      ? 'font-bold text-ink'
+                      : required
+                        ? 'font-medium text-pending'
+                        : 'text-mute',
                   )}
                 >
-                  {fact?.value ??
-                    (status === '나중에' ? '나중에 정해요' : fact ? '미정' : '아직이에요')}
+                  {required
+                    ? '필요해요'
+                    : (fact?.value ??
+                      (status === '나중에' ? '나중에 정해요' : fact ? '미정' : '아직이에요'))}
                   {status === '확정' && <span className="sr-only"> · 확정</span>}
                 </span>
                 {status === '잠정' && (

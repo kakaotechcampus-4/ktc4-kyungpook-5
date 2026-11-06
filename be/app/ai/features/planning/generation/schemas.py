@@ -5,6 +5,7 @@ from ....contracts import (valid_timezone, ChatGenerationTrigger, ButtonGenerati
     EventPlanPreview, PlanGenerationResult, GenerationOffer, PlanningGenerationState)
 
 
+from collections.abc import Awaitable, Callable
 from inspect import cleandoc
 from typing import Annotated, Literal, Protocol
 
@@ -58,4 +59,6 @@ class PlanComposition(ContractModel):
 
 
 class PlanGenerator(Protocol):
-    async def __call__(self, request: PlanGenerationInput) -> PlanGenerationResult: ...
+    # on_writing은 진행 알림이 있을 때만 넘긴다(#388). 그래서 받지 않는 기존 생성기도 그대로 쓸 수 있다.
+    async def __call__(self, request: PlanGenerationInput, *,
+                       on_writing: Callable[[], Awaitable[None]] | None = None) -> PlanGenerationResult: ...

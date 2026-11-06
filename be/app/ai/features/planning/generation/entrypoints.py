@@ -4,7 +4,7 @@ from pydantic import Field, field_validator
 
 from ....contracts import ChatTurn, ContractModel, NonBlankStr
 from ....ports import PlanningProgressPort
-from ..progress import notify, started, generation_finished
+from ..progress import notify, started, generation_finished, generation_writing
 from ...retrieval.schemas import RecordFact
 from ..agent.state import PlanningDraft
 from ..schemas import CalendarDate
@@ -44,7 +44,13 @@ async def generate_with_context(
     # 검증 차단·기존 결과 재사용을 지나 실제 생성할 때만 시작을 알린다.
     operation_id = operation_id or request.trigger.request_id
     await notify(progress, started(operation_id, generation=True))
-    result = await generate(request.model_copy(deep=True))
+    if progress is None:
+        result = await generate(request.model_copy(deep=True))
+    else:
+        async def writing():
+            # 모델이 초안 첫 글자를 보낸 순간 한 번 불린다. 알림 실패는 notify가 삼켜 생성을 멈추지 않는다.
+            await notify(progress, generation_writing(operation_id))
+        result = await generate(request.model_copy(deep=True), on_writing=writing)
     if result.status != "generated":
         await notify(progress, generation_finished(operation_id, result))
         return GenerationUpdate(generation=state, result=result)

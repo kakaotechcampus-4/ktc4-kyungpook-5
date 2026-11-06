@@ -12,12 +12,14 @@ from typing import Any
 
 import openai
 from langchain_core.language_models import LanguageModelInput
-from langchain_core.messages import AIMessage, AIMessageChunk
+from langchain_core.messages import AIMessage, AIMessageChunk, message_chunk_to_message
+from langchain_core.runnables import RunnableSequence
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import BaseModel, ValidationError
 
 from .config import AISettings, get_settings
-from .llm_stream import ReplyStream, TextCallback, ResetCallback, ToolStartCallback, assembled_message, final_answer_text
+from .llm_stream import (ReplyStream, TextCallback, ResetCallback, ToolStartCallback, FirstTextCallback,
+                         assembled_message, final_answer_text)
 from .errors import (
     AIConfigError,
     AIError,
@@ -168,20 +170,90 @@ async def ainvoke_structured[T: BaseModel](
 
     raw = output.get("raw")
     metadata = raw.response_metadata if isinstance(raw, AIMessage) else {}
-    # 파서가 우연히 일부 JSON을 읽더라도 공급자가 미완성이라면 채택하지 않는다.
-    # 원문·전체 메타정보 대신 고정된 오류 타입만 기능 코드에 전달한다.
-    if metadata.get("status") == "incomplete":
-        if (metadata.get("incomplete_details") or {}).get("reason") == "max_output_tokens":
-            raise AIOutputLimitError("모델이 출력 한도에 도달해 응답을 끝내지 못했습니다") from output["parsing_error"]
-        raise _invalid_response(schema) from output["parsing_error"]
-    if model.streaming and model.use_responses_api and metadata.get("status") != "completed":
-        # 연결이 중간에 닫힌 스트림의 일부를 완성본으로 사용하지 않는다.
-        raise _invalid_response(schema) from output["parsing_error"]
+    _check_structured_finish(metadata, schema, cause=output["parsing_error"],
+                             streamed=model.streaming and model.use_responses_api)
 
     parsed = output["parsed"]
     if output["parsing_error"] is not None or parsed is None:
         raise _invalid_response(schema) from output["parsing_error"]
     return parsed
+
+
+async def astream_structured[T: BaseModel](
+    messages: LanguageModelInput,
+    schema: type[T],
+    *,
+    on_first_text: FirstTextCallback,
+    model: ChatOpenAI,
+) -> T:
+    """`ainvoke_structured`와 같은 결과·오류를 내되, 조각을 직접 모아 첫 글자 도착을 알린다(#388).
+
+    응답 조각은 이렇게 온다: 응답 시작(글자 없음) → 추론 블록(글자 없음) → 계획 JSON 글자 조각 수백 개 → 완료.
+    글자가 든 첫 조각에서 `on_first_text()`를 한 번 부른다. 모델이 "생각이 끝났다"를 따로 알려 주지 않아서,
+    첫 글자가 온 순간을 생각이 끝나고 쓰기 시작한 때로 본다. 내용은 넘기지 않는다. 검증 전 초안이기 때문이다.
+    검증은 다 모은 뒤 `ainvoke_structured`와 같은 함수(`_check_structured_finish`)와 같은 파서로 한다.
+    `model`은 스트리밍 모델이어야 한다. 출력 한도 때문에 이 경로는 생성 모델 전용이다.
+    """
+    # with_structured_output은 [형식을 붙인 모델 | 파서] 두 단계다. ainvoke_structured와 같은 요청·파서를 쓰려고
+    # 앞 단계로 조각을 받고 뒤 단계로 완성본을 읽는다.
+    structured = model.with_structured_output(schema, method="json_schema")
+    if not isinstance(structured, RunnableSequence):
+        raise TypeError("구조화 출력 구성이 예상과 다릅니다")
+    bound, parser = structured.first, structured.last
+    combined, announced = None, False
+    try:
+        # 실패·취소 시에도 공급자 스트림을 닫는다.
+        async with aclosing(bound.astream(messages)) as stream:
+            async for chunk in stream:
+                if not isinstance(chunk, AIMessageChunk):
+                    raise _invalid_response(schema)
+                combined = chunk if combined is None else combined + chunk
+                if not announced and _has_text(chunk):
+                    announced = True
+                    await on_first_text()
+    except (openai.APIConnectionError, openai.APIStatusError) as error:
+        converted = _convert_api_error(error)
+        if converted is None:
+            raise
+        raise converted from error
+    except ValidationError as error:
+        # 완료 조각에서 SDK가 schema로 파싱한다. ainvoke_structured의 같은 분기와 같다.
+        if error.title != schema.__name__:
+            raise
+        raise _invalid_response(schema) from error
+    if combined is None:
+        raise _invalid_response(schema)
+
+    message = message_chunk_to_message(combined)
+    _check_structured_finish(message.response_metadata, schema, cause=None, streamed=True)
+    try:
+        parsed = parser.invoke(message)
+    except Exception as error:
+        # ainvoke_structured에서는 같은 파서 실패(거절·빈 응답)가 parsing_error로 와서 같은 오류가 된다.
+        raise _invalid_response(schema) from error
+    if parsed is None:
+        raise _invalid_response(schema)
+    return parsed
+
+
+def _has_text(chunk: AIMessageChunk) -> bool:
+    blocks = chunk.content if isinstance(chunk.content, list) else []
+    return any(isinstance(b, dict) and b.get("type") == "text" and b.get("text") for b in blocks)
+
+
+def _check_structured_finish(
+    metadata: dict, schema: type[BaseModel], *, cause: BaseException | None, streamed: bool,
+) -> None:
+    """공급자의 완료 상태를 본다. 구조화 출력을 받는 두 함수가 같은 기준을 쓴다."""
+    # 파서가 우연히 일부 JSON을 읽더라도 공급자가 미완성이라면 채택하지 않는다.
+    # 원문·전체 메타정보 대신 고정된 오류 타입만 기능 코드에 전달한다.
+    if metadata.get("status") == "incomplete":
+        if (metadata.get("incomplete_details") or {}).get("reason") == "max_output_tokens":
+            raise AIOutputLimitError("모델이 출력 한도에 도달해 응답을 끝내지 못했습니다") from cause
+        raise _invalid_response(schema) from cause
+    if streamed and metadata.get("status") != "completed":
+        # 연결이 중간에 닫힌 스트림의 일부를 완성본으로 사용하지 않는다.
+        raise _invalid_response(schema) from cause
 
 
 async def ainvoke_with_tools(

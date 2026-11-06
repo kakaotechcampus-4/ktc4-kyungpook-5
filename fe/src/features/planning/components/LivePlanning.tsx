@@ -3,24 +3,35 @@ import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react
 import { CHECKING_NOTICE, usePlanningChat, usePlanningDrafts } from '@/features/planning/hooks'
 import { useEventDetail, usePrefetchEventDetail } from '@/features/events/hooks'
 import { planningStage } from '../reviewModel'
+import { readinessCopy } from '../readinessCopy'
 import { PlanReviewScreen } from './PlanReviewScreen'
 import { PlanStageNav } from './PlanStageNav'
-import { GenerationScreen } from './GenerationScreen'
+import { GenerationScreen, type GenerationEnding } from './GenerationScreen'
 import { GenerationFailureNotice } from './GenerationFailureNotice'
 import { usePlanningRequestJournal } from '../useGenerationRequest'
+import type { GenerationFlow, GenerationPhase } from '../generation'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
 import { PlanningRecordReferences } from '@/features/planning/components/PlanningRecordReferences'
 import { useAuthStore } from '@/shared/auth/store'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
+import { withViewTransition } from '@/shared/lib/viewTransition'
 
-const REASONS: Record<string, string> = {
-  event_type_missing: '행사 종류를 알려 주세요.',
-  dates_unanswered: '일정을 알려 주거나 아직 미정이라고 말해 주세요.',
-  headcount_unanswered: '예상 인원을 알려 주거나 아직 미정이라고 말해 주세요.',
-  location_unanswered: '장소를 알려 주거나 아직 미정이라고 말해 주세요.',
-  condition_change_pending: '반영하지 못한 조건 변경을 먼저 확인해 주세요.',
+// 다시 만들면 지금 초안이 사라진다는 주의 표시. 글자 첫 줄 높이에 맞춘다.
+function CautionIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className="mt-[3px] size-[15px] shrink-0 text-pending"
+      fill="none"
+    >
+      <circle cx="8" cy="8" r="6.6" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 4.7v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="8" cy="11.1" r="0.95" fill="currentColor" />
+    </svg>
+  )
 }
 
 // 대화로 돌아가 있는 동안 끝난 생성(#327). P2로 옮기지 않고 P1에 안내만 남긴다.
@@ -77,8 +88,13 @@ export function LivePlanning() {
       {!clubId ? (
         <Card className="space-y-3 p-5">
           <h2 className="text-h3">로그인과 소속 선택이 필요합니다.</h2>
-          <p className="text-caption text-mute">행사 계획은 선택한 소속의 자료와 함께 저장됩니다.</p>
-          <Link to="/login?next=%2Fplanning" className="text-caption font-semibold text-blue-700 underline">
+          <p className="text-caption text-mute">
+            행사 계획은 선택한 소속의 자료와 함께 저장됩니다.
+          </p>
+          <Link
+            to="/login?next=%2Fplanning"
+            className="text-caption font-semibold text-blue-700 underline"
+          >
             로그인·소속 선택
           </Link>
         </Card>
@@ -265,10 +281,31 @@ function Conversation({
   // 완료 콜백은 요청을 보낸 렌더의 것이 불리므로 지금 보고 있는 화면은 ref로 읽는다.
   const [away, setAway] = useState(false)
   const awayRef = useRef(false)
+  // 마지막으로 보인 생성 화면 상태. 요청이 끝나 generationFlow가 비어도 이 값으로 그 자리에서
+  // 완료·실패를 보여 준다. regenerate는 처음 띄울 때 지난 초안이 있었는지다(끝나면 새 초안으로 바뀐다).
+  const [shown, setShown] = useState<{
+    phase: GenerationPhase
+    draft: GenerationFlow['draft']
+    regenerate: boolean
+  } | null>(null)
+  // 새 초안을 확인한 순간. 생성 화면에서 잠시 보인 뒤 계획 검토로 넘어간다.
+  const [done, setDone] = useState<GenerationReady | null>(null)
   const showChat = (value: boolean) => {
     awayRef.current = value
     setAway(value)
+    // 대화로 돌아가 있는 동안 끝난 생성은 P1 안내(ready)가 맡는다. 생성 화면의 끝 상태는 보이지 않는다.
+    if (value) setShown(null)
   }
+  const openReview = (target: GenerationReady) =>
+    navigate(`/planning?${new URLSearchParams({ eventId: target.eventId, stage: 'review' })}`, {
+      replace: true,
+      state: {
+        generated: target.count > 0 ? { count: target.count, key: target.key } : undefined,
+        focusPlan: true,
+      },
+      // 위 단계 토글의 파란 칸이 계획 검토로 미끄러지고 나머지는 겹쳐 바뀐다.
+      viewTransition: true,
+    })
   const awayNote = useRef<HTMLParagraphElement>(null)
   useEffect(() => {
     if (away) awayNote.current?.focus()
@@ -285,10 +322,9 @@ function Conversation({
         if (!eventId) onCreated(id)
         return
       }
-      navigate(`/planning?${new URLSearchParams({ eventId: id, stage: 'review' })}`, {
-        replace: true,
-        state: { generated: count > 0 ? { count, key } : undefined, focusPlan: true },
-      })
+      // 새 초안이면 생성 화면에서 완료를 잠시 보인 뒤 넘어간다. 「현재 계획 확인하기」(count 0)는 바로 간다.
+      if (count > 0) setDone({ eventId: id, count, key })
+      else openReview({ eventId: id, count, key })
     },
     prefetchEventDetail,
   )
@@ -298,6 +334,7 @@ function Conversation({
   const beginRequest = () => {
     showChat(false)
     onReady(null)
+    setDone(null)
   }
   useEffect(() => {
     onBusy(live.streaming)
@@ -315,16 +352,72 @@ function Conversation({
   const [showFailure, setShowFailure] = useState(Boolean(failedText))
   // 끊긴 첫 메시지가 저장된 것으로 확인되면 "결과를 확인해 주세요" 안내를 내린다(#342).
   if (showFailure && live.settled === 'saved') setShowFailure(false)
-  if (live.generationFlow)
+  const stage = params.get('stage')
+  const savedSteps = live.snapshot.data?.steps ?? []
+  // 생성 화면이 끝나는 순간을 정한다. 화면이 그대로 남아 진행 줄과 걸린 시간이 이어진다.
+  //   새 초안 확인 → done: "초안이 준비됐어요" → 잠시 뒤 계획 검토
+  //   생성 실패 → failed: 멈춘 줄에 ! 와 이유 → 「대화로 돌아가기」
+  //   그 밖(대화 화면에서 확인할 결과 등) → 생성 화면을 닫는다
+  const flow = live.generationFlow
+  if (flow && shown?.phase !== flow.phase)
+    setShown({
+      phase: flow.phase,
+      draft: flow.draft,
+      regenerate: shown?.regenerate ?? savedSteps.length > 0,
+    })
+  // 계획 검토로 넘어간 뒤에 끝 상태를 비운다. 넘어가기 전에 비우면 화면이 바뀌기 전 한 번 P1이 보인다.
+  if (stage === 'review' && (shown || done)) {
+    setShown(null)
+    setDone(null)
+  }
+  const failure = live.generationFailure
+  const ending: GenerationEnding | null =
+    flow || !shown || stage === 'review'
+      ? null
+      : done
+        ? { kind: 'done', count: done.count }
+        : failure || live.error
+          ? {
+              kind: 'failed',
+              cause: !failure
+                ? 'error'
+                : failure.status === 'needs_clarification'
+                  ? 'clarify'
+                  : 'failed',
+              reason: failure ? failure.reason || '' : live.error,
+              stoppedAt: shown.phase,
+            }
+          : null
+  if (!flow && shown && !ending && stage !== 'review') setShown(null)
+  const screenFlow = flow ?? (ending && shown ? { phase: shown.phase, draft: shown.draft } : null)
+  if (screenFlow)
     return (
       <>
         {/* 생성 중에는 계획 검토로 가는 길을 닫는다. 지난 초안이 새 결과로 바뀌는 중이다. */}
-        <PlanStageNav current="conditions" eventId={eventId} />
+        <PlanStageNav
+          current="conditions"
+          eventId={eventId}
+          canReview={ending?.kind === 'done'}
+          generation={
+            ending?.kind === 'done'
+              ? 'ready'
+              : !ending &&
+                  ['requesting', 'generating', 'verifying', 'loading'].includes(screenFlow.phase)
+                ? 'making'
+                : undefined
+          }
+        />
         <GenerationScreen
-          flow={live.generationFlow}
+          flow={screenFlow}
+          ending={ending}
+          regenerate={shown?.regenerate ?? savedSteps.length > 0}
+          hasPrevious={savedSteps.length > 0}
           onReload={live.reloadGenerated}
           onViewCurrent={live.viewCurrentPlan}
-          onBackToChat={() => showChat(true)}
+          // 생성 중이면 대화로 잠시 돌아가고(생성은 계속), 실패했으면 생성 화면을 닫는다.
+          // 어느 쪽이든 생성 화면 카드가 오른쪽 조건 카드 자리로 돌아간다.
+          onBackToChat={() => withViewTransition(() => (ending ? setShown(null) : showChat(true)))}
+          onOpenReview={done ? () => openReview(done) : undefined}
         />
       </>
     )
@@ -367,8 +460,7 @@ function Conversation({
     )
   const screen = live.snapshot.data?.screen
   // P2와 편집기는 같은 행사에 저장된 최신 단계를 사용한다.
-  const steps = live.snapshot.data?.steps ?? []
-  const stage = params.get('stage')
+  const steps = savedSteps
   if (eventId && event.data && event.data.status !== 'PLANNING') {
     return <Navigate replace to={`/events/${encodeURIComponent(eventId)}`} />
   }
@@ -396,20 +488,38 @@ function Conversation({
     )
   }
   const readiness = live.view?.generationReadiness ?? screen?.generationReadiness ?? null
+  const blockedCopy = readiness && !readiness.canGenerate ? readinessCopy(readiness.reasons) : null
+  const generationNotice = !eventId
+    ? ['어떤 행사를 준비하는지 토리에게 알려 주세요.']
+    : !readiness
+      ? ['생성 가능 상태를 확인하지 못했어요.', '대화를 이어가거나 다시 불러와 주세요.']
+      : readiness.canGenerate
+        ? steps.length
+          ? ['다시 만들면 지금 초안을 덮어써요.', '직접 고친 내용도 함께 사라져요.']
+          : ['이 조건으로 초안을 만들 수 있어요.', '만든 뒤 단계와 일정을 수정할 수 있어요.']
+        : (blockedCopy?.sentences ?? [])
   const lastMessage = live.snapshot.data?.messages.at(-1)
   const generationFailure = live.generationFailure
-  const flow = chat.generationFlow
+  const pendingFlow = chat.generationFlow
   return (
     <>
-      <PlanStageNav current="conditions" eventId={eventId} canReview={steps.length > 0 && !flow} />
-      {away && flow && (
+      <PlanStageNav
+        current="conditions"
+        eventId={eventId}
+        canReview={steps.length > 0 && !pendingFlow}
+      />
+      {away && pendingFlow && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-blue-50 px-4 py-3">
           <p ref={awayNote} tabIndex={-1} className="break-keep text-ink focus:outline-none">
-            {['requesting', 'generating', 'verifying', 'loading'].includes(flow.phase)
+            {['requesting', 'generating', 'verifying', 'loading'].includes(pendingFlow.phase)
               ? '초안을 만들고 있어요. 생성은 계속되고, 끝날 때까지 새 대화와 생성은 잠가 둘게요.'
               : '초안 생성 결과를 확인해야 해요.'}
           </p>
-          <Button size="sm" variant="secondary" onClick={() => showChat(false)}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => withViewTransition(() => showChat(false))}
+          >
             생성 화면 보기
           </Button>
         </div>
@@ -427,6 +537,7 @@ function Conversation({
               focusPlan: true,
             }}
             onClick={() => onReady(null)}
+            viewTransition
           >
             계획 검토하기
           </Link>
@@ -467,6 +578,8 @@ function Conversation({
             eventId ? () => Promise.all([live.snapshot.refetch(), event.refetch()]) : undefined
           }
           persisted={!!eventId}
+          // 내 마지막 말에 토리 답이 저장되지 않은 채 끝난 경우. 대화 끝 오류 자리에 보인다.
+          missingReply={lastMessage?.role === 'USER' && !live.busy}
           initialDraft={
             // 결과 확인 화면 뒤에 입력창이 다시 그려진다. 저장되지 않았으면 원래 문장을 되돌리고,
             // 저장된 것으로 확인됐으면 다시 보내지 않게 비운다(#342).
@@ -476,32 +589,28 @@ function Conversation({
           draftReset={live.draftReset}
         />
         <div className="flex w-full min-w-0 flex-col gap-4 lg:w-[340px] lg:shrink-0">
-          {lastMessage?.role === 'USER' && !live.busy && (
-            <p role="alert" className="text-failed">
-              마지막 답변에 대한 질문을 받지 못했어요. 연결 상태를 확인해 주세요.
-            </p>
-          )}
           {/* 현재 조건과 과거 기록을 분리한다. 진행 줄은 이번 턴의 작업,
               아래 참고 카드는 저장된 사실과 출처를 보여준다. */}
-          <PlanFacts facts={live.facts} flash={live.factFlash}>
+          <PlanFacts
+            // 생성 화면 카드와 같은 이름. 초안을 만들기 시작하면 이 카드가 생성 화면으로 커진다.
+            className="[view-transition-name:plan-generation]"
+            facts={live.facts}
+            flash={live.factFlash}
+            needed={eventId ? blockedCopy?.needed : undefined}
+          >
+            {/* 다시 만들면 지금 초안이 사라지므로 그때만 주의 표시를 붙인다. */}
             <p
               id={generationDescriptionId}
               role="status"
-              className="text-caption leading-relaxed text-ink2"
+              className="flex items-start gap-[7px] break-keep text-caption leading-relaxed text-ink2"
             >
-              {!eventId
-                ? '어떤 행사를 준비하는지 토리에게 알려 주세요.'
-                : !readiness
-                  ? '생성 가능 상태를 확인하지 못했어요. 대화를 이어가거나 다시 불러와 주세요.'
-                  : readiness.canGenerate
-                    ? steps.length
-                      ? '다시 만들면 기존 단계와 직접 수정한 내용이 새 초안으로 바뀌어요.'
-                      : '이 조건으로 초안을 만들 수 있어요. 만든 뒤 단계와 일정을 수정할 수 있어요.'
-                    : readiness.reasons.length
-                      ? readiness.reasons
-                          .map((reason) => REASONS[reason] ?? '추가 정보를 확인해 주세요.')
-                          .join(' ')
-                      : '대화를 이어서 필요한 정보를 확인해 주세요.'}
+              {eventId && readiness?.canGenerate && steps.length > 0 && <CautionIcon />}
+              {/* 문장마다 줄을 나눈다. 이어 쓰면 다음 문장이 줄 가운데서 시작해 읽기 어렵다. */}
+              <span className="flex flex-col">
+                {generationNotice.map((sentence) => (
+                  <span key={sentence}>{sentence}</span>
+                ))}
+              </span>
             </p>
             {/* 상담·검색 대기는 누르기만 잠근다. 실제 생성 전환은 #338의 흐름을 유지한다. */}
             <Button

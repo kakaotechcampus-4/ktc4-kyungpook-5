@@ -88,6 +88,12 @@ export function PlanReviewScreen({
     : !steps.length
       ? { title: '포함된 단계가 없어요', action: '', to: '' }
       : null
+  // 화면에 그리는 순서(단계 묶음 순). 들어올 때 차례로 올라오는 지연에 쓴다.
+  const order = new Map(
+    reviewGroups(steps)
+      .flatMap((group) => group.steps)
+      .map((step, index) => [step.id, index]),
+  )
   const closeDetail = () => {
     setEditing(null)
     requestAnimationFrame(() => returnFocus.current?.focus())
@@ -118,9 +124,29 @@ export function PlanReviewScreen({
   return (
     <>
       <PlanStageNav current="review" eventId={eventId} canReview />
+      {/* 초안 생성 화면에서 넘어왔을 때만 보인다. 새로고침·뒤로 가기로는 다시 뜨지 않는다. */}
       {completion && (
-        <p role="status" className="sr-only">
-          {completion}
+        <p
+          role="status"
+          className="flex animate-turn-in flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-blue-50 px-4 py-3 break-keep text-ink motion-reduce:animate-none"
+        >
+          <svg
+            aria-hidden
+            viewBox="0 0 18 18"
+            className="size-[18px] shrink-0 text-done"
+            fill="none"
+          >
+            <circle cx="9" cy="9" r="9" className="fill-done-bg" />
+            <path
+              d="M5.2 9.3 7.9 12l4.9-5.6"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span className="font-semibold">{completion}.</span>
+          <span className="text-ink2">단계를 눌러 내용과 일정을 고칠 수 있어요.</span>
         </p>
       )}
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -207,7 +233,16 @@ export function PlanReviewScreen({
                       <li
                         key={step.id}
                         id={`plan-step-${step.id}`}
-                        className="grid scroll-mt-6 grid-cols-[42px_minmax(0,1fr)] gap-2 sm:grid-cols-[52px_minmax(0,1fr)] sm:gap-3"
+                        // 새 초안으로 막 들어왔으면 위에서부터 차례로 올라온다. 지연은 앞의 10개까지만 늘린다.
+                        style={
+                          completion
+                            ? { animationDelay: `${Math.min(order.get(step.id) ?? 0, 10) * 45}ms` }
+                            : undefined
+                        }
+                        className={cn(
+                          'grid scroll-mt-6 grid-cols-[42px_minmax(0,1fr)] gap-2 sm:grid-cols-[52px_minmax(0,1fr)] sm:gap-3',
+                          completion && 'animate-step-rise motion-reduce:animate-none',
+                        )}
                       >
                         <div className="flex flex-col items-center gap-2 pt-3 text-label tabular-nums text-ink2">
                           <span>

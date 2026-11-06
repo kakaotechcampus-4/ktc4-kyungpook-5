@@ -58,12 +58,14 @@ test('on-going header keeps progress', () => {
   assert.match(html, />행사 완료<\/button>/)
 })
 
-test('planning offers actionable plan edit and cancellation', () => {
+// 취소 정리(안내·예약 취소·환불·기록)는 운영을 시작한 뒤에야 할 일이 생긴다(#381).
+// 계획 중에는 「계획 이어보기」만 누를 수 있고 「행사 취소」는 보이지 않는다.
+test('planning offers plan edit without cancellation', () => {
   const html = render('PLANNING')
-  assert.match(html, /<button[^>]*>계획 이어보기<\/button>/)
-  assert.match(html, /<button[^>]*>행사 취소<\/button>/)
-  const cancelButton = html.match(/<button[^>]*>행사 취소<\/button>/)?.[0]
-  assert.doesNotMatch(cancelButton, /\sdisabled(?:\s|=|>)/)
+  const editButton = html.match(/<button[^>]*>계획 이어보기<\/button>/)?.[0]
+  assert.ok(editButton)
+  assert.doesNotMatch(editButton, /\sdisabled(?:\s|=|>)/)
+  assert.doesNotMatch(html, />행사 취소<\/button>/)
 })
 
 test('in-progress events can cancel but cannot edit the planning structure', () => {

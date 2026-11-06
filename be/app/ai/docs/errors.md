@@ -42,7 +42,7 @@ BE는 이 타입들을 `app.ai`에서 가져온다.
 
 ## 모델 호출 오류 변환
 
-모델 호출 예외는 `llm.ainvoke_structured`(구조화 출력), `llm.ainvoke_with_tools`(Tool 선택·대화), `llm.astream_with_tools`(Tool 선택·대화를 조각으로 받기, #280), `llm.aembed_texts`(임베딩)가 위 타입으로 바꾼다. 기능 코드는 openai 예외를 직접 다루지 않는다.
+모델 호출 예외는 `llm.ainvoke_structured`(구조화 출력), `llm.ainvoke_with_tools`(Tool 선택·대화), `llm.astream_with_tools`(Tool 선택·대화를 조각으로 받기, #280), `llm.astream_structured`(구조화 출력을 조각으로 받으며 첫 글자 도착을 알리기, #388), `llm.aembed_texts`(임베딩)가 위 타입으로 바꾼다. 기능 코드는 openai 예외를 직접 다루지 않는다.
 
 | 실패 | 오류 |
 | --- | --- |
@@ -56,6 +56,7 @@ BE는 이 타입들을 `app.ai`에서 가져온다.
 | 그 밖 (모델명 외 400 등) | 감싸지 않고 그대로 |
 
 - 일시적 오류는 `DEFAULT_MAX_RETRIES`만큼 재시도한 뒤에 변환한다.
+- `astream_structured`는 `ainvoke_structured`와 같은 완료 검사와 파서를 써서, 같은 응답에 같은 결과나 같은 오류를 낸다(`test_structured_output.py`). 응답 도중 공급자 오류 이벤트도 `ainvoke_structured`처럼 감싸지 않고 그대로 올린다.
 - 구조화 스트리밍은 완성본을 모은 뒤 검증한다. 최종 완료 상태가 없거나 미완성이라고 명시된 응답은 JSON 파싱 여부와 무관하게 거절한다. 구문 오류만 보고 출력 한도 도달로 추정하지 않는다. 일반 응답은 SDK 파싱이 먼저 실패해 메타정보를 얻지 못하면 기존 `AIInvalidResponseError`로 남는다.
 - 게이트웨이는 허용하지 않은 모델명에 404가 아니라 400으로 답한다. 본문의 `type`·`code`로는 다른 400과 구분되지 않아 문구(`MODEL_NOT_ALLOWED`)로 판별한다.
 - 오류 메시지에는 고정 문구와 HTTP 코드만 넣는다. 응답 본문에 키나 요청 원문이 섞일 수 있어 원인 예외는 `__cause__`로만 연결한다.
