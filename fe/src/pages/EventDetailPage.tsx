@@ -32,6 +32,7 @@ import {
   useUpdateActionContent,
 } from '@/features/events/hooks'
 import { outcomeOf, redraftNotice, type ActionOutcome } from '@/features/events/actionDraft'
+import { eventError, isConflict } from '@/features/events/errors'
 import type { EventAction, EventStep } from '@/features/events/types'
 import { toast } from '@/shared/lib/toast'
 import { ApiError } from '@/shared/api/types'
@@ -97,9 +98,19 @@ export default function EventDetailPage() {
       toast.show({ kind: 'done', title, desc })
       return true
     } catch (error) {
-      toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+      showFailure(error)
       return false
     }
+  }
+
+  // 409는 다시 눌러도 같은 결과다. "다시 시도"를 권하지 않고 바뀐 내용을 보게 한다.
+  // 훅이 onSettled로 목록을 다시 받은 뒤라 화면은 이미 최신이다(#375).
+  const showFailure = (error: unknown) => {
+    toast.show({
+      kind: 'error',
+      title: isConflict(error) ? '처리할 수 없어요' : '처리하지 못했어요',
+      desc: eventError(error),
+    })
   }
 
   const resolveConfirmation = async (action: EventAction, choice: string, manualValue?: string) => {
@@ -144,7 +155,7 @@ export default function EventDetailPage() {
       return 'ok'
     } catch (error) {
       const outcome = outcomeOf(error)
-      if (outcome === 'failed') toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+      if (outcome === 'failed') toast.show({ kind: 'error', title: '처리하지 못했어요', desc: eventError(error) })
       return outcome
     }
   }
@@ -157,7 +168,7 @@ export default function EventDetailPage() {
       return 'ok'
     } catch (error) {
       const outcome = outcomeOf(error)
-      if (outcome === 'failed') toast.show({ kind: 'error', title: '저장하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+      if (outcome === 'failed') toast.show({ kind: 'error', title: '저장하지 못했어요', desc: eventError(error) })
       return outcome
     }
   }
@@ -169,7 +180,7 @@ export default function EventDetailPage() {
       toast.show({ kind: 'done', title: '토리에게 초안을 다시 부탁했어요', desc: action.title })
     } catch (error) {
       const notice = redraftNotice(error)
-      toast.show({ kind: 'error', title: notice?.title ?? '처리하지 못했어요', desc: notice?.desc ?? (error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.') })
+      toast.show({ kind: 'error', title: notice?.title ?? '처리하지 못했어요', desc: notice?.desc ?? eventError(error) })
     }
   }
 
@@ -204,7 +215,7 @@ export default function EventDetailPage() {
           desc: `미완료 행동 ${result.pendingActionCount}건이 남아 있어요. 행사 완료 전에 처리해 주세요.`,
         })
     } catch (error) {
-      toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+      showFailure(error)
     } finally {
       setCompletingId(null)
     }
