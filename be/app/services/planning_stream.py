@@ -59,6 +59,9 @@ class _QueuePort:
         payload = out.model_dump(mode="json", by_alias=True)
         if event.condition_draft is None:
             payload.pop("conditionDraft")
+        if event.step is None:
+            # 단계 정보는 generation_step에만 있다(#389). 다른 이벤트 모양은 바꾸지 않는다.
+            payload.pop("step")
         self._put("progress", payload)
 
     async def reply_delta(self, text: str) -> None:

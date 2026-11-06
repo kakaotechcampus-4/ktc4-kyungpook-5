@@ -240,6 +240,9 @@ async def test_버튼_생성_스트림은_생성_진행과_결과를_보낸다(
         await progress.progress(progress_event("generation_started", "running", "계획 초안을 만들고 있어요"))
         # 생각을 마치고 초안을 쓰기 시작한 순간(#388). 같은 작업의 진행 중 줄을 바꾼다.
         await progress.progress(progress_event("generation_writing", "running", "초안을 작성하는 중이에요"))
+        # 단계 코드를 다 쓴 순간(#389). 위치·코드·고정 이름만 실린다.
+        await progress.progress(ai.PlanningProgress(operation_id="call_1", kind="generation_step", status="running",
+            text="예약", step=ai.PlanningProgressStep(index=0, code="BOOK_VENUE", name="예약")))
         await progress.progress(progress_event("generation_finished", "completed", "초안 2단계를 만들었어요"))
         return _fake_generation_result()
 
@@ -249,10 +252,13 @@ async def test_버튼_생성_스트림은_생성_진행과_결과를_보낸다(
                       {"baseRevision": 0})
 
     events = parse(res.text)
-    assert [(name, data.get("kind"), data.get("status")) for name, data in events[:3]] == [
+    assert [(name, data.get("kind"), data.get("status")) for name, data in events[:4]] == [
         ("progress", "generation_started", "running"), ("progress", "generation_writing", "running"),
-        ("progress", "generation_finished", "completed")]
+        ("progress", "generation_step", "running"), ("progress", "generation_finished", "completed")]
     assert events[1][1]["text"] == "초안을 작성하는 중이에요"
+    assert events[2][1]["step"] == {"index": 0, "code": "BOOK_VENUE", "name": "예약"}
+    # 단계 정보는 그 이벤트에만 있다. 다른 이벤트 모양은 그대로다.
+    assert all("step" not in data for name, data in events if name == "progress" and data["kind"] != "generation_step")
     assert events[-1][0] == "done"
     assert events[-1][1]["generationResult"]["status"] == "generated"
     plan = client.get(f"/api/v1/events/{event_id}/plan", headers=headers).json()["data"]

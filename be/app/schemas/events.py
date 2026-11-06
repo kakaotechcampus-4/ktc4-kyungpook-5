@@ -482,6 +482,14 @@ class HistoryUsageOut(CamelModel):
     near_limit: bool
 
 
+class PlanProgressStepOut(CamelModel):
+    """작성 중인 초안에서 모델이 고른 단계 하나(#389). 검증 전이며 저장된 단계가 아니다."""
+
+    index: int  # 초안 steps 안의 위치. 0부터 차례로 온다
+    code: StepCode
+    name: str  # 카탈로그 고정 이름. 모델이 쓴 글이 아니다
+
+
 class PlanProgressOut(CamelModel):
     """SSE progress 이벤트(#284). 저장되지 않는 임시 작업 상태이며 DB 저장 완료가 아니다.
 
@@ -491,14 +499,17 @@ class PlanProgressOut(CamelModel):
     operation_id: str
     kind: Literal[
         "condition_started", "condition_applied", "search_started", "search_finished",
-        "generation_started", "generation_writing", "generation_finished",
+        "generation_started", "generation_writing", "generation_step", "generation_finished",
     ]
     # generation_writing은 같은 operationId의 생성 줄이 생각을 마치고 초안을 쓰기 시작했다는 뜻이다(running, #388).
+    # generation_step은 같은 생성 작업이 단계 하나의 코드를 다 썼다는 뜻이다(running, step 포함, #389).
+    # 생성 화면의 「초안 작성」 아래 목록에만 쓰고, 대화의 작업 줄로는 그리지 않는다.
     # skipped는 같은 operationId의 running 줄을 지우라는 뜻이다(조건 거절·같은 값, #290).
     # empty는 정상으로 끝났지만 찾은 것이 없다는 뜻이다(기록 검색 자료 없음, #300).
     status: Literal["running", "completed", "failed", "skipped", "empty"]
     text: str
     condition_draft: PlanDraftOut | None = None
+    step: PlanProgressStepOut | None = None
 
 
 class PlanViewOut(CamelModel):
