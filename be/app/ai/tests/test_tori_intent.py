@@ -49,7 +49,9 @@ def test_event_list_accepts_status():
     assert ToriIntentResult(intent='event_list', event_status='PLANNING').event_status == 'PLANNING'
 
 
-@pytest.mark.parametrize('kind', ['task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported'])
+@pytest.mark.parametrize('kind', [
+    'task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported', 'self_intro',
+])
 def test_model_extra_query_is_ignored_only_for_non_record_intents(monkeypatch, kind):
     async def invoke(_messages, schema):
         return schema(intent=kind, query='모델이 불필요하게 추가한 검색어')

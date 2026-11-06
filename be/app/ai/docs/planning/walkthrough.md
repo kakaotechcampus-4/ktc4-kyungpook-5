@@ -730,7 +730,9 @@ agent_node
 
 맨 앞 시스템 메시지는 지시문 원문뿐이라 모든 호출에서 글자 그대로 같다. 바뀌는 실행 문맥은 맨 끝에만 있다. 이 공급자는 첫 시스템 메시지가 조금이라도 다르면 입력 캐시를 쓰지 않았기 때문이다. v7은 지시문 뒤에 실행 문맥을 붙여 첫 시스템 메시지 하나로 보냈고, 메시지 ID가 매 요청 달라 대화 호출 캐시가 항상 0이었다. Tool 한도에 도달한 호출은 마지막 실행 문맥 끝에 "이번 턴의 Tool 한도에 도달했습니다…"(`TOOL_LIMIT_NOTICE`)를 붙이고 Tool을 끈다.
 
-실행 문맥 메시지는 모델 호출에만 붙이고 `state["messages"]`에는 저장하지 않는다. 그래서 다음 턴의 이력이나 생성 입력(`plan_messages`)에 들어가지 않는다.
+`planning-agent-v9`부터는 마지막 시스템 메시지의 JSON 뒤에 [토리 소개 지시](../../features/planning/agent/prompts/persona.md)를 붙인다. “너의 페르소나는?”이라는 질문에 모델이 토리라는 이름과 행사 계획에서 돕는 일을 설명한다. 첫 시스템 메시지의 원문과 메시지 순서는 v8과 같다.
+
+마지막 시스템 메시지는 모델 호출에만 붙이고 `state["messages"]`에는 저장하지 않는다. 그래서 다음 턴의 이력이나 생성 입력(`plan_messages`)에 들어가지 않는다.
 
 테스트 `test_first_system_message_is_identical_across_turns_and_calls_for_provider_cache`가 서로 다른 턴·호출의 첫 시스템 메시지가 같고, 같은 턴 2번째 호출이 1번째 호출의 실행 문맥만 빼고 앞부분을 그대로 이어 쓰는지 고정한다. v7과 v8은 [compare_agent_context_layout.py](../../scripts/compare_agent_context_layout.py)로 같은 실행 안에서 번갈아 쟀다. 요청마다 `agent_messages`를 v7 함수로 바꿔 끼우고 끝나면 되돌린다. 결과는 [11-04 측정 기록](evaluation-results/planning-agent-context-layout-2026-11-04/README.md)에 있다.
 
