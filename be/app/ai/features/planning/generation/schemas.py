@@ -59,6 +59,6 @@ class PlanComposition(ContractModel):
 
 
 class PlanGenerator(Protocol):
-    # on_writing은 진행 알림이 있을 때만 넘긴다(#388). 그래서 받지 않는 기존 생성기도 그대로 쓸 수 있다.
+    # on_text는 진행 알림이 있을 때만 넘긴다(#388, #389). 그래서 받지 않는 기존 생성기도 그대로 쓸 수 있다.
     async def __call__(self, request: PlanGenerationInput, *,
-                       on_writing: Callable[[], Awaitable[None]] | None = None) -> PlanGenerationResult: ...
+                       on_text: Callable[[str], Awaitable[None]] | None = None) -> PlanGenerationResult: ...

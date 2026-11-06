@@ -773,23 +773,40 @@ class PlanningView(ContractModel):
     history_usage: PlanningHistoryUsage | None = None
 
 # 저장하지 않는 일시적인 진행 상태
+class PlanningProgressStep(ContractModel):
+    """작성 중인 초안에서 모델이 고른 단계 하나(#389). 이름은 모델 글이 아니라 카탈로그의 고정 이름이다."""
+
+    index: Annotated[int, Field(strict=True, ge=0)]  # steps 안의 위치. 0부터 차례로 하나씩 온다
+    code: StepCode
+    name: NonBlankStr
+
+    @model_validator(mode="after")
+    def validate_catalog_name(self) -> Self:
+        if self.name != PLANNING_STEP_NAMES.get(self.code):
+            raise ValueError("작성 중 단계 이름이 계획 카탈로그와 다릅니다")
+        return self
+
+
 class PlanningProgress(ContractModel):
     """한 요청의 임시 작업 상태. 완료는 DB 저장이나 행사 확정을 뜻하지 않는다."""
 
     operation_id: NonBlankStr
     kind: Literal["condition_started", "condition_applied", "search_started", "search_finished",
-                  "generation_started", "generation_writing", "generation_finished"]
+                  "generation_started", "generation_writing", "generation_step", "generation_finished"]
     # skipped: 시작한 작업이 보여 줄 결과 없이 끝났다(조건 거절·같은 값). 화면은 그 줄을 지운다.
     # empty: 작업은 정상으로 끝났지만 찾은 것이 없다(기록 검색 자료 없음). 화면은 실패와 구분해 남긴다.
     status: Literal["running", "completed", "failed", "skipped", "empty"]
     text: NonBlankStr
     # 조건 완료 직후의 검증된 값·잠정 여부. 저장 전 패널에만 쓰고 상태 JSON에는 넣지 않는다.
     condition_draft: PlanningDraft | None = None
+    # generation_step에만 있는 단계 정보. 검증 전 초안의 단계 코드·고정 이름·위치뿐이다(#389).
+    step: PlanningProgressStep | None = None
 
     @model_validator(mode="after")
     def _consistent_progress(self) -> Self:
         # generation_writing: 같은 생성 작업이 생각을 마치고 초안 글자를 쓰기 시작했다(#388). 아직 진행 중이다.
-        allowed = ({"running"} if self.kind.endswith("_started") or self.kind == "generation_writing" else
+        # generation_step: 같은 생성 작업이 단계 하나의 코드를 다 썼다(#389). 생성은 아직 진행 중이다.
+        allowed = ({"running"} if self.kind.endswith("_started") or self.kind in ("generation_writing", "generation_step") else
                    {"completed", "skipped"} if self.kind == "condition_applied" else
                    {"completed", "empty", "failed"} if self.kind == "search_finished" else
                    {"completed", "failed"})
@@ -797,6 +814,8 @@ class PlanningProgress(ContractModel):
             raise ValueError("진행 이벤트 종류와 상태가 다릅니다")
         if self.condition_draft is not None and (self.kind, self.status) != ("condition_applied", "completed"):
             raise ValueError("조건 초안은 조건 완료 알림에만 넣을 수 있습니다")
+        if (self.step is not None) != (self.kind == "generation_step"):
+            raise ValueError("단계 정보는 작성 중 단계 알림에만, 그 알림에는 반드시 넣습니다")
         return self
 
 

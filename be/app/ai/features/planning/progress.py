@@ -2,7 +2,8 @@
 
 import logging
 
-from ...contracts import PlanningProgress, RecordLookupResult, PlanGenerationResult
+from ...contracts import PlanningProgress, PlanningProgressStep, RecordLookupResult, PlanGenerationResult
+from ...planning_catalog import PLANNING_STEP_NAMES
 from ...ports import PlanningProgressPort
 from .agent.tools import ConditionUpdateResult
 
@@ -56,6 +57,20 @@ def generation_writing(operation_id: str) -> PlanningProgress:
     """
     return PlanningProgress(operation_id=operation_id, kind="generation_writing", status="running",
                             text="초안을 작성하는 중이에요")
+
+
+def generation_step(operation_id: str, index: int, code: str) -> PlanningProgress | None:
+    """작성 중인 초안에서 index번째 단계의 코드를 다 쓴 순간(#389). 생성 시작과 같은 작업 ID다.
+
+    예: (2, "RECRUIT_NOTICE") → 「모집 공지」. 이름은 카탈로그의 고정 이름이고 모델이 쓴 글(목적·행동·일정)은 싣지 않는다.
+    카탈로그에 없는 코드는 알리지 않는다. 출력 형식이 막지만, 검증 전 글이라 여기서도 거른다.
+    실제 모델 20건에서 13단계 코드가 약 4.8초(p50)에 걸쳐 차례로 나왔다.
+    """
+    name = PLANNING_STEP_NAMES.get(code)
+    if name is None:
+        return None
+    return PlanningProgress(operation_id=operation_id, kind="generation_step", status="running", text=name,
+                            step=PlanningProgressStep(index=index, code=code, name=name))
 
 
 def condition_started(operation_id: str) -> PlanningProgress:

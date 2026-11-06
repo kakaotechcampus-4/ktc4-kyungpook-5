@@ -1,0 +1,2364 @@
+{
+  "model": "gpt-5.6-luna",
+  "commit": "6afe844c439cfe1cc93b4174cfc08ddfa12ba934",
+  "product_code_dirty": false,
+  "rounds": 10,
+  "started_at": "2026-11-07T01:11:41+0900",
+  "attempts": [
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 41.0,
+        "first_text": 4252.1,
+        "last_text": 11065.7,
+        "end": 11742.3,
+        "status": "completed",
+        "text_chunks": 908,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            4291.4,
+            4523.5,
+            5041.7,
+            5595.3,
+            5697.8,
+            6130.3,
+            6243.3,
+            6736.2,
+            7341.4,
+            7640.4,
+            7924.1,
+            8446.6,
+            8994.5
+          ],
+          "steps_end_ms": 9273.7,
+          "text_chars": 2534
+        }
+      },
+      "events": [
+        {
+          "ms": 0.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 41.0,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 4252.3,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11742.5,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11744.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11745.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 2300.7,
+        "first_text": 7739.1,
+        "last_text": 15221.0,
+        "end": 15464.9,
+        "status": "completed",
+        "text_chunks": 855,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            7752.1,
+            8011.0,
+            8308.5,
+            8717.9,
+            9114.2,
+            9554.8,
+            9930.3,
+            10494.5,
+            10888.8,
+            11359.3,
+            11844.2,
+            13748.8,
+            14758.8
+          ],
+          "steps_end_ms": 14797.0,
+          "text_chars": 2438
+        }
+      },
+      "events": [
+        {
+          "ms": 2294.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2300.9,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 7739.2,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 15465.4,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 15467.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19676.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 8.4,
+        "first_text": 4509.1,
+        "last_text": 11084.2,
+        "end": 11739.9,
+        "status": "completed",
+        "text_chunks": 949,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            4533.3,
+            4840.8,
+            5100.4,
+            5579.2,
+            5962.0,
+            6414.3,
+            6752.4,
+            7271.6,
+            7799.9,
+            8175.9,
+            8443.3,
+            8773.2,
+            9128.3
+          ],
+          "steps_end_ms": 9362.5,
+          "text_chars": 2615
+        }
+      },
+      "events": [
+        {
+          "ms": 0.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 8.6,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 4509.2,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11740.5,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11743.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11743.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 2263.6,
+        "first_text": 7925.6,
+        "last_text": 13364.5,
+        "end": 14384.4,
+        "status": "completed",
+        "text_chunks": 730,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            7939.6,
+            8240.3,
+            8583.4,
+            8833.2,
+            9144.6,
+            9425.3,
+            9672.1,
+            9997.6,
+            10231.4,
+            10522.7,
+            10840.7,
+            11075.7,
+            11421.2
+          ],
+          "steps_end_ms": 11644.3,
+          "text_chars": 2029
+        }
+      },
+      "events": [
+        {
+          "ms": 2257.9,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2263.8,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 7925.8,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 14384.5,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 14386.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 17502.7,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 2525.8,
+        "first_text": 6579.1,
+        "last_text": 13341.1,
+        "end": 13985.8,
+        "status": "completed",
+        "text_chunks": 885,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            6765.1,
+            7007.0,
+            7328.9,
+            7852.2,
+            8227.8,
+            8602.4,
+            8885.0,
+            9450.3,
+            10053.2,
+            10493.7,
+            10617.3,
+            11016.1,
+            11398.2
+          ],
+          "steps_end_ms": 11668.8,
+          "text_chars": 2468
+        }
+      },
+      "events": [
+        {
+          "ms": 2520.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2525.9,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 6579.2,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 13986.2,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 13988.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 18221.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 8.4,
+        "first_text": 3483.9,
+        "last_text": 10873.8,
+        "end": 11506.7,
+        "status": "completed",
+        "text_chunks": 1007,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            3523.8,
+            4083.0,
+            4255.9,
+            4727.3,
+            5241.5,
+            5786.4,
+            5982.6,
+            6627.1,
+            7023.7,
+            7480.6,
+            7847.5,
+            8161.7,
+            8576.9
+          ],
+          "steps_end_ms": 8808.1,
+          "text_chars": 2783
+        }
+      },
+      "events": [
+        {
+          "ms": 0.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 8.6,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 3484.1,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11507.1,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11509.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11510.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 5.7,
+        "first_text": 4185.2,
+        "last_text": 10563.6,
+        "end": 11258.3,
+        "status": "completed",
+        "text_chunks": 916,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            4201.4,
+            4707.1,
+            4794.8,
+            5292.3,
+            5718.0,
+            6126.0,
+            6438.6,
+            6925.0,
+            7418.1,
+            7816.0,
+            8076.6,
+            8434.0,
+            8909.6
+          ],
+          "steps_end_ms": 9009.5,
+          "text_chars": 2550
+        }
+      },
+      "events": [
+        {
+          "ms": 0.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 5.8,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 4185.3,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11258.7,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11261.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11261.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 2168.1,
+        "first_text": 7080.7,
+        "last_text": 13604.5,
+        "end": 14353.3,
+        "status": "completed",
+        "text_chunks": 859,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            7100.7,
+            7356.0,
+            7625.4,
+            8081.2,
+            8478.2,
+            8922.7,
+            9318.3,
+            9921.8,
+            10604.7,
+            10905.2,
+            11234.9,
+            11653.6,
+            12023.8
+          ],
+          "steps_end_ms": 12286.9,
+          "text_chars": 2417
+        }
+      },
+      "events": [
+        {
+          "ms": 2163.1,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2168.2,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 7080.8,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 14353.7,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 14356.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19445.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 2058.8,
+        "first_text": 5712.5,
+        "last_text": 11866.0,
+        "end": 12522.3,
+        "status": "completed",
+        "text_chunks": 883,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            5723.6,
+            6101.4,
+            6432.4,
+            7005.7,
+            7448.9,
+            7898.4,
+            8177.5,
+            8720.4,
+            9221.4,
+            9599.5,
+            9848.2,
+            10205.2,
+            10600.3
+          ],
+          "steps_end_ms": 10804.1,
+          "text_chars": 2505
+        }
+      },
+      "events": [
+        {
+          "ms": 2053.1,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2058.9,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 5712.7,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 12522.8,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 12525.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 15889.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 8.8,
+        "first_text": 3212.4,
+        "last_text": 10534.4,
+        "end": 11134.6,
+        "status": "completed",
+        "text_chunks": 965,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            3467.3,
+            3555.1,
+            3953.5,
+            4447.6,
+            5033.2,
+            5524.2,
+            5920.2,
+            6474.3,
+            7066.9,
+            7474.6,
+            7708.4,
+            8053.7,
+            8649.9
+          ],
+          "steps_end_ms": 8657.0,
+          "text_chars": 2634
+        }
+      },
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 9.0,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 3212.6,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11135.1,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11137.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11138.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 7.7,
+        "first_text": 4465.8,
+        "last_text": 10999.0,
+        "end": 11753.9,
+        "status": "completed",
+        "text_chunks": 976,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            4585.9,
+            4636.9,
+            4858.0,
+            5348.0,
+            5695.2,
+            6239.3,
+            6417.2,
+            6931.5,
+            7418.7,
+            7818.2,
+            7946.2,
+            8365.6,
+            8661.1
+          ],
+          "steps_end_ms": 8936.7,
+          "text_chars": 2700
+        }
+      },
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 7.9,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 4465.9,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11754.3,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11757.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11757.7,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 2474.5,
+        "first_text": 6241.6,
+        "last_text": 12846.2,
+        "end": 13482.6,
+        "status": "completed",
+        "text_chunks": 933,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            6464.0,
+            6829.7,
+            7001.9,
+            7393.7,
+            7731.9,
+            8123.6,
+            8484.7,
+            9103.2,
+            9674.8,
+            10076.6,
+            10284.0,
+            10631.5,
+            11080.1
+          ],
+          "steps_end_ms": 11254.4,
+          "text_chars": 2599
+        }
+      },
+      "events": [
+        {
+          "ms": 2469.1,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2474.7,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 6241.7,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 13483.0,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 13485.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 16754.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 2244.9,
+        "first_text": 5546.0,
+        "last_text": 11860.2,
+        "end": 12478.1,
+        "status": "completed",
+        "text_chunks": 839,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            5551.9,
+            5783.8,
+            6136.3,
+            6576.9,
+            6994.3,
+            7443.5,
+            7881.7,
+            8572.4,
+            9165.1,
+            9638.5,
+            9858.1,
+            10232.2,
+            10842.7
+          ],
+          "steps_end_ms": 10888.5,
+          "text_chars": 2379
+        }
+      },
+      "events": [
+        {
+          "ms": 2239.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2245.1,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 5546.1,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 12478.6,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 12481.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 15490.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 6.2,
+        "first_text": 3651.2,
+        "last_text": 10568.0,
+        "end": 11250.8,
+        "status": "completed",
+        "text_chunks": 911,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            3756.3,
+            4036.4,
+            4351.5,
+            4862.7,
+            5194.1,
+            5591.6,
+            5948.6,
+            6508.2,
+            6951.1,
+            7381.7,
+            7657.4,
+            8069.8,
+            8581.2
+          ],
+          "steps_end_ms": 8874.2,
+          "text_chars": 2534
+        }
+      },
+      "events": [
+        {
+          "ms": 0.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 6.3,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 3651.3,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11251.3,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11254.1,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11254.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 7.7,
+        "first_text": 3607.0,
+        "last_text": 10397.4,
+        "end": 11033.5,
+        "status": "completed",
+        "text_chunks": 964,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            3656.3,
+            4146.2,
+            4553.8,
+            4664.4,
+            5027.6,
+            5542.9,
+            5672.2,
+            6157.4,
+            6658.6,
+            7090.4,
+            7327.7,
+            7705.3,
+            8099.9
+          ],
+          "steps_end_ms": 8331.6,
+          "text_chars": 2669
+        }
+      },
+      "events": [
+        {
+          "ms": 0.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 7.9,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 3607.1,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11033.8,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11035.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11035.8,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 2492.1,
+        "first_text": 6915.1,
+        "last_text": 13424.1,
+        "end": 14084.5,
+        "status": "completed",
+        "text_chunks": 905,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            6918.8,
+            7239.5,
+            7503.1,
+            8014.5,
+            8384.9,
+            8858.4,
+            9119.0,
+            9945.9,
+            10315.3,
+            10799.5,
+            11173.7,
+            11425.7,
+            11826.5
+          ],
+          "steps_end_ms": 12042.5,
+          "text_chars": 2532
+        }
+      },
+      "events": [
+        {
+          "ms": 2489.1,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2492.1,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 6915.2,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 14084.9,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 14087.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 17783.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 1970.6,
+        "first_text": 5285.6,
+        "last_text": 12125.3,
+        "end": 12840.2,
+        "status": "completed",
+        "text_chunks": 937,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            5355.8,
+            5635.0,
+            5937.1,
+            6655.5,
+            6816.1,
+            7215.4,
+            7575.4,
+            8067.4,
+            8731.6,
+            9042.1,
+            9316.8,
+            9841.8,
+            10244.5
+          ],
+          "steps_end_ms": 10636.7,
+          "text_chars": 2581
+        }
+      },
+      "events": [
+        {
+          "ms": 1965.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 1970.8,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 5285.7,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 12840.6,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 12843.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 16433.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 7.8,
+        "first_text": 4496.3,
+        "last_text": 11244.7,
+        "end": 11857.5,
+        "status": "completed",
+        "text_chunks": 919,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            4520.7,
+            4870.8,
+            5130.8,
+            5598.0,
+            6170.3,
+            6506.6,
+            6799.0,
+            7382.7,
+            7896.2,
+            8383.3,
+            8658.5,
+            9089.8,
+            9634.0
+          ],
+          "steps_end_ms": 9911.7,
+          "text_chars": 2560
+        }
+      },
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 7.9,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 4496.4,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11857.7,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11859.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11859.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 4.9,
+        "first_text": 4009.8,
+        "last_text": 11093.7,
+        "end": 11591.7,
+        "status": "completed",
+        "text_chunks": 914,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            4073.8,
+            4297.6,
+            4577.6,
+            5149.6,
+            5596.2,
+            6006.7,
+            6456.3,
+            6978.3,
+            7662.4,
+            8073.0,
+            8440.4,
+            8664.7,
+            9179.3
+          ],
+          "steps_end_ms": 9331.3,
+          "text_chars": 2518
+        }
+      },
+      "events": [
+        {
+          "ms": 0.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 4.9,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 4009.9,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11592.1,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11594.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11595.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 2777.7,
+        "first_text": 6356.7,
+        "last_text": 12895.0,
+        "end": 13450.7,
+        "status": "completed",
+        "text_chunks": 938,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            6364.3,
+            6559.7,
+            6918.9,
+            7282.1,
+            7688.8,
+            8161.1,
+            8522.8,
+            9073.1,
+            9522.9,
+            9916.5,
+            10352.3,
+            10493.9,
+            10884.9
+          ],
+          "steps_end_ms": 11142.9,
+          "text_chars": 2557
+        }
+      },
+      "events": [
+        {
+          "ms": 2773.9,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2777.7,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 6356.8,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 13451.1,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 13453.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 17629.0,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 2316.5,
+        "first_text": 6676.2,
+        "last_text": 13287.6,
+        "end": 13824.9,
+        "status": "completed",
+        "text_chunks": 891,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            6685.8,
+            7290.5,
+            7565.3,
+            8165.9,
+            8528.1,
+            8982.3,
+            9288.6,
+            9896.2,
+            10532.7,
+            10979.4,
+            11219.6,
+            11577.6,
+            12007.2
+          ],
+          "steps_end_ms": 12254.2,
+          "text_chars": 2530
+        }
+      },
+      "events": [
+        {
+          "ms": 2311.1,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2316.7,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 6676.4,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 13825.3,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 13828.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 16814.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "model_call": {
+        "start": 6.1,
+        "first_text": 3735.4,
+        "last_text": 10566.1,
+        "end": 11097.9,
+        "status": "completed",
+        "text_chunks": 944,
+        "analysis": {
+          "parsed": true,
+          "top_keys": [
+            "steps",
+            "excluded_steps",
+            "assumptions",
+            "open_questions",
+            "warnings"
+          ],
+          "steps_first": true,
+          "code_first_all": true,
+          "codes": [
+            "ASSIGN_ROLES",
+            "RESEARCH_VENUE",
+            "DEMAND_SURVEY",
+            "RECRUIT_NOTICE",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE",
+            "COLLECT_FEES",
+            "PRE_EVENT_NOTICE",
+            "EVENT_DAY",
+            "SETTLE_EXPENSES",
+            "REFUND_FEES",
+            "RECORD_FEEDBACK"
+          ],
+          "matched": true,
+          "code_end_ms": [
+            3807.0,
+            4122.2,
+            4501.8,
+            5042.5,
+            5275.0,
+            5690.7,
+            6026.1,
+            6486.4,
+            7222.3,
+            7363.8,
+            7633.9,
+            8044.5,
+            8424.9
+          ],
+          "steps_end_ms": 8751.0,
+          "text_chars": 2626
+        }
+      },
+      "events": [
+        {
+          "ms": 0.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 6.2,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 3735.5,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11098.2,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11100.3,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11100.6,
+          "kind": "end"
+        }
+      ]
+    }
+  ],
+  "finished_at": "2026-11-07T01:17:20+0900"
+}

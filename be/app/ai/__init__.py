@@ -9,6 +9,7 @@ enum은 재공개하지 않는다. `app.core.enums`에서 가져온다.
 from .contracts import (
     IndexedChunk,
     PlanningProgress,
+    PlanningProgressStep,
     IndexRecordRequest,
     IndexRecordResult,
     RecordBlock,
@@ -56,6 +57,7 @@ from .ports import ChunkSearchQuery, RecordSearchPort, RetrievedChunk, PlanningP
 
 __all__ = (
     "PlanningProgress",
+    "PlanningProgressStep",
     "PlanningProgressPort",
     # 기록 색인
     "index_record",

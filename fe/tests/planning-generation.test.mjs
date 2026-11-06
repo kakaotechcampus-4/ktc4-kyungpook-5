@@ -98,6 +98,35 @@ test('drafting note follows generation_started then generation_writing only', ()
   assert.equal(note({ phase: 'requesting' }), null)
 })
 
+test('작성 중 단계는 0번부터 차례로만 붙는다 (#389)', () => {
+  const step = (index, name = `단계 ${index}`) => ({ index, code: `CODE_${index}`, name })
+  let steps = []
+  steps = m.appendDraftStep(steps, step(0, '담당 인원 배치'))
+  steps = m.appendDraftStep(steps, step(1, '장소·교통 알아보기'))
+  assert.deepEqual(
+    steps.map((s) => s.name),
+    ['담당 인원 배치', '장소·교통 알아보기'],
+  )
+  // 중복·건너뜀·빈 이름·단계 정보 없음은 버린다. 같은 배열을 돌려줘 화면을 다시 그리지 않는다
+  for (const bad of [step(1), step(0), step(3), { ...step(2), name: '' }, undefined])
+    assert.equal(m.appendDraftStep(steps, bad), steps)
+})
+
+test('단계 목록은 작성 중에 마지막만 진행 중이고, 실패하면 사라진다 (#389)', () => {
+  const steps = [0, 1, 2].map((index) => ({ index, code: `C${index}`, name: `단계 ${index}` }))
+  const rows = (flow, failed = false) =>
+    m.draftStepRows({ draft, ...flow }, failed)?.map((r) => r.state) ?? null
+  assert.deepEqual(rows({ phase: 'generating', writing: true, steps }), ['done', 'done', 'active'])
+  // 생성 성공 뒤(저장 확인·불러오기·끝)에는 모두 체크로 남긴다
+  for (const phase of ['verifying', 'loading', 'load-failed'])
+    assert.deepEqual(rows({ phase, steps }), ['done', 'done', 'done'])
+  // 검증 전 목록이라 실패하면 지운다
+  assert.equal(rows({ phase: 'generating', writing: true, steps }, true), null)
+  // 단계가 아직 없으면 펼침 버튼도 없다
+  assert.equal(rows({ phase: 'generating', writing: true, steps: [] }), null)
+  assert.equal(rows({ phase: 'unknown' }), null)
+})
+
 test('generated receipt and new coherent saved snapshot are both required', () => {
   assert.equal(m.generatedSnapshotStatus(request, result, fresh), 'new')
   for (const steps of [

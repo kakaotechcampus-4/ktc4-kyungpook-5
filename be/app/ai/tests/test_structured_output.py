@@ -272,20 +272,20 @@ def _real_stream(text, *, pieces=3, status="completed", reason=None, terminal=Tr
 
 
 def _stream_call(handler, messages="다음 달에 MT를 가고 싶어"):
-    """astream_structured를 부르고 (결과 또는 예외, 첫 글자 알림 횟수)를 돌려준다."""
+    """astream_structured를 부르고 (결과 또는 예외, 넘겨받은 글자 조각 목록)을 돌려준다."""
     settings = AISettings(api_base_url="https://example.test/v1", api_key=API_KEY, model="gpt-5.6-terra")
     model = build_chat_model(settings, max_retries=0, streaming=True,
                              http_async_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
-    calls = []
+    texts = []
 
-    async def first_text():
-        calls.append("first_text")
+    async def on_text(text):
+        texts.append(text)
 
     try:
-        result = asyncio.run(astream_structured(messages, Draft, on_first_text=first_text, model=model))
+        result = asyncio.run(astream_structured(messages, Draft, on_text=on_text, model=model))
     except Exception as error:
         result = error
-    return result, len(calls)
+    return result, texts
 
 
 def _invoke_call(handler):
@@ -295,11 +295,11 @@ def _invoke_call(handler):
         return error
 
 
-def test_조각을_모아_같은_객체를_돌려주고_첫_글자에서_한_번만_알린다():
-    result, first_texts = _stream_call(lambda request: _real_stream(json.dumps(VALID), pieces=5))
+def test_조각을_모아_같은_객체를_돌려주고_글자_조각마다_그_글자를_넘긴다():
+    result, texts = _stream_call(lambda request: _real_stream(json.dumps(VALID), pieces=5))
     assert result == Draft.model_validate(VALID)
-    # 시작·추론 블록 조각에서는 알리지 않고, 글자 조각 5개 중 첫 조각에서 한 번만 알린다.
-    assert first_texts == 1
+    # 시작·추론 블록 조각은 넘기지 않는다. 글자 조각 5개를 받은 순서대로 넘기고, 이으면 원문과 같다(#389).
+    assert len(texts) == 5 and "".join(texts) == json.dumps(VALID)
 
 
 @pytest.mark.parametrize("response", [
@@ -325,14 +325,14 @@ def test_두_경로는_같은_응답에_같은_결과나_같은_오류를_낸다
 
 
 def test_글자가_오기_전에_끝난_응답은_알리지_않는다():
-    result, first_texts = _stream_call(lambda request: _real_stream("", status="incomplete", reason="max_output_tokens"))
+    result, texts = _stream_call(lambda request: _real_stream("", status="incomplete", reason="max_output_tokens"))
     assert isinstance(result, AIOutputLimitError)
-    assert first_texts == 0
+    assert texts == []
 
 
 def test_스트림_응답_시간_초과도_AITimeoutError():
-    result, first_texts = _stream_call(_raise(httpx.ReadTimeout("timeout")))
-    assert isinstance(result, AITimeoutError) and first_texts == 0
+    result, texts = _stream_call(_raise(httpx.ReadTimeout("timeout")))
+    assert isinstance(result, AITimeoutError) and texts == []
 
 
 def test_두_경로는_게이트웨이에_같은_요청을_보낸다():

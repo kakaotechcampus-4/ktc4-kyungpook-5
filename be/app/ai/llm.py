@@ -18,7 +18,7 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import BaseModel, ValidationError
 
 from .config import AISettings, get_settings
-from .llm_stream import (ReplyStream, TextCallback, ResetCallback, ToolStartCallback, FirstTextCallback,
+from .llm_stream import (ReplyStream, TextCallback, ResetCallback, ToolStartCallback,
                          assembled_message, final_answer_text)
 from .errors import (
     AIConfigError,
@@ -183,15 +183,15 @@ async def astream_structured[T: BaseModel](
     messages: LanguageModelInput,
     schema: type[T],
     *,
-    on_first_text: FirstTextCallback,
+    on_text: TextCallback,
     model: ChatOpenAI,
 ) -> T:
-    """`ainvoke_structured`와 같은 결과·오류를 내되, 조각을 직접 모아 첫 글자 도착을 알린다(#388).
+    """`ainvoke_structured`와 같은 결과·오류를 내되, 조각을 직접 모으며 받은 글자를 그때그때 넘긴다(#388, #389).
 
     응답 조각은 이렇게 온다: 응답 시작(글자 없음) → 추론 블록(글자 없음) → 계획 JSON 글자 조각 수백 개 → 완료.
-    글자가 든 첫 조각에서 `on_first_text()`를 한 번 부른다. 모델이 "생각이 끝났다"를 따로 알려 주지 않아서,
-    첫 글자가 온 순간을 생각이 끝나고 쓰기 시작한 때로 본다. 내용은 넘기지 않는다. 검증 전 초안이기 때문이다.
-    검증은 다 모은 뒤 `ainvoke_structured`와 같은 함수(`_check_structured_finish`)와 같은 파서로 한다.
+    글자가 든 조각마다 `on_text(그 조각의 글자)`를 부른다. 넘긴 글자를 이으면 완성본의 글과 같다.
+    받는 쪽이 첫 호출을 「작성 중」 시작으로, 글 속 단계 코드를 진행 표시로 쓴다. 이 함수는 JSON 모양을 모른다.
+    넘기는 글은 검증 전이다. 검증은 다 모은 뒤 `ainvoke_structured`와 같은 함수(`_check_structured_finish`)와 같은 파서로 한다.
     `model`은 스트리밍 모델이어야 한다. 출력 한도 때문에 이 경로는 생성 모델 전용이다.
     """
     # with_structured_output은 [형식을 붙인 모델 | 파서] 두 단계다. ainvoke_structured와 같은 요청·파서를 쓰려고
@@ -200,7 +200,7 @@ async def astream_structured[T: BaseModel](
     if not isinstance(structured, RunnableSequence):
         raise TypeError("구조화 출력 구성이 예상과 다릅니다")
     bound, parser = structured.first, structured.last
-    combined, announced = None, False
+    combined = None
     try:
         # 실패·취소 시에도 공급자 스트림을 닫는다.
         async with aclosing(bound.astream(messages)) as stream:
@@ -208,9 +208,8 @@ async def astream_structured[T: BaseModel](
                 if not isinstance(chunk, AIMessageChunk):
                     raise _invalid_response(schema)
                 combined = chunk if combined is None else combined + chunk
-                if not announced and _has_text(chunk):
-                    announced = True
-                    await on_first_text()
+                if text := _chunk_text(chunk):
+                    await on_text(text)
     except (openai.APIConnectionError, openai.APIStatusError) as error:
         converted = _convert_api_error(error)
         if converted is None:
@@ -236,9 +235,10 @@ async def astream_structured[T: BaseModel](
     return parsed
 
 
-def _has_text(chunk: AIMessageChunk) -> bool:
+def _chunk_text(chunk: AIMessageChunk) -> str:
+    # 추론 블록에는 글자가 없다(#388 실측 20건). 응답 글 블록의 글자만 잇는다.
     blocks = chunk.content if isinstance(chunk.content, list) else []
-    return any(isinstance(b, dict) and b.get("type") == "text" and b.get("text") for b in blocks)
+    return "".join(b.get("text") or "" for b in blocks if isinstance(b, dict) and b.get("type") == "text")
 
 
 def _check_structured_finish(

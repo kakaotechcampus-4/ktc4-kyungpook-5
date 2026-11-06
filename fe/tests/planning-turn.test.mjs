@@ -193,3 +193,22 @@ test('저장 전 실패하면 완료 줄도 실패로 바꾸고 임시 조건은
   assert.equal(failed[0].text, '조건 반영을 확인하지 못했어요')
   assert.equal(lines[0].status, 'completed')
 })
+
+test('작성 중 단계 신호는 대화의 작업 줄을 덮지 않는다 (#389)', async () => {
+  const { upsertProgress } = await load()
+  const gen = (kind, text) => ({ operationId: 'g1', kind, status: 'running', text })
+  let lines = []
+  lines = upsertProgress(lines, gen('generation_started', '계획 초안을 만들고 있어요'))
+  lines = upsertProgress(lines, gen('generation_writing', '초안을 작성하는 중이에요'))
+  const before = lines
+  lines = upsertProgress(lines, {
+    ...gen('generation_step', '담당 인원 배치'),
+    step: { index: 0, code: 'ASSIGN_ROLES', name: '담당 인원 배치' },
+  })
+  // 같은 operationId여도 줄은 그대로다. 단계 이름은 생성 화면의 목록에만 붙는다
+  assert.equal(lines, before)
+  assert.deepEqual(
+    Array.from(lines, (l) => l.text),
+    ['초안을 작성하는 중이에요'],
+  )
+})
