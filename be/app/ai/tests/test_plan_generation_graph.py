@@ -39,10 +39,14 @@ class Model:
     def __init__(self, answer=None):
         self.answer=answer or composition()
         self.calls=[]
+        self.writing_passed=[]
 
-    async def __call__(self, messages, schema):
+    async def __call__(self, messages, schema, *, on_writing=None):
         self.calls.append((messages,schema))
+        self.writing_passed.append(on_writing is not None)
+        # 실패 응답은 글자가 오기 전에 끝난 것으로 본다(시간 초과·연결 실패). 성공은 첫 글자 도착을 알린 뒤 돌려준다.
         if isinstance(self.answer,Exception): raise self.answer
+        if on_writing is not None: await on_writing()
         return self.answer
 
 

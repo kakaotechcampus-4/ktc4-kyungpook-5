@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from ....errors import AIInvalidResponseError, AIOutputLimitError, AIRetryableError, AITimeoutError
 from ....contracts import ExcludedPreviewStep
 from .catalog import BY_CODE, CATALOG, PHASE_ORDER
+from ....llm_stream import FirstTextCallback
 from .model import invoke_plan_composition
 from .validation import PlanValidationError, PlanValidationViolation
 from .schemas import (
@@ -30,7 +31,9 @@ logger = logging.getLogger(__name__)
 
 
 class CompositionInvoker(Protocol):
-    async def __call__(self, messages, schema: type[PlanComposition]) -> PlanComposition: ...
+    # on_writing은 진행 알림이 있을 때만 넘긴다. 그래서 받지 않는 기존 호출기도 그대로 쓸 수 있다.
+    async def __call__(self, messages, schema: type[PlanComposition], *,
+                       on_writing: FirstTextCallback | None = None) -> PlanComposition: ...
 
 
 class GenerationGraphState(TypedDict):
@@ -39,7 +42,8 @@ class GenerationGraphState(TypedDict):
     preview: EventPlanPreview | None
 
 
-async def compose_plan(state: GenerationGraphState, *, invoke: CompositionInvoker) -> dict:
+async def compose_plan(state: GenerationGraphState, *, invoke: CompositionInvoker,
+                       on_writing: FirstTextCallback | None = None) -> dict:
     request = state["request"]
     # 출처 객체 대신 f1 같은 근거 번호를 공개한다. 출처는 검증 후 코드가 붙인다.
     context = dict(basis_draft=request.basis_draft.model_dump(mode="json"),
@@ -48,8 +52,9 @@ async def compose_plan(state: GenerationGraphState, *, invoke: CompositionInvoke
         catalog=[x.model_dump(mode="json") for x in CATALOG],
         reference_facts=[dict(id=f"f{i}", content=fact.content)
                          for i, fact in enumerate(request.reference_facts, 1)])
+    writing = {} if on_writing is None else {"on_writing": on_writing}
     response = await invoke([SystemMessage(content=PROMPT),
-        HumanMessage(content=json.dumps(context, ensure_ascii=False))], PlanComposition)
+        HumanMessage(content=json.dumps(context, ensure_ascii=False))], PlanComposition, **writing)
     try:
         composition = PlanComposition.model_validate(response)
     except ValidationError as error:
@@ -159,14 +164,18 @@ def validate_plan(state: GenerationGraphState) -> dict:
         assumptions=tuple(assumptions), open_questions=tuple(questions), warnings=composition.warnings)}
 
 
-async def run_plan_generation(request: PlanGenerationInput, *, invoke: CompositionInvoker = invoke_plan_composition) -> PlanGenerationResult:
-    """원본 조건을 바꾸지 않고 검증된 초안만 반환한다. 저장·외부 실행은 없다."""
+async def run_plan_generation(request: PlanGenerationInput, *, invoke: CompositionInvoker = invoke_plan_composition,
+                              on_writing: FirstTextCallback | None = None) -> PlanGenerationResult:
+    """원본 조건을 바꾸지 않고 검증된 초안만 반환한다. 저장·외부 실행은 없다.
+
+    on_writing: 모델이 계획 JSON의 첫 글자를 보낸 순간 한 번 불린다(#388). 진행 알림용이다.
+    """
     if request.basis_draft.conditions.event_type is None:
         return PlanGenerationResult(status="needs_clarification", reason="어떤 행사인지 먼저 정해 주세요.")
     graph = StateGraph(GenerationGraphState)
     stage = "compose_plan"
     async def compose(state):
-        return await compose_plan(state, invoke=invoke)
+        return await compose_plan(state, invoke=invoke, on_writing=on_writing)
     def validate(state):
         nonlocal stage
         stage = "validate_plan"

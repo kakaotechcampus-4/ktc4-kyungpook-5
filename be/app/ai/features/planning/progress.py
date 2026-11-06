@@ -48,6 +48,16 @@ def started(operation_id: str, *, generation: bool = False) -> PlanningProgress:
     )
 
 
+def generation_writing(operation_id: str) -> PlanningProgress:
+    """생성 모델이 계획 JSON의 첫 글자를 보낸 순간(#388). 생성 시작과 같은 작업 ID라 화면은 같은 줄을 바꾼다.
+
+    모델이 생각을 마쳤다고 따로 알려 주지 않아 첫 글자 도착을 그 순간으로 본다. 초안 내용은 싣지 않는다.
+    실제 모델 20건에서 시작 신호 뒤 p50 4~5초에 왔고, 그 뒤 끝까지 p50 7~8초가 걸렸다.
+    """
+    return PlanningProgress(operation_id=operation_id, kind="generation_writing", status="running",
+                            text="초안을 작성하는 중이에요")
+
+
 def condition_started(operation_id: str) -> PlanningProgress:
     """모델이 조건 변경 Tool을 쓰기 시작한 순간(#290). 값 조각은 아직 다 오지 않아 일반 문구만 쓴다.
 

@@ -37,6 +37,8 @@ done      저장된 값이 같으면 그대로, 다르면 그 칸만 다시 강�
    요청하면, 새 `condition_started`가 처음 줄의 자리를 이어 써 줄이 사라졌다 다시 생기지 않는다(#299).
 2. `generation/entrypoints.generate_with_context`는 생성 차단과 성공 결과 재사용을 확인한다.
    실제 생성이 필요할 때만 `generation_started/running`을 보낸다.
+   생성 모델이 계획 JSON의 첫 글자를 보내면 같은 `operation_id`로 `generation_writing/running`과
+   “초안을 작성하는 중이에요”를 한 번 보낸다(#388, 아래 「생각 중과 작성 중은 어떻게 나누나」).
 3. 생성 및 기준 조건 검증 후 같은 `operation_id`로 `generation_finished`를 보낸다.
    성공은 `completed`, 실패는 `failed`이며 기존 반환 결과는 유지한다.
 4. 기존 Agent 답변 작성 → 상태 직렬화 → 공개 결과 반환을 거친다. 저장은 여전히 BE가 맡는다.
@@ -735,6 +737,33 @@ agent_node
 마지막 시스템 메시지는 모델 호출에만 붙이고 `state["messages"]`에는 저장하지 않는다. 그래서 다음 턴의 이력이나 생성 입력(`plan_messages`)에 들어가지 않는다.
 
 테스트 `test_first_system_message_is_identical_across_turns_and_calls_for_provider_cache`가 서로 다른 턴·호출의 첫 시스템 메시지가 같고, 같은 턴 2번째 호출이 1번째 호출의 실행 문맥만 빼고 앞부분을 그대로 이어 쓰는지 고정한다. v7과 v8은 [compare_agent_context_layout.py](../../scripts/compare_agent_context_layout.py)로 같은 실행 안에서 번갈아 쟀다. 요청마다 `agent_messages`를 v7 함수로 바꿔 끼우고 끝나면 되돌린다. 결과는 [11-04 측정 기록](evaluation-results/planning-agent-context-layout-2026-11-04/README.md)에 있다.
+
+### 생각 중과 작성 중은 어떻게 나누나 (#388)
+
+생성 모델은 계획 JSON을 쓰기 전에 몇 초 동안 추론하고, 그 뒤 글자를 수백 조각으로 나눠 보낸다. 버튼 생성 기준으로 시작 신호 뒤 첫 글자까지 p50 4.9초, 그 뒤 끝까지 p50 7.9초였다([측정](evaluation-results/planning-generation-writing-start-2026-11-06/README.md)). 첫 글자가 온 순간에 진행 신호를 하나 더 보내면 화면이 「토리가 생각 중이에요」에서 「초안을 작성하는 중이에요」로 바뀐다.
+
+```text
+「이 조건으로 초안 만들기」 (진행 포트 있음)
+generate_with_context()
+  notify(generation_started)                         → SSE progress: generation_started
+  generate(request, on_writing=writing)              ← 포트가 있을 때만 콜백을 넘긴다
+    run_plan_generation → compose_plan
+      invoke_plan_composition(..., on_writing=writing)
+        astream_structured(..., on_first_text=writing)
+          조각: 응답 시작          글자 없음 → 모으기만
+          조각: 추론 블록 ×2        글자 없음 → 모으기만
+          조각: '{"steps":[{"co'   첫 글자 → writing() 한 번 → SSE progress: generation_writing
+          조각 … 900개 안팎         모으기만
+          완료 → ainvoke_structured와 같은 검사 → PlanComposition
+    validate_plan                                    그대로
+  notify(generation_finished)                        그대로
+```
+
+포트가 없으면 `on_writing`을 넘기지 않고, `invoke_plan_composition`은 기존 `ainvoke_structured`로 완성본만 받는다. 대화 모델이 포트 유무로 `astream_with_tools`와 `ainvoke_with_tools`를 나눠 쓰는 것(#280)과 같은 규칙이다.
+
+두 함수의 차이는 **조각을 누가 모으느냐** 하나다. `ainvoke_structured`는 SDK 안에서 다 모은 뒤에야 돌아오기 때문에 그 사이에 신호를 낼 곳이 없다. `astream_structured`는 [형식을 붙인 모델 | 파서] 중 앞 단계에서 조각을 직접 받아 모으고, 다 모은 뒤 같은 완료 검사(`_check_structured_finish`)와 같은 파서를 쓴다. `test_structured_output.py`가 같은 가짜 응답 11가지(정상, 출력 한도, 끊긴 스트림, 형식 오류, HTTP 오류 등)에 두 함수가 같은 결과나 같은 오류를 내는지 고정한다.
+
+첫 글자는 블록 종류가 `text`이고 글자가 비어 있지 않은 첫 조각이다. 추론 블록에는 글자가 오지 않아(실측 20건 모두) 「생각 중」 동안 보여 줄 실제 진행은 없다. 신호에는 초안 내용을 싣지 않는다. 검증 전 초안이기 때문이다(#266).
 
 ## 생성 모델은 얼마나 생각하고 쓰나 (#264)
 
