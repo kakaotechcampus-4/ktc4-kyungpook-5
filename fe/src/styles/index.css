@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+/* 세로가 짧은 화면(작은 창, 브라우저 확대, 옆에 띄운 패널). 모달 머리·하단이 본문 자리를 다 먹지 않게
+   모달 전체가 스크롤되도록 바꿀 때 쓴다(Modal.tsx). */
+@custom-variant short (@media (max-height: 520px));
+
 /* v11 와이어프레임 「0·기준」 팔레트·타이포 스케일. 색 이름은 Figma 라벨 그대로 쓴다. */
 @theme {
   --font-sans:
@@ -77,6 +81,11 @@
   /* 조건 패널의 바뀐 칸 강조(#300). 저장이 끝난 순간 옅은 파란 배경으로 켜져 잠시 머문 뒤 사라진다.
      시간은 factFlash.ts의 FACT_FLASH_MS와 맞춘다. 움직임 줄이기면 쓰는 쪽에서 끄고 색만 그 시간 동안 둔다. */
   --animate-fact-flash: fact-flash 1500ms ease-out both;
+  /* 단계 완료 순간(#370). 카드가 떠오르고 → 원 안의 체크가 그려지고 → 잠시 머문 뒤 사라진다.
+     머무는 시간은 StepDoneMoment.tsx의 STEP_DONE_MS와 맞춘다. 움직임 줄이기면 쓰는 쪽에서 끈다. */
+  --animate-done-in: done-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-done-draw: done-draw 360ms 140ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  --animate-done-out: done-out 200ms ease-in forwards;
 
   /* 입력 중 점 세 개가 차례로 떠올랐다 내려온다. */
   @keyframes typing-dot {
@@ -135,6 +144,24 @@
   }
   /* 진행 중 줄은 "조건을 반영하고 있어요" 한 줄(18px)이라 높이를 정해 두고 줄인다.
      위쪽 음수 여백은 목록의 줄 간격(4px)까지 거둬, 지운 뒤 아래 줄이 튀지 않게 한다. */
+  @keyframes done-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.96);
+    }
+  }
+  /* 체크 선 길이(pathLength=1)를 지운 상태에서 그려 나간다 */
+  @keyframes done-draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
+  @keyframes done-out {
+    to {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+  }
   @keyframes line-out {
     from {
       opacity: 1;

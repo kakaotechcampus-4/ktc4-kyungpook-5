@@ -1,5 +1,5 @@
 // L2 행사 상세: 한 행사의 단계 진행, 지금 할 일, 처리 기록을 본다.
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AnswerModal } from '@/features/events/components/AnswerModal'
 import { CancelConfirmModal } from '@/features/events/components/CancelConfirmModal'
@@ -10,6 +10,7 @@ import { PlanningOverview } from '@/features/events/components/PlanningOverview'
 import { useOperationCases } from '@/features/events/operationCasesHooks'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
 import { ReviewModal } from '@/features/events/components/ReviewModal'
+import { StepDoneMoment, type StepDone } from '@/features/events/components/StepDoneMoment'
 import { StepModal } from '@/features/events/components/StepModal'
 import { TodoList } from '@/features/events/components/TodoList'
 import { draftSentences, todoList } from '@/features/events/todo'
@@ -117,6 +118,9 @@ export default function EventDetailPage() {
   }
 
   const [cancelOpen, setCancelOpen] = useState(false)
+  // 방금 끝낸 단계. 화면 가운데에 잠깐 띄운 뒤 비운다.
+  const [stepDone, setStepDone] = useState<StepDone | null>(null)
+  const clearStepDone = useCallback(() => setStepDone(null), [])
   const [reviewing, setReviewing] = useState<EventAction>()
   const answering = reviewing?.type === 'CONFIRMATION' ? reviewing : undefined
   // 검토 모달은 목록의 최신 Action을 본다. 그래야 쓰는 중이던 초안이 도착하면 모달에도 보이고,
@@ -175,29 +179,36 @@ export default function EventDetailPage() {
     return success
   }
 
+  // 완료 요청과 그 뒤 목록 다시 불러오기가 끝날 때까지 버튼에 도는 표시를 둔다
+  const [completingId, setCompletingId] = useState<string | null>(null)
   const completeStep = async (step: EventStep) => {
+    setCompletingId(step.id)
     try {
       const result = demo ? null : await completeMutation.mutateAsync(step.id)
       // 다음 단계가 시작되면 서버가 응답 전에 공지·발송 초안을 「쓰는 중」으로 바꿔 둔다.
       // 다시 불러온 목록에 쓰는 중인 일이 있을 때만 토리가 시작했다고 알린다.
       const fresh = demo ? undefined : (await todoQuery.refetch()).data
       const drafting = (fresh ?? []).some((a) => a.contentStatus === 'DRAFTING' && a.stepId !== step.id)
-      toast.show({
-        kind: 'done',
-        title: '단계를 완료로 표시했어요',
-        desc:
-          [
-            result?.pendingActionCount
-              ? `미완료 행동 ${result.pendingActionCount}건이 남아 있어요. 행사 완료 전에 처리해 주세요.`
-              : undefined,
-            drafting ? '토리가 다음 단계 공지를 쓰기 시작했어요. 지금 할 일에서 볼 수 있어요.' : undefined,
-          ]
-            .filter(Boolean)
-            .join(' ') || step.name,
-      })
+      // 완료 순간은 화면 가운데에 잠깐 띄운다. 남은 일이 있다는 경고만 토스트로 남긴다.
+      const index = steps.findIndex((s) => s.id === step.id)
+      const next = steps.slice(index + 1).find((s) => s.state !== 'DONE')
       setOpenStepId(null)
+      setStepDone({
+        key: Date.now(),
+        done: { position: index + 1, name: step.name },
+        next: next && { position: steps.indexOf(next) + 1, name: next.name },
+        drafting,
+      })
+      if (result?.pendingActionCount)
+        toast.show({
+          kind: 'done',
+          title: '단계를 완료로 표시했어요',
+          desc: `미완료 행동 ${result.pendingActionCount}건이 남아 있어요. 행사 완료 전에 처리해 주세요.`,
+        })
     } catch (error) {
       toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+    } finally {
+      setCompletingId(null)
     }
   }
 
@@ -327,9 +338,11 @@ export default function EventDetailPage() {
               onRequestDraft={(action) => void requestDraft(action)}
               requestingDraftId={draftMutation.isPending ? draftMutation.variables?.id : undefined}
               onCompleteStep={completeStep}
+              completing={completingId === openStep.id}
               readOnly={!demo && event.status !== 'ON_GOING'}
             />
           )}
+          {stepDone && <StepDoneMoment moment={stepDone} onFinish={clearStepDone} />}
           <ReviewModal
             action={deciding}
             onClose={() => setReviewing(undefined)}

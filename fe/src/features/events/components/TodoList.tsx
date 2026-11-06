@@ -334,7 +334,8 @@ function Preview({ text, note }: { text: string; note: Array<string | undefined>
   return (
     <div className="flex min-w-0 animate-turn-in flex-col gap-[6px] rounded-[11px] bg-bg px-[14px] py-[12px] motion-reduce:animate-none">
       <p className="line-clamp-3 text-[12.5px] leading-[19px] break-words whitespace-pre-line text-ink2">
-        <DraftText text={text} />
+        {/* 초안은 제목 다음에 빈 줄을 두는 일이 많아, 미리보기에서만 빈 줄을 접어 본문을 한 줄 더 보인다 */}
+        <DraftText text={text.replace(/\n[ \t]*(?:\n[ \t]*)+/g, '\n')} />
       </p>
       <p className="text-[11px] leading-[16px] text-mute">{note.filter(Boolean).join(' · ')}</p>
     </div>
