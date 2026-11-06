@@ -1,4 +1,5 @@
-// 처리된 승인 카드(L2): 승인·거절된 일을 최신순으로. 개수 칩은 전체 건수, 행은 최근 몇 건만 보인다.
+// 처리 기록 카드(L2): 승인·거절된 일을 최신순으로. 개수 칩은 전체 건수, 행은 최근 몇 건만 보인다.
+// 거절한 일도 있어 「처리된 승인」 대신 「처리 기록」이라 부른다. 지난 기록이라 화면 맨 아래에 둔다.
 import type { EventAction } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
 import { formatDateTime } from '@/shared/lib/format'
@@ -19,10 +20,10 @@ export function ResolvedActionList({ actions, totalCount, className }: ResolvedA
     <Card className={cn('flex flex-col', className)}>
       <div className="flex items-center justify-between px-[26px] pt-[24px] pb-[15px]">
         <div className="flex items-center gap-[9px]">
-          <h2 className="text-h2">처리된 승인</h2>
+          <h2 className="text-h2">처리 기록</h2>
           <Chip>{totalCount}건</Chip>
         </div>
-        {/* TODO: 처리된 승인 전체 목록 화면이 생기면 연결한다 */}
+        {/* TODO: 처리 기록 전체 목록 화면이 생기면 연결한다 */}
         {!empty && (
           <button type="button" className="text-[12px] font-semibold text-blue-700 hover:underline">
             전체 보기 ›

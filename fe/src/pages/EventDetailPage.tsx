@@ -1,9 +1,8 @@
-// L2 행사 상세: 한 행사의 단계 진행과 확인 요청 · 처리된 승인을 본다.
+// L2 행사 상세: 한 행사의 단계 진행, 지금 할 일, 처리 기록을 본다.
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AnswerModal } from '@/features/events/components/AnswerModal'
 import { CancelConfirmModal } from '@/features/events/components/CancelConfirmModal'
-import { ConfirmationList } from '@/features/events/components/ConfirmationList'
 import { CurrentStepCard } from '@/features/events/components/CurrentStepCard'
 import { EventHeaderCard } from '@/features/events/components/EventHeaderCard'
 import { OperationCases } from '@/features/events/components/OperationCases'
@@ -12,13 +11,15 @@ import { useOperationCases } from '@/features/events/operationCasesHooks'
 import { ResolvedActionList } from '@/features/events/components/ResolvedActionList'
 import { ReviewModal } from '@/features/events/components/ReviewModal'
 import { StepModal } from '@/features/events/components/StepModal'
+import { TodoList } from '@/features/events/components/TodoList'
+import { draftSentences, todoList } from '@/features/events/todo'
 import {
-  useConfirmations,
   useDemo,
   useEventDetail,
   useEventSteps,
   useResolvedActions,
   useStepActions,
+  useTodoActions,
   useApproveAction,
   useCompleteStep,
   useCompleteEvent,
@@ -76,12 +77,18 @@ export default function EventDetailPage() {
   const stepActionsQuery = useStepActions(shownId, openStep?.id)
   const stepActions = stepActionsQuery.data?.filter((a) => !finishedIds.includes(a.id))
 
-  // 처리한 확인 요청. 서버 연동 전이라 화면에서만 빼 둔다.
+  // 지금 할 일. 시연에서는 처리해도 서버가 없어 화면에서만 뺀다(답한 질문 · 완료 표시한 일).
   const [answeredIds, setAnsweredIds] = useState<string[]>([])
-  const confirmationsQuery = useConfirmations(shownId)
+  const todoQuery = useTodoActions(shownId)
   const operationCases = useOperationCases(demo ? undefined : shownId)
+  // 운영 상황에서 나온 질문은 그 카드 안에서 답하므로 여기서는 뺀다
   const caseActionIds = new Set((operationCases.data ?? []).flatMap((item) => item.action ? [item.action.id] : []))
-  const confirmations = (confirmationsQuery.data ?? []).filter((a) => !answeredIds.includes(a.id) && !caseActionIds.has(a.id))
+  const todoActions = (todoQuery.data ?? []).filter(
+    (a) => !answeredIds.includes(a.id) && !finishedIds.includes(a.id) && !caseActionIds.has(a.id),
+  )
+  const todos = todoList(todoActions, steps)
+  const currentStepId = currentIndex >= 0 ? steps[currentIndex].id : undefined
+  const currentDraftNotes = draftSentences(todoActions.filter((a) => a.stepId === currentStepId))
 
   const run = async (operation: () => Promise<unknown>, title: string, desc?: string) => {
     try {
@@ -116,7 +123,9 @@ export default function EventDetailPage() {
   // 승인된 공지를 고쳐 승인 대기로 돌아가면 승인 버튼이 다시 나온다. 입력 중인 글은 모달이 지킨다.
   const deciding =
     reviewing && reviewing.type !== 'CONFIRMATION'
-      ? (stepActions?.find((a) => a.id === reviewing.id) ?? reviewing)
+      ? (stepActions?.find((a) => a.id === reviewing.id) ??
+        todoActions.find((a) => a.id === reviewing.id) ??
+        reviewing)
       : undefined
 
   // 결정 검토 모달만 닫고 Step 모달은 남긴다. 한 단계에 검토할 일이 여럿이라
@@ -169,12 +178,22 @@ export default function EventDetailPage() {
   const completeStep = async (step: EventStep) => {
     try {
       const result = demo ? null : await completeMutation.mutateAsync(step.id)
+      // 다음 단계가 시작되면 서버가 응답 전에 공지·발송 초안을 「쓰는 중」으로 바꿔 둔다.
+      // 다시 불러온 목록에 쓰는 중인 일이 있을 때만 토리가 시작했다고 알린다.
+      const fresh = demo ? undefined : (await todoQuery.refetch()).data
+      const drafting = (fresh ?? []).some((a) => a.contentStatus === 'DRAFTING' && a.stepId !== step.id)
       toast.show({
         kind: 'done',
         title: '단계를 완료로 표시했어요',
-        desc: result?.pendingActionCount
-          ? `미완료 행동 ${result.pendingActionCount}건이 남아 있어요. 행사 완료 전에 처리해 주세요.`
-          : step.name,
+        desc:
+          [
+            result?.pendingActionCount
+              ? `미완료 행동 ${result.pendingActionCount}건이 남아 있어요. 행사 완료 전에 처리해 주세요.`
+              : undefined,
+            drafting ? '토리가 다음 단계 공지를 쓰기 시작했어요. 지금 할 일에서 볼 수 있어요.' : undefined,
+          ]
+            .filter(Boolean)
+            .join(' ') || step.name,
       })
       setOpenStepId(null)
     } catch (error) {
@@ -182,11 +201,11 @@ export default function EventDetailPage() {
     }
   }
 
-  const permissionError = [detailQuery, stepsQuery, resolvedQuery, confirmationsQuery, operationCases].some(
+  const permissionError = [detailQuery, stepsQuery, resolvedQuery, todoQuery, operationCases].some(
     (query) => query.isError && query.error instanceof ApiError && ['UNAUTHORIZED', 'FORBIDDEN'].includes(query.error.code),
   )
   if (permissionError) {
-    return <ServerErrorScreen onRetry={() => { void detailQuery.refetch(); void stepsQuery.refetch(); void resolvedQuery.refetch(); void confirmationsQuery.refetch(); void operationCases.refetch() }} onHome={() => navigate('/')} />
+    return <ServerErrorScreen onRetry={() => { void detailQuery.refetch(); void stepsQuery.refetch(); void resolvedQuery.refetch(); void todoQuery.refetch(); void operationCases.refetch() }} onHome={() => navigate('/')} />
   }
 
   if (detailQuery.isPending) return null
@@ -194,15 +213,16 @@ export default function EventDetailPage() {
     return <ServerErrorScreen onRetry={() => detailQuery.refetch()} onHome={() => navigate('/')} />
   }
 
-  if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isPending))
+  if (event && [stepsQuery, resolvedQuery, todoQuery].some((query) => query.isPending))
     return null
-  if (event && [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isError && query.data === undefined)) {
+  // 지금 할 일을 못 불러온 경우는 그 카드 안에서 따로 알린다
+  if (event && [stepsQuery, resolvedQuery].some((query) => query.isError && query.data === undefined)) {
     return (
       <ServerErrorScreen
         onRetry={() => {
           stepsQuery.refetch()
           resolvedQuery.refetch()
-          confirmationsQuery.refetch()
+          todoQuery.refetch()
         }}
         onHome={() => navigate('/')}
       />
@@ -228,8 +248,8 @@ export default function EventDetailPage() {
         )}
       </nav>
 
-      {event && (detailQuery.isError || [stepsQuery, resolvedQuery, confirmationsQuery].some((query) => query.isError)) && (
-        <p role="alert" className="text-failed">최신 행사 정보를 불러오지 못해 이전 내용을 표시하고 있어요. <button type="button" className="underline" onClick={() => { void detailQuery.refetch(); void stepsQuery.refetch(); void resolvedQuery.refetch(); void confirmationsQuery.refetch() }}>다시 확인</button></p>
+      {event && (detailQuery.isError || [stepsQuery, resolvedQuery].some((query) => query.isError) || (todoQuery.isError && todoQuery.data !== undefined)) && (
+        <p role="alert" className="text-failed">최신 행사 정보를 불러오지 못해 이전 내용을 표시하고 있어요. <button type="button" className="underline" onClick={() => { void detailQuery.refetch(); void stepsQuery.refetch(); void resolvedQuery.refetch(); void todoQuery.refetch() }}>다시 확인</button></p>
       )}
 
       {event ? (
@@ -247,7 +267,7 @@ export default function EventDetailPage() {
               }
             }}
           />
-          {/* 계획 중에는 운영용 칸(운영 상황 · 확인 요청 · 처리된 승인 · 현재 단계) 대신 계획 요약을 보여 준다(#337) */}
+          {/* 계획 중에는 운영용 칸(지금 할 일 · 현재 단계 · 운영 상황 · 처리 기록) 대신 계획 요약을 보여 준다(#337) */}
           {event.status === 'PLANNING' ? (
             <PlanningOverview
               event={event}
@@ -256,32 +276,42 @@ export default function EventDetailPage() {
             />
           ) : (
             <>
-            {!demo && shownId && <OperationCases key={shownId} eventId={shownId} active={event.status === 'ON_GOING'} cases={operationCases.data ?? []} loading={operationCases.isPending} error={operationCases.isError} onReload={() => void operationCases.refetch()} />}
-            <div className="flex items-start gap-[20px]">
-              <div className="flex min-w-0 flex-1 flex-col gap-[20px]">
-                {(demo || operationCases.data !== undefined) && <ConfirmationList
-                  actions={confirmations}
-                  onResolve={(action, choice) => {
-                    if (choice === 'MANUAL') setReviewing(action)
-                    else void resolveConfirmation(action, choice)
-                  }}
-                  readOnly={!demo && event.status !== 'ON_GOING'}
-                />}
-                <ResolvedActionList
-                  actions={resolved?.items ?? []}
-                  totalCount={resolved?.totalCount ?? 0}
-                />
+              {/* 운영진이 들어와 가장 먼저 찾는 건 내 차례인 일이라 맨 위에 둔다. 좁은 화면에서는 현재 단계가 아래로 간다. */}
+              <div className="flex flex-col items-stretch gap-[20px] lg:flex-row lg:items-start">
+                {(demo || operationCases.data !== undefined || operationCases.isError) && (
+                  <TodoList
+                    className="min-w-0 flex-1"
+                    items={todos}
+                    failed={todoQuery.isError && todoQuery.data === undefined}
+                    onRetry={() => void todoQuery.refetch()}
+                    onReview={setReviewing}
+                    onComplete={finishAction}
+                    onResolve={(action, choice) => {
+                      if (choice === 'MANUAL') setReviewing(action)
+                      else void resolveConfirmation(action, choice)
+                    }}
+                    onRequestDraft={(action) => void requestDraft(action)}
+                    requestingDraftId={draftMutation.isPending ? draftMutation.variables?.id : undefined}
+                    onOpenStep={(step) => setOpenStepId(step.id)}
+                    readOnly={!demo && event.status !== 'ON_GOING'}
+                  />
+                )}
+                {/* 진행 중인 단계가 없으면(끝난 행사) 오른쪽 칸 없이 왼쪽이 넓어진다 */}
+                {currentIndex >= 0 && (
+                  <CurrentStepCard
+                    className="shrink-0 lg:w-[400px]"
+                    step={steps[currentIndex]}
+                    position={currentIndex + 1}
+                    draftNotes={currentDraftNotes}
+                    onOpen={() => setOpenStepId(steps[currentIndex].id)}
+                  />
+                )}
               </div>
-              {/* 진행 중인 단계가 없으면(계획 중 · 끝난 행사) 오른쪽 칸 없이 왼쪽이 넓어진다 */}
-              {currentIndex >= 0 && (
-                <CurrentStepCard
-                  className="w-[400px] shrink-0"
-                  step={steps[currentIndex]}
-                  position={currentIndex + 1}
-                  onOpen={() => setOpenStepId(steps[currentIndex].id)}
-                />
-              )}
-            </div>
+              {!demo && shownId && <OperationCases key={shownId} eventId={shownId} active={event.status === 'ON_GOING'} cases={operationCases.data ?? []} loading={operationCases.isPending} error={operationCases.isError} onReload={() => void operationCases.refetch()} />}
+              <ResolvedActionList
+                actions={resolved?.items ?? []}
+                totalCount={resolved?.totalCount ?? 0}
+              />
             </>
           )}
           {openStep && (
