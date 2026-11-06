@@ -11,7 +11,6 @@ import { StepDetailModal } from './StepDetailModal'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
-import { Modal } from '@/shared/ui/Modal'
 import { ToriNote } from '@/shared/ui/ToriNote'
 import { formatDateRange, formatMonthDay } from '@/shared/lib/format'
 import { ApiError } from '@/shared/api/types'
@@ -24,13 +23,11 @@ export function PlanReviewScreen({
   eventId,
   screen,
   steps,
-  messages,
   onReload,
 }: {
   eventId: string
   screen: S['PlanScreenOut']
   steps: S['PlannedStepOut'][]
-  messages: S['PlanMessageOut'][]
   onReload: () => Promise<unknown>
 }) {
   const navigate = useNavigate()
@@ -49,12 +46,13 @@ export function PlanReviewScreen({
     navigate(location.pathname + location.search, { replace: true, state: null })
   }, [location.pathname, location.search, location.state, navigate])
   const queryClient = useQueryClient()
-  const [conversationOpen, setConversationOpen] = useState(false)
   // 편집 중 재조회가 원본 버전을 바꾸지 않도록 선택한 스냅샷을 유지한다.
   const [editing, setEditing] = useState<S['PlannedStepOut'] | null>(null)
   const returnFocus = useRef<HTMLButtonElement | null>(null)
   const [savedId, setSavedId] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
+  // 안내에 「행사 상세 열기」를 같이 둘지. 상태가 바뀌었을 때만 그쪽이 더 아는 것이 많다.
+  const [noticeNeedsEvent, setNoticeNeedsEvent] = useState(false)
   const start = useStartEvent(eventId)
   const requestReview = useRequestPlanReview(eventId)
   const requesting = useReviewInFlight(eventId)
@@ -69,6 +67,7 @@ export function PlanReviewScreen({
   }
   const begin = async () => {
     setNotice('')
+    setNoticeNeedsEvent(false)
     try {
       await start.mutateAsync()
       await queryClient.invalidateQueries({ queryKey: ['events'] })
@@ -78,14 +77,20 @@ export function PlanReviewScreen({
         cause instanceof ApiError && ['VALIDATION_FAILED', 'PLAN_INCOMPLETE'].includes(cause.code)
           ? '운영을 시작하려면 행사 시작일과 하나 이상의 단계가 필요해요. 행사 조건을 확인해 주세요.'
           : cause instanceof ApiError && cause.code === 'EVENT_NOT_PLANNING'
-            ? '행사 상태가 바뀌었어요. 행사 상세에서 현재 상태를 확인해 주세요.'
-            : '운영 시작 결과를 확인하지 못했어요. 행사 상세에서 현재 상태를 확인한 뒤 다시 시도해 주세요.',
+            ? '행사 상태가 바뀌었어요. 현재 상태를 확인해 주세요.'
+            : '운영 시작 결과를 확인하지 못했어요. 현재 상태를 확인한 뒤 다시 시도해 주세요.',
+      )
+      // 이때만 행사 상세가 이 화면보다 아는 것이 많다(이미 계획 중이 아니다).
+      setNoticeNeedsEvent(
+        !(
+          cause instanceof ApiError && ['VALIDATION_FAILED', 'PLAN_INCOMPLETE'].includes(cause.code)
+        ),
       )
     }
   }
   return (
     <>
-      <PlanStageNav current="review" />
+      <PlanStageNav current="review" eventId={eventId} canReview />
       {completion && (
         <p role="status" className="sr-only">
           {completion}
@@ -124,25 +129,10 @@ export function PlanReviewScreen({
             </span>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            onClick={() =>
-              navigate(`/planning?${new URLSearchParams({ eventId, stage: 'conditions' })}`)
-            }
-          >
-            행사 조건 수정
-          </Button>
-          <Button variant="secondary" onClick={() => setConversationOpen(true)}>
-            이전 대화 보기
-          </Button>
-          <Link
-            className="self-center rounded-lg px-2 py-2 text-caption text-ink2 underline underline-offset-4"
-            to={`/events/${encodeURIComponent(eventId)}`}
-          >
-            행사 상세
-          </Link>
-        </div>
+        {/* 「행사 조건 수정」·「이전 대화 보기」·「행사 상세」를 모두 걷어냈다.
+            앞의 둘은 위의 단계 토글이 대신한다 — 조건과 대화는 행사 조건 쪽에 있다.
+            행사 상세는 계획 중일 때 계획 요약만 보여 주어 이 화면보다 아는 것이 적다.
+            상태가 바뀌어 정말 필요할 때만 아래 안내에서 띄운다. */}
       </div>
       <div className="grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_272px]">
         <Card className="min-w-0 p-4 sm:p-6">
@@ -334,40 +324,20 @@ export function PlanReviewScreen({
             )}
             {notice && (
               <p role="alert" className="text-caption text-failed">
-                {notice}
+                {notice}{' '}
+                {noticeNeedsEvent && (
+                  <Link
+                    className="font-semibold text-blue-700 underline underline-offset-4"
+                    to={`/events/${encodeURIComponent(eventId)}`}
+                  >
+                    행사 상세 열기
+                  </Link>
+                )}
               </p>
             )}
           </Card>
         </aside>
       </div>
-      <Modal
-        open={conversationOpen}
-        onClose={() => setConversationOpen(false)}
-        title="이전 대화"
-        subtitle="읽기 전용이에요. 새 대화는 행사 조건 수정에서 이어갈 수 있어요."
-        footer={
-          <Button variant="secondary" onClick={() => setConversationOpen(false)}>
-            닫기
-          </Button>
-        }
-      >
-        <ol className="planning-conversation flex flex-col gap-4">
-          {messages.map((message) => (
-            <li
-              key={message.id}
-              className={`max-w-[92%] rounded-xl px-4 py-3 ${message.role === 'USER' ? 'self-end bg-blue-50 text-blue-900' : 'self-start bg-bg'}`}
-            >
-              <p className="mb-1 text-label font-semibold">
-                {message.role === 'USER' ? '나' : '토리'}
-              </p>
-              <p className="whitespace-pre-wrap text-body [overflow-wrap:anywhere]">
-                {message.content}
-              </p>
-            </li>
-          ))}
-        </ol>
-        {!messages.length && <p className="text-mute">저장된 이전 대화가 없어요.</p>}
-      </Modal>
       <StepDetailModal
         step={editing}
         onClose={closeDetail}
