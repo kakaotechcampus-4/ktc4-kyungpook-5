@@ -30,9 +30,10 @@ export function LivePlanning() {
   const location = useLocation()
   const failedText = typeof location.state?.failedText === 'string' ? location.state.failedText : ''
   const eventId = params.get('eventId')
-  const journal = usePlanningRequestJournal(userId, clubId)
+  // 탭 기록은 행사마다 따로 둔다(#342). 이 행사의 결과를 확인하는 동안에도 다른 계획은 열 수 있다.
+  const journal = usePlanningRequestJournal(userId, clubId, eventId)
   const [busy, setBusy] = useState(false)
-  const blocked = busy || !!journal.raw
+  const blocked = busy
   const select = (id: string | null, text?: string) =>
     setParams(id ? { eventId: id } : {}, { state: text ? { failedText: text } : null })
   return (
@@ -71,17 +72,6 @@ export function LivePlanning() {
             <p role="alert" className="text-failed">
               이전 요청 기록을 확인하지 못했어요. 새 요청을 보내기 전에 브라우저의 임시 저장 기능과
               처리 결과를 확인해 주세요.
-            </p>
-          )}
-          {journal.request && journal.request.eventId !== eventId && (
-            <p role="status" className="text-ink2">
-              다른 계획의 처리 결과를 확인해야 해요. 새 요청은 잠가 두었어요.{' '}
-              <Link
-                className="font-semibold text-blue-700 underline"
-                to={`/planning?${new URLSearchParams({ eventId: journal.request.eventId, stage: 'conditions' })}`}
-              >
-                요청한 계획 확인하기
-              </Link>
             </p>
           )}
           <Conversation
@@ -256,11 +246,13 @@ function Conversation({
     prefetchEventDetail,
   )
   useEffect(() => {
-    onBusy(live.busy)
-  }, [live.busy, onBusy])
+    onBusy(live.streaming)
+  }, [live.streaming, onBusy])
   const [params] = useSearchParams()
   const event = useEventDetail(eventId ?? undefined)
   const [showFailure, setShowFailure] = useState(Boolean(failedText))
+  // 끊긴 첫 메시지가 저장된 것으로 확인되면 "결과를 확인해 주세요" 안내를 내린다(#342).
+  if (showFailure && live.settled === 'saved') setShowFailure(false)
   if (live.generationFlow)
     return (
       <>
@@ -362,7 +354,11 @@ function Conversation({
             eventId ? () => Promise.all([live.snapshot.refetch(), event.refetch()]) : undefined
           }
           persisted={!!eventId}
-          initialDraft={failedText}
+          initialDraft={
+            // 결과 확인 화면 뒤에 입력창이 다시 그려진다. 저장되지 않았으면 원래 문장을 되돌리고,
+            // 저장된 것으로 확인됐으면 다시 보내지 않게 비운다(#342).
+            live.retryText || (live.settled === 'saved' ? '' : failedText)
+          }
         />
         <div className="flex w-full min-w-0 flex-col gap-4 lg:w-[340px] lg:shrink-0">
           {lastMessage?.role === 'USER' && !live.busy && (

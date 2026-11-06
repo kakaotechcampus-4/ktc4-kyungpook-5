@@ -1234,6 +1234,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{event_id}/plan/requests/{request_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plan Request
+         * @description 채팅·생성 요청의 처리 결과만 읽는다 (#342). AI를 부르지 않는다.
+         *
+         *     응답 도중 연결이 끊기면 FE는 결과를 몰라 새 요청을 잠근다. 이때 보낸 Idempotency-Key로
+         *     조회해 저장된 응답을 받거나(completed), 기다리거나(processing), 잠금을 푼다(not_saved).
+         *     같은 사용자가 이 행사에 보낸 요청만 찾는다. 계획 단계가 끝난 행사도 결과는 읽을 수 있다.
+         */
+        get: operations["get_plan_request_api_v1_events__event_id__plan_requests__request_key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/{event_id}/plan/messages": {
         parameters: {
             query?: never;
@@ -2325,6 +2349,12 @@ export interface components {
             /** Meta */
             meta?: null;
         };
+        /** Envelope[PlanRequestOut] */
+        Envelope_PlanRequestOut_: {
+            data: components["schemas"]["PlanRequestOut"];
+            /** Meta */
+            meta?: null;
+        };
         /** Envelope[PlanReviewOut] */
         Envelope_PlanReviewOut_: {
             data: components["schemas"]["PlanReviewOut"];
@@ -3094,6 +3124,22 @@ export interface components {
             role: "USER" | "ASSISTANT";
             /** Content */
             content: string;
+        };
+        /**
+         * PlanRequestOut
+         * @description 요청 키 하나의 처리 결과 (#342). 응답 도중 연결이 끊긴 FE가 조회한다.
+         *
+         *     completed: 저장까지 끝남. result는 그 요청이 받았어야 할 PlanViewOut 그대로다.
+         *     processing: 아직 처리 중. 잠시 뒤 다시 조회한다.
+         *     not_saved: 저장되지 않았다. 같은 내용을 새 요청으로 다시 보내도 된다.
+         */
+        PlanRequestOut: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "completed" | "processing" | "not_saved";
+            result?: components["schemas"]["PlanViewOut"] | null;
         };
         /**
          * PlanReviewIn
@@ -7069,6 +7115,40 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plan_request_api_v1_events__event_id__plan_requests__request_key__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                event_id: string;
+                request_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PlanRequestOut_"];
                 };
             };
             /** @description Validation Error */

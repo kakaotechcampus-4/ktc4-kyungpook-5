@@ -11,6 +11,9 @@ export const planningApi = {
   get: (eventId: string) => apiGet<S['PlanScreenOut']>(plan(eventId)),
   messages: (eventId: string) => apiGet<S['PlanMessageOut'][]>(`${plan(eventId)}/messages`),
   steps: (eventId: string) => apiGet<S['PlannedStepOut'][]>(`${plan(eventId)}/steps`),
+  // 응답 도중 끊긴 요청의 결과만 읽는다. 모델을 다시 부르지 않는다(#342).
+  request: (eventId: string, key: string) =>
+    apiGet<S['PlanRequestOut']>(`${plan(eventId)}/requests/${encodeURIComponent(key)}`),
   stepsSnapshot: (eventId: string) =>
     apiGet<S['PlanStepsSnapshotOut']>(`${plan(eventId)}/steps/snapshot`),
   chat: (eventId: string, body: S['PlanChatIn']) =>

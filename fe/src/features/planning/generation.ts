@@ -30,14 +30,19 @@ export interface PlanningRequest {
 }
 
 const CHANGE = 'planning-request-change'
-export const requestStorageKey = (userId: string, clubId: string) =>
-  `planning-request:v1:${userId}:${clubId}`
+// 행사마다 따로 둔다(#342). A 행사의 결과를 확인하는 동안에도 B 행사 계획은 쓸 수 있다.
+export const requestStorageKey = (userId: string, clubId: string, eventId: string) =>
+  `planning-request:v1:${userId}:${clubId}:${eventId}`
 
 // A tab journal is a guard against issuing a second POST, never a queue to replay.
-export function readRequestText(userId: string | undefined, clubId: string | null): string | null {
-  if (!userId || !clubId) return null
+export function readRequestText(
+  userId: string | undefined,
+  clubId: string | null,
+  eventId: string | null,
+): string | null {
+  if (!userId || !clubId || !eventId) return null
   try {
-    return sessionStorage.getItem(requestStorageKey(userId, clubId))
+    return sessionStorage.getItem(requestStorageKey(userId, clubId, eventId))
   } catch {
     return 'unavailable'
   }
@@ -57,10 +62,37 @@ export function validDraft(draft: S['PlanDraftOut'] | undefined): boolean {
     )
   )
 }
+// 서버가 보낸 계획 응답의 최소 모양. 스트림 done과 결과 조회(#342)가 같은 기준을 쓴다.
+export function validView(candidate: S['PlanViewOut'] | null | undefined): boolean {
+  return (
+    !!candidate &&
+    Number.isInteger(candidate.baseRevision) &&
+    candidate.baseRevision >= 0 &&
+    validDraft(candidate.draft) &&
+    Array.isArray(candidate.changedFields) &&
+    typeof candidate.generationReadiness?.canGenerate === 'boolean' &&
+    Array.isArray(candidate.generationReadiness.reasons) &&
+    (candidate.reply === null || typeof candidate.reply === 'string') &&
+    (candidate.generationResult === null ||
+      ['generated', 'failed', 'needs_clarification'].includes(candidate.generationResult?.status))
+  )
+}
+
+// 결과를 모르는 요청을 요청 키로 조회한 뒤 할 일 (#342).
+//   completed + 읽을 수 있는 응답 → apply: 정상 응답을 받은 것처럼 이어 간다
+//   completed + 읽을 수 없는 응답 → release: 저장은 끝났으니 잠금을 풀고 저장된 계획을 다시 읽는다
+//   not_saved                  → release: 저장되지 않았으니 잠금을 풀고 다시 보내게 한다
+//   processing                 → wait: 잠시 뒤 다시 조회한다
+export function recoveryStep(lookup: S['PlanRequestOut']): 'apply' | 'release' | 'wait' {
+  if (lookup.status === 'processing') return 'wait'
+  return lookup.status === 'completed' && validView(lookup.result) ? 'apply' : 'release'
+}
+
 export function parseRequest(
   raw: string | null,
   userId: string | undefined,
   clubId: string | null,
+  eventId: string | null,
 ): PlanningRequest | null {
   if (!raw) return null
   try {
@@ -69,7 +101,7 @@ export function parseRequest(
       r.version !== 1 ||
       r.userId !== userId ||
       r.clubId !== clubId ||
-      typeof r.eventId !== 'string' ||
+      r.eventId !== eventId ||
       typeof r.key !== 'string' ||
       !['chat', 'button'].includes(r.kind) ||
       !r.body ||
@@ -109,14 +141,18 @@ export function subscribeRequest(callback: () => void) {
   }
 }
 export function writeRequest(request: PlanningRequest) {
-  sessionStorage.setItem(requestStorageKey(request.userId, request.clubId), JSON.stringify(request))
+  sessionStorage.setItem(
+    requestStorageKey(request.userId, request.clubId, request.eventId),
+    JSON.stringify(request),
+  )
   window.dispatchEvent(new Event(CHANGE))
 }
 export function removeRequest(request: PlanningRequest) {
   // A late completion must not delete a different request's journal.
-  const raw = readRequestText(request.userId, request.clubId)
-  if (parseRequest(raw, request.userId, request.clubId)?.key !== request.key) return
-  sessionStorage.removeItem(requestStorageKey(request.userId, request.clubId))
+  const { userId, clubId, eventId } = request
+  const raw = readRequestText(userId, clubId, eventId)
+  if (parseRequest(raw, userId, clubId, eventId)?.key !== request.key) return
+  sessionStorage.removeItem(requestStorageKey(userId, clubId, eventId))
   window.dispatchEvent(new Event(CHANGE))
 }
 
@@ -170,8 +206,9 @@ export const generationCopy: Record<GenerationPhase, { title: string; detail: st
     detail: '이번 요청으로 저장된 준비 순서를 다시 확인해 주세요.',
   },
   unknown: {
-    title: '처리 결과를 확인하지 못했어요',
-    detail: '요청이 처리됐을 수 있어요. 같은 요청의 결과를 확인하기 전에는 다시 만들지 않아요.',
+    title: '처리 결과를 확인하고 있어요',
+    detail:
+      '연결이 끊겨 응답을 받지 못했어요. 서버에 저장됐는지 확인하고, 저장됐으면 이어서 보여 드릴게요.',
   },
   changed: {
     title: '생성 뒤 계획에 다른 변경이 있어요',

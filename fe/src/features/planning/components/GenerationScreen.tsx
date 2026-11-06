@@ -20,7 +20,9 @@ export function GenerationScreen({
     title.current?.focus()
   }, [])
   const copy = generationCopy[flow.phase]
-  const waiting = ['requesting', 'generating', 'verifying', 'loading'].includes(flow.phase)
+  const waiting = ['requesting', 'generating', 'verifying', 'loading', 'unknown'].includes(
+    flow.phase,
+  )
   const facts = toFacts(flow.draft)
   const budgetMeta = flow.draft.conditionMeta.budgetTotal ?? flow.draft.conditionMeta.budget_total
   const budgetLater = flow.draft.deferredTopics.includes('budget_total')
@@ -62,8 +64,7 @@ export function GenerationScreen({
       )}
       {flow.phase === 'unknown' && (
         <p className="mt-5 break-keep text-caption text-ink2">
-          현재는 이 화면에서 처리 결과를 다시 확인할 수 없어요. 결과를 확인할 때까지 새 대화와
-          생성을 잠가 두었어요.
+          확인하는 동안 이 계획의 새 대화와 생성은 잠가 두었어요. 다른 계획은 그대로 쓸 수 있어요.
         </p>
       )}
       <div className="mt-8 border-t border-line pt-6">

@@ -80,7 +80,7 @@ be/app/ai/
 계획 대화·버튼 생성은 선택적인 `progress=PlanningProgressPort`로 실제 조건 변경·검색·생성
 진행을 알릴 수 있습니다(#266, #279). 결과와 저장 상태는 기존 계약을 유지하며, 생략하면
 기존 모델 호출 방식을 사용합니다. 포트를 전달하면 최종 답변의 텍스트 조각도 전달합니다(#280).
-BE는 이 포트를 `POST /events/{id}/plan/chat/stream`·`/plan/generate/stream`(SSE)으로 연결했습니다(#284). 제품 FE 행사계획 화면이 진행 줄(진행 중 도는 표시, 완료 초록 체크)과 답변 점진 표시, 끊김 뒤 같은 키 재요청을 보여 줍니다(#285).
+BE는 이 포트를 `POST /events/{id}/plan/chat/stream`·`/plan/generate/stream`(SSE)으로 연결했습니다(#284). 제품 FE 행사계획 화면이 진행 줄(진행 중 도는 표시, 완료 초록 체크)과 답변 점진 표시를 보여 줍니다(#285). 끊기면 POST를 다시 보내지 않고 요청 키로 결과만 조회합니다(#342).
 이벤트와 저장 완료의 차이는 [공개 계약](docs/planning/p1-public-contract.md)을 따릅니다.
 
 - BE는 `app.ai`에 공개된 기능과 타입만 사용합니다.
