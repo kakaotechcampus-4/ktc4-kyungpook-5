@@ -16,6 +16,7 @@ export interface ChatMessage {
 // 같은 operationId의 running 줄은 completed/failed 줄로 바뀐다. DB 저장 완료는 done으로만 안다.
 // skipped는 보여 줄 결과 없이 끝난 작업이다(조건 거절·같은 값). 그 running 줄을 조용히 지운다.
 // empty는 정상으로 끝났지만 찾은 것이 없는 작업이다(기록 검색 자료 없음, #300). 회색 대시로 남긴다.
+// generation_writing은 같은 생성 작업이 생각을 마치고 초안 글자를 쓰기 시작했다는 running 줄이다(#388).
 export interface PlanProgress {
   operationId: string
   kind:
@@ -24,6 +25,7 @@ export interface PlanProgress {
     | 'search_started'
     | 'search_finished'
     | 'generation_started'
+    | 'generation_writing'
     | 'generation_finished'
   status: 'running' | 'completed' | 'failed' | 'skipped' | 'empty'
   text: string
