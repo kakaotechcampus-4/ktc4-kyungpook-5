@@ -170,10 +170,8 @@ export function useBeginCancellation() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (eventId: string) => beginEventCancellation(eventId),
-    onSuccess: (_data, eventId) => {
-      void client.invalidateQueries({ queryKey: ['events'] })
-      void client.invalidateQueries({ queryKey: ['events', undefined, undefined, eventId, 'cancelTasks'] })
-    },
+    // ['events']가 상세·단계·할 일·취소 체크리스트까지 접두사로 모두 잡는다.
+    onSettled: () => client.invalidateQueries({ queryKey: ['events'] }),
   })
 }
 
@@ -181,10 +179,7 @@ export function useCompleteCancelTask() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: ({ eventId, taskId }: { eventId: string; taskId: string }) => completeCancelTask(eventId, taskId),
-    onSuccess: (_data, variables) => {
-      void client.invalidateQueries({ queryKey: ['events'] })
-      void client.invalidateQueries({ queryKey: ['events', undefined, undefined, variables.eventId, 'cancelTasks'] })
-    },
+    onSettled: () => client.invalidateQueries({ queryKey: ['events'] }),
   })
 }
 
@@ -206,19 +201,21 @@ export function useStepActions(eventId: string | undefined, stepId: string | und
   })
 }
 
+// 아래 처리들은 모두 onSettled다(#375). 서버가 409로 막았을 때도 다시 불러와야
+// 화면이 서버와 같아진다. onSuccess면 막힌 채 옛 화면이 남아, 다시 눌러도 또 409다.
 export function useCompleteStep() {
   const client = useQueryClient()
-  return useMutation({ mutationFn: completeStep, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
+  return useMutation({ mutationFn: completeStep, onSettled: () => client.invalidateQueries({ queryKey: ['events'] }) })
 }
 export function useCompleteEvent() {
   const client = useQueryClient()
-  return useMutation({ mutationFn: completeEvent, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
+  return useMutation({ mutationFn: completeEvent, onSettled: () => client.invalidateQueries({ queryKey: ['events'] }) })
 }
 export function useResolveAction() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: ({ action, choice, manualValue }: { action: EventAction; choice: string; manualValue?: string }) => resolveAction(action, choice, manualValue),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }),
+    onSettled: () => client.invalidateQueries({ queryKey: ['events'] }),
   })
 }
 export function useApproveAction() {
@@ -228,11 +225,11 @@ export function useApproveAction() {
 }
 export function useDenyAction() {
   const client = useQueryClient()
-  return useMutation({ mutationFn: ({ action, reason }: { action: EventAction; reason: string }) => denyAction(action, reason), onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
+  return useMutation({ mutationFn: ({ action, reason }: { action: EventAction; reason: string }) => denyAction(action, reason), onSettled: () => client.invalidateQueries({ queryKey: ['events'] }) })
 }
 export function useMarkActionDone() {
   const client = useQueryClient()
-  return useMutation({ mutationFn: markActionDone, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
+  return useMutation({ mutationFn: markActionDone, onSettled: () => client.invalidateQueries({ queryKey: ['events'] }) })
 }
 
 // 토리 초안 다시 받기(#335). 성공·409 모두 다시 불러와 최신 상태를 보인다.
