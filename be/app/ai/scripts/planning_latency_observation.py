@@ -235,7 +235,7 @@ def install_observers():
 
     @wraps(original_compose)
     async def compose(state, *, invoke, **kwargs):
-        # kwargs: 진행 알림용 on_writing(#388) 등 관측과 무관한 인자를 그대로 넘긴다.
+        # kwargs: 진행 알림용 on_text(#388, #389) 등 관측과 무관한 인자를 그대로 넘긴다.
         trace = CURRENT_TRACE.get()
         if trace is None:
             return await original_compose(state, invoke=invoke, **kwargs)

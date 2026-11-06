@@ -39,14 +39,17 @@ class Model:
     def __init__(self, answer=None):
         self.answer=answer or composition()
         self.calls=[]
-        self.writing_passed=[]
+        self.text_passed=[]
 
-    async def __call__(self, messages, schema, *, on_writing=None):
+    async def __call__(self, messages, schema, *, on_text=None):
         self.calls.append((messages,schema))
-        self.writing_passed.append(on_writing is not None)
-        # 실패 응답은 글자가 오기 전에 끝난 것으로 본다(시간 초과·연결 실패). 성공은 첫 글자 도착을 알린 뒤 돌려준다.
+        self.text_passed.append(on_text is not None)
+        # 실패 응답은 글자가 오기 전에 끝난 것으로 본다(시간 초과·연결 실패).
+        # 성공은 실제 모델처럼 계획 JSON을 17글자씩 잘라 넘긴 뒤 돌려준다(#389).
         if isinstance(self.answer,Exception): raise self.answer
-        if on_writing is not None: await on_writing()
+        if on_text is not None:
+            text=self.answer.model_dump_json()
+            for i in range(0,len(text),17): await on_text(text[i:i+17])
         return self.answer
 
 

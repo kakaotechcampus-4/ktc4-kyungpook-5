@@ -14,8 +14,8 @@ from app.ai.features.planning.agent.graph import run_planning_agent_turn
 from app.ai.features.planning.agent import nodes
 from app.ai.features.planning.agent.tools import UpdateEventConditionsInput, update_event_conditions
 from app.ai.features.planning.generation.graph import run_plan_generation
-from app.ai.features.planning.progress import condition_progress, notify, started
-from app.ai.tests.test_plan_generation_graph import Model
+from app.ai.features.planning.progress import condition_progress, generation_step, notify, started
+from app.ai.tests.test_plan_generation_graph import Model, composition
 from app.ai.tests.test_planning_agent_generation import request, change_call, gen_call
 from app.ai.tests.test_planning_agent_parallel_tools import defer_call, C2
 from app.ai.tests.test_planning_agent_records import Port, chunk, lookup, search_call
@@ -149,9 +149,10 @@ def test_change_then_generate_and_duplicate_generate_only_report_one_generation(
     model = Model()
     result = run_turn(req, [change_call(req, "headcount", 60), gen_call(req, id="g1"), gen_call(req, id="g2")],
                       progress=port, model=model)
+    # 가짜 모델의 초안은 RESEARCH_VENUE, EVENT_DAY 두 단계다. 단계마다 신호가 하나씩 온다(#389).
     assert [e.kind for e in port.events] == ["condition_applied", "generation_started", "generation_writing",
-                                             "generation_finished"]
-    assert [e.operation_id for e in port.events[1:]] == ["g1", "g1", "g1"]
+                                             "generation_step", "generation_step", "generation_finished"]
+    assert [e.operation_id for e in port.events[1:]] == ["g1"] * 5
     assert port.events[2].text == "초안을 작성하는 중이에요"
     assert port.events[-1].text == f"초안 {len(result.generation_result.preview.steps)}단계를 만들었어요"
     assert len(model.calls) == 1
@@ -171,8 +172,9 @@ def test_button_success_failure_block_and_reuse(monkeypatch):
     monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=model))
     req = button(public_request())
     result = asyncio.run(ai.generate_planning_preview(req, progress=port))
-    assert [e.kind for e in port.events] == ["generation_started", "generation_writing", "generation_finished"]
-    assert [e.status for e in port.events] == ["running", "running", "completed"]
+    assert [e.kind for e in port.events] == ["generation_started", "generation_writing", "generation_step",
+                                             "generation_step", "generation_finished"]
+    assert [e.status for e in port.events] == ["running"] * 4 + ["completed"]
     assert {e.operation_id for e in port.events} == {req.request_id}
     port.events.clear()
     again = req.model_copy(update={"resume_state": result.next_state})
@@ -336,29 +338,30 @@ def test_condition_payload_is_for_condition_completion_only(kind, status):
 # --- 생각 중 → 작성 중 신호 (#388) ---
 
 def test_writing_signal_only_with_port_and_without_port_uses_existing_call(monkeypatch):
-    """포트가 없으면 생성 모델에 on_writing을 넘기지 않는다 → 기존 ainvoke_structured 경로. 결과는 같다."""
+    """포트가 없으면 생성 모델에 on_text를 넘기지 않는다 → 기존 ainvoke_structured 경로. 결과는 같다."""
     model = Model()
     monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=model))
     req = button(public_request())
     without = asyncio.run(ai.generate_planning_preview(req))
     port = Recorder()
     with_port = asyncio.run(ai.generate_planning_preview(req.model_copy(update={"request_id": "click-2"}), progress=port))
-    assert model.writing_passed == [False, True]
+    assert model.text_passed == [False, True]
     assert without.view.generation_result.status == with_port.view.generation_result.status == "generated"
     assert [e.kind for e in port.events].count("generation_writing") == 1
 
 
 def test_output_limit_after_writing_reports_failure_after_writing(monkeypatch):
-    """첫 글자가 온 뒤 출력 한도로 끊기면 작성 중 → 실패 순서다. 실패 문구·이유는 바꾸기 전과 같다."""
-    async def cut_after_first_text(messages, schema, *, on_writing=None):
-        await on_writing()
+    """글자가 온 뒤 출력 한도로 끊기면 작성 중 → (그때까지 쓴 단계) → 실패 순서다. 실패 문구·이유는 바꾸기 전과 같다."""
+    async def cut_after_first_text(messages, schema, *, on_text=None):
+        await on_text('{"steps":[{"code":"EVENT_DAY","purpose":"집')
         raise ai.AIOutputLimitError("limit")
 
     monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=cut_after_first_text))
     port = Recorder()
     result = asyncio.run(ai.generate_planning_preview(button(public_request()), progress=port))
     assert [(e.kind, e.status) for e in port.events] == [
-        ("generation_started", "running"), ("generation_writing", "running"), ("generation_finished", "failed")]
+        ("generation_started", "running"), ("generation_writing", "running"), ("generation_step", "running"),
+        ("generation_finished", "failed")]
     assert result.view.generation_result.reason == "모델 응답이 출력 한도에서 끊겨 초안을 완성하지 못했어요."
 
 
@@ -371,4 +374,74 @@ def test_broken_port_during_writing_keeps_generation(monkeypatch):
     # 초안 ID는 생성마다 새로 만들므로 그 밖의 결과를 비교한다.
     strip = lambda r: r.view.generation_result.preview.model_dump(exclude={"id"})
     assert strip(broken) == strip(baseline)
-    assert model.writing_passed == [False, True]
+    assert model.text_passed == [False, True]
+
+
+# --- 작성 중 단계 신호 (#389) ---
+
+ALL_STEPS = [dict(code=str(code), purpose="목적", actions=[]) for code in
+             ("ASSIGN_ROLES", "RESEARCH_VENUE", "DEMAND_SURVEY", "RECRUIT_NOTICE", "CHECK_RESPONSES", "CONFIRM_DETAILS",
+              "BOOK_VENUE", "COLLECT_FEES", "PRE_EVENT_NOTICE", "EVENT_DAY", "SETTLE_EXPENSES", "REFUND_FEES",
+              "RECORD_FEEDBACK")]
+
+
+def test_step_signals_follow_final_steps_with_catalog_names(monkeypatch):
+    """신호로 보낸 단계 순서·이름이 최종 초안(P2 「준비 순서」)과 같다. 13단계 전부."""
+    model = Model(composition(steps=ALL_STEPS))
+    monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=model))
+    port = Recorder()
+    result = asyncio.run(ai.generate_planning_preview(button(public_request()), progress=port))
+    steps = [e.step for e in port.events if e.kind == "generation_step"]
+    preview = result.view.generation_result.preview.steps
+    assert [(s.index, s.code, s.name) for s in steps] == [(i, p.code, p.name) for i, p in enumerate(preview)]
+    assert [e.text for e in port.events if e.kind == "generation_step"] == [p.name for p in preview]
+    # 모델이 쓴 목적 글은 어느 신호에도 없다
+    assert all("목적" not in e.model_dump_json() for e in port.events)
+
+
+def test_excluded_steps_are_not_signaled(monkeypatch):
+    # 가짜 모델 기본 초안: 포함 2단계, 제외 11단계
+    model = Model()
+    monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=model))
+    port = Recorder()
+    asyncio.run(ai.generate_planning_preview(button(public_request()), progress=port))
+    assert [e.step.code for e in port.events if e.kind == "generation_step"] == ["RESEARCH_VENUE", "EVENT_DAY"]
+
+
+def test_steps_signaled_then_plan_validation_fails(monkeypatch):
+    """단계 신호를 다 보낸 뒤 validate_plan이 거절하면 마지막은 failed다. 화면은 이때 목록을 지운다."""
+    dated = [dict(code="RESEARCH_VENUE", purpose="장소", starts_at="2026-11-01T09:00:00+09:00"),
+             dict(code="EVENT_DAY", purpose="당일")]
+    model = Model(composition(steps=dated))
+    monkeypatch.setattr(workflow, "run_plan_generation", partial(run_plan_generation, invoke=model))
+    port = Recorder()
+    result = asyncio.run(ai.generate_planning_preview(button(public_request()), progress=port))
+    assert result.view.generation_result.status == "failed"
+    assert [(e.kind, e.status) for e in port.events] == [
+        ("generation_started", "running"), ("generation_writing", "running"),
+        ("generation_step", "running"), ("generation_step", "running"), ("generation_finished", "failed")]
+
+
+def test_step_signal_has_catalog_name_only_for_catalog_codes():
+    event = generation_step("g1", 6, "BOOK_VENUE")
+    assert (event.kind, event.status, event.text) == ("generation_step", "running", "예약")
+    assert event.step.model_dump() == {"index": 6, "code": "BOOK_VENUE", "name": "예약"}
+    assert generation_step("g1", 0, "CANCEL_VENUE") is None  # 계획 카탈로그 밖(취소 단계)
+    assert generation_step("g1", 0, "NOT_A_CODE") is None
+
+
+@pytest.mark.parametrize("status", ["completed", "failed", "skipped", "empty"])
+def test_step_signal_is_running_only(status):
+    with pytest.raises(ValidationError):
+        ai.PlanningProgress(operation_id="g1", kind="generation_step", status=status, text="예약",
+                            step=ai.PlanningProgressStep(index=0, code="BOOK_VENUE", name="예약"))
+
+
+def test_step_payload_belongs_to_step_signal_only():
+    step = ai.PlanningProgressStep(index=0, code="BOOK_VENUE", name="예약")
+    with pytest.raises(ValidationError, match="단계 정보"):
+        ai.PlanningProgress(operation_id="g1", kind="generation_writing", status="running", text="작성", step=step)
+    with pytest.raises(ValidationError, match="단계 정보"):
+        ai.PlanningProgress(operation_id="g1", kind="generation_step", status="running", text="예약")
+    with pytest.raises(ValidationError, match="카탈로그"):
+        ai.PlanningProgressStep(index=0, code="BOOK_VENUE", name="숙소 예약")

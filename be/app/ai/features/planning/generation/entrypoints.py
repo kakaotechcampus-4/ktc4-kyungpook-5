@@ -4,7 +4,8 @@ from pydantic import Field, field_validator
 
 from ....contracts import ChatTurn, ContractModel, NonBlankStr
 from ....ports import PlanningProgressPort
-from ..progress import notify, started, generation_finished, generation_writing
+from ..progress import notify, started, generation_finished, generation_step, generation_writing
+from .step_reader import StepCodeReader
 from ...retrieval.schemas import RecordFact
 from ..agent.state import PlanningDraft
 from ..schemas import CalendarDate
@@ -47,10 +48,20 @@ async def generate_with_context(
     if progress is None:
         result = await generate(request.model_copy(deep=True))
     else:
-        async def writing():
-            # 모델이 초안 첫 글자를 보낸 순간 한 번 불린다. 알림 실패는 notify가 삼켜 생성을 멈추지 않는다.
-            await notify(progress, generation_writing(operation_id))
-        result = await generate(request.model_copy(deep=True), on_writing=writing)
+        reader, writing = StepCodeReader(), False
+
+        async def on_text(text):
+            # 생성 모델의 계획 JSON 글자 조각이 올 때마다 불린다(검증 전 글).
+            #   첫 조각            → generation_writing 한 번 (#388)
+            #   단계 code 값이 끝남 → generation_step(위치, 코드, 고정 이름) (#389)
+            # 글 자체는 밖으로 보내지 않는다. 알림 실패는 notify가 삼켜 생성을 멈추지 않는다.
+            nonlocal writing
+            if not writing:
+                writing = True
+                await notify(progress, generation_writing(operation_id))
+            for index, code in reader.feed(text):
+                await notify(progress, generation_step(operation_id, index, code))
+        result = await generate(request.model_copy(deep=True), on_text=on_text)
     if result.status != "generated":
         await notify(progress, generation_finished(operation_id, result))
         return GenerationUpdate(generation=state, result=result)
