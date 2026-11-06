@@ -42,9 +42,16 @@ export function LivePlanning() {
   // 탭 기록은 행사마다 따로 둔다(#342). 이 행사의 결과를 확인하는 동안에도 다른 계획은 열 수 있다.
   const journal = usePlanningRequestJournal(userId, clubId, eventId)
   const [busy, setBusy] = useState(false)
+  // 첫 저장으로 ID가 붙어도 같은 대화를 유지한다. 새 계획을 선택할 때만 새 세션을 만든다.
+  const [newSession, setNewSession] = useState<{ key: string; eventId: string | null }>(() => ({
+    key: crypto.randomUUID(),
+    eventId: null,
+  }))
   const blocked = busy
-  const select = (id: string | null, text?: string) =>
+  const select = (id: string | null, text?: string) => {
+    if (!id) setNewSession({ key: crypto.randomUUID(), eventId: null })
     setParams(id ? { eventId: id } : {}, { state: text ? { failedText: text } : null })
+  }
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -91,16 +98,17 @@ export function LivePlanning() {
             </p>
           )}
           <Conversation
-            key={`${userId}:${clubId}:${eventId ?? 'new'}`}
+            key={`${userId}:${clubId}:${!eventId || eventId === newSession.eventId ? newSession.key : eventId}`}
             clubId={clubId}
             onBusy={setBusy}
             eventId={eventId}
-            onCreated={(id, text) =>
+            onCreated={(id, text) => {
+              setNewSession((session) => ({ ...session, eventId: id }))
               setParams(
                 { eventId: id, stage: 'conditions' },
-                { state: text ? { failedText: text } : null },
+                { replace: true, state: text ? { failedText: text } : null },
               )
-            }
+            }}
             failedText={failedText}
             userId={userId}
             ready={ready?.eventId === eventId ? ready : null}
@@ -402,9 +410,6 @@ function Conversation({
         <p role="status" className="text-mute">
           먼저 행사 조건을 정하고 초안을 만들어 주세요.
         </p>
-      )}
-      {eventId && !steps.length && params.get('stage') === 'conditions' && (
-        <p className="text-mute">저장된 초안이 없어요. 조건을 정한 뒤 초안을 만들 수 있어요.</p>
       )}
       {generationFailure && !live.busy && (
         <GenerationFailureNotice result={generationFailure} hasPrevious={steps.length > 0} />
