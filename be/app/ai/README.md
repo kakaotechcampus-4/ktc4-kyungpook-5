@@ -33,6 +33,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 | 상태 이어가기 | `state_codec.py`가 대화와 Tool 이력, 권유, 마지막 초안을 JSON으로 변환하고 복원 |
 | 제품 연결 | BE의 권한 검사·실제 검색 port·DB 저장·중복/버전 검사·검색 상세 HTTP/복원과 누적 조회 카드·인증 원본 다운로드 연결. 로컬 격리 환경 검증 범위는 [인계 안내 §10](docs/planning/p1-handoff.md#10-지금-어디까지-확인했나요) 참고 |
 | P2 수정 후 AI 검토 | `app.ai.review_plan_edit`가 수정 내역을 검토해 걱정되는 점을 돌려줌([#177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177)). BE·FE 연결 완료, 자동 보완안 적용은 미구현 |
+| 운영 Action 본문 초안 | `app.ai.draft_action_content`의 입력·출력 형식만 공개([#333](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/333)). 본문 작성은 구현 전이며 BE 신호·저장(#334)과 FE 표시(#335)는 진행 예정 |
 | 운영 Agent | 전체 신호 대기와 운영 흐름은 설계 단계 |
 
 P1은 행사 조건 대화와 최초 생성 요청까지입니다. 단계 제외와 복원, 순서 변경은 P2 범위입니다. 테스트 UI는 `tests/ui/planning/`의 독립 앱이고 제품 `fe/`를 수정하거나 참조하지 않습니다. 이전 고정 추출과 질문 조립 코드는 `features/planning/legacy/`에 보존하며 현재 공개 P1에서 호출하지 않습니다.

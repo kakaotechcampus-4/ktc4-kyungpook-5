@@ -145,6 +145,14 @@ from .features.operations.schemas import OperationalEventContext, OperationalSit
 from .facade import respond_operational_situation
 __all__ += ('OperationalEventContext', 'OperationalSituationRequest', 'OperationalSituationResult', 'respond_operational_situation')
 
+# 운영 Action 본문 초안 (#333). 호출 시점·저장은 BE(#334)가 맡는다.
+from .features.operations.schemas import (
+    ActionDraftAction, ActionDraftEvent, ActionDraftRequest, ActionDraftResult, ActionDraftStep,
+)
+from .facade import draft_action_content
+__all__ += ('ActionDraftAction', 'ActionDraftEvent', 'ActionDraftRequest', 'ActionDraftResult',
+            'ActionDraftStep', 'draft_action_content')
+
 from .features.meeting.review import (
     MeetingReviewRequest, MeetingReviewResult, ReviewTranscript, ReviewTask,
     ReviewSummaryItem, generate_meeting_review,
