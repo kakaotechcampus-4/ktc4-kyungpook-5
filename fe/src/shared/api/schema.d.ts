@@ -1560,6 +1560,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/actions/{action_id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Action Draft
+         * @description 토리 본문 초안을 다시 받는다 (#334). DRAFTING으로 바꾸고 바로 돌아온다.
+         *
+         *     초안은 뒤에서 받으므로 FE는 contentStatus가 DRAFTING인 동안 다시 조회한다. 운영 중이
+         *     아닌 행사도 DRAFT_NOT_ALLOWED로 알린다 — 다시 받을 수 없는 이유를 하나로 묶는다.
+         */
+        post: operations["request_action_draft_api_v1_actions__action_id__draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/steps/{step_id}/complete": {
         parameters: {
             query?: never;
@@ -1632,6 +1655,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ActionContentSource
+         * @description 본문을 누가 썼는지. 운영진이 고친 글(USER)은 토리가 덮어쓰지 않는다 (#334).
+         * @enum {string}
+         */
+        ActionContentSource: "AI" | "USER";
+        /**
+         * ActionContentStatus
+         * @description 공지·발송 Action 본문 초안의 상태 (#334). Action.status(승인 흐름)와 따로 움직인다.
+         *
+         *     NONE: 초안을 요청한 적 없음 / DRAFTING: 토리가 쓰는 중 / READY: 본문 있음(토리 또는
+         *     운영진) / FAILED: 작성 실패. 3분 넘은 DRAFTING은 응답에서만 FAILED로 보인다.
+         * @enum {string}
+         */
+        ActionContentStatus: "NONE" | "DRAFTING" | "READY" | "FAILED";
         /** ActionDenyIn */
         ActionDenyIn: {
             /** Expectedversion */
@@ -1699,6 +1737,12 @@ export interface components {
             manualValue: string | null;
             /** Version */
             version: number;
+            contentStatus: components["schemas"]["ActionContentStatus"];
+            contentSource: components["schemas"]["ActionContentSource"] | null;
+            /** Contentunknowns */
+            contentUnknowns: string[];
+            /** Canrequestdraft */
+            canRequestDraft: boolean;
         };
         /**
          * ActionPayloadOut
@@ -1764,6 +1808,8 @@ export interface components {
             /** Duedate */
             dueDate?: string | null;
             payload?: components["schemas"]["ActionPayloadOut"] | null;
+            /** Content */
+            content?: string | null;
         };
         /**
          * ActionVersionIn
@@ -7806,6 +7852,43 @@ export interface operations {
         };
     };
     mark_action_done_api_v1_actions__action_id__done_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionVersionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ActionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_action_draft_api_v1_actions__action_id__draft_post: {
         parameters: {
             query?: never;
             header?: {

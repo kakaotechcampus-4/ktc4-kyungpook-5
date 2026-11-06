@@ -117,6 +117,17 @@ def _default_index_record(
     monkeypatch.setattr("app.ai.index_record", fake)
 
 
+@pytest.fixture(autouse=True)
+def _no_background_drafts(monkeypatch: pytest.MonkeyPatch) -> None:
+    """행사 시작·단계 완료는 공지·발송 Action의 본문 초안 작업을 뒤에서 띄운다(#334).
+    TestClient는 요청이 끝나면 이벤트 루프를 닫아 그 작업이 중간에 취소되므로, 초안을
+    직접 다루지 않는 테스트에서는 작업을 띄우지 않는다(Action은 DRAFTING으로만 남는다).
+    초안 테스트는 각자 monkeypatch.setattr로 이 기본값을 덮어쓴다."""
+    from app.services import action_draft_service
+
+    monkeypatch.setattr(action_draft_service, "spawn_draft", lambda action_id, attempt_id: None)
+
+
 @pytest.fixture
 def clear_db_caches() -> Iterator[None]:
     """DATABASE_URL 을 바꾸는 테스트 전후로 설정·엔진 캐시를 비운다."""

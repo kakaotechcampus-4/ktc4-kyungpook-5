@@ -16,7 +16,15 @@ from sqlalchemy.orm import selectinload
 
 from app.ai.features.planning.generation.catalog import BY_CODE, PHASE_ORDER
 from app.ai.planning_catalog import PLANNING_STEP_NAMES
-from app.core.enums import ActionStatus, ActionType, EventStatus, StepCode, StepState
+from app.core.enums import (
+    ActionContentSource,
+    ActionContentStatus,
+    ActionStatus,
+    ActionType,
+    EventStatus,
+    StepCode,
+    StepState,
+)
 from app.core.exceptions import (
     ActionNotFound,
     NotEditable,
@@ -298,6 +306,7 @@ def action_out(action: Action, *, member: Member, event_status: EventStatus) -> 
     payload = action.payload if action.type == ActionType.CONFIRMATION else None
     payload = payload or {}
     resolver = action.resolver
+    now = datetime.now(UTC)
     return {
         "id": action.id,
         "type": action.type,
@@ -334,6 +343,21 @@ def action_out(action: Action, *, member: Member, event_status: EventStatus) -> 
         "resolved_choice": payload.get("resolved_choice"),
         "manual_value": payload.get("manual_value"),
         "version": action.version,
+        # 본문 초안 (#334). 멈춘 작성은 응답에서만 FAILED로 보인다(DB는 그대로).
+        "content_status": event_rules.shown_content_status(
+            action.content_status, action.draft_started_at, now
+        ),
+        "content_source": action.content_source,
+        "content_unknowns": list(action.content_unknowns or []),
+        "can_request_draft": event_rules.can_request_draft(
+            event_status=event_status,
+            action_status=action.status,
+            action_type=action.type,
+            content_status=action.content_status,
+            content_source=action.content_source,
+            draft_started_at=action.draft_started_at,
+            now=now,
+        ),
     }
 
 
@@ -474,7 +498,12 @@ async def update_action(
 
     금액을 고치면 행사 쪽 파생값을 다시 맞춘다(#106 ②). 참가비 수금과 지출
     정산만 Event로 올라가고, 예약 계약금·환급액은 그 Action 안에서만 쓴다.
+
+    본문(content)을 고치면 운영진이 쓴 글(USER)·READY가 된다(#334). 토리가 쓰는 중이어도
+    사람의 수정이 우선이고, 늦게 온 초안은 저장 조건에서 버린다.
     """
+    if "content" in values and not (values["content"] or "").strip():
+        raise ValidationFailed({"content": "본문을 입력해 주세요."})
     event = await session.scalar(select(Event).where(Event.id == action.event_id).with_for_update().execution_options(populate_existing=True))
     locked = await session.scalar(
         select(Action).where(Action.id == action.id)
@@ -490,6 +519,11 @@ async def update_action(
     if action.version != expected_version:
         raise VersionConflict()
     changed = any(getattr(action, key) != value for key, value in values.items())
+    if "content" in values and action.content != values["content"]:
+        action.content_source = ActionContentSource.USER
+        action.content_status = ActionContentStatus.READY
+        # 비워 둔 곳은 토리 초안 기준이다. 운영진이 고친 글에는 다시 계산하지 않는다.
+        action.content_unknowns = []
     for key, value in values.items():
         setattr(action, key, value)
     if payload_values:
