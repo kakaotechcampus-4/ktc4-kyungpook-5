@@ -417,8 +417,10 @@ function Conversation({
       {ready && eventId && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-blue-50 px-4 py-3">
           <p className="break-keep font-semibold text-ink">초안이 준비됐어요.</p>
+          {/* 초안이 막 준비된 순간의 유일한 다음 행동이라 primary 버튼 모양으로 둔다.
+              Link 를 유지해야 가운데 클릭·새 탭으로 열기가 된다(#316). */}
           <Link
-            className="rounded-lg px-2 py-2 text-caption font-semibold text-blue-700 underline underline-offset-4 hover:bg-blue-100"
+            className="rounded-[8px] bg-blue-600 px-[16px] py-[10px] text-[14px] font-bold text-white transition-colors duration-150 hover:bg-blue-700 motion-reduce:transition-none"
             to={`/planning?${new URLSearchParams({ eventId, stage: 'review' })}`}
             state={{
               generated: ready.count > 0 ? { count: ready.count, key: ready.key } : undefined,
@@ -519,9 +521,11 @@ function Conversation({
                   : '이 조건으로 초안 만들기'}
             </Button>
             {/* 생성 중에는 지난 초안으로 가는 길을 닫고, 완료 안내가 있으면 그 링크 하나만 둔다. */}
+            {/* 초안이 이미 있으면 자주 쓰는 길이다. 밑줄 글자는 각주처럼 보여 버튼 모양으로 둔다.
+                바로 위 「이 조건으로 다시 만들기」와 경쟁하지 않게 secondary 다(#316). */}
             {eventId && steps.length > 0 && !flow && !live.checking && !ready && (
               <Link
-                className="self-center rounded-lg px-2 py-2 text-caption font-semibold text-blue-700 underline underline-offset-4 hover:bg-blue-50"
+                className="self-center rounded-[8px] border border-soft bg-card px-[16px] py-[10px] text-center text-[14px] font-medium text-ink2 transition-colors duration-150 hover:bg-bg motion-reduce:transition-none"
                 to={`/planning?${new URLSearchParams({ eventId, stage: 'review' })}`}
               >
                 기존 초안 검토하기

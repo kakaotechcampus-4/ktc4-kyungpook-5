@@ -55,6 +55,8 @@ export function PlanReviewScreen({
   const returnFocus = useRef<HTMLButtonElement | null>(null)
   const [savedId, setSavedId] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
+  // 안내에 「행사 상세 열기」를 같이 둘지. 상태가 바뀌었을 때만 그쪽이 더 아는 것이 많다.
+  const [noticeNeedsEvent, setNoticeNeedsEvent] = useState(false)
   const start = useStartEvent(eventId)
   const requestReview = useRequestPlanReview(eventId)
   const requesting = useReviewInFlight(eventId)
@@ -69,6 +71,7 @@ export function PlanReviewScreen({
   }
   const begin = async () => {
     setNotice('')
+    setNoticeNeedsEvent(false)
     try {
       await start.mutateAsync()
       await queryClient.invalidateQueries({ queryKey: ['events'] })
@@ -78,8 +81,14 @@ export function PlanReviewScreen({
         cause instanceof ApiError && ['VALIDATION_FAILED', 'PLAN_INCOMPLETE'].includes(cause.code)
           ? '운영을 시작하려면 행사 시작일과 하나 이상의 단계가 필요해요. 행사 조건을 확인해 주세요.'
           : cause instanceof ApiError && cause.code === 'EVENT_NOT_PLANNING'
-            ? '행사 상태가 바뀌었어요. 행사 상세에서 현재 상태를 확인해 주세요.'
-            : '운영 시작 결과를 확인하지 못했어요. 행사 상세에서 현재 상태를 확인한 뒤 다시 시도해 주세요.',
+            ? '행사 상태가 바뀌었어요. 현재 상태를 확인해 주세요.'
+            : '운영 시작 결과를 확인하지 못했어요. 현재 상태를 확인한 뒤 다시 시도해 주세요.',
+      )
+      // 이때만 행사 상세가 이 화면보다 아는 것이 많다(이미 계획 중이 아니다).
+      setNoticeNeedsEvent(
+        !(
+          cause instanceof ApiError && ['VALIDATION_FAILED', 'PLAN_INCOMPLETE'].includes(cause.code)
+        ),
       )
     }
   }
@@ -136,12 +145,8 @@ export function PlanReviewScreen({
           <Button variant="secondary" onClick={() => setConversationOpen(true)}>
             이전 대화 보기
           </Button>
-          <Link
-            className="self-center rounded-lg px-2 py-2 text-caption text-ink2 underline underline-offset-4"
-            to={`/events/${encodeURIComponent(eventId)}`}
-          >
-            행사 상세
-          </Link>
+          {/* 「행사 상세」로 가는 길은 없앴다. 계획 중인 행사의 상세는 계획 요약만 보여 주어
+              이 화면보다 아는 것이 적다. 상태가 바뀌어 정말 필요할 때만 아래 안내에서 띄운다. */}
         </div>
       </div>
       <div className="grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_272px]">
@@ -334,7 +339,15 @@ export function PlanReviewScreen({
             )}
             {notice && (
               <p role="alert" className="text-caption text-failed">
-                {notice}
+                {notice}{' '}
+                {noticeNeedsEvent && (
+                  <Link
+                    className="font-semibold text-blue-700 underline underline-offset-4"
+                    to={`/events/${encodeURIComponent(eventId)}`}
+                  >
+                    행사 상세 열기
+                  </Link>
+                )}
               </p>
             )}
           </Card>
