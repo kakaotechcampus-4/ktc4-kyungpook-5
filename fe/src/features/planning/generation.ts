@@ -88,6 +88,19 @@ export function recoveryStep(lookup: S['PlanRequestOut']): 'apply' | 'release' |
   return lookup.status === 'completed' && validView(lookup.result) ? 'apply' : 'release'
 }
 
+// 결과를 모르는 요청을 대화 화면(P1)에서 확인할지 정한다(#368).
+// 채팅은 서버가 실제 초안 생성 직전에 보내는 generation_started를 받았을 때만 초안 요청으로 본다.
+//   버튼 「이 조건으로 초안 만들기」 → 끊김                        → false: 초안 생성 화면에서 확인
+//   채팅 "인원 40명으로 바꿔 줘" → 끊김                           → true: 대화 화면에서 확인
+//   채팅 "이대로 초안 만들어 줘" → generation_started → 끊김      → false: 초안 생성 화면에서 확인
+// 끊긴 뒤 서버에서 초안까지 만들어졌다면 조회 결과로 알게 되고, 그때 P2로 넘어간다.
+export function checksInChat(
+  request: Pick<PlanningRequest, 'kind' | 'started'> | null | undefined,
+  phase: GenerationPhase | undefined,
+): boolean {
+  return phase === 'unknown' && request?.kind === 'chat' && !request.started
+}
+
 export function parseRequest(
   raw: string | null,
   userId: string | undefined,

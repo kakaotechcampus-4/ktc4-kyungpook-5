@@ -10,12 +10,11 @@ import {
   splitBlanks,
   type DraftView,
 } from '@/features/events/actionDraft'
-import type { ActionStatus, ActionType, EventAction, StepState } from '@/features/events/types'
+import { APPROVED_STEP, copy, type DoableType } from '@/features/events/actionExecution'
+import type { ActionStatus, EventAction, StepState } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
-import { copyText } from '@/shared/lib/clipboard'
 import { formatDateTime, formatMonthDay } from '@/shared/lib/format'
 import { ACTION_TYPE_LABEL, formatResolver } from '@/shared/lib/labels'
-import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/Button'
 import { Chip } from '@/shared/ui/Chip'
 
@@ -34,45 +33,6 @@ const STATUS_CHIP: Record<
 const QUESTION_CHIP: Partial<Record<ActionStatus, string>> = {
   PENDING: '질문 대기',
   DONE: '답변 완료',
-}
-
-type DoableType = Exclude<ActionType, 'CONFIRMATION'>
-
-// 실행 대기: 승인은 끝났고 운영진이 밖에서 직접 할 차례. copy면 왼쪽 버튼이 박스 내용을 복사한다.
-const APPROVED_STEP: Record<
-  DoableType,
-  { hint: string; secondary: string; copy: boolean; primary: string }
-> = {
-  NOTICE: {
-    hint: '단톡방에 복사해 붙여넣은 뒤 눌러 주세요',
-    secondary: '문구 복사',
-    copy: true,
-    primary: '게시했습니다',
-  },
-  EXTERNAL_SEND: {
-    hint: '문자로 직접 보낸 뒤 눌러 주세요',
-    secondary: '문구 복사',
-    copy: true,
-    primary: '발송했습니다',
-  },
-  CONTRACT: {
-    hint: '업체와 직접 계약한 뒤 계약서를 등록해 주세요',
-    secondary: '조건 보기',
-    copy: false,
-    primary: '계약서 등록',
-  },
-  TRANSFER: {
-    hint: '은행 앱에서 직접 이체한 뒤 눌러 주세요',
-    secondary: '계좌 복사',
-    copy: true,
-    primary: '이체했습니다',
-  },
-  EXPENSE: {
-    hint: '장부에 반영되면 눌러 주세요',
-    secondary: '항목 보기',
-    copy: false,
-    primary: '장부 반영',
-  },
 }
 
 // 완료 기록의 첫머리
@@ -121,7 +81,8 @@ function Box({
 }
 
 // 초안 본문. 운영진이 채울 [ ] 자리를 칠해 「비워 둔 곳」과 바로 맞춰 볼 수 있게 한다.
-function DraftText({ text }: { text: string }) {
+// L2 지금 할 일의 미리보기도 같은 모양을 쓴다.
+export function DraftText({ text }: { text: string }) {
   return splitBlanks(text).map((part, i) =>
     part.blank ? (
       <mark key={i} className="rounded-[4px] bg-pending-bg px-[2px] text-pending">
@@ -142,16 +103,23 @@ function DraftingBox() {
       className="flex items-center gap-[8px] rounded-[11px] bg-bg px-[14px] py-[12px] text-[12.5px] leading-[19px] text-ink2"
     >
       토리가 초안을 쓰고 있어요
-      <span aria-hidden className="flex h-[19px] items-center gap-[4px]">
-        {['0ms', '150ms', '300ms'].map((delay) => (
-          <span
-            key={delay}
-            style={{ animationDelay: delay }}
-            className="size-[5px] rounded-full bg-mute animate-typing-dot motion-reduce:animate-none"
-          />
-        ))}
-      </span>
+      <TypingDots />
     </div>
+  )
+}
+
+// 점 세 개. 움직임 줄이기 설정이면 멈춘 채로 보인다. L2 지금 할 일에서도 쓴다.
+export function TypingDots() {
+  return (
+    <span aria-hidden className="flex h-[19px] items-center gap-[4px]">
+      {['0ms', '150ms', '300ms'].map((delay) => (
+        <span
+          key={delay}
+          style={{ animationDelay: delay }}
+          className="size-[5px] rounded-full bg-mute animate-typing-dot motion-reduce:animate-none"
+        />
+      ))}
+    </span>
   )
 }
 
@@ -189,15 +157,6 @@ function PendingBox({ action, view, question }: { action: EventAction; view: Dra
         </Box>
       ) : null
   }
-}
-
-async function copy(text: string) {
-  const ok = await copyText(text)
-  toast.show(
-    ok
-      ? { kind: 'done', title: '복사했어요', desc: text }
-      : { kind: 'error', title: '복사하지 못했어요', desc: '직접 골라서 복사해 주세요.' },
-  )
 }
 
 interface ActionCardProps {

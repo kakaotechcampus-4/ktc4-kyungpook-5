@@ -23,8 +23,6 @@ import {
 } from './api'
 import { draftPollInterval } from '@/features/events/actionDraft'
 import {
-  DEMO_ACTIONS,
-  DEMO_CONFIRMATIONS,
   DEMO_EVENT_DETAILS,
   DEMO_EVENTS,
   DEMO_RESOLVED,
@@ -32,6 +30,7 @@ import {
   demoRequestDraft,
   demoSaveContent,
   demoStepActions,
+  demoTodoActions,
 } from '@/features/events/mock'
 import type {
   ActionPage,
@@ -106,35 +105,21 @@ export function useEventSteps(eventId: string | undefined) {
   })
 }
 
-// M1 승인 대기. 확인 요청은 L2에서 따로 보인다.
-export function usePendingApprovals(eventId: string | undefined) {
+// L2 지금 할 일: 승인 대기 · 실행 대기 · 실패 · 토리 질문을 한 번에 받는다.
+// 어떤 일을 어떤 순서로 보일지는 todo.ts가 정한다.
+export function useTodoActions(eventId: string | undefined) {
   const demo = useDemo()
   const userId = useAuthStore((state) => state.me?.id)
   const clubId = useAuthStore((state) => state.clubId)
   return useQuery({
-    queryKey: ['events', userId, clubId, eventId, 'actions', 'pendingApprovals', demo],
+    queryKey: ['events', userId, clubId, eventId, 'actions', 'todo', demo],
     queryFn: async (): Promise<EventAction[]> =>
       demo
-        ? (DEMO_ACTIONS[eventId!] ?? [])
-        : await getEventActions(eventId!, 'status=PENDING&excludeType=CONFIRMATION'),
+        ? demoTodoActions(eventId!)
+        : await getEventActions(eventId!, 'status=PENDING,APPROVED,FAILED&size=100'),
     enabled: !!eventId && (demo || Boolean(userId && clubId)),
     // 토리가 초안을 쓰는 동안만 몇 초마다 다시 조회한다(#335)
     refetchInterval: (query) => draftPollInterval(query.state.data),
-  })
-}
-
-// L2 확인 요청
-export function useConfirmations(eventId: string | undefined) {
-  const demo = useDemo()
-  const userId = useAuthStore((state) => state.me?.id)
-  const clubId = useAuthStore((state) => state.clubId)
-  return useQuery({
-    queryKey: ['events', userId, clubId, eventId, 'actions', 'confirmations', demo],
-    queryFn: async (): Promise<EventAction[]> =>
-      demo
-        ? (DEMO_CONFIRMATIONS[eventId!] ?? [])
-        : await getEventActions(eventId!, 'status=PENDING&type=CONFIRMATION'),
-    enabled: !!eventId && (demo || Boolean(userId && clubId)),
   })
 }
 

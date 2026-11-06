@@ -33,6 +33,8 @@ interface StepModalProps {
   onRequestDraft?: (action: EventAction) => void
   requestingDraftId?: string
   onCompleteStep: (step: EventStep) => void
+  // 「단계 완료로 표시」를 보내고 기다리는 중
+  completing?: boolean
   readOnly?: boolean
 }
 
@@ -48,6 +50,7 @@ export function StepModal({
   onRequestDraft,
   requestingDraftId,
   onCompleteStep,
+  completing = false,
   readOnly = false,
 }: StepModalProps) {
   const chip = STATE_CHIP[step.state]
@@ -110,6 +113,7 @@ export function StepModal({
             <Button
               // 아직 못 받았으면 몇 건 남았는지 모른다. 모르는 채로 닫게 두지 않는다.
               disabled={readOnly || blocked || !actions}
+              loading={completing}
               onClick={() => onCompleteStep(step)}
             >
               단계 완료로 표시

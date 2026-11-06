@@ -17,6 +17,8 @@ interface PlanChatProps {
   demo?: boolean
   persisted?: boolean
   initialDraft?: string
+  // 끊긴 요청의 결과를 확인한 뒤 입력창에 둘 글(#368). 값이 바뀔 때마다 한 번 반영한다.
+  draftReset?: { text: string } | null
   busy?: boolean
   error?: string
   onReload?: () => Promise<unknown>
@@ -250,8 +252,15 @@ export function PlanChat({
   demo = false,
   persisted = false,
   initialDraft = '',
+  draftReset = null,
 }: PlanChatProps) {
   const [draft, setDraft] = useState(initialDraft)
+  // 처음 그릴 때의 값은 initialDraft가 이미 담고 있으므로, 그 뒤에 바뀐 값만 입력창에 넣는다.
+  const [appliedReset, setAppliedReset] = useState(draftReset)
+  if (draftReset !== appliedReset) {
+    setAppliedReset(draftReset)
+    if (draftReset) setDraft(draftReset.text)
+  }
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLDivElement>(null)
