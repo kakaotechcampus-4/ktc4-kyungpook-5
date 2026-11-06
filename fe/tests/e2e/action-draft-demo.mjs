@@ -27,9 +27,15 @@ const dialog = (page) => page.locator('dialog[open]').last()
 async function overflow(page, label) {
   const bad = await page.evaluate(() => {
     const found = []
-    for (const el of document.querySelectorAll('dialog[open] > div *')) {
+    // 본문과 하단 버튼 줄을 모두 본다
+    for (const el of document.querySelectorAll('dialog[open] *')) {
       const r = el.getBoundingClientRect()
       if (r.width > 0 && r.right > window.innerWidth + 0.5) found.push(`${el.tagName}.${String(el.className).slice(0, 40)} right=${Math.round(r.right)}`)
+    }
+    // 하단 안내 문구가 버튼에 밀려 한 글자 폭으로 눌리면 화면 밖으로 넘치지 않아도 읽을 수 없다
+    for (const note of document.querySelectorAll('dialog[open] footer > p')) {
+      const r = note.getBoundingClientRect()
+      if (r.width < 120) found.push(`footer note squeezed width=${Math.round(r.width)}`)
     }
     return { found: found.slice(0, 5) }
   })
@@ -70,6 +76,7 @@ for (const width of [390, 1280, 320]) {
   await card(page, '미납자 4명에게 2차 납부 안내 문자 보내기').getByRole('button', { name: '검토하기' }).click()
   const review = page.locator('dialog[open]', { has: page.getByRole('heading', { name: '미납자 4명에게 2차 납부 안내 문자 보내기' }) })
   await review.waitFor()
+  await overflow(page, `${w} review modal`)
   await review.screenshot({ path: `${out}/modal-ready-ai-${w}.png` })
   const box = review.getByLabel('보낼 내용')
   const text = await box.inputValue()
@@ -141,5 +148,4 @@ for (const width of [390, 1280, 320]) {
 }
 
 await browser.close()
-// 넘침은 본문(카드·입력칸)만 따진다. 공용 Modal 하단 버튼 줄은 좁은 화면에서 원래 넘친다(#335 보고).
 console.log(problems.length ? problems.join('\n') : 'no problems')
