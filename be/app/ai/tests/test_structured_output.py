@@ -333,3 +333,19 @@ def test_글자가_오기_전에_끝난_응답은_알리지_않는다():
 def test_스트림_응답_시간_초과도_AITimeoutError():
     result, first_texts = _stream_call(_raise(httpx.ReadTimeout("timeout")))
     assert isinstance(result, AITimeoutError) and first_texts == 0
+
+
+def test_두_경로는_게이트웨이에_같은_요청을_보낸다():
+    """받는 방식만 다르고 모델이 받는 요청은 같다. 그래서 초안 내용(계획 검증 결과)은 경로와 무관하다(#388)."""
+    bodies = {}
+
+    def record(name):
+        def handler(request):
+            bodies[name] = json.loads(request.content)
+            return _real_stream(json.dumps(VALID))
+        return handler
+
+    _invoke_call(record("invoke"))
+    _stream_call(record("stream"))
+    assert bodies["invoke"] == bodies["stream"]
+    assert bodies["stream"]["stream"] is True

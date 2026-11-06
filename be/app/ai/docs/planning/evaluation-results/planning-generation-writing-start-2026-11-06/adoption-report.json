@@ -1,0 +1,1330 @@
+{
+  "model": "gpt-5.6-luna",
+  "commit": "2a3242e92acd85d98fd17e02ddbf8277df7bcc3e",
+  "product_code_dirty": false,
+  "rounds": 10,
+  "started_at": "2026-11-06T23:27:04+0900",
+  "attempts": [
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G2",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 13144.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 13144.8,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G2",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 4582.9,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 12513.1,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 12513.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G1",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2259.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 13235.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 16213.1,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G1",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2470.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 6137.4,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 13126.1,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 16500.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G2",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 12285.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 12286.0,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G2",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 3840.3,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 12524.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 12525.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G1",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 3104.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 14764.1,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19110.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G1",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2528.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 6404.5,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 14203.1,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 18191.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G1",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2438.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 7062.4,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 15148.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 18883.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G1",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2217.1,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 13830.3,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 17585.8,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G2",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 4551.6,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11393.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11394.0,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G2",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 12828.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 12829.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G2",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 11471.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11471.8,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G2",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 4443.9,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 12579.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 12580.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G1",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2680.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 13196.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 17015.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G1",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2272.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 7580.0,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 15854.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19639.8,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G1",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2423.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 7141.1,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 14625.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19350.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G1",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2410.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 14604.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 18247.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G2",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 5716.2,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 13492.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 13493.0,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G2",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 11056.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11057.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G2",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 12083.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 12083.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G2",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 3826.6,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11615.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11616.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G1",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2681.0,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 13336.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 17675.0,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G1",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2788.9,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 7907.0,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 15488.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19408.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G1",
+      "path": "stream",
+      "error": null,
+      "generation_status": "failed",
+      "steps": null,
+      "events": [
+        {
+          "ms": 2542.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 6483.9,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 15007.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "failed"
+        },
+        {
+          "ms": 19743.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G1",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2766.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 16223.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 21000.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G2",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 4105.1,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11324.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11324.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G2",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 11830.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11831.1,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G2",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 13804.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 13804.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G2",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 4304.4,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 12156.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 12157.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G1",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 3131.8,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 13950.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19077.0,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G1",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2256.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 6714.9,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 13554.3,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 17658.7,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G1",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2658.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 7901.5,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 15653.1,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19301.1,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G1",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2091.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 14869.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19313.7,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G2",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 4718.9,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 12608.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 12609.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G2",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 12,
+      "events": [
+        {
+          "ms": 0.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 13751.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 13751.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G2",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 11911.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11911.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G2",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 4636.9,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 13202.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 13202.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G1",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 3108.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 14562.3,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 18982.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G1",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2973.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 8008.9,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 15761.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19294.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G1",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 3159.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 7366.5,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 15771.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 20204.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G1",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 2021.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 16584.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 21311.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G2",
+      "path": "stream",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 13,
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 4143.3,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running"
+        },
+        {
+          "ms": 11882.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11882.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G2",
+      "path": "invoke",
+      "error": null,
+      "generation_status": "generated",
+      "steps": 12,
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 11741.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11741.9,
+          "kind": "end"
+        }
+      ]
+    }
+  ],
+  "finished_at": "2026-11-06T23:39:13+0900"
+}
