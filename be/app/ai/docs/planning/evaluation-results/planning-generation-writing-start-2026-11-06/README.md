@@ -2,11 +2,11 @@
 
 관련 [#388](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/388), AI-COMMON-02, AI-PLAN-05.
 
-초안 생성 화면의 「초안 작성」 구간을 실제 신호로 둘로 나누려 한다. 모델이 계획 JSON의 첫 글자를 보낸 순간을 기준으로 「토리가 생각 중이에요」와 「초안을 작성하는 중이에요」로 나눈다. 이 기록은 바꾸기 전에 두 구간이 실제로 얼마나 되는지 잰 것이다.
+초안 생성 화면의 「초안 작성」 구간을 실제 신호로 둘로 나누려 한다. 모델이 계획 JSON의 첫 글자를 보낸 순간을 기준으로 「토리가 생각 중이에요」와 「초안을 작성하는 중이에요」로 나눈다. 이 기록은 바꾸기 전에 두 구간이 실제로 얼마나 되는지 잰 것과, 바꾼 뒤 느려지지 않았는지 잰 것이다.
 
 ## 한 줄 결론
 
-**두 구간 모두 충분히 길어서 진행한다.** 버튼 생성 기준 생각 중 p50 4.93초, 작성 중 p50 7.89초였다. 글자는 요청마다 850~979조각으로 나뉘어 6~8초에 걸쳐 고르게 왔다. 게이트웨이가 끝에 몰아서 보내지 않는다.
+**두 구간 모두 충분히 길어서 진행했고, 바꾼 뒤 채택했다.** 바꾸기 전 측정에서 버튼 생성 기준 생각 중 p50 4.93초, 작성 중 p50 7.89초였다. 글자는 요청마다 850~979조각으로 나뉘어 6~8초에 걸쳐 고르게 왔다. 게이트웨이가 끝에 몰아서 보내지 않는다. 바꾼 뒤 전체 p50은 G2 +0.34초, G1 +0.30초로 기준 안이었다. G1 계획 검증 통과가 10 → 9인 점은 「채택 측정」 절에 원인과 함께 적었다.
 
 ```text
 「이 조건으로 초안 만들기」 (G2, p50)
@@ -65,6 +65,29 @@ G1의 전체 시간에는 생성 전후의 대화 모델 호출 두 번이 들�
 - 1세션 10라운드다. 공급자 속도는 측정 시각마다 달라지므로 다른 날의 절대값과 비교하지 않는다.
 - 원본 `baseline-report.json`에는 모델이 쓴 글을 남기지 않았다. 블록 종류, 글자 수, 시각, 토큰 수만 있다.
 
+## 채택 측정 (바꾼 뒤)
+
+[측정 전에 정한 기준](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/388#issuecomment-6686807465): 같은 세션에서 기존 경로(`ainvoke_structured`)와 새 경로(`astream_structured`)를 번갈아 10라운드씩 잰다. 전체 시간 p50이 0.5초 넘게 늘지 않고, 계획 검증 통과 수가 줄지 않고, 새 경로의 모든 요청에서 `generation_writing`이 정확히 한 번 오면 채택한다.
+
+| 항목 | 실제 기록 |
+| --- | --- |
+| 코드 | `2a3242e`(구현 커밋), 제품 코드 변경 없음(`product_code_dirty=false`) |
+| 실행 시간 | 2026-11-06 23:27:04~23:39:13, Asia/Seoul |
+| 경로 | 두 경로 모두 진행 포트를 넘긴다. 기존 경로는 `generation.model.astream_structured` 자리에 첫 글자 알림을 무시하고 `ainvoke_structured`를 부르는 함수를 잠시 끼운다(`measure_adoption.py`) |
+| 순서 | 예열 4건(집계 제외) 뒤 10라운드. 라운드마다 사례 순서와 경로 순서를 뒤집는다 |
+
+| 사례 / 경로 | 생성 성공 | 전체 p50 / p95 (ms) | `generation_writing` |
+| --- | --- | --- | --- |
+| G2 버튼 / 기존 | 10/10 | 11,998 / 13,781 | 0/10 |
+| G2 버튼 / 새 | 10/10 | 12,341 / 13,362 | 10/10 정확히 한 번 |
+| G1 채팅 / 기존 | 10/10 | 19,030 / 21,171 | 0/10 |
+| G1 채팅 / 새 | **9/10** | 19,326 / 19,997 | 10/10 정확히 한 번 |
+
+- 전체 p50 차이(새 − 기존): G2 +0.34초, G1 +0.30초. 기준(+0.5초) 안이다. 같은 라운드 짝 10개 중 새 경로가 빠른 짝은 두 사례 모두 5개다.
+- 신호 순서는 새 경로 20건 모두 `generation_started → generation_writing → generation_finished`였다.
+- **계획 검증 통과는 G1에서 10 → 9로, 측정 전 기준을 문자 그대로 읽으면 미달이다.** 실패 1건(라운드 6)은 응답을 끝까지 받고 형식 검사를 통과한 뒤, 내용 검사 `validate_plan`에서 `invalid_plan`으로 거절됐다. 두 경로가 게이트웨이에 보내는 요청 본문이 같다는 것을 가짜 서버로 확인했고, 이 사실을 `test_두_경로는_게이트웨이에_같은_요청을_보낸다`로 고정했다. 받는 방식은 모델이 쓰는 내용에 영향을 줄 수 없으므로 모델 출력의 흔들림으로 판단했다(추론). 같은 종류의 내용 검증 실패는 이전 측정에도 있었다(#239 18건 중 2건, #264 G2 low 30건 중 2건). 이 판단으로 채택하기로 사용자와 정했다(11-06).
+- 원본: `adoption-report.json`. 모델이 쓴 글은 남기지 않았다.
+
 ## 재현
 
 `be/`에서 실행한다. 실제 모델을 부르므로 요청마다 비용이 든다(예열 포함 생성 22회, G1은 대화 모델 호출도 함께).
@@ -74,4 +97,7 @@ G1의 전체 시간에는 생성 전후의 대화 모델 호출 두 번이 들�
 .venv/bin/python -I app/ai/docs/planning/evaluation-results/planning-generation-writing-start-2026-11-06/measure_writing_start.py /tmp/new-report.json 10
 # 집계 (모델 호출 없음)
 .venv/bin/python -I app/ai/docs/planning/evaluation-results/planning-generation-writing-start-2026-11-06/summarize.py /tmp/new-report.json
+# 채택 측정: 기존·새 경로 번갈아 (예열 포함 생성 44회)
+.venv/bin/python -I app/ai/docs/planning/evaluation-results/planning-generation-writing-start-2026-11-06/measure_adoption.py /tmp/new-adoption.json 10
+.venv/bin/python -I app/ai/docs/planning/evaluation-results/planning-generation-writing-start-2026-11-06/summarize_adoption.py /tmp/new-adoption.json
 ```
