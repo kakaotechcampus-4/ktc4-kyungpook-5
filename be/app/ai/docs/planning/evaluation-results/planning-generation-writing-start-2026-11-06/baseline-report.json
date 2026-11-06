@@ -1,0 +1,1088 @@
+{
+  "model": "gpt-5.6-luna",
+  "commit": "5fbb3c5ad197e6ad8eb4b1b61226e722b7578c42",
+  "product_code_dirty": false,
+  "rounds": 10,
+  "started_at": "2026-11-06T23:11:47+0900",
+  "attempts": [
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 39.8,
+        "first_chunk": 1850.1,
+        "first_reasoning": 2554.3,
+        "first_text": 5853.1,
+        "last_text": 13054.4,
+        "text_chunks": 912,
+        "text_chars": 2549,
+        "reasoning_chunks": 2,
+        "end": 13765.3,
+        "usage": {
+          "output": 1204,
+          "reasoning": 279
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 0.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 39.8,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 13765.3,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 13769.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 13770.1,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 2812.9,
+        "first_chunk": 4333.8,
+        "first_reasoning": 4903.5,
+        "first_text": 8531.4,
+        "last_text": 15614.7,
+        "text_chunks": 903,
+        "text_chars": 2513,
+        "reasoning_chunks": 2,
+        "end": 16089.1,
+        "usage": {
+          "output": 1240,
+          "reasoning": 324
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 2807.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2812.9,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 16089.1,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 16094.1,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19678.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 2.7,
+        "first_chunk": 984.1,
+        "first_reasoning": 1387.9,
+        "first_text": 4765.3,
+        "last_text": 13015.4,
+        "text_chunks": 934,
+        "text_chars": 2584,
+        "reasoning_chunks": 2,
+        "end": 13575.9,
+        "usage": {
+          "output": 1216,
+          "reasoning": 269
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 0.1,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2.7,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 13575.9,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 13580.3,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 13580.8,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 2382.3,
+        "first_chunk": 3205.8,
+        "first_reasoning": 4198.7,
+        "first_text": 7163.6,
+        "last_text": 15312.6,
+        "text_chunks": 977,
+        "text_chars": 2692,
+        "reasoning_chunks": 2,
+        "end": 15853.1,
+        "usage": {
+          "output": 1241,
+          "reasoning": 250
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 2375.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2382.3,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 15853.1,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 15857.3,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19464.7,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 2329.8,
+        "first_chunk": 3239.3,
+        "first_reasoning": 3649.8,
+        "first_text": 5902.1,
+        "last_text": 14335.3,
+        "text_chunks": 996,
+        "text_chars": 2689,
+        "reasoning_chunks": 2,
+        "end": 14990.3,
+        "usage": {
+          "output": 1196,
+          "reasoning": 186
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 2323.1,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2329.8,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 14990.3,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 14995.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19204.7,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 8.0,
+        "first_chunk": 2525.8,
+        "first_reasoning": 2741.9,
+        "first_text": 6762.4,
+        "last_text": 13901.1,
+        "text_chunks": 892,
+        "text_chars": 2481,
+        "reasoning_chunks": 2,
+        "end": 14631.9,
+        "usage": {
+          "output": 1216,
+          "reasoning": 314
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 8.0,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 14631.9,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 14635.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 14636.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 4.5,
+        "first_chunk": 844.9,
+        "first_reasoning": 1202.0,
+        "first_text": 4022.8,
+        "last_text": 11540.4,
+        "text_chunks": 979,
+        "text_chars": 2668,
+        "reasoning_chunks": 2,
+        "end": 12081.2,
+        "usage": {
+          "output": 1190,
+          "reasoning": 196
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 0.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 4.5,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 12081.2,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 12085.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 12085.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 2517.2,
+        "first_chunk": 3278.3,
+        "first_reasoning": 4114.3,
+        "first_text": 6666.4,
+        "last_text": 13268.4,
+        "text_chunks": 839,
+        "text_chars": 2398,
+        "reasoning_chunks": 2,
+        "end": 13999.1,
+        "usage": {
+          "output": 1106,
+          "reasoning": 256
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 2511.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2517.2,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 13999.1,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 14003.3,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 17629.7,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 2156.4,
+        "first_chunk": 2903.8,
+        "first_reasoning": 4761.4,
+        "first_text": 6648.1,
+        "last_text": 13416.8,
+        "text_chunks": 901,
+        "text_chars": 2479,
+        "reasoning_chunks": 2,
+        "end": 14090.1,
+        "usage": {
+          "output": 1103,
+          "reasoning": 192
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 2149.9,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2156.4,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 14090.1,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 14094.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 18402.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 8.5,
+        "first_chunk": 1315.9,
+        "first_reasoning": 1773.5,
+        "first_text": 5429.9,
+        "last_text": 12718.8,
+        "text_chunks": 978,
+        "text_chars": 2679,
+        "reasoning_chunks": 2,
+        "end": 13339.5,
+        "usage": {
+          "output": 1309,
+          "reasoning": 318
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 0.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 8.5,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 13339.5,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 13343.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 13344.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 9.6,
+        "first_chunk": 726.6,
+        "first_reasoning": 2342.6,
+        "first_text": 5863.3,
+        "last_text": 12694.7,
+        "text_chunks": 899,
+        "text_chars": 2509,
+        "reasoning_chunks": 2,
+        "end": 13522.8,
+        "usage": {
+          "output": 1182,
+          "reasoning": 272
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 0.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 9.6,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 13522.8,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 13526.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 13526.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 2759.7,
+        "first_chunk": 3707.3,
+        "first_reasoning": 4078.3,
+        "first_text": 6508.2,
+        "last_text": 13493.5,
+        "text_chunks": 917,
+        "text_chars": 2524,
+        "reasoning_chunks": 2,
+        "end": 14158.1,
+        "usage": {
+          "output": 1150,
+          "reasoning": 222
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 2754.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2759.7,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 14158.1,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 14162.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 18934.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 3205.6,
+        "first_chunk": 5221.7,
+        "first_reasoning": 5426.1,
+        "first_text": 8221.0,
+        "last_text": 14670.5,
+        "text_chunks": 860,
+        "text_chars": 2414,
+        "reasoning_chunks": 2,
+        "end": 15498.5,
+        "usage": {
+          "output": 1119,
+          "reasoning": 247
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 3200.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 3205.6,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 15498.5,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 15502.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19909.0,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 7.8,
+        "first_chunk": 3037.6,
+        "first_reasoning": 3434.1,
+        "first_text": 6227.2,
+        "last_text": 12911.6,
+        "text_chunks": 850,
+        "text_chars": 2452,
+        "reasoning_chunks": 2,
+        "end": 13477.8,
+        "usage": {
+          "output": 1133,
+          "reasoning": 272
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 0.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 7.8,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 13477.8,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 13482.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 13482.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 8.0,
+        "first_chunk": 1088.6,
+        "first_reasoning": 1661.7,
+        "first_text": 4774.2,
+        "last_text": 11041.6,
+        "text_chunks": 889,
+        "text_chars": 2483,
+        "reasoning_chunks": 2,
+        "end": 11657.6,
+        "usage": {
+          "output": 1147,
+          "reasoning": 248
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 0.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 8.0,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 11657.6,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11661.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11661.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 2821.7,
+        "first_chunk": 3534.9,
+        "first_reasoning": 4085.6,
+        "first_text": 6802.6,
+        "last_text": 13813.6,
+        "text_chunks": 940,
+        "text_chars": 2547,
+        "reasoning_chunks": 2,
+        "end": 14555.3,
+        "usage": {
+          "output": 1194,
+          "reasoning": 242
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 2816.0,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2821.7,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 14555.3,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 14559.3,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 19617.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 2233.0,
+        "first_chunk": 3158.7,
+        "first_reasoning": 3738.2,
+        "first_text": 6013.0,
+        "last_text": 12428.8,
+        "text_chunks": 821,
+        "text_chars": 2356,
+        "reasoning_chunks": 2,
+        "end": 12933.3,
+        "usage": {
+          "output": 1036,
+          "reasoning": 203
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 2226.9,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2233.0,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 12933.4,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 12937.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 16647.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 10.9,
+        "first_chunk": 1039.8,
+        "first_reasoning": 1351.4,
+        "first_text": 3995.0,
+        "last_text": 11451.3,
+        "text_chunks": 917,
+        "text_chars": 2541,
+        "reasoning_chunks": 2,
+        "end": 12108.0,
+        "usage": {
+          "output": 1168,
+          "reasoning": 241
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 10.9,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 12108.0,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 12113.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 12113.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 8.4,
+        "first_chunk": 928.5,
+        "first_reasoning": 1239.5,
+        "first_text": 3841.0,
+        "last_text": 11443.6,
+        "text_chunks": 909,
+        "text_chars": 2563,
+        "reasoning_chunks": 2,
+        "end": 11983.2,
+        "usage": {
+          "output": 1133,
+          "reasoning": 213
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 8.4,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 11983.2,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 11987.3,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 11987.7,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 2879.6,
+        "first_chunk": 3821.9,
+        "first_reasoning": 4286.7,
+        "first_text": 6642.1,
+        "last_text": 13536.7,
+        "text_chunks": 862,
+        "text_chars": 2430,
+        "reasoning_chunks": 2,
+        "end": 14023.3,
+        "usage": {
+          "output": 1073,
+          "reasoning": 199
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 2876.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 2879.6,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 14023.3,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 14027.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 17428.1,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G1",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 3143.4,
+        "first_chunk": 4117.1,
+        "first_reasoning": 4565.0,
+        "first_text": 7821.4,
+        "last_text": 14187.6,
+        "text_chunks": 821,
+        "text_chars": 2342,
+        "reasoning_chunks": 2,
+        "end": 15084.4,
+        "usage": {
+          "output": 1127,
+          "reasoning": 294
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 3138.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 3143.4,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 15084.4,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 15088.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 18615.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G2",
+      "error": null,
+      "generation_status": "generated",
+      "model_call": {
+        "start": 5.7,
+        "first_chunk": 779.1,
+        "first_reasoning": 1493.3,
+        "first_text": 5080.8,
+        "last_text": 12023.4,
+        "text_chunks": 906,
+        "text_chars": 2547,
+        "reasoning_chunks": 2,
+        "end": 12231.9,
+        "usage": {
+          "output": 1198,
+          "reasoning": 280
+        },
+        "status": "completed"
+      },
+      "events": [
+        {
+          "ms": 0.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running"
+        },
+        {
+          "ms": 5.7,
+          "kind": "generation_model_start"
+        },
+        {
+          "ms": 12231.9,
+          "kind": "generation_model_end"
+        },
+        {
+          "ms": 12235.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed"
+        },
+        {
+          "ms": 12236.1,
+          "kind": "end"
+        }
+      ]
+    }
+  ],
+  "finished_at": "2026-11-06T23:17:57+0900"
+}
