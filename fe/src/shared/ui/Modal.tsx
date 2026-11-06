@@ -67,10 +67,13 @@ export function Modal({
         placement === 'left'
           ? 'modal-drawer m-0 h-dvh max-h-dvh max-w-[calc(100vw-48px)] rounded-none'
           : 'm-auto max-h-[calc(100vh-64px)] max-w-[calc(100vw-32px)] rounded-[20px]',
+        // 세로가 짧으면 머리·하단을 고정한 채 본문만 줄이던 방식으로는 본문이 한 줄도 안 남는다(300px 높이에서 56px).
+        // 그때는 모달 전체를 스크롤하고, 결정 버튼이 있는 하단만 아래에 붙여 둔다.
+        placement !== 'left' && 'short:max-h-[calc(100dvh-24px)] short:overflow-y-auto',
         className,
       )}
     >
-      <header className="flex flex-col gap-[7px] border-b border-line pt-[26px] pr-[22px] pb-[18px] pl-[28px]">
+      <header className="flex flex-col gap-[7px] border-b border-line pt-[26px] pr-[22px] pb-[18px] pl-[28px] short:pt-[16px] short:pb-[12px]">
         <div className="flex items-center justify-between gap-[12px]">
           <div className="flex min-w-0 items-center gap-[10px]">
             <h2 id={titleId} className="text-[20px] font-bold">
@@ -91,7 +94,10 @@ export function Modal({
         {subtitle && <p className="text-[12px] text-mute">{subtitle}</p>}
       </header>
 
-      <div className="flex flex-1 flex-col gap-[15px] overflow-y-auto px-[28px] pt-[22px] pb-[24px]">
+      {/* 기본 높이는 내용 높이(flex-basis auto)로 두고, 모달 최대 높이에 닿을 때만 줄어들며 스크롤한다.
+          flex-1(기준 0%)로 두면 높이가 정해지지 않은 모달에서 브라우저에 따라 본문 높이가 0으로 잡혀
+          여백만 남는다(일부 브라우저에서 "이 단계에서 한 일" 아래·보낼 내용이 잘리던 문제, #370). */}
+      <div className="flex min-h-0 flex-auto flex-col gap-[15px] overflow-y-auto px-[28px] pt-[22px] pb-[24px] short:flex-none short:overflow-visible">
         {children}
       </div>
 
@@ -99,7 +105,7 @@ export function Modal({
         // 넓은 화면에서는 문구 왼쪽·버튼 오른쪽 한 줄이다. 좁은 화면(320·390px)에서 둘이 한 줄에
         // 들어가지 않으면 버튼을 다음 줄로 내리고, 버튼끼리도 넘치면 줄을 바꾼다.
         // 그렇지 않으면 문구가 한 글자 폭으로 눌리고 마지막 버튼이 화면 밖으로 밀린다(#335).
-        <footer className="flex flex-wrap items-center justify-between gap-x-[12px] gap-y-[10px] border-t border-line pt-[16px] pr-[24px] pb-[20px] pl-[28px]">
+        <footer className="flex flex-wrap items-center justify-between gap-x-[12px] gap-y-[10px] border-t border-line bg-card pt-[16px] pr-[24px] pb-[20px] pl-[28px] short:sticky short:bottom-0 short:pt-[12px] short:pb-[14px]">
           {footerNote && <p className="min-w-0 grow basis-[200px] text-caption text-mute">{footerNote}</p>}
           <div className="ml-auto flex flex-wrap justify-end gap-[8px]">{footer}</div>
         </footer>

@@ -145,7 +145,7 @@ export const DEMO_STEPS: Record<string, EventStep[]> = {
       startsAt: at(-1, '00:00'),
       doneActions: [
         { id: 'act_11', title: '입금 12건을 참가자 명단과 대조했어요.', status: 'DONE' },
-        { id: 'act_12', title: '입금자명이 다른 2건을 확인 요청으로 올렸어요.', status: 'DONE' },
+        { id: 'act_12', title: '입금자명이 명단과 다른 1건을 질문으로 올렸어요.', status: 'DONE' },
         { id: 'act_13', title: '미납자 목록을 5명 → 4명으로 갱신했어요.', status: 'DONE' },
       ],
       remainingActions: [
@@ -224,46 +224,7 @@ export const DEMO_EVENT_DETAILS: Record<string, EventDetail> = Object.fromEntrie
   }),
 )
 
-export const DEMO_ACTIONS: Record<string, EventAction[]> = {
-  evt_9f2c8a: [
-    {
-      id: 'act_21',
-      type: 'EXTERNAL_SEND',
-      title: '미납자 4명에게 2차 납부 안내 문자 보내기',
-      subtitle: '대상 4명 · 비용 0원',
-      dueDate: day(2),
-      status: 'PENDING',
-    },
-    {
-      id: 'act_22',
-      type: 'TRANSFER',
-      title: '펜션 계약금 100,000원 이체하고 예약 확정',
-      subtitle: '마감 다음 날부터 환불 불가 · 잔고 2,412,000원',
-      dueDate: day(4),
-      status: 'PENDING',
-    },
-    {
-      id: 'act_23',
-      type: 'EXPENSE',
-      title: '장보기·버스 잔금 등 지출 4건 묶음 승인',
-      subtitle: '합계 182,000원 · 영수증 4건 확인됨',
-      dueDate: day(13),
-      status: 'PENDING',
-    },
-  ],
-  evt_c41d07: [
-    {
-      id: 'act_31',
-      type: 'CONTRACT',
-      title: '공대 7호관 세미나실 1박 2일 대관 신청서 제출',
-      subtitle: '학과 사무실 승인 필요 · 야간 사용 신청 포함',
-      dueDate: day(3),
-      status: 'PENDING',
-    },
-  ],
-}
-
-// L2 확인 요청. 가을 해커톤은 비워 두어 빈 상태를 볼 수 있게 한다.
+// 운영 상황과 무관한 토리 질문. 실제로는 드물지만 「지금 할 일」의 질문 행을 볼 수 있게 하나 둔다.
 export const DEMO_CONFIRMATIONS: Record<string, EventAction[]> = {
   evt_9f2c8a: [
     {
@@ -279,26 +240,13 @@ export const DEMO_CONFIRMATIONS: Record<string, EventAction[]> = {
       ],
       allowManual: true,
     },
-    {
-      id: 'act_32',
-      type: 'CONFIRMATION',
-      title: '어느 행사인지 모르겠습니다',
-      subtitle: '학생회 지원금 500,000원 — 봄 MT에 넣을까요, 공동 회계로 둘까요?',
-      dueDate: null,
-      status: 'PENDING',
-      options: [
-        { key: 'ASSIGN_EVENT', label: '봄 MT에 넣기' },
-        { key: 'ASSIGN_CLUB', label: '공동 회계로' },
-      ],
-      allowManual: true,
-    },
   ],
 }
 
 const PARK = { id: 'mbr_01', name: '박수겸', role: 'MANAGER' } as const
 const KIM = { id: 'mbr_02', name: '김지훈', role: 'OWNER' } as const
 
-// L2 처리된 승인. 최근 몇 건과 전체 개수.
+// L2 처리 기록. 최근 몇 건과 전체 개수.
 export const DEMO_RESOLVED: Record<string, ActionPage> = {
   evt_9f2c8a: {
     totalCount: 12,
@@ -355,7 +303,7 @@ export const DEMO_RESOLVED: Record<string, ActionPage> = {
 // Step 모달의 할 일 · 처리된 일. 행사 → 단계 id → Action. 같은 건은 M1 · L2와 id를 맞춘다.
 export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = {
   evt_9f2c8a: {
-    // 4. 모집 공지(완료): L2 처리된 승인의 "모집 공고를 단톡방에 발송"과 같은 건
+    // 4. 모집 공지(완료): L2 처리 기록의 "모집 공고를 단톡방에 발송"과 같은 건
     stp_3: [
       {
         id: 'act_42',
@@ -368,7 +316,7 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
         resolvedBy: KIM,
       },
     ],
-    // 5. 입금 확인(진행 중): 승인 대기는 M1의 act_21과 같은 건.
+    // 5. 입금 확인(진행 중)
     // 토리 초안 상태 다섯 가지를 한 단계에서 볼 수 있게 모았다(#335).
     stp_4: [
       // 토리 초안 도착(READY + AI). 비워 둔 곳은 본문의 [ ]와 같다.
@@ -488,7 +436,7 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
     ],
   },
   evt_c41d07: {
-    // 3. 장소 대관(진행 중): M1의 act_31과 같은 건
+    // 3. 장소 대관(진행 중)
     stp_2: [
       {
         id: 'act_31',
@@ -538,7 +486,17 @@ function demoAction(base: EventAction): EventAction {
 }
 
 export function demoStepActions(eventId: string, stepId: string): EventAction[] {
-  return (DEMO_STEP_ACTIONS[eventId]?.[stepId] ?? []).map(demoAction)
+  return (DEMO_STEP_ACTIONS[eventId]?.[stepId] ?? []).map((a) => ({ ...demoAction(a), stepId }))
+}
+
+// GET /events/{id}/actions?status=PENDING,APPROVED,FAILED 흉내(L2 지금 할 일)
+export function demoTodoActions(eventId: string): EventAction[] {
+  const stepActions = Object.keys(DEMO_STEP_ACTIONS[eventId] ?? {}).flatMap((stepId) =>
+    demoStepActions(eventId, stepId),
+  )
+  return [...stepActions, ...(DEMO_CONFIRMATIONS[eventId] ?? [])].filter((a) =>
+    ['PENDING', 'APPROVED', 'FAILED'].includes(a.status),
+  )
 }
 
 function currentDemoAction(actionId: string): EventAction {
