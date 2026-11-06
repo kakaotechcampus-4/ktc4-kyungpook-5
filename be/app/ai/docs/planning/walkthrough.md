@@ -39,6 +39,8 @@ done      저장된 값이 같으면 그대로, 다르면 그 칸만 다시 강�
    실제 생성이 필요할 때만 `generation_started/running`을 보낸다.
    생성 모델이 계획 JSON의 첫 글자를 보내면 같은 `operation_id`로 `generation_writing/running`과
    “초안을 작성하는 중이에요”를 한 번 보낸다(#388, 아래 「생각 중과 작성 중은 어떻게 나누나」).
+   그 뒤 모델이 단계 하나의 코드를 다 쓸 때마다 `generation_step/running`과 고정 이름을 보낸다
+   (#389, 아래 「작성 중 단계 이름은 어떻게 찾나」).
 3. 생성 및 기준 조건 검증 후 같은 `operation_id`로 `generation_finished`를 보낸다.
    성공은 `completed`, 실패는 `failed`이며 기존 반환 결과는 유지한다.
 4. 기존 Agent 답변 작성 → 상태 직렬화 → 공개 결과 반환을 거친다. 저장은 여전히 BE가 맡는다.
@@ -749,21 +751,58 @@ generate_with_context()
   generate(request, on_writing=writing)              ← 포트가 있을 때만 콜백을 넘긴다
     run_plan_generation → compose_plan
       invoke_plan_composition(..., on_writing=writing)
-        astream_structured(..., on_first_text=writing)
+        astream_structured(..., on_text=on_text)      ← #389부터 글자 조각마다 on_text(글자)
           조각: 응답 시작          글자 없음 → 모으기만
           조각: 추론 블록 ×2        글자 없음 → 모으기만
-          조각: '{"steps":[{"co'   첫 글자 → writing() 한 번 → SSE progress: generation_writing
+          조각: '{"steps":[{"co'   첫 글자 → on_text의 첫 호출 → SSE progress: generation_writing
           조각 … 900개 안팎         모으기만
           완료 → ainvoke_structured와 같은 검사 → PlanComposition
     validate_plan                                    그대로
   notify(generation_finished)                        그대로
 ```
 
-포트가 없으면 `on_writing`을 넘기지 않고, `invoke_plan_composition`은 기존 `ainvoke_structured`로 완성본만 받는다. 대화 모델이 포트 유무로 `astream_with_tools`와 `ainvoke_with_tools`를 나눠 쓰는 것(#280)과 같은 규칙이다.
+포트가 없으면 `on_text`를 넘기지 않고, `invoke_plan_composition`은 기존 `ainvoke_structured`로 완성본만 받는다. 대화 모델이 포트 유무로 `astream_with_tools`와 `ainvoke_with_tools`를 나눠 쓰는 것(#280)과 같은 규칙이다.
 
 두 함수의 차이는 **조각을 누가 모으느냐** 하나다. `ainvoke_structured`는 SDK 안에서 다 모은 뒤에야 돌아오기 때문에 그 사이에 신호를 낼 곳이 없다. `astream_structured`는 [형식을 붙인 모델 | 파서] 중 앞 단계에서 조각을 직접 받아 모으고, 다 모은 뒤 같은 완료 검사(`_check_structured_finish`)와 같은 파서를 쓴다. `test_structured_output.py`가 같은 가짜 응답 11가지(정상, 출력 한도, 끊긴 스트림, 형식 오류, HTTP 오류 등)에 두 함수가 같은 결과나 같은 오류를 내는지 고정한다.
 
 첫 글자는 블록 종류가 `text`이고 글자가 비어 있지 않은 첫 조각이다. 추론 블록에는 글자가 오지 않아(실측 20건 모두) 「생각 중」 동안 보여 줄 실제 진행은 없다. 신호에는 초안 내용을 싣지 않는다. 검증 전 초안이기 때문이다(#266).
+
+### 작성 중 단계 이름은 어떻게 찾나 (#389)
+
+「초안을 작성하는 중이에요」를 누르면 모델이 고른 단계 이름이 고른 순서대로 쌓인다. 모델은 계획 JSON을 `steps` → `excluded_steps` → `assumptions` 순서로 쓰고, 단계마다 `code`를 맨 앞에 쓴다(실측 20건 모두). 그래서 단계 코드는 작성 구간의 앞쪽에서 차례로 나온다. 버튼 생성 기준으로 첫 코드는 첫 글자 뒤 p50 0.06초에 나오고, 13개가 p50 4.8초에 걸쳐 나온다. 그 뒤 p50 2.6초는 제외 단계·가정을 쓰고 검증하는 시간이다([측정](evaluation-results/planning-generation-step-signal-2026-11-07/README.md)).
+
+```text
+「이 조건으로 초안 만들기」 (진행 포트 있음)
+generate_with_context()
+  notify(generation_started)
+  generate(request, on_text=on_text)            ← entrypoints.py: 아래 판단은 모두 이 콜백 하나에 있다
+    ... invoke_plan_composition(on_text=on_text)
+          astream_structured(..., on_text=on_text)
+            on_text('{"steps":[{"co')            첫 호출 → generation_writing
+            on_text('de":"ASSIGN_ROL')           reader.feed → []
+            on_text('ES","purpose":"역할을…')    reader.feed → [(0, "ASSIGN_ROLES")] → generation_step 「담당 인원 배치」
+            … 약 900조각 …
+            on_text(',{"code":"RESEARCH_VENUE"') reader.feed → [(1, "RESEARCH_VENUE")] → generation_step 「장소·교통 알아보기」
+            … excluded_steps의 code는 reader가 무시한다
+          완료 → 지금과 같은 형식 검사
+    validate_plan                                 그대로
+  notify(generation_finished)                     성공이면 화면은 목록을 두고, 실패면 목록을 지운다
+```
+
+`llm.astream_structured`는 받은 글자를 넘기기만 하고 JSON 모양을 모른다. 글을 읽는 일은 [generation/step_reader.py](../../features/planning/generation/step_reader.py)의 `StepCodeReader`가 맡는다. 문자열 검색으로는 목적 글 속의 `"code"`나 `excluded_steps`의 code와 구분할 수 없어서, 따옴표·이스케이프·괄호 깊이를 한 글자씩 따라간다. 읽는 위치가 최상위 객체 `"steps"` 배열 안 단계 객체의 `"code"` 값일 때만, 닫는 따옴표가 온 순간 `(위치, 코드)`를 돌려준다.
+
+```text
+글: {"steps":[{"code":"BOOK_VENUE","purpose":"\"code\":\"X\" {임시}"}],"excluded_steps":[{"code":"REFUND_FEES"…
+     ↑깊이1 키 steps ↑깊이3 키 code → 값 BOOK_VENUE 닫힘 → (0, "BOOK_VENUE")
+                                         ↑문자열 안: 따옴표가 이스케이프돼 있고 { 도 글자일 뿐이다
+                                                                ↑깊이1 키가 excluded_steps라 무시
+```
+
+이름은 `progress.generation_step()`이 `PLANNING_STEP_NAMES`(카탈로그 고정 이름)에서 붙인다. 카탈로그에 없는 코드는 보내지 않는다. 신호에는 `{index, code, name}`만 있고 모델이 쓴 문장은 없다. 검증 전 초안이라 화면은 「작성 중」 아래에만 보이고, 실패하면 목록을 지운다(#266 범위를 #389에서 다시 정함, [공개 계약](p1-public-contract.md)).
+
+FE는 `useGenerationRequest`가 `appendDraftStep`으로 0번부터 차례인 신호만 붙이고, `GenerationScreen`이 펼침 버튼과 목록을 그린다. 채팅의 작업 줄은 같은 `operation_id`를 한 줄로 덮어 쓰므로, `turn.ts upsertProgress`가 `generation_step`을 걸러 「초안을 작성하는 중이에요」 줄이 단계 이름으로 바뀌지 않게 한다.
+
+시험: `test_step_reader.py`(조각 크기 1~10,000글자, 문자열 속 `"code"`·괄호, 제외 단계, 깨진 글), `test_planning_progress.py`(신호 순서·이름 = 최종 초안, 검증 실패 시 단계 신호 뒤 failed), `test_structured_output.py`(넘긴 글자를 이으면 원문과 같다).
 
 ## 생성 모델은 얼마나 생각하고 쓰나 (#264)
 
