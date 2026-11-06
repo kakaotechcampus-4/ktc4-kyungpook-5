@@ -7,7 +7,7 @@ import { isSendKey } from '@/features/planning/chatKey'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
-import { Textarea } from '@/shared/ui/Input'
+import { ChatComposer } from '@/shared/ui/ChatComposer'
 import { Tori } from '@/shared/ui/Tori'
 import { ReplyText } from '@/features/planning/components/ReplyText'
 
@@ -29,6 +29,8 @@ interface PlanChatProps {
   notice?: string
   // 대화 이력 사용량(#329). 서버가 주지 않으면(null) 안내하지도 막지도 않는다.
   historyUsage?: components['schemas']['HistoryUsageOut'] | null
+  // 내 마지막 말에 토리 답이 저장되지 않았다(대화 끝 오류 자리에 안내한다).
+  missingReply?: boolean
 }
 
 function CheckIcon({ className }: { className?: string }) {
@@ -249,6 +251,7 @@ export function PlanChat({
   pendingReply = '',
   notice = '',
   historyUsage = null,
+  missingReply = false,
   demo = false,
   persisted = false,
   initialDraft = '',
@@ -263,11 +266,13 @@ export function PlanChat({
   }
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
-  const composerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const errorRef = useRef<HTMLParagraphElement>(null)
   useEffect(() => {
     if (error) errorRef.current?.focus()
   }, [error])
+  // 답 없음은 화면을 열 때부터 있을 수 있어 포커스를 옮기지 않고 알림으로만 읽힌다.
+  const alertText = error || (missingReply ? '토리의 답을 받지 못했어요.' : '')
   const followEnd = useRef(true)
   useLayoutEffect(() => {
     const panel = scrollRef.current
@@ -333,13 +338,12 @@ export function PlanChat({
           <Tori size={30} />
           <h2 className="text-h3 text-ink">토리와 계획 잡기</h2>
         </div>
-        <span className="w-[180px] max-w-full shrink-0 text-right text-[12px] text-mute">
-          {demo
-            ? '화면 미리보기'
-            : persisted
-              ? '저장된 대화'
-              : '첫 메시지를 보내면 계획이 만들어져요'}
-        </span>
+        {/* 저장된 대화에는 따로 알릴 것이 없다. 새 계획에서만 첫 메시지의 결과를 알린다. */}
+        {(demo || !persisted) && (
+          <span className="max-w-[180px] shrink-0 text-right text-[12px] text-mute">
+            {demo ? '화면 미리보기' : '첫 메시지를 보내면 계획이 만들어져요'}
+          </span>
+        )}
       </header>
 
       <div
@@ -387,7 +391,7 @@ export function PlanChat({
                         disabled={busy || historyFull}
                         onClick={() => {
                           if (reply === '직접 입력') {
-                            composerRef.current?.querySelector('textarea')?.focus()
+                            inputRef.current?.focus()
                             return
                           }
                           void send(reply, false)
@@ -425,15 +429,15 @@ export function PlanChat({
           <TurnLines lines={progress} settled />
         </div>
       )}
-      {error && (
+      {alertText && (
         <>
           <p
             ref={errorRef}
             tabIndex={-1}
             role="alert"
-            className="px-[24px] text-failed focus:outline-none"
+            className="px-[24px] break-keep text-failed focus:outline-none"
           >
-            {error}
+            {alertText}
           </p>
           {onReload && (
             <Button
@@ -456,63 +460,51 @@ export function PlanChat({
         {historyNote}
       </p>
       <form
-        className="flex items-center gap-2.5 border-t border-line px-4 py-4 sm:px-5"
+        className="px-4 pt-2 pb-4 sm:px-5"
         onSubmit={(e) => {
           e.preventDefault()
           void send(draft, true)
         }}
       >
-        <div ref={composerRef} className="min-w-0 flex-1">
-          {/* 기다리는 동안 막지(disabled) 않고 읽기 전용으로 둔다. 막으면 포커스가 빠져
-              답변이 끝난 뒤 입력창을 다시 눌러야 한다. 읽기 전용이면 커서가 그대로 남는다.
-              이력 한도에 닿으면 다시 풀리지 않으므로 그때만 막는다. */}
-          <Textarea
-            id="planning-chat-answer"
-            aria-label="계획 대화 답변"
-            aria-describedby="planning-input-help planning-history-note"
-            rows={2}
-            className="min-h-[58px] max-h-[160px] resize-y disabled:cursor-not-allowed disabled:opacity-60"
-            readOnly={busy}
-            disabled={historyFull}
-            placeholder={
-              historyFull
-                ? '대화가 길어져 더 보낼 수 없어요'
-                : busy
-                  ? '토리의 답변을 기다리고 있어요'
-                  : '답을 입력하세요'
-            }
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (
-                !isSendKey({
-                  key: e.key,
-                  shiftKey: e.shiftKey,
-                  altKey: e.altKey,
-                  ctrlKey: e.ctrlKey,
-                  metaKey: e.metaKey,
-                  isComposing: e.nativeEvent.isComposing,
-                  keyCode: e.keyCode,
-                })
-              )
-                return
-              e.preventDefault()
-              if (!e.repeat) e.currentTarget.form?.requestSubmit()
-            }}
-          />
-          <p id="planning-input-help" className="mt-1 text-[12px] text-mute">
-            Enter로 전송 · Shift+Enter로 줄바꿈
-          </p>
-        </div>
-        <Button
-          type="submit"
-          className="h-[42px] w-[76px] shrink-0"
-          aria-label={busy ? '토리의 답변을 기다리는 중' : '보내기'}
-          loading={busy}
-          disabled={!draft.trim() || historyFull}
-        >
-          <span className={busy ? 'sr-only' : undefined}>보내기</span>
-        </Button>
+        {/* 기다리는 동안 막지(disabled) 않고 읽기 전용으로 둔다. 막으면 포커스가 빠져
+            답변이 끝난 뒤 입력창을 다시 눌러야 한다. 읽기 전용이면 커서가 그대로 남는다.
+            이력 한도에 닿으면 다시 풀리지 않으므로 그때만 막는다. */}
+        <ChatComposer
+          inputRef={inputRef}
+          id="planning-chat-answer"
+          aria-label="계획 대화 답변"
+          aria-describedby="planning-history-note"
+          readOnly={busy}
+          disabled={historyFull}
+          placeholder={
+            historyFull
+              ? '대화가 길어져 더 보낼 수 없어요'
+              : busy
+                ? '토리의 답변을 기다리고 있어요'
+                : '토리에게 메시지 보내기'
+          }
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (
+              !isSendKey({
+                key: e.key,
+                shiftKey: e.shiftKey,
+                altKey: e.altKey,
+                ctrlKey: e.ctrlKey,
+                metaKey: e.metaKey,
+                isComposing: e.nativeEvent.isComposing,
+                keyCode: e.keyCode,
+              })
+            )
+              return
+            e.preventDefault()
+            if (!e.repeat) e.currentTarget.form?.requestSubmit()
+          }}
+          sendLabel={busy ? '토리의 답을 기다리는 중' : '보내기'}
+          sendDisabled={!draft.trim()}
+          waiting={busy}
+        />
       </form>
     </Card>
   )

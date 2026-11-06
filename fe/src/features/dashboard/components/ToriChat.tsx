@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import { dashboardApi } from '@/features/dashboard/api'
 import type { components } from '@/shared/api/schema'
 import { ApiError } from '@/shared/api/types'
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
-import { Textarea } from '@/shared/ui/Input'
+import { ChatComposer } from '@/shared/ui/ChatComposer'
 import { Tori } from '@/shared/ui/Tori'
 
 type Result = components['schemas']['ToriMessageOut']
@@ -28,6 +29,9 @@ const formatTime = (value: string | null) =>
         timeStyle: 'short',
       }).format(new Date(value))
     : '시간 미정'
+// 질문 한 번에 보낼 수 있는 글자 수.
+const MAX_QUESTION = 1000
+
 const examples = [
   '지난 회의의 할 일을 확인하고 싶어요',
   '행사 예산 관련 자료를 찾아줘',
@@ -615,12 +619,11 @@ export function ToriChat({
           {error}
         </p>
       )}
-      <form
-        className="shrink-0 space-y-2 rounded-xl border border-soft bg-bg p-4"
-        onSubmit={submit}
-      >
+      {/* 대시보드는 묻고 답을 받는 화면이라 입력 상자가 화면의 주 입력이다. 행사 계획 대화와
+          같은 상자·보내기 버튼·단축키 말풍선을 쓰되, 두 줄 높이의 흰 상자로 띄운다. */}
+      <form className="shrink-0 space-y-2" onSubmit={submit}>
         {pending && (
-          <div className="flex items-center justify-between gap-3 text-caption text-ink2">
+          <div className="flex items-center justify-between gap-3 px-1 text-caption text-ink2">
             <span>이어서 답하기</span>
             <button
               type="button"
@@ -636,13 +639,14 @@ export function ToriChat({
             </button>
           </div>
         )}
-        <Textarea
-          label="토리에게 질문"
-          className="min-h-[72px] bg-card text-[16px] sm:text-[14px]"
-          rows={2}
-          maxLength={1000}
+        <ChatComposer
+          tone="raised"
+          minRows={2}
+          maxRows={6}
+          aria-label="토리에게 질문"
+          maxLength={MAX_QUESTION}
           disabled={!clubId}
-          placeholder={clubId ? '궁금한 내용을 입력해 주세요' : '로그인하고 소속을 선택해 주세요'}
+          placeholder={clubId ? '토리에게 물어보세요' : '로그인하고 소속을 선택해 주세요'}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -659,18 +663,24 @@ export function ToriChat({
             event.preventDefault()
             if (!event.repeat) event.currentTarget.form?.requestSubmit()
           }}
+          // 답을 기다리는 동안에도 다음 질문을 받아 차례로 처리한다. 그래서 도는 표시 대신 그대로 둔다.
+          sendLabel={busy ? '질문 추가' : '보내기'}
+          sendDisabled={!clubId || !draft.trim()}
         />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-caption text-mute">
-            Enter로 전송 · Shift+Enter로 줄바꿈
-            <br />
+        <div className="flex items-start justify-between gap-3 px-1 text-[12px] leading-[18px] text-mute">
+          <p>
             {queuedQuestions.length > 0
               ? `질문 ${queuedQuestions.length}개가 순서대로 처리돼요.`
               : '대화는 새로고침하면 사라져요.'}
           </p>
-          <Button type="submit" disabled={!clubId || !draft.trim()}>
-            {busy ? '질문 추가' : '보내기'}
-          </Button>
+          {/* 글자 수는 한도에 가까워질 때만 보인다. */}
+          {draft.length >= MAX_QUESTION - 200 && (
+            <p
+              className={cn('shrink-0 tabular-nums', draft.length >= MAX_QUESTION && 'text-failed')}
+            >
+              {draft.length} / {MAX_QUESTION}자
+            </p>
+          )}
         </div>
       </form>
     </Card>
