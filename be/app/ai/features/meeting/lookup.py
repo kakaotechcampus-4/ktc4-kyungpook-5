@@ -23,7 +23,7 @@ from ..retrieval.nodes import (
     find_chunks,
 )
 from ..retrieval.schemas import RecordFact, RecordSearchRequest, RecordSearchResult
-from ..tori.records import _AMBIGUOUS_AMOUNT, _numbers, _requested_years, _supported
+from ..tori.records import _AMBIGUOUS_AMOUNT, _found, _numbers, _requested_years, _supported
 from .schemas import MeetingAnswer
 
 
@@ -118,7 +118,7 @@ class RecordsLookup:
             conflicts = [conflict for conflict in assessment.conflicts
                          if not _AMBIGUOUS_AMOUNT.search(conflict.description)
                          and all(_supported(value, chunks, years) for value in conflict.values)
-                         and _numbers(conflict.description) <= _numbers(' '.join(v.content for v in conflict.values))]
+                         and _found(_numbers(conflict.description), _numbers(' '.join(v.content for v in conflict.values)))]
             removed = len(facts) != len(assessment.facts) or len(conflicts) != len(assessment.conflicts)
             not_found = list(assessment.not_found)
             if removed and not not_found:

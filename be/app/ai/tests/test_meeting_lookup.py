@@ -204,6 +204,24 @@ def test_찾은_청크의_근거로_답하고_출처는_검색된_기록이다()
     assert (search.prompt_version, answer.prompt_version) == (None, MEETING_ASSESS_PROMPT_VERSION)
 
 
+def test_장부의_단위_없는_금액도_원을_붙인_답의_근거가_된다():
+    # #281: 장부 칸은 "550000"처럼 단위 없이 읽히고, 모델은 "550,000원"으로 쓴다
+    port = InMemoryRecordSearch()
+    port.add(
+        StoredRecord(record_id="rec_ledger", club_id=CLUB, file_name="2025 봄 MT 장부.csv",
+                     category=RecordCategory.ETC),
+        [IndexedChunk(text="항목: 숙소비, 금액: 550000", location=SourceLocation(label="2행"),
+                      block_indexes=(0,), embedding=_vector("2025 봄 MT 장부 숙소비 550000"))],
+    )
+    invoke = FakeInvoke(
+        _assessment(facts=[EvidenceItem(content="2025 봄 MT 숙소비 550,000원", chunk_ids=["c1"])])
+    )
+
+    result = _run(port, invoke)
+
+    assert (result.kind, result.answer) == ("ANSWER", "2025 봄 MT 숙소비 550,000원")
+
+
 def test_근거_판단은_다시_찾지_않고_회의_날짜를_기준일로_본다():
     invoke = FakeInvoke(_assessment(not_found=[QUESTION]))
 
