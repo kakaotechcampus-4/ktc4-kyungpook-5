@@ -1,4 +1,4 @@
-"""인증된 소속의 토리 조회. 내용 변경이나 예약은 수행하지 않는다."""
+"""인증된 소속의 토리 대화."""
 from datetime import UTC, date, datetime, time, timedelta
 import re
 from zoneinfo import ZoneInfo
@@ -275,5 +275,11 @@ async def message(club_id: str, body: ToriMessageIn,
         return Envelope(data=ToriMessageOut(intent=result.intent, reply='행사 계획 화면으로 이동할 수 있어요.', navigation='/planning'))
     if result.intent == 'meeting':
         return Envelope(data=ToriMessageOut(intent=result.intent, reply='회의 화면으로 이동할 수 있어요.', navigation='/meetings'))
+    if result.intent == 'self_intro':
+        return Envelope(data=ToriMessageOut(
+            intent=result.intent,
+            reply=('저는 동아리 운영진과 함께 일하는 친근한 도우미 토리예요. '
+                   '동아리 자료와 확정된 일정·할 일을 찾아보고, 행사 계획이나 회의 화면으로 안내할 수 있어요.'),
+        ))
     reply = '어떤 자료나 일정, 할 일을 찾을지 조금 더 알려 주세요.' if result.intent == 'clarify' else '아직 이 요청은 처리할 수 없어요. 자료 검색이나 확정된 일정 조회를 요청해 주세요.'
     return Envelope(data=ToriMessageOut(intent=result.intent, reply=reply))

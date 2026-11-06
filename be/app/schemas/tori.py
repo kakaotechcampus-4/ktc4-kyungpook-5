@@ -1,4 +1,4 @@
-"""토리 단일 요청: 데이터 조회와 화면 안내만 제공한다."""
+"""토리 단일 요청의 소개·조회·화면 안내 계약."""
 from datetime import date
 from typing import Annotated, Literal
 from pydantic import Field, field_validator
@@ -94,7 +94,8 @@ class ToriClarification(CamelModel):
 
 
 class ToriMessageOut(CamelModel):
-    intent: Literal['record_search', 'task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported']
+    intent: Literal['record_search', 'task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported',
+                    'self_intro']
     reply: str
     records: RecordSearchData | None = None
     record_answer: ToriRecordAnswer | None = None

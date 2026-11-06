@@ -23,13 +23,14 @@ from ..generation.schemas import PlanGenerationResult, PlanGenerator, PlanningGe
 from .generation_tools import GenerateEventPlanInput, condition_generation_state, generate_event_plan
 
 
-PROMPT_VERSION = "planning-agent-v8"
+PROMPT_VERSION = "planning-agent-v9"
 MAX_TOOL_CALLS = 3
 # 한 응답에 Tool 요청을 여러 개 받는다. "60명으로 바꾸고 초안은 만들지 마"가 모델 호출 3번 → 2번
 # (C2 p50 7.19 → 6.17초)으로 준다(#265). 보류 재개 실패는 "다시 얘기하자"라는 모호한 문장을 "나중에"로
 # 읽은 것이었고, 분명한 재개·정정·보류 대조는 하나만 받을 때와 같아 켰다(#274). 받은 요청은 tools_node가 차례로 실행한다.
 PARALLEL_TOOL_CALLS = True
 PROMPT = (Path(__file__).parent / "prompts/chat.md").read_text()
+PERSONA_PROMPT = (Path(__file__).parent / "prompts/persona.md").read_text(encoding="utf-8").strip()
 TOOL_NAME = "update_event_conditions"
 SEARCH_TOOL_NAME = "search_past_events"
 OFFER_TOOL_NAME = "update_generation_offer"
@@ -100,6 +101,15 @@ async def call_agent_model(messages: list[AnyMessage], *, allow_tools: bool,
 TOOL_LIMIT_NOTICE = "이번 턴의 Tool 한도에 도달했습니다. 추가 실행 없이 실제 완료한 결과와 남은 내용을 답하세요."
 
 
+def agent_context_text(context: dict, *, allow_tools: bool) -> str:
+    # 소개 지시도 첫 시스템 메시지를 유지할 수 있도록 실행 문맥 뒤에 둔다.
+    execution = "현재 실행 문맥(JSON 데이터):\n" + json.dumps(context, ensure_ascii=False)
+    execution += "\n\n" + PERSONA_PROMPT
+    if not allow_tools:
+        execution += "\n" + TOOL_LIMIT_NOTICE
+    return execution
+
+
 def agent_messages(context: dict, messages: list[AnyMessage], *, allow_tools: bool) -> list[AnyMessage]:
     """대화 모델에 보낼 메시지 순서를 정한다.
 
@@ -107,9 +117,7 @@ def agent_messages(context: dict, messages: list[AnyMessage], *, allow_tools: bo
     그래서 맨 앞에는 바뀌지 않는 지시문만 두고, 메시지 ID·초안처럼 매 호출 바뀌는 문맥은 맨 끝에 둔다.
     예: [지시문] [이력] [이번 발화] [Tool 결과…] [실행 문맥] → 실행 문맥 앞부분은 다음 호출에서 재사용된다.
     """
-    execution = "현재 실행 문맥(JSON 데이터):\n" + json.dumps(context, ensure_ascii=False)
-    if not allow_tools:
-        execution += "\n" + TOOL_LIMIT_NOTICE
+    execution = agent_context_text(context, allow_tools=allow_tools)
     return [SystemMessage(content=PROMPT), *messages, SystemMessage(content=execution)]
 
 

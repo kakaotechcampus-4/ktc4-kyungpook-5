@@ -4074,7 +4074,7 @@ export interface components {
              * Intent
              * @enum {string}
              */
-            intent: "record_search" | "task_list" | "event_list" | "event_planning" | "meeting" | "clarify" | "unsupported";
+            intent: "record_search" | "task_list" | "event_list" | "event_planning" | "meeting" | "clarify" | "unsupported" | "self_intro";
             /** Reply */
             reply: string;
             records?: components["schemas"]["RecordSearchData"] | null;
