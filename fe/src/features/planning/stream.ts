@@ -8,12 +8,12 @@
 //   error        → ApiError로 던짐 (오류 종류에 따라 저장 거절/결과 불명 구분)
 //
 // 연결 결과가 불명일 때 POST를 반복하면 실패/만료 키가 모델을 다시 실행할 수 있다.
-// 요청별 읽기 전용 결과 조회 계약 전에는 같은 키여도 자동 재전송하지 않는다 (#326).
+// 같은 키여도 다시 보내지 않고, 요청 키로 결과만 조회한다(#342, useGenerationRequest).
 import { apiPostStream } from '@/shared/api/client'
 import { ApiError, type ApiErrorBody } from '@/shared/api/types'
 import type { components } from '@/shared/api/schema'
 import type { PlanProgress } from './types'
-import { validDraft } from './generation'
+import { validView } from './generation'
 
 type PlanView = components['schemas']['PlanViewOut']
 
@@ -48,21 +48,7 @@ async function once(
           handlers.onReply('')
         } else if (event === 'done') {
           const candidate = JSON.parse(data) as PlanView
-          if (
-            !Number.isInteger(candidate?.baseRevision) ||
-            candidate.baseRevision < 0 ||
-            !validDraft(candidate.draft) ||
-            !Array.isArray(candidate.changedFields) ||
-            typeof candidate.generationReadiness?.canGenerate !== 'boolean' ||
-            !Array.isArray(candidate.generationReadiness.reasons) ||
-            (candidate.reply !== null && typeof candidate.reply !== 'string') ||
-            (candidate.generationResult !== null &&
-              !['generated', 'failed', 'needs_clarification'].includes(
-                candidate.generationResult?.status,
-              ))
-          ) {
-            throw new StreamCut()
-          }
+          if (!validView(candidate)) throw new StreamCut()
           result = candidate
         } else if (event === 'error') failure = JSON.parse(data) as ApiErrorBody
       },

@@ -366,15 +366,44 @@ async def _resolve_idempotency(
     return result
 
 
-async def _save_idempotency_response(record_id: str, *, status_code: int, body: dict) -> None:
-    sessionmaker = get_sessionmaker()
-    async with sessionmaker() as session:
-        record = await session.get(IdempotencyKey, record_id)
-        if record is not None:
-            await idempotency.save_response(
-                session, record, status_code=status_code, body=body
-            )
-            await session.commit()
+# 처리 기록의 endpoint에 실제 행사 ID를 넣는다(#342). 결과 조회가 "이 행사의 요청"만
+# 찾게 하려는 것이다. 스트림 경로도 같은 문자열을 써서 JSON 경로와 키를 공유한다.
+def _chat_endpoint(event_id: str) -> str:
+    return f"POST /events/{event_id}/plan/chat"
+
+
+def _generate_endpoint(event_id: str) -> str:
+    return f"POST /events/{event_id}/plan/generate"
+
+
+async def lookup_request(
+    session: AsyncSession, *, event_id: str, member_id: str, key: str
+) -> tuple[str, dict | None]:
+    """요청 키로 그 요청의 처리 결과만 읽는다(#342). 모델을 다시 실행하지 않는다.
+
+    응답 도중 연결이 끊긴 FE가 "abc 요청은 어떻게 됐나"를 묻는 데 쓴다.
+      COMPLETED            → ("completed", 그때 보낸 응답)
+      PROCESSING, 5분 안    → ("processing", None)  아직 처리 중
+      PROCESSING, 5분 지남  → ("not_saved", None)   처리하던 서버가 사라졌다. 턴 저장과
+                                                    완료 표시가 한 커밋이라 저장되지 않았다
+      기록 없음             → ("not_saved", None)   실패·충돌로 키를 지웠거나 닿지 않았다
+    """
+    record = await session.scalar(
+        select(IdempotencyKey).where(
+            IdempotencyKey.member_id == member_id,
+            IdempotencyKey.endpoint.in_(
+                [_chat_endpoint(event_id), _generate_endpoint(event_id)]
+            ),
+            IdempotencyKey.idempotency_key == key,
+        )
+    )
+    if record is None:
+        return "not_saved", None
+    if record.status == "COMPLETED":
+        return "completed", record.response_body
+    if idempotency.is_stale(record):
+        return "not_saved", None
+    return "processing", None
 
 
 async def _release_idempotency(record_id: str) -> None:
@@ -428,14 +457,14 @@ async def _open_turn(
                 result = await call_ai(prepared, progress)
             except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
                 raise _translate_ai_error(error) from error
-            out = await _finish(prepared, result, user_message_text=user_message_text)
+            out = await _finish(
+                prepared, result, user_message_text=user_message_text,
+                idempotency_record_id=idem.record.id if idem is not None else None,
+            )
         except Exception:
             if idem is not None:
                 await _release_idempotency(idem.record.id)
             raise
-        if idem is not None:
-            # 턴 저장과 별도 커밋이다. 그 사이 서버가 죽으면 키가 처리 중으로 남는다(#284 남은 한계).
-            await _save_idempotency_response(idem.record.id, status_code=200, body=out)
         return out
 
     return PlanTurn(run=run)
@@ -502,7 +531,11 @@ async def _prepare(
 
 
 async def _finish(
-    prepared: _PreparedTurn, result: "ai.PlanningPublicResult", *, user_message_text: str | None
+    prepared: _PreparedTurn,
+    result: "ai.PlanningPublicResult",
+    *,
+    user_message_text: str | None,
+    idempotency_record_id: str | None = None,
 ) -> dict:
     sessionmaker = get_sessionmaker()
     async with sessionmaker() as session:
@@ -536,6 +569,13 @@ async def _finish(
             new_base_revision=new_base_revision, user_message_text=user_message_text,
         )
         out = _view_out(result, base_revision=new_base_revision)
+        if idempotency_record_id is not None:
+            # 턴 저장과 같은 커밋에서 요청 키를 완료로 바꾼다(#342). 따로 커밋하면 그 사이
+            # 서버가 꺼졌을 때 대화는 저장됐는데 키는 처리 중으로 남아, 결과 조회가
+            # 저장된 요청을 "처리 중"이라고 답한다.
+            record = await session.get(IdempotencyKey, idempotency_record_id)
+            if record is not None:
+                await idempotency.save_response(session, record, status_code=200, body=out)
         await session.commit()
     return out
 
@@ -551,7 +591,7 @@ async def open_chat(
     idempotency_key: str | None,
 ) -> PlanTurn:
     sessionmaker = get_sessionmaker()
-    endpoint = "POST /events/{event_id}/plan/chat"
+    endpoint = _chat_endpoint(event_id)
     request_body = json.dumps(
         {"messageId": message_id, "message": message_content, "baseRevision": base_revision},
         sort_keys=True,
@@ -599,7 +639,7 @@ async def open_generate(
     idempotency_key: str | None,
 ) -> PlanTurn:
     sessionmaker = get_sessionmaker()
-    endpoint = "POST /events/{event_id}/plan/generate"
+    endpoint = _generate_endpoint(event_id)
     request_body = json.dumps(
         {"baseRevision": base_revision, "useCurrentConditions": use_current_conditions},
         sort_keys=True,

@@ -102,6 +102,16 @@ async def respond_operational_situation(request: "OperationalSituationRequest") 
     return await respond(request)
 
 
+async def draft_action_content(request: "ActionDraftRequest") -> "ActionDraftResult":
+    """운영 중 공지·발송 Action 하나의 본문 초안을 쓴다. 저장·상태 변경·호출 시점은 BE 책임이다.
+
+    본문의 날짜·요일·금액·시각을 입력과 대조하고, 걸리면 한 번만 다시 쓰게 한다(#333).
+    다시 써도 걸리면 AIInvalidResponseError를 낸다. 계약은 docs/contracts.md "운영 Action 본문 초안".
+    """
+    from .features.operations.action_draft import draft_action_content as draft
+    return await draft(request)
+
+
 async def review_plan_edit(request: "PlanEditReviewRequest") -> "PlanEditReviewResult":
     """사용자가 고친 계획을 검토해 걱정되는 점을 0~4개 돌려준다. 저장·확정은 BE 책임."""
     from .features.planning.review.review import review_plan_edit as review
