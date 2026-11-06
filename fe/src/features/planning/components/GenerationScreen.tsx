@@ -10,10 +10,12 @@ export function GenerationScreen({
   flow,
   onReload,
   onViewCurrent,
+  onBackToChat,
 }: {
   flow: GenerationFlow
   onReload: () => Promise<unknown>
   onViewCurrent: () => Promise<unknown>
+  onBackToChat: () => void
 }) {
   const title = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
@@ -52,6 +54,15 @@ export function GenerationScreen({
           />
         )}
       </div>
+      {/* 화면만 바꾼다. 요청은 그대로 이어지므로 「취소」라고 쓰지 않는다(#327). */}
+      {waiting && (
+        <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <Button variant="secondary" onClick={onBackToChat}>
+            대화로 돌아가기
+          </Button>
+          <p className="break-keep text-caption text-ink2">생성은 계속돼요.</p>
+        </div>
+      )}
       {(flow.phase === 'load-failed' || flow.phase === 'unconfirmed') && (
         <Button className="mt-6" onClick={() => void onReload()}>
           초안 다시 불러오기

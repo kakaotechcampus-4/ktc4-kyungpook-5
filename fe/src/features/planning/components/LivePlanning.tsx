@@ -23,12 +23,21 @@ const REASONS: Record<string, string> = {
   condition_change_pending: '반영하지 못한 조건 변경을 먼저 확인해 주세요.',
 }
 
+// 대화로 돌아가 있는 동안 끝난 생성(#327). P2로 옮기지 않고 P1에 안내만 남긴다.
+interface GenerationReady {
+  eventId: string
+  count: number
+  key: string
+}
+
 export function LivePlanning() {
   const clubId = useAuthStore((state) => state.clubId)
   const userId = useAuthStore((state) => state.me?.id)
   const [params, setParams] = useSearchParams()
   const location = useLocation()
   const failedText = typeof location.state?.failedText === 'string' ? location.state.failedText : ''
+  // 새 계획은 생성이 끝나며 이 계획 주소로 넘어가 대화 영역이 새로 그려지므로 안내를 여기 둔다.
+  const [ready, setReady] = useState<GenerationReady | null>(null)
   const eventId = params.get('eventId')
   // 탭 기록은 행사마다 따로 둔다(#342). 이 행사의 결과를 확인하는 동안에도 다른 계획은 열 수 있다.
   const journal = usePlanningRequestJournal(userId, clubId, eventId)
@@ -68,6 +77,13 @@ export function LivePlanning() {
         </Card>
       ) : (
         <>
+          {/* 글자가 든 채 새로 붙는 알림 영역은 낭독기가 놓칠 수 있다. 새 계획은 완료와 함께
+              대화 영역이 새로 그려지므로, 그 바깥에 늘 붙여 두고 글자만 바꾼다. */}
+          <p role="status" className="sr-only">
+            {ready?.eventId === eventId
+              ? '초안이 준비됐어요. 계획 검토하기에서 확인할 수 있어요.'
+              : ''}
+          </p>
           {journal.raw && !journal.request && (
             <p role="alert" className="text-failed">
               이전 요청 기록을 확인하지 못했어요. 새 요청을 보내기 전에 브라우저의 임시 저장 기능과
@@ -87,6 +103,8 @@ export function LivePlanning() {
             }
             failedText={failedText}
             userId={userId}
+            ready={ready?.eventId === eventId ? ready : null}
+            onReady={setReady}
           />
         </>
       )}
@@ -221,6 +239,8 @@ function Conversation({
   failedText,
   userId,
   onBusy,
+  ready,
+  onReady,
 }: {
   clubId: string
   eventId: string | null
@@ -228,16 +248,35 @@ function Conversation({
   failedText: string
   userId: string | undefined
   onBusy: (busy: boolean) => void
+  ready: GenerationReady | null
+  onReady: (ready: GenerationReady | null) => void
 }) {
   const navigate = useNavigate()
   const generationDescriptionId = useId()
+  // 생성 중 「대화로 돌아가기」(#327). 화면만 바꾸고 요청은 이 훅에서 계속 받는다.
+  // 완료 콜백은 요청을 보낸 렌더의 것이 불리므로 지금 보고 있는 화면은 ref로 읽는다.
+  const [away, setAway] = useState(false)
+  const awayRef = useRef(false)
+  const showChat = (value: boolean) => {
+    awayRef.current = value
+    setAway(value)
+  }
+  const awayNote = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    if (away) awayNote.current?.focus()
+  }, [away])
   const prefetchEventDetail = usePrefetchEventDetail()
-  const live = usePlanningChat(
+  const chat = usePlanningChat(
     clubId,
     eventId,
     userId,
     onCreated,
     (id, count, key) => {
+      if (awayRef.current) {
+        onReady({ eventId: id, count, key })
+        if (!eventId) onCreated(id)
+        return
+      }
       navigate(`/planning?${new URLSearchParams({ eventId: id, stage: 'review' })}`, {
         replace: true,
         state: { generated: count > 0 ? { count, key } : undefined, focusPlan: true },
@@ -245,6 +284,13 @@ function Conversation({
     },
     prefetchEventDetail,
   )
+  // 대화로 돌아가 있으면 생성 화면 대신 P1을 그린다. 잠금은 chat.busy가 그대로 건다.
+  const live = away ? { ...chat, generationFlow: null } : chat
+  // 새 요청은 생성 화면부터 보이고, 지난 완료 안내는 내린다.
+  const beginRequest = () => {
+    showChat(false)
+    onReady(null)
+  }
   useEffect(() => {
     onBusy(live.streaming)
   }, [live.streaming, onBusy])
@@ -261,6 +307,7 @@ function Conversation({
           flow={live.generationFlow}
           onReload={live.reloadGenerated}
           onViewCurrent={live.viewCurrentPlan}
+          onBackToChat={() => showChat(true)}
         />
       </>
     )
@@ -319,9 +366,38 @@ function Conversation({
   const readiness = live.view?.generationReadiness ?? screen?.generationReadiness ?? null
   const lastMessage = live.snapshot.data?.messages.at(-1)
   const generationFailure = live.generationFailure
+  const flow = chat.generationFlow
   return (
     <>
       <PlanStageNav current="conditions" />
+      {away && flow && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-blue-50 px-4 py-3">
+          <p ref={awayNote} tabIndex={-1} className="break-keep text-ink focus:outline-none">
+            {['requesting', 'generating', 'verifying', 'loading'].includes(flow.phase)
+              ? '초안을 만들고 있어요. 생성은 계속되고, 끝날 때까지 새 대화와 생성은 잠가 둘게요.'
+              : '초안 생성 결과를 확인해야 해요.'}
+          </p>
+          <Button size="sm" variant="secondary" onClick={() => showChat(false)}>
+            생성 화면 보기
+          </Button>
+        </div>
+      )}
+      {ready && eventId && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-blue-50 px-4 py-3">
+          <p className="break-keep font-semibold text-ink">초안이 준비됐어요.</p>
+          <Link
+            className="rounded-lg px-2 py-2 text-caption font-semibold text-blue-700 underline underline-offset-4 hover:bg-blue-100"
+            to={`/planning?${new URLSearchParams({ eventId, stage: 'review' })}`}
+            state={{
+              generated: ready.count > 0 ? { count: ready.count, key: ready.key } : undefined,
+              focusPlan: true,
+            }}
+            onClick={() => onReady(null)}
+          >
+            계획 검토하기
+          </Link>
+        </div>
+      )}
       {stage === 'review' && !eventId && (
         <p role="status" className="text-mute">
           먼저 행사 조건을 정하고 초안을 만들어 주세요.
@@ -337,6 +413,7 @@ function Conversation({
         <PlanChat
           messages={live.messages}
           onSend={async (text) => {
+            beginRequest()
             const success = await live.send(text)
             if (success) setShowFailure(false)
             return success
@@ -394,7 +471,10 @@ function Conversation({
               aria-describedby={generationDescriptionId}
               loading={live.generating}
               disabled={!eventId || !readiness?.canGenerate || live.busy}
-              onClick={() => void live.generate()}
+              onClick={() => {
+                beginRequest()
+                void live.generate()
+              }}
             >
               {live.generating
                 ? '초안을 만드는 중…'
@@ -402,7 +482,8 @@ function Conversation({
                   ? '이 조건으로 다시 만들기'
                   : '이 조건으로 초안 만들기'}
             </Button>
-            {eventId && steps.length > 0 && (
+            {/* 생성 중에는 지난 초안으로 가는 길을 닫고, 완료 안내가 있으면 그 링크 하나만 둔다. */}
+            {eventId && steps.length > 0 && !flow && !ready && (
               <Link
                 className="self-center rounded-lg px-2 py-2 text-caption font-semibold text-blue-700 underline underline-offset-4 hover:bg-blue-50"
                 to={`/planning?${new URLSearchParams({ eventId, stage: 'review' })}`}
