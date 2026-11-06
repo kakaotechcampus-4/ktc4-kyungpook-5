@@ -1,4 +1,5 @@
 import type { components } from '@/shared/api/schema'
+import type { DraftStep } from './types'
 
 type S = components['schemas']
 export type GenerationPhase =
@@ -15,6 +16,8 @@ export interface GenerationFlow {
   draft: S['PlanDraftOut']
   // 이번 화면에서 generation_writing을 받았는가(#388). 모델이 초안 첫 글자를 보낸 뒤다.
   writing?: boolean
+  // 이번 화면에서 받은 작성 중 단계(#389). 검증 전이며 저장된 단계가 아니다.
+  steps?: DraftStep[]
 }
 export interface PlanningRequest {
   version: 1
@@ -242,6 +245,32 @@ export function generationRows(
 export function draftingNote(flow: GenerationFlow, ended: boolean): string | null {
   if (ended || flow.phase !== 'generating') return null
   return flow.writing ? '초안을 작성하는 중이에요' : '토리가 생각 중이에요'
+}
+
+// 작성 중 단계 신호를 목록에 붙인다(#389). 서버는 0번부터 차례로 하나씩 보낸다.
+// 다음 차례가 아닌 신호(중복·건너뜀)는 버린다. 목록이 최종 초안 순서와 어긋나 보이지 않게 한다.
+//   [] + {index 0, 담당 인원 배치}            → [담당 인원 배치]
+//   [담당 인원 배치] + {index 0, …} (중복)     → 그대로
+//   [담당 인원 배치] + {index 2, …} (건너뜀)   → 그대로
+export function appendDraftStep(steps: DraftStep[], step: DraftStep | undefined): DraftStep[] {
+  if (!step || step.index !== steps.length || !step.name) return steps
+  return [...steps, step]
+}
+
+// 「초안 작성」 아래 단계 목록(#389). 없으면 null이라 펼침 버튼도 그리지 않는다.
+//   작성 중    → 앞 단계는 끝남(✓), 마지막 단계는 진행 중(●). 모델이 지금 그 단계를 쓰고 있다
+//   생성 성공 뒤 → 모두 끝남(✓). 다음 줄(저장 확인)로 넘어가도 목록은 그대로 둔다
+//   생성 실패   → null. 검증 전 목록이라 저장된 초안처럼 남기지 않는다
+export function draftStepRows(
+  flow: GenerationFlow,
+  failed: boolean,
+): { step: DraftStep; state: 'done' | 'active' }[] | null {
+  if (failed || !flow.steps?.length) return null
+  const last = flow.steps.length - 1
+  return flow.steps.map((step, index) => ({
+    step,
+    state: index === last && flow.phase === 'generating' ? 'active' : 'done',
+  }))
 }
 
 // 지금 초안이 있는데 다시 만드는 경우의 문구. 첫 생성과 같은 말을 쓰면 지금 초안이 어떻게 되는지 알 수 없다.

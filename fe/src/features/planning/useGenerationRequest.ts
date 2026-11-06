@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
 import {
+  appendDraftStep,
   checksInChat,
   generatedSnapshotStatus,
   parseRequest,
@@ -13,7 +14,7 @@ import {
   type GenerationFlow,
   type PlanningRequest,
 } from './generation'
-import type { PlanProgress } from './types'
+import type { DraftStep, PlanProgress } from './types'
 import type { components } from '@/shared/api/schema'
 import { ApiError } from '@/shared/api/types'
 import { withViewTransition } from '@/shared/lib/viewTransition'
@@ -68,6 +69,8 @@ export function useGenerationRequest(
   const visible = useRef(false)
   // 이번 생성에서 generation_writing을 받았는가(#388). 요청 기록에는 남기지 않는다(새로고침 뒤에는 모른다).
   const writing = useRef(false)
+  // 이번 생성에서 받은 작성 중 단계(#389). writing과 같이 화면에만 두고 요청 기록에는 남기지 않는다.
+  const drafted = useRef<DraftStep[]>([])
   useEffect(() => {
     mounted.current = true
     return () => {
@@ -84,7 +87,12 @@ export function useGenerationRequest(
       }
     }
     if (mounted.current)
-      setFlow({ phase, draft: request.draft, writing: phase === 'generating' && writing.current })
+      setFlow({
+        phase,
+        draft: request.draft,
+        writing: phase === 'generating' && writing.current,
+        steps: drafted.current,
+      })
   }
   const own = journal.request
   const restoredFlow: GenerationFlow | null =
@@ -148,6 +156,7 @@ export function useGenerationRequest(
     if (event.kind === 'generation_started') {
       request.started = true
       writing.current = false
+      drafted.current = []
       // 채팅은 이 순간 대화 화면에서 생성 화면으로 바뀐다. 조건 카드가 생성 화면으로 이어지게 한다.
       if (visible.current) show('generating', request)
       else withViewTransition(() => show('generating', request))
@@ -155,6 +164,14 @@ export function useGenerationRequest(
       // 모델이 초안 첫 글자를 보냈다. 같은 「초안 작성」 줄의 옆 문구만 바꾼다.
       writing.current = true
       show('generating', request)
+    } else if (event.kind === 'generation_step' && request.started && writing.current) {
+      // 모델이 단계 하나의 코드를 다 썼다. 「초안 작성」 아래 목록에 이름을 하나 붙인다.
+      const next = appendDraftStep(drafted.current, event.step)
+      if (next === drafted.current) return
+      drafted.current = next
+      show('generating', request)
+      // 요청 기록에 바뀐 것이 없다. 단계마다(13번) 기록을 다시 쓰지 않는다.
+      return
     } else if (event.kind === 'generation_finished' && event.status === 'completed')
       // 실패한 생성은 저장할 것이 없다. 「초안 작성」에서 멈춘 것으로 보이게 다음 줄로 넘기지 않는다.
       show('verifying', request)

@@ -31,6 +31,9 @@ export interface TurnLine extends PlanProgress {
 // 이어 쓰고, 오지 않으면 답변이 시작될 때 지운다(dropSkipped). 그동안은 "반영하고 있어요"로 보인다.
 // skipped는 지울 줄이 있을 때만 의미가 있다. 없으면(예: 재접속으로 줄을 비운 뒤) 새로 붙이지 않는다.
 export function upsertProgress(lines: TurnLine[], event: PlanProgress): TurnLine[] {
+  // 단계 신호(#389)는 생성 화면의 단계 목록 몫이다. 같은 operationId라서 그대로 두면
+  // 「초안을 작성하는 중이에요」 줄을 단계 이름으로 덮어쓴다.
+  if (event.kind === 'generation_step') return lines
   const index = lines.findIndex((line) => line.operationId === event.operationId)
   if (index >= 0) {
     const old = lines[index]

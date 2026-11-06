@@ -4,6 +4,9 @@
 //   ✓ 조건 확인
 //   ● 초안 작성  토리가 생각 중이에요  3초      ← generation_started부터 1초씩 센다
 //   ● 초안 작성  초안을 작성하는 중이에요  7초  ← generation_writing(모델이 첫 글자를 보냄, #388)
+//   ● 초안 작성  초안을 작성하는 중이에요 ⌄  8초  ← generation_step이 오면 문구가 펼침 버튼이 된다(#389)
+//       ✓ 담당 인원 배치                          펼치면 모델이 고른 단계 이름이 차례로 붙는다
+//       ● 장소·교통 알아보기                       ← 지금 쓰는 단계. 실패하면 목록을 지운다
 //   ○ 저장 확인
 //   ○ 계획 불러오기
 // → 모두 ✓ → "초안이 준비됐어요" → DONE_HOLD_MS 뒤 계획 검토로(「바로 보기」로 먼저 갈 수 있다)
@@ -14,6 +17,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import {
   GENERATION_ROWS,
   draftingNote,
+  draftStepRows,
   generationCopy,
   generationRows,
   regenerationCopy,
@@ -105,6 +109,32 @@ function RowMark({ state }: { state: GenerationRowState }) {
   return <span aria-hidden className="relative block size-[18px] shrink-0 rounded-full bg-track" />
 }
 
+// 단계 목록의 작은 표시. 쓴 단계는 체크, 지금 쓰는 단계는 진행 점이다(#389).
+function StepMark({ state }: { state: 'done' | 'active' }) {
+  if (state === 'done')
+    return (
+      <svg
+        aria-hidden
+        viewBox="0 0 14 14"
+        className="size-[14px] shrink-0 animate-check-in text-done motion-reduce:animate-none"
+        fill="none"
+      >
+        <path
+          d="M3.4 7.3 5.8 9.6l4.8-5.2"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    )
+  return (
+    <span aria-hidden className="grid size-[14px] shrink-0 place-items-center">
+      <span className="size-[6px] animate-progress-dim rounded-full bg-blue-600 motion-reduce:animate-none" />
+    </span>
+  )
+}
+
 export function GenerationScreen({
   flow,
   ending = null,
@@ -128,6 +158,8 @@ export function GenerationScreen({
 }) {
   const title = useRef<HTMLHeadingElement>(null)
   const progressId = useId()
+  const stepListId = useId()
+  const [stepsOpen, setStepsOpen] = useState(false)
   useEffect(() => {
     title.current?.focus()
   }, [])
@@ -174,6 +206,9 @@ export function GenerationScreen({
   const waiting = !ending && WAITING.includes(flow.phase)
   const rows = generationRows(phase, ending?.kind === 'failed' ? ending.stoppedAt : undefined)
   const note = draftingNote(flow, ending !== null)
+  const stepRows = draftStepRows(flow, ending?.kind === 'failed')
+  // 작성 중에는 지금 문구를, 초안 작성을 마친 뒤에는 고른 단계 수를 버튼 글로 쓴다.
+  const stepToggle = note ?? `준비 단계 ${stepRows?.length ?? 0}개`
   const facts = toFacts(flow.draft)
   const budgetMeta = flow.draft.conditionMeta.budgetTotal ?? flow.draft.conditionMeta.budget_total
   const budgetLater = flow.draft.deferredTopics.includes('budget_total')
@@ -220,7 +255,7 @@ export function GenerationScreen({
                 <li
                   key={label}
                   aria-current={state === 'active' ? 'step' : undefined}
-                  className="relative flex items-center gap-3 py-[7px]"
+                  className="relative py-[7px]"
                 >
                   {/* 줄 사이 선. 지나온 구간만 초록으로 잇는다. */}
                   {!last && (
@@ -232,33 +267,93 @@ export function GenerationScreen({
                       )}
                     />
                   )}
-                  <RowMark key={state} state={state} />
-                  <span
-                    className={cn(
-                      'text-body',
-                      state === 'active' &&
-                        'animate-progress-dim font-semibold text-ink motion-reduce:animate-none',
-                      state === 'done' && 'text-ink',
-                      state === 'failed' && 'font-semibold text-failed',
-                      (state === 'pending' || state === 'unknown') && 'text-mute',
-                    )}
-                  >
-                    {label}
-                  </span>
-                  <span className="sr-only">{STATE_TEXT[state]}</span>
-                  {/* 문구가 바뀔 때만 살짝 올라온다. 바뀔 때마다 소리 내 알리지는 않고, 목록을 읽을 때 함께 읽힌다. */}
-                  {index === 1 && note && (
+                  <div className="flex items-center gap-3">
+                    <RowMark key={state} state={state} />
                     <span
-                      key={note}
-                      className="min-w-0 animate-turn-in break-keep text-caption text-ink2 motion-reduce:animate-none"
+                      className={cn(
+                        'text-body',
+                        state === 'active' &&
+                          'animate-progress-dim font-semibold text-ink motion-reduce:animate-none',
+                        state === 'done' && 'text-ink',
+                        state === 'failed' && 'font-semibold text-failed',
+                        (state === 'pending' || state === 'unknown') && 'text-mute',
+                      )}
                     >
-                      {note}
+                      {label}
                     </span>
-                  )}
-                  {index === 1 && seconds > 0 && (
-                    <span className="text-caption text-mute tabular-nums" aria-hidden>
-                      {seconds}초
-                    </span>
+                    <span className="sr-only">{STATE_TEXT[state]}</span>
+                    {/* 문구가 바뀔 때만 살짝 올라온다. 바뀔 때마다 소리 내 알리지는 않고, 목록을 읽을 때 함께 읽힌다. */}
+                    {index === 1 && stepRows && (
+                      // 단계가 하나라도 오면 문구가 펼침 버튼이 된다(#389). 기본은 접힘이다.
+                      <button
+                        key={stepToggle}
+                        type="button"
+                        aria-expanded={stepsOpen}
+                        aria-controls={stepListId}
+                        onClick={() => setStepsOpen((open) => !open)}
+                        className="inline-flex min-w-0 animate-turn-in items-center gap-1 rounded-md break-keep text-caption text-ink2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 motion-reduce:animate-none"
+                      >
+                        {stepToggle}
+                        <svg
+                          aria-hidden
+                          viewBox="0 0 12 12"
+                          className={cn(
+                            'size-3 shrink-0 transition-transform duration-200 motion-reduce:transition-none',
+                            stepsOpen && 'rotate-180',
+                          )}
+                          fill="none"
+                        >
+                          <path
+                            d="m3 4.5 3 3 3-3"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                    {index === 1 && !stepRows && note && (
+                      <span
+                        key={note}
+                        className="min-w-0 animate-turn-in break-keep text-caption text-ink2 motion-reduce:animate-none"
+                      >
+                        {note}
+                      </span>
+                    )}
+                    {index === 1 && seconds > 0 && (
+                      <span className="text-caption text-mute tabular-nums" aria-hidden>
+                        {seconds}초
+                      </span>
+                    )}
+                  </div>
+                  {/* 모델이 고른 단계. 이름은 카탈로그 고정 이름이고, 새 단계가 오면 아래에 한 줄씩 붙는다. */}
+                  {index === 1 && stepRows && stepsOpen && (
+                    <ul
+                      id={stepListId}
+                      aria-label="작성 중인 준비 단계"
+                      className="mt-1.5 ml-[30px] flex flex-col"
+                    >
+                      {stepRows.map(({ step, state: stepState }) => (
+                        <li
+                          key={step.index}
+                          className="flex animate-turn-in items-center gap-2 py-[3px] motion-reduce:animate-none"
+                        >
+                          <StepMark key={stepState} state={stepState} />
+                          <span
+                            className={cn(
+                              'break-keep text-caption',
+                              stepState === 'active' ? 'font-semibold text-ink' : 'text-ink2',
+                            )}
+                          >
+                            {step.name}
+                          </span>
+                          <span className="sr-only">
+                            {stepState === 'active' ? '작성 중' : '작성함'}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </li>
               )
