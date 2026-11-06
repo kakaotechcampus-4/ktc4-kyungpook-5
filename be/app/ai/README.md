@@ -19,6 +19,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 - [AI 오류 타입](docs/errors.md): 오류 분류와 모델 호출 오류 변환 기준
 - [기록 색인·검색 평가 기록](docs/retrieval-evaluation.md): 청킹·임베딩 측정값과 관찰
 - [회의 어시스턴트 측정 기록](docs/meeting-evaluation.md): 판단 모델·Whisper·지연 측정값과 관찰
+- [운영 기능 측정 기록](docs/operations-evaluation.md): 운영 Action 본문 초안의 코드 검사 통과·수동 확인·시간
 - [계획 단계 카탈로그](docs/planning/legacy/step-catalog.md): 계획안의 단계·행동 기준 목록
 - [작업 규칙](AGENTS.md): 요구사항 → Issue → 구현 → PR 협업 절차
 - [이전 기록](docs/migration.md): 모듈 이전 내역과 BE 팀 후속 작업
@@ -33,7 +34,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 | 상태 이어가기 | `state_codec.py`가 대화와 Tool 이력, 권유, 마지막 초안을 JSON으로 변환하고 복원 |
 | 제품 연결 | BE의 권한 검사·실제 검색 port·DB 저장·중복/버전 검사·검색 상세 HTTP/복원과 누적 조회 카드·인증 원본 다운로드 연결. 로컬 격리 환경 검증 범위는 [인계 안내 §10](docs/planning/p1-handoff.md#10-지금-어디까지-확인했나요) 참고 |
 | P2 수정 후 AI 검토 | `app.ai.review_plan_edit`가 수정 내역을 검토해 걱정되는 점을 돌려줌([#177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177)). BE·FE 연결 완료, 자동 보완안 적용은 미구현 |
-| 운영 Action 본문 초안 | `app.ai.draft_action_content`의 입력·출력 형식만 공개([#333](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/333)). 본문 작성은 구현 전이며 BE 신호·저장(#334)과 FE 표시(#335)는 진행 예정 |
+| 운영 Action 본문 초안 | `app.ai.draft_action_content`가 공지·발송 Action 하나의 본문을 쓰고, 날짜·요일·금액·시각을 입력과 대조해 걸리면 한 번 다시 쓰게 함([#333](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/333), [평가](docs/operations-evaluation.md)). BE 신호·저장(#334)과 FE 표시(#335)는 진행 중 |
 | 운영 Agent | 전체 신호 대기와 운영 흐름은 설계 단계 |
 
 P1은 행사 조건 대화와 최초 생성 요청까지입니다. 단계 제외와 복원, 순서 변경은 P2 범위입니다. 테스트 UI는 `tests/ui/planning/`의 독립 앱이고 제품 `fe/`를 수정하거나 참조하지 않습니다. 이전 고정 추출과 질문 조립 코드는 `features/planning/legacy/`에 보존하며 현재 공개 P1에서 호출하지 않습니다.
@@ -52,7 +53,7 @@ be/app/ai/
 ├── features/
 │   ├── planning/        # agent, generation, 공개 실행/상태 변환, legacy (review/: P2 수정 후 검토)
 │   ├── retrieval/       # 기록 색인·검색·근거 구성 (chunking: 청킹, indexing: 색인, nodes: 기록 검색 search_records, memory_port: 개발용 검색 구현)
-│   ├── operations/      # 변경 영향 설명·대응안
+│   ├── operations/      # 운영 상황 확인·제안(nodes), 공지·발송 Action 본문 초안과 코드 검사(action_draft)
 │   └── meeting/         # 회의 발화 판단과 답 (context: 판단 입력, nodes: 판단·결과 구성, lookup: 기록 검색 연결과 카드 문구, questions: 판단 전용 모델의 질문)
 ├── workflow/            # 행사 Agent 실행 흐름·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
@@ -64,6 +65,7 @@ be/app/ai/
 │   ├── errors.md        # AI 오류 타입과 변환 기준
 │   ├── retrieval-evaluation.md # 기록 색인·검색 측정 기록
 │   ├── meeting-evaluation.md # 회의 판단·음성 인식·지연 측정 기록
+│   ├── operations-evaluation.md # 운영 Action 본문 초안 측정 기록 (원본: operations-evaluation-results/)
 │   ├── requirements.md  # 사용자 경험 중심 AI 기능 요구사항 초안
 │   ├── planning/        # 새 설계·단계별 명세·코드 안내, legacy/에 이전 자료 보관
 │   ├── migration.md     # 파일 대응표·BE 팀 후속 작업

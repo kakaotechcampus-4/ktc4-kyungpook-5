@@ -99,7 +99,13 @@ def test_빈_본문과_너무_긴_본문은_거절한다(content):
         ai.ActionDraftResult(content=content)
 
 
-def test_구현_전에는_호출하면_NotImplementedError를_낸다():
-    # BE는 이 오류도 실패(FAILED)로 저장한다(#334 오류 처리).
-    with pytest.raises(NotImplementedError):
-        asyncio.run(ai.draft_action_content(spring_mt()))
+def test_공개_함수는_본문_작성_구현을_부른다(monkeypatch):
+    # BE는 app.ai.draft_action_content만 부른다. 실제 모델 대신 고정 본문을 돌려준다.
+    from app.ai.features.operations import action_draft
+
+    async def invoke(messages, schema):
+        return schema(content='📢 봄 MT 참가자 모집\n신청 방법: [신청 링크]')
+    monkeypatch.setattr(action_draft, 'ainvoke_structured', invoke)
+
+    result = asyncio.run(ai.draft_action_content(spring_mt()))
+    assert isinstance(result, ai.ActionDraftResult) and result.unknowns == ('신청 링크',)
