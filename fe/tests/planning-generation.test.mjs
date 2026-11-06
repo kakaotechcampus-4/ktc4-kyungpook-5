@@ -65,6 +65,26 @@ const result = {
 }
 const fresh = { baseRevision: 5, planRevision: 8, steps: [{ id: 'new' }] }
 
+// 생성 화면의 진행 줄은 실제로 지난 구간만 체크한다. 요청 상태 하나가 줄 네 개의 상태를 정한다.
+test('generation rows only check the stages that actually passed', () => {
+  const rows = (phase, stoppedAt) => m.generationRows(phase, stoppedAt).join(' ')
+  assert.deepEqual(m.GENERATION_ROWS, ['조건 확인', '초안 작성', '저장 확인', '계획 불러오기'])
+  assert.equal(rows('requesting'), 'active pending pending pending')
+  assert.equal(rows('generating'), 'done active pending pending')
+  assert.equal(rows('verifying'), 'done done active pending')
+  assert.equal(rows('loading'), 'done done done active')
+  assert.equal(rows('done'), 'done done done done')
+  // 저장은 됐지만 불러오지 못했다 → 마지막 줄만 멈춤
+  assert.equal(rows('load-failed'), 'done done done failed')
+  assert.equal(rows('changed'), 'done done done failed')
+  // 연결이 끊겨 앞 구간의 결과를 모른다 → 앞의 두 줄은 체크하지 않고 저장 확인 중으로 본다
+  assert.equal(rows('unknown'), 'unknown unknown active pending')
+  // 멈춘 자리에서 실패를 보인다. 생성 실패는 「초안 작성」, 조건 부족은 「조건 확인」
+  assert.equal(rows('failed', 'generating'), 'done failed pending pending')
+  assert.equal(rows('failed', 'requesting'), 'failed pending pending pending')
+  assert.equal(rows('failed', 'loading'), 'done done done failed')
+})
+
 test('generated receipt and new coherent saved snapshot are both required', () => {
   assert.equal(m.generatedSnapshotStatus(request, result, fresh), 'new')
   for (const steps of [
