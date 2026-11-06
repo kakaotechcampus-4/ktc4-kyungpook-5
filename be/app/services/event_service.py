@@ -102,7 +102,13 @@ async def complete_cancel_task(session: AsyncSession, *, event_id: str, task_id:
     if task is None:
         raise CancelTaskNotFound()
     event = await session.scalar(select(Event).where(Event.id == task.event_id).with_for_update())
-    if event is None or event.id != event_id or event.status != EventStatus.CANCELLING:
+    if event is None or event.id != event_id:
+        raise EventCancelNotAllowed()
+    # 낡은 화면에서 다시 누른 경우다. 서버는 이미 원하는 상태라 오류 없이 그대로 돌려준다.
+    # 마지막 항목이면 행사가 이미 CANCELLED 로 바뀌었으므로 상태 검사보다 먼저 본다.
+    if task.completed_at is not None:
+        return task
+    if event.status != EventStatus.CANCELLING:
         raise EventCancelNotAllowed()
     first_open = await session.scalar(
         select(EventCancelTask.task_order)
@@ -112,9 +118,8 @@ async def complete_cancel_task(session: AsyncSession, *, event_id: str, task_id:
     )
     if first_open is None or task.task_order != first_open:
         raise CancelTaskOutOfOrder()
-    if task.completed_at is None:
-        task.completed_at = datetime.now(UTC)
-        task.completed_by = member.id
+    task.completed_at = datetime.now(UTC)
+    task.completed_by = member.id
     remaining = await session.scalar(select(func.count()).select_from(EventCancelTask).where(EventCancelTask.event_id == event.id, EventCancelTask.completed_at.is_(None)))
     if not remaining:
         event.status = EventStatus.CANCELLED

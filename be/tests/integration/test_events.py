@@ -84,6 +84,33 @@ async def test_event_cancel_tasks_must_be_completed_in_order(client, app_db):
     assert out_of_order.status_code == 409
     assert out_of_order.json()['error']['code'] == 'CANCEL_TASK_OUT_OF_ORDER'
 
+async def test_completed_cancel_task_completes_again_without_change(client, app_db):
+    headers, club_id = owner_with_club(client, 'cancel-again')
+    event_id = await add_event(club_id, title='다시 누른 행사', status=EventStatus.ON_GOING)
+    assert client.post(f'{EVENTS_URL}/{event_id}/cancel', headers=headers).status_code == 200
+    tasks = client.get(f'{EVENTS_URL}/{event_id}/cancel/tasks', headers=headers).json()['data']
+    url = f'{EVENTS_URL}/{event_id}/cancel/tasks/{tasks[0]["id"]}/complete'
+    first = client.post(url, headers=headers)
+    assert first.status_code == 200, first.text
+    again = client.post(url, headers=headers)
+    assert again.status_code == 200, again.text
+    assert again.json()['data']['state'] == 'DONE'
+    assert again.json()['data']['completedAt'] == first.json()['data']['completedAt']
+    states = [t['state'] for t in client.get(f'{EVENTS_URL}/{event_id}/cancel/tasks', headers=headers).json()['data']]
+    assert states == ['DONE', 'CURRENT', 'TODO', 'TODO']
+
+async def test_last_cancel_task_completes_again_after_event_cancelled(client, app_db):
+    headers, club_id = owner_with_club(client, 'cancel-last-again')
+    event_id = await add_event(club_id, title='마지막 다시 행사', status=EventStatus.ON_GOING)
+    assert client.post(f'{EVENTS_URL}/{event_id}/cancel', headers=headers).status_code == 200
+    tasks = client.get(f'{EVENTS_URL}/{event_id}/cancel/tasks', headers=headers).json()['data']
+    for task in tasks:
+        assert client.post(f'{EVENTS_URL}/{event_id}/cancel/tasks/{task["id"]}/complete', headers=headers).status_code == 200
+    again = client.post(f'{EVENTS_URL}/{event_id}/cancel/tasks/{tasks[-1]["id"]}/complete', headers=headers)
+    assert again.status_code == 200, again.text
+    assert again.json()['data']['state'] == 'DONE'
+    assert client.get(f'{EVENTS_URL}/{event_id}', headers=headers).json()['data']['status'] == 'CANCELLED'
+
 
 @pytest.fixture
 async def app_db(

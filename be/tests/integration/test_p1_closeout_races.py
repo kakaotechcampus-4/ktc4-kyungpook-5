@@ -31,14 +31,15 @@ async def test_cancel_repeated_completion_never_advances_or_duplicates(client: T
     assert len(tasks) == 4
     first = f'{base}/cancel/tasks/{tasks[0]["id"]}/complete'
     assert client.post(first, headers=headers).status_code == 200
-    assert client.post(first, headers=headers).status_code == 409
+    assert client.post(first, headers=headers).status_code == 200  # 이미 끝난 항목은 그대로 돌려준다 (#378)
     current = client.get(f'{base}/cancel/tasks', headers=headers).json()['data']
     assert len(current) == 4 and current[1]['state'] == 'CURRENT'
     for task in tasks[1:]:
         assert client.post(f'{base}/cancel/tasks/{task["id"]}/complete', headers=headers).status_code == 200
     assert client.get(base, headers=headers).json()['data']['status'] == 'CANCELLED'
-    assert client.post(f'{base}/cancel/tasks/{tasks[-1]["id"]}/complete', headers=headers).status_code == 409
+    assert client.post(f'{base}/cancel/tasks/{tasks[-1]["id"]}/complete', headers=headers).status_code == 200
     assert len(client.get(f'{base}/cancel/tasks', headers=headers).json()['data']) == 4
+    assert client.get(base, headers=headers).json()['data']['status'] == 'CANCELLED'
 
 
 @pytest.mark.parametrize('kind', ['step', 'action'])
