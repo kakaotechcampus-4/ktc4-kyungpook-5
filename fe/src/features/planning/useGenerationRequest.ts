@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { planningApi } from './api'
 import {
+  checksInChat,
   generatedSnapshotStatus,
   parseRequest,
   readRequestText,
@@ -299,6 +300,9 @@ export function useGenerationRequest(
   }
   const shown = flow ?? restoredFlow
   const unresolved = shown?.phase === 'unknown' ? (active.current ?? own) : null
+  // 초안 생성이 시작되지 않은 채팅은 초안 생성 화면을 띄우지 않고 대화 화면에서 확인한다(#368).
+  // 조회와 잠금(blocked)은 그대로 두고, 화면에 넘기는 flow만 비운다.
+  const checking = checksInChat(unresolved, shown?.phase)
   const unresolvedKey = unresolved?.key
   const settleRef = useRef({ settle, release })
   settleRef.current = { settle, release }
@@ -343,7 +347,9 @@ export function useGenerationRequest(
     fail,
     load: () => load(),
     viewCurrent,
-    flow: flow ?? restoredFlow,
+    flow: checking ? null : shown,
+    // 대화 화면에서 결과를 확인하는 중인 채팅이 있는가(#368).
+    checking,
     blocked: !!journal.raw,
     journal,
   }

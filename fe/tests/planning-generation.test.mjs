@@ -153,6 +153,17 @@ test('request lookup applies a saved response, waits while processing, releases 
   assert.equal(m.recoveryStep({ status: 'completed', result: null }), 'release')
   assert.equal(m.recoveryStep({ status: 'completed', result: { ...result, draft: {} } }), 'release')
 })
+test('a cut chat stays in the conversation unless draft generation had started (#368)', () => {
+  // 채팅 "인원 40명으로 바꿔 줘" → 끊김: 초안 생성 화면을 띄우지 않는다.
+  assert.equal(m.checksInChat({ kind: 'chat', started: false }, 'unknown'), true)
+  // 채팅 "이대로 초안 만들어 줘" → generation_started → 끊김: 초안 생성 화면에서 확인한다.
+  assert.equal(m.checksInChat({ kind: 'chat', started: true }, 'unknown'), false)
+  // 버튼 생성은 늘 초안 생성 화면에서 확인한다.
+  assert.equal(m.checksInChat({ kind: 'button', started: false }, 'unknown'), false)
+  // 결과를 받은 뒤의 단계(불러오기 등)는 채팅이어도 초안 생성 화면이다.
+  assert.equal(m.checksInChat({ kind: 'chat', started: false }, 'loading'), false)
+  assert.equal(m.checksInChat(null, 'unknown'), false)
+})
 test('stream cuts never repeat the original POST, including generation_finished', async () => {
   let calls = 0,
     reconnects = 0,
