@@ -96,9 +96,12 @@ export function Modal({
       </div>
 
       {footer && (
-        <footer className="flex items-center justify-between gap-[12px] border-t border-line pt-[16px] pr-[24px] pb-[20px] pl-[28px]">
-          <p className="text-caption text-mute">{footerNote}</p>
-          <div className="flex gap-[8px]">{footer}</div>
+        // 넓은 화면에서는 문구 왼쪽·버튼 오른쪽 한 줄이다. 좁은 화면(320·390px)에서 둘이 한 줄에
+        // 들어가지 않으면 버튼을 다음 줄로 내리고, 버튼끼리도 넘치면 줄을 바꾼다.
+        // 그렇지 않으면 문구가 한 글자 폭으로 눌리고 마지막 버튼이 화면 밖으로 밀린다(#335).
+        <footer className="flex flex-wrap items-center justify-between gap-x-[12px] gap-y-[10px] border-t border-line pt-[16px] pr-[24px] pb-[20px] pl-[28px]">
+          {footerNote && <p className="min-w-0 grow basis-[200px] text-caption text-mute">{footerNote}</p>}
+          <div className="ml-auto flex flex-wrap justify-end gap-[8px]">{footer}</div>
         </footer>
       )}
     </dialog>

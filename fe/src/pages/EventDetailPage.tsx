@@ -25,8 +25,11 @@ import {
   useBeginCancellation,
   useDenyAction,
   useMarkActionDone,
+  useRequestActionDraft,
   useResolveAction,
+  useUpdateActionContent,
 } from '@/features/events/hooks'
+import { outcomeOf, redraftNotice, type ActionOutcome } from '@/features/events/actionDraft'
 import type { EventAction, EventStep } from '@/features/events/types'
 import { toast } from '@/shared/lib/toast'
 import { ApiError } from '@/shared/api/types'
@@ -52,6 +55,8 @@ export default function EventDetailPage() {
   const approveMutation = useApproveAction()
   const denyMutation = useDenyAction()
   const doneMutation = useMarkActionDone()
+  const draftMutation = useRequestActionDraft()
+  const contentMutation = useUpdateActionContent()
   const detailQuery = useEventDetail(eventId)
   const event = detailQuery.data
   // 행사가 없으면(초기 화면) 나머지는 부르지 않는다
@@ -107,15 +112,52 @@ export default function EventDetailPage() {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [reviewing, setReviewing] = useState<EventAction>()
   const answering = reviewing?.type === 'CONFIRMATION' ? reviewing : undefined
-  const deciding = reviewing && reviewing.type !== 'CONFIRMATION' ? reviewing : undefined
+  // 검토 모달은 목록의 최신 Action을 본다. 그래야 쓰는 중이던 초안이 도착하면 모달에도 보이고,
+  // 승인된 공지를 고쳐 승인 대기로 돌아가면 승인 버튼이 다시 나온다. 입력 중인 글은 모달이 지킨다.
+  const deciding =
+    reviewing && reviewing.type !== 'CONFIRMATION'
+      ? (stepActions?.find((a) => a.id === reviewing.id) ?? reviewing)
+      : undefined
 
   // 결정 검토 모달만 닫고 Step 모달은 남긴다. 한 단계에 검토할 일이 여럿이라
   // 같이 닫으면 한 건 처리할 때마다 단계를 다시 열어야 한다. 처리하면 쿼리가
   // 무효화돼 열린 Step 모달의 목록이 그 자리에서 갱신된다.
-  const approveAction = async (action: EventAction) => {
-    const success = await run(() => approveMutation.mutateAsync(action), '승인했어요', action.title)
-    if (success) setReviewing(undefined)
-    return success
+  // 승인하려는 사이 초안이 도착하면(409 VERSION_CONFLICT) 목록을 다시 불러오고 모달에서 확인하게 한다
+  const approveAction = async (action: EventAction): Promise<ActionOutcome> => {
+    try {
+      if (!demo) await approveMutation.mutateAsync(action)
+      toast.show({ kind: 'done', title: '승인했어요', desc: action.title })
+      setReviewing(undefined)
+      return 'ok'
+    } catch (error) {
+      const outcome = outcomeOf(error)
+      if (outcome === 'failed') toast.show({ kind: 'error', title: '처리하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+      return outcome
+    }
+  }
+
+  // 본문 저장(#335). 성공·충돌 모두 목록을 다시 불러온 뒤 돌아온다(useUpdateActionContent).
+  const saveContent = async (action: EventAction, content: string, expectedVersion: number | undefined): Promise<ActionOutcome> => {
+    try {
+      await contentMutation.mutateAsync({ action, content, expectedVersion })
+      toast.show({ kind: 'done', title: '고친 내용을 저장했어요', desc: action.title })
+      return 'ok'
+    } catch (error) {
+      const outcome = outcomeOf(error)
+      if (outcome === 'failed') toast.show({ kind: 'error', title: '저장하지 못했어요', desc: error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.' })
+      return outcome
+    }
+  }
+
+  // 토리 초안 다시 받기. 409면 다시 불러온 최신 상태를 보고 다시 누르게 한다.
+  const requestDraft = async (action: EventAction) => {
+    try {
+      await draftMutation.mutateAsync(action)
+      toast.show({ kind: 'done', title: '토리에게 초안을 다시 부탁했어요', desc: action.title })
+    } catch (error) {
+      const notice = redraftNotice(error)
+      toast.show({ kind: 'error', title: notice?.title ?? '처리하지 못했어요', desc: notice?.desc ?? (error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.') })
+    }
   }
 
   const denyAction = async (action: EventAction, reason: string) => {
@@ -252,6 +294,8 @@ export default function EventDetailPage() {
               onClose={() => setOpenStepId(null)}
               onCompleteAction={finishAction}
               onReviewAction={setReviewing}
+              onRequestDraft={(action) => void requestDraft(action)}
+              requestingDraftId={draftMutation.isPending ? draftMutation.variables?.id : undefined}
               onCompleteStep={completeStep}
               readOnly={!demo && event.status !== 'ON_GOING'}
             />
@@ -261,7 +305,9 @@ export default function EventDetailPage() {
             onClose={() => setReviewing(undefined)}
             onApprove={approveAction}
             onDeny={denyAction}
+            onSaveContent={saveContent}
             pending={approveMutation.isPending || denyMutation.isPending}
+            saving={contentMutation.isPending}
           />
           <CancelConfirmModal
             open={cancelOpen}
