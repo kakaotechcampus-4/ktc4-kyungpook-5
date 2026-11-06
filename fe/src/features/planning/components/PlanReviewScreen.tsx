@@ -11,7 +11,6 @@ import { StepDetailModal } from './StepDetailModal'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
-import { Modal } from '@/shared/ui/Modal'
 import { ToriNote } from '@/shared/ui/ToriNote'
 import { formatDateRange, formatMonthDay } from '@/shared/lib/format'
 import { ApiError } from '@/shared/api/types'
@@ -24,13 +23,11 @@ export function PlanReviewScreen({
   eventId,
   screen,
   steps,
-  messages,
   onReload,
 }: {
   eventId: string
   screen: S['PlanScreenOut']
   steps: S['PlannedStepOut'][]
-  messages: S['PlanMessageOut'][]
   onReload: () => Promise<unknown>
 }) {
   const navigate = useNavigate()
@@ -49,7 +46,6 @@ export function PlanReviewScreen({
     navigate(location.pathname + location.search, { replace: true, state: null })
   }, [location.pathname, location.search, location.state, navigate])
   const queryClient = useQueryClient()
-  const [conversationOpen, setConversationOpen] = useState(false)
   // 편집 중 재조회가 원본 버전을 바꾸지 않도록 선택한 스냅샷을 유지한다.
   const [editing, setEditing] = useState<S['PlannedStepOut'] | null>(null)
   const returnFocus = useRef<HTMLButtonElement | null>(null)
@@ -94,7 +90,7 @@ export function PlanReviewScreen({
   }
   return (
     <>
-      <PlanStageNav current="review" />
+      <PlanStageNav current="review" eventId={eventId} canReview />
       {completion && (
         <p role="status" className="sr-only">
           {completion}
@@ -133,21 +129,10 @@ export function PlanReviewScreen({
             </span>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            onClick={() =>
-              navigate(`/planning?${new URLSearchParams({ eventId, stage: 'conditions' })}`)
-            }
-          >
-            행사 조건 수정
-          </Button>
-          <Button variant="secondary" onClick={() => setConversationOpen(true)}>
-            이전 대화 보기
-          </Button>
-          {/* 「행사 상세」로 가는 길은 없앴다. 계획 중인 행사의 상세는 계획 요약만 보여 주어
-              이 화면보다 아는 것이 적다. 상태가 바뀌어 정말 필요할 때만 아래 안내에서 띄운다. */}
-        </div>
+        {/* 「행사 조건 수정」·「이전 대화 보기」·「행사 상세」를 모두 걷어냈다.
+            앞의 둘은 위의 단계 토글이 대신한다 — 조건과 대화는 행사 조건 쪽에 있다.
+            행사 상세는 계획 중일 때 계획 요약만 보여 주어 이 화면보다 아는 것이 적다.
+            상태가 바뀌어 정말 필요할 때만 아래 안내에서 띄운다. */}
       </div>
       <div className="grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_272px]">
         <Card className="min-w-0 p-4 sm:p-6">
@@ -353,34 +338,6 @@ export function PlanReviewScreen({
           </Card>
         </aside>
       </div>
-      <Modal
-        open={conversationOpen}
-        onClose={() => setConversationOpen(false)}
-        title="이전 대화"
-        subtitle="읽기 전용이에요. 새 대화는 행사 조건 수정에서 이어갈 수 있어요."
-        footer={
-          <Button variant="secondary" onClick={() => setConversationOpen(false)}>
-            닫기
-          </Button>
-        }
-      >
-        <ol className="planning-conversation flex flex-col gap-4">
-          {messages.map((message) => (
-            <li
-              key={message.id}
-              className={`max-w-[92%] rounded-xl px-4 py-3 ${message.role === 'USER' ? 'self-end bg-blue-50 text-blue-900' : 'self-start bg-bg'}`}
-            >
-              <p className="mb-1 text-label font-semibold">
-                {message.role === 'USER' ? '나' : '토리'}
-              </p>
-              <p className="whitespace-pre-wrap text-body [overflow-wrap:anywhere]">
-                {message.content}
-              </p>
-            </li>
-          ))}
-        </ol>
-        {!messages.length && <p className="text-mute">저장된 이전 대화가 없어요.</p>}
-      </Modal>
       <StepDetailModal
         step={editing}
         onClose={closeDetail}

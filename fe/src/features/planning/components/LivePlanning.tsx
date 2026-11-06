@@ -318,7 +318,8 @@ function Conversation({
   if (live.generationFlow)
     return (
       <>
-        <PlanStageNav current="conditions" />
+        {/* 생성 중에는 계획 검토로 가는 길을 닫는다. 지난 초안이 새 결과로 바뀌는 중이다. */}
+        <PlanStageNav current="conditions" eventId={eventId} />
         <GenerationScreen
           flow={live.generationFlow}
           onReload={live.reloadGenerated}
@@ -332,7 +333,7 @@ function Conversation({
   if (eventId && live.checking && (!live.snapshot.data || event.data === undefined))
     return (
       <>
-        <PlanStageNav current="conditions" />
+        <PlanStageNav current="conditions" eventId={eventId} />
         <Card className="p-5" role="status">
           {CHECKING_NOTICE}
         </Card>
@@ -390,7 +391,6 @@ function Conversation({
         eventId={eventId}
         screen={screen}
         steps={steps}
-        messages={live.snapshot.data?.messages ?? []}
         onReload={() => live.snapshot.refetch()}
       />
     )
@@ -401,7 +401,7 @@ function Conversation({
   const flow = chat.generationFlow
   return (
     <>
-      <PlanStageNav current="conditions" />
+      <PlanStageNav current="conditions" eventId={eventId} canReview={steps.length > 0 && !flow} />
       {away && flow && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-blue-50 px-4 py-3">
           <p ref={awayNote} tabIndex={-1} className="break-keep text-ink focus:outline-none">
@@ -521,16 +521,6 @@ function Conversation({
                   : '이 조건으로 초안 만들기'}
             </Button>
             {/* 생성 중에는 지난 초안으로 가는 길을 닫고, 완료 안내가 있으면 그 링크 하나만 둔다. */}
-            {/* 초안이 이미 있으면 자주 쓰는 길이다. 밑줄 글자는 각주처럼 보여 버튼 모양으로 둔다.
-                바로 위 「이 조건으로 다시 만들기」와 경쟁하지 않게 secondary 다(#316). */}
-            {eventId && steps.length > 0 && !flow && !live.checking && !ready && (
-              <Link
-                className="self-center rounded-[8px] border border-soft bg-card px-[16px] py-[10px] text-center text-[14px] font-medium text-ink2 transition-colors duration-150 hover:bg-bg motion-reduce:transition-none"
-                to={`/planning?${new URLSearchParams({ eventId, stage: 'review' })}`}
-              >
-                기존 초안 검토하기
-              </Link>
-            )}
           </PlanFacts>
           <PlanningRecordReferences entries={live.recordHistory} />
         </div>
