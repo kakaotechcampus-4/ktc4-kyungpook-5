@@ -41,6 +41,12 @@ class DiarizationProvider(Protocol):
     async def result(self, job_id: str, *, duration_ms: int) -> list[dict] | None: ...
 
 
+def _provider_error_code(error: Exception) -> str:
+    """Keep provider failures safe for the public error contract."""
+    code = getattr(error, 'code', None)
+    return code if isinstance(code, str) and code.startswith('DIARIZATION_') else 'DIARIZATION_PROVIDER_ERROR'
+
+
 async def start(session: AsyncSession, *, meeting: Meeting, member_id: str) -> MeetingReview:
     locked = await session.scalar(select(Meeting).where(Meeting.id == meeting.id).with_for_update())
     if locked.status != MeetingStatus.COMPLETED:
@@ -128,24 +134,32 @@ async def set_names(
         value.get('memberId') for value in members.values()
         if isinstance(value, dict) and value.get('memberId')
     }
+    meeting = await session.get(Meeting, review.meeting_id)
     rows = list(await session.scalars(select(Member).where(
-        Member.id.in_(member_ids), Member.club_id == (await session.get(Meeting, review.meeting_id)).club_id,
+        Member.id.in_(member_ids), Member.club_id == meeting.club_id,
         Member.status == MemberStatus.ACTIVE,
     ))) if member_ids else []
     by_id = {row.id: row for row in rows}
     if len(by_id) != len(member_ids):
         raise ReviewConflict('같은 동아리의 활성 구성원만 화자로 지정할 수 있어요.')
-    if any(not isinstance(name, str) or not name.strip() for name in names.values()):
-        raise ReviewConflict('화자 이름을 비워 둘 수 없습니다.')
     mapping: dict[str, dict[str, object]] = {}
     normalized_names: dict[str, str] = {}
     for label in labels:
         spec = members.get(label, {})
         member_id = spec.get('memberId') if isinstance(spec, dict) else None
-        name = by_id[member_id].name if member_id else names.get(label)
-        if name is None:
+        raw_name = names.get(label)
+        name = by_id[member_id].name if member_id else raw_name
+        if isinstance(name, str):
+            name = name.strip()
+        if not name:
+            # 미확인은 유효한 검토 상태다. 다만 후보 저장 단계의 별도
+            # 가드가 모든 화자의 명시 확인을 요구하므로, 여기서는
+            # 이름 없는 매핑을 복원 가능하게만 저장한다.
+            if member_id or (isinstance(spec, dict) and spec.get('confirmed') is True):
+                raise ReviewConflict('확인한 화자의 이름을 입력해 주세요.')
+            mapping[label] = {'memberId': None, 'name': None, 'confirmed': False}
             continue
-        if not isinstance(name, str) or not name.strip():
+        if not isinstance(name, str):
             raise ReviewConflict('화자 이름을 비워 둘 수 없습니다.')
         normalized_names[label] = name.strip()
         mapping[label] = {
@@ -189,6 +203,22 @@ async def save_candidates(
         raise VersionConflict()
     if review.status not in ('NEEDS_REVIEW', 'DRAFT_READY'):
         raise ReviewConflict('화자분리와 회의록 검토가 끝난 뒤 후보를 저장할 수 있어요.')
+
+    # Candidate writes are the first durable side effect after speaker review.
+    # Do not let a direct API caller bypass the FE confirmation guard.
+    speaker_labels = {
+        turn.get('speaker_label')
+        for turn in (review.turns or [])
+        if isinstance(turn, dict) and isinstance(turn.get('speaker_label'), str)
+    }
+    mappings = review.speaker_mappings or {}
+    if not speaker_labels or any(
+        not isinstance(mappings.get(label), dict)
+        or mappings[label].get('confirmed') is not True
+        for label in speaker_labels
+    ):
+        raise ReviewConflict('모든 화자를 확인한 뒤 후보를 저장할 수 있어요.')
+
     meeting = await session.get(Meeting, review.meeting_id)
     if meeting is None:
         raise ReviewConflict('회의를 찾을 수 없습니다.')
@@ -255,11 +285,34 @@ async def fail_diarization(session: AsyncSession, review_id: str, *, error_code:
     review = await session.scalar(select(MeetingReview).where(MeetingReview.id == review_id).with_for_update())
     if review is None:
         raise ReviewConflict()
-    if review.status in ('PROCESSING', 'SUBMITTING'):
+    # QUEUED can fail before a provider job exists (for example, a missing
+    # provider key). Keep the original provider_job_id, if any, so a retry
+    # never silently submits paid work a second time.
+    if review.status in ('QUEUED', 'PROCESSING', 'SUBMITTING'):
         review.status = 'FAILED'
         review.error_code = error_code
         review.version += 1
         await session.commit()
+    return review
+
+
+async def retry_diarization(session: AsyncSession, review_id: str) -> MeetingReview:
+    """Move an explicitly retried FAILED review to its safe next state.
+
+    A known provider job is resumed for polling; only a failed submission with
+    no provider job can be submitted again. SUBMISSION_UNKNOWN is intentionally
+    left untouched because the provider may have accepted the original charge.
+    """
+    review = await session.scalar(select(MeetingReview).where(MeetingReview.id == review_id)
+                                  .with_for_update().execution_options(populate_existing=True))
+    if review is None:
+        raise ReviewConflict()
+    if review.status != 'FAILED':
+        return review
+    review.status = 'PROCESSING' if review.provider_job_id else 'QUEUED'
+    review.error_code = None
+    review.version += 1
+    await session.commit()
     return review
 
 
@@ -302,10 +355,14 @@ async def submit_diarization(session: AsyncSession, review_id: str, *, wav_path:
     except Exception as error:
         review = await session.scalar(select(MeetingReview).where(MeetingReview.id == review_id)
                                       .with_for_update().execution_options(populate_existing=True))
-        review.status = 'SUBMISSION_UNKNOWN'
-        review.error_code = getattr(error, 'code', None) or type(error).__name__
-        review.version += 1
-        await session.commit()
+        if review is not None and review.status == 'SUBMITTING':
+            # The provider may have accepted the request before the response
+            # was lost. Keep this distinct from FAILED so a retry cannot
+            # silently create a second billable job.
+            review.status = 'SUBMISSION_UNKNOWN'
+            review.error_code = _provider_error_code(error)
+            review.version += 1
+            await session.commit()
         raise
     review = await session.scalar(select(MeetingReview).where(MeetingReview.id == review_id)
                                   .with_for_update().execution_options(populate_existing=True))
@@ -326,11 +383,23 @@ async def poll_diarization(session: AsyncSession, review_id: str, *, duration_ms
         raise ReviewConflict('진행 중인 화자분리 작업이 없어요.')
     provider_job_id = review.provider_job_id
     await session.commit()
-    turns = await provider.result(provider_job_id, duration_ms=duration_ms)
+    try:
+        turns = await provider.result(provider_job_id, duration_ms=duration_ms)
+    except Exception as error:
+        # Polling a known job is safe to retry. Persist the failure before
+        # re-raising so a crashed request cannot leave PROCESSING forever.
+        await fail_diarization(session, review_id, error_code=_provider_error_code(error))
+        raise
     if turns is None:
         return await session.get(MeetingReview, review_id)
-    return await apply_diarization(session, review_id, provider_job_id=provider_job_id,
-                                   turns=turns, duration_ms=duration_ms)
+    try:
+        return await apply_diarization(session, review_id, provider_job_id=provider_job_id,
+                                       turns=turns, duration_ms=duration_ms)
+    except ReviewConflict:
+        # Invalid provider output is retryable through the same known job;
+        # retain the job ID and avoid a new submission.
+        await fail_diarization(session, review_id, error_code='DIARIZATION_INVALID_RESPONSE')
+        raise
 
 
 async def generate_draft(session: AsyncSession, review: MeetingReview, version: int):

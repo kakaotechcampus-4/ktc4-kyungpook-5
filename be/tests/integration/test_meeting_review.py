@@ -91,3 +91,71 @@ async def test_speaker_member_mapping_and_candidate_save_are_confirmed_without_r
                 session, review, review.version - 1, {},
                 {'SPEAKER_00': {'memberId': member_id, 'confirmed': True}},
             )
+
+
+async def test_candidate_save_rejects_any_unconfirmed_speaker(app_db):
+    factory = db_session.get_sessionmaker()
+    async with factory() as session:
+        member_id, meeting_id = await seed(session)
+        meeting = await session.get(Meeting, meeting_id)
+        review = await meeting_review_service.start(session, meeting=meeting, member_id=member_id)
+        review.status = 'NEEDS_REVIEW'
+        review.turns = [
+            {'start_ms': 0, 'end_ms': 500, 'speaker_label': 'SPEAKER_00'},
+            {'start_ms': 500, 'end_ms': 1000, 'speaker_label': 'SPEAKER_01'},
+        ]
+        review.speaker_mappings = {
+            'SPEAKER_00': {'memberId': member_id, 'confirmed': True},
+            'SPEAKER_01': {'memberId': None, 'confirmed': False},
+        }
+        await session.commit()
+        segment = await session.scalar(
+            select(TranscriptSegment).where(TranscriptSegment.meeting_id == meeting_id)
+        )
+        with pytest.raises(meeting_review_service.ReviewConflict):
+            await meeting_review_service.save_candidates(
+                session,
+                review_id=review.id,
+                expected_version=review.version,
+                client_request_id='unconfirmed-speaker-candidate',
+                candidates=[{
+                    'title': '장소 예약',
+                    'description': None,
+                    'assignee_member_id': member_id,
+                    'due_date': None,
+                    'evidence_segment_ids': [segment.id],
+                }],
+                confirmed_by=member_id,
+            )
+
+
+async def test_diarization_retry_preserves_known_provider_job(app_db):
+    factory = db_session.get_sessionmaker()
+    async with factory() as session:
+        member_id, meeting_id = await seed(session)
+        meeting = await session.get(Meeting, meeting_id)
+        review = await meeting_review_service.start(session, meeting=meeting, member_id=member_id)
+
+        failed = await meeting_review_service.fail_diarization(
+            session, review.id, error_code='DIARIZATION_PROVIDER_ERROR'
+        )
+        assert failed.status == 'FAILED'
+        assert failed.provider_job_id is None
+        queued = await meeting_review_service.retry_diarization(session, review.id)
+        assert queued.status == 'QUEUED'
+
+        queued.status = 'PROCESSING'
+        queued.provider_job_id = 'provider-job-existing'
+        await session.commit()
+        failed = await meeting_review_service.fail_diarization(
+            session, review.id, error_code='DIARIZATION_TIMEOUT'
+        )
+        resumed = await meeting_review_service.retry_diarization(session, review.id)
+        assert failed.status == 'FAILED'
+        assert resumed.status == 'PROCESSING'
+        assert resumed.provider_job_id == 'provider-job-existing'
+
+        resumed.status = 'SUBMISSION_UNKNOWN'
+        await session.commit()
+        unchanged = await meeting_review_service.retry_diarization(session, review.id)
+        assert unchanged.status == 'SUBMISSION_UNKNOWN'

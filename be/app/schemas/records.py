@@ -50,6 +50,7 @@ class RecordSearchItem(RecordOut):
 
 
 class RecordSearchData(CamelModel):
+    answer: str | None = None
     items: list[RecordSearchItem]
     semantic_status: Literal['AVAILABLE', 'UNAVAILABLE', 'NO_INDEXED_RECORDS']
     indexed_count: int

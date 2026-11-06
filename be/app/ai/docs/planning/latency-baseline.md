@@ -1,6 +1,6 @@
 # P1 응답 시간 기준 측정
 
-상태: **고정 입력, 반복 실행기, 전체/세부 구간과 모델 호출별 토큰 관측, 집계를 구현했다.** 실제 모델 3세션 측정을 두 번 했다. 10-28 측정([원본과 분석](evaluation-results/planning-latency-real-2026-10-28/README.md))은 구간 시간까지, 11-03 측정([원본과 분석](evaluation-results/planning-latency-tokens-2026-11-03/README.md))은 토큰까지 기록했다. **지금 기준값은 11-03이다.** 토리 대화 지연 개선(#262)의 단계별 변경은 이 기준값과 같은 프로필로, 같은 측정 안에서 번갈아 잰다. 11-03 이후 바뀐 것은 대화 모델 메시지 순서(#269, `planning-agent-v8`)와 생성 모델 추론 깊이 `low`(#264)이며, 비교는 각각 [실행 문맥 위치 측정](evaluation-results/planning-agent-context-layout-2026-11-04/README.md)과 [추론 깊이 측정](evaluation-results/planning-generation-reasoning-2026-11-04/README.md)에 있다. 한 응답에 Tool 여러 개 허용(#265)도 같은 방식으로 쟀다([측정](evaluation-results/planning-parallel-tool-calls-2026-11-04/README.md)). 보류 재개 실패의 원인을 확인한 뒤 #274에서 켰다([원인과 재판정](evaluation-results/planning-date-resume-cause-2026-11-04/README.md)).
+상태: **고정 입력, 반복 실행기, 전체/세부 구간과 모델 호출별 토큰 관측, 집계를 구현했다.** 실제 모델 3세션 측정을 두 번 했다. 10-28 측정([원본과 분석](evaluation-results/planning-latency-real-2026-10-28/README.md))은 구간 시간까지, 11-03 측정([원본과 분석](evaluation-results/planning-latency-tokens-2026-11-03/README.md))은 토큰까지 기록했다. **지금 기준값은 11-03이다.** 토리 대화 지연 개선(#262)의 단계별 변경은 이 기준값과 같은 프로필로, 같은 측정 안에서 번갈아 잰다. 11-03 이후 바뀐 것은 대화 모델 메시지 순서(#269, `planning-agent-v8`)와 생성 모델 추론 깊이 `low`(#264)이며, 비교는 각각 [실행 문맥 위치 측정](evaluation-results/planning-agent-context-layout-2026-11-04/README.md)과 [추론 깊이 측정](evaluation-results/planning-generation-reasoning-2026-11-04/README.md)에 있다. 한 응답에 Tool 여러 개 허용(#265)도 같은 방식으로 쟀다([측정](evaluation-results/planning-parallel-tool-calls-2026-11-04/README.md)). 보류 재개 실패의 원인을 확인한 뒤 #274에서 켰다([원인과 재판정](evaluation-results/planning-date-resume-cause-2026-11-04/README.md)). 4단계 SSE(#266)는 제품 HTTP에서 첫 반응 시간을 쟀다([측정](evaluation-results/planning-stream-first-response-2026-11-05/README.md)). 단계별 결과는 [8절](#8-토리-대화-지연-개선262-단계별-결과)에 모았다.
 
 관련: [#196](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/196), AI-PLAN-01, AI-PLAN-05, AI-COMMON-02. 기존 개별 관찰은 [평가 기록](evaluation.md), 현재 실행 흐름은 [코드 따라가기](walkthrough.md)를 참고한다.
 
@@ -312,8 +312,24 @@ C2 인원 60명 반영 자체는 30/30건 성공했다. 날짜 보류 추가 19�
 3. **완료: 세부 구간 관측.** 측정 도구의 임시 래퍼로 생성/검증/대화 모델의 구간과 실패한 논리 호출을 관측하고 집계한다. 고정 응답과 가상 시계로 정상/실패/재시도/중단을 검증했다. 공개 응답이나 런타임 정책은 변경하지 않았다.
 4. **완료: 실제 기준 측정과 해석.** 같은 코드/설정의 새 프로세스 3개로 본측정 120회와 준비 실행 12회를 모두 기록했다. [평가 기록](evaluation.md)과 [원본 분석](evaluation-results/planning-latency-real-2026-10-28/README.md)에 성공/실패 시간, 상태 불일치, 생성 재시도와 한계를 남겼다. 실패를 대체하지 않았고 모델/프롬프트/정책을 바꾸지 않았다.
 
-다음은 C2의 specified/tentative 기대 기준과 날짜 보류 추가를 확인하고, invalid_plan의 세부 규칙을 안전하게 식별할 관측을 보완하는 작업이다. 현재 원본으로는 과거 실패의 세부 규칙을 확인할 수 없으며, 새 관측을 연결한 뒤 같은 조건에서 진단해야 한다.
+5. **완료: 토리 대화 지연 개선(#262) 1~4단계.** 아래 표에 단계별로 정리했다.
 
-기준 측정이 끝나면 어느 구간과 호출 패턴이 시간을 차지하는지부터 확인한다. 원인이 불분명하면 추가 측정이 다음 작업이다. 개선 실험을 한다면 한 번에 한 요소만 바꾸고 같은 프로필로 기준 버전과 변경 버전을 번갈아 비교한다. 조건 보존과 출력 완전성이 깨진 결과를 속도 개선으로 판단하지 않는다.
+개선 실험은 한 번에 한 요소만 바꾸고 같은 프로필로 기준 버전과 변경 버전을 번갈아 비교한다. 조건 보존과 출력 완전성이 깨진 결과를 속도 개선으로 판단하지 않는다. 고정 20초, 완료 예정 시각, 응답 시간 SLO나 성공률 목표는 정하지 않는다.
 
-지금은 고정 20초, 완료 예정 시각, 응답 시간 SLO나 성공률 목표를 새로 정하지 않는다. 현재 화면 안내는 “계획을 만들고 있어요. 잠시 걸릴 수 있어요.”를 유지한다.
+## 8. 토리 대화 지연 개선(#262) 단계별 결과
+
+각 단계는 바꾸기 전과 바꾼 뒤를 **같은 실행 안에서 번갈아** 쟀다. 측정 시각마다 공급자 속도가 달라서, 다른 행의 절대값끼리는 비교하지 않는다. 채택 기준은 단계마다 측정 전에 해당 Issue에 적었다.
+
+| 단계 | 바꾼 것 | 전 → 후 (같은 실행) | 품질 | 판단 | 기록 |
+| --- | --- | --- | --- | --- | --- |
+| 1 #263 | (진단) 모델 호출별 토큰 기록 | 기준값: C2 p50 9.23초, G2 18.83초. 생성 시간은 출력 토큰에 비례(r = 0.96), 대화 호출은 호출 1번에 약 3초 | C1·C2·G1 30/30, G2 24/30 | 기준값 | [11-03](evaluation-results/planning-latency-tokens-2026-11-03/README.md) |
+| 1-1 #269 | 실행 문맥을 입력 맨 끝으로(v7 → v8) | 대화 호출 캐시 2 → 180/180, 대화 호출 p50 3.25 → 2.91초, C2 p50 9.14 → 8.40초 | C1·C2 30/30 유지 | 채택 | [11-04](evaluation-results/planning-agent-context-layout-2026-11-04/README.md) |
+| 2 #264 | 생성 모델 추론 깊이 low | G2 생성 호출 p50 15.39 → 11.14초 | G2 26 → 28/30 | 채택 | [11-04](evaluation-results/planning-generation-reasoning-2026-11-04/README.md) |
+| 2-1 #276 | 생성 출력 형식의 단계 코드를 카탈로그 13개로 | (v2 위) G1 생성 호출 p50 default 약 18.9 → low 약 10.7초 | G1 25 → 30/30(형식), low·default 모두 30/30 | 채택 | [11-04](evaluation-results/planning-generation-step-codes-2026-11-04/README.md) |
+| 3 #265 | 한 응답에 Tool 여러 개 | C2 대화 호출 3 → 2번, p50 7.19 → 6.17초 | 날짜 보류 재개 11/13 → 7/13 | 처음엔 미채택 | [11-04](evaluation-results/planning-parallel-tool-calls-2026-11-04/README.md) |
+| 3-1 #274 | (원인 확인 후 3단계 다시 켬) | 3단계 결과 그대로 | 분명한 재개·정정 10/10 = 10/10 | 채택 | [11-04](evaluation-results/planning-date-resume-cause-2026-11-04/README.md) |
+| 4 #266 | 진행 표시와 답변 스트리밍(SSE), 제품 HTTP | 첫 반응 p50: C2 6.34 → 3.06초, G2 11.72 → 0.03초. 전체 p50 C2 −0.22초, G2 +0.36초 | C2·G2 10/10 유지 | 채택 | [11-05](evaluation-results/planning-stream-first-response-2026-11-05/README.md) |
+
+1~3단계는 AI 공개 함수의 시간(DB·HTTP 제외)이고, 4단계만 제품 HTTP 경로의 시간이다. 4단계의 G2 0.03초는 "계획 초안을 만들고 있어요" 시작 알림이 도착한 시각이며, 초안은 검증 뒤 전체 시간에 도착한다.
+
+#262의 5단계 후보(초안 출력 줄이기, 검증 실패 코드 보정, 검색어 정리 생략, 긴 대화 입력 줄이기, 생성 3묶음 동시 작성)는 진행하지 않는다(11-05). 행사 계획 실사용 테스트에서 대기 시간이 문제로 드러나지 않았다. 다시 느리다는 의견이 나오면 이 표의 마지막 기준값과 같은 프로필로 다시 재고 후보를 고른다.

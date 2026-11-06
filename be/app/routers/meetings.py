@@ -168,14 +168,37 @@ async def submit_review_diarization(meeting_id: str, account: Account = Depends(
     review = await meeting_review_service.get(session, meeting.id, lock=False)
     if review is None:
         raise meeting_review_service.ReviewConflict('먼저 회의 검토를 시작해 주세요.')
+    # A known provider job is resumed by polling, never submitted again. An
+    # uncertain submission is deliberately left untouched to avoid duplicate
+    # provider charges; only an explicit retry of a FAILED review can proceed.
+    if review.status == 'SUBMISSION_UNKNOWN':
+        return Envelope(data=await meeting_review_service.output(session, review))
+    if review.status == 'FAILED':
+        review = await meeting_review_service.retry_diarization(session, review.id)
+        if review.status == 'PROCESSING':
+            return Envelope(data=await meeting_review_service.output(session, review))
     if review.status != 'QUEUED':
         return Envelope(data=await meeting_review_service.output(session, review))
     path = None
     try:
         path, _duration = await _review_wav(session, meeting.id)
         provider = PyannoteDiarization(get_settings().pyannote_api_key.get_secret_value(), get_settings().pyannote_model, get_settings().pyannote_timeout_seconds)
-        review = await meeting_review_service.submit_diarization(session, review.id, wav_path=path, provider=provider)
+        try:
+            review = await meeting_review_service.submit_diarization(session, review.id, wav_path=path, provider=provider)
+        except DiarizationError as error:
+            raise error
+        except Exception as error:
+            # submit_diarization persists SUBMISSION_UNKNOWN before bubbling
+            # an unexpected provider exception. Keep the public response a
+            # retry-aware provider error while preserving that state.
+            current = await meeting_review_service.get(session, review.id)
+            if current is not None and current.status == 'SUBMISSION_UNKNOWN':
+                raise meeting_review_service.DiarizationUnavailable('DIARIZATION_PROVIDER_ERROR') from error
+            raise
     except DiarizationError as error:
+        # Configuration failures happen before submit_diarization can mark the
+        # row. Persist FAILED so GET exposes an actionable retry state.
+        await meeting_review_service.fail_diarization(session, review.id, error_code=error.code)
         raise meeting_review_service.DiarizationUnavailable(error.code) from error
     except ValueError as error:
         raise meeting_review_service.ReviewConflict(str(error)) from error
@@ -204,6 +227,11 @@ async def poll_review_diarization(meeting_id: str, account: Account = Depends(ge
     except DiarizationError as error:
         await meeting_review_service.fail_diarization(session, review.id, error_code=error.code)
         raise meeting_review_service.DiarizationUnavailable(error.code) from error
+    except Exception as error:
+        current = await meeting_review_service.get(session, review.id)
+        if current is not None and current.status == 'FAILED':
+            raise meeting_review_service.DiarizationUnavailable('DIARIZATION_PROVIDER_ERROR') from error
+        raise
     return Envelope(data=await meeting_review_service.output(session, review))
 
 def _meeting_out(meeting: Meeting) -> MeetingOut:

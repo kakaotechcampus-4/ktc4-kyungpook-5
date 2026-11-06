@@ -307,11 +307,20 @@ async def test_연결이_끊겨도_AI_작업은_끝까지_진행해_저장한다
 
         # 연결이 끊긴 뒤에 AI가 끝난다. 작업은 남아 있다가 저장까지 한다.
         assert planning_stream._running
+        lookup_path = f"/api/v1/events/{event_id}/plan/requests/stream-cut"
+        # #342: 끊긴 FE는 같은 키로 결과만 조회한다. 아직 AI를 기다리는 중이면 processing이다.
+        waiting = (await http.get(lookup_path, headers=headers)).json()["data"]
+        assert waiting == {"status": "processing", "result": None}
         release.set()
         await asyncio.wait_for(asyncio.gather(*planning_stream._running), 5)
 
         plan = (await http.get(f"/api/v1/events/{event_id}/plan", headers=headers)).json()["data"]
         assert plan["baseRevision"] == 1
+        # 저장이 끝나면 그 요청이 받았어야 할 응답을 그대로 돌려준다.
+        saved = (await http.get(lookup_path, headers=headers)).json()["data"]
+        assert saved["status"] == "completed"
+        assert saved["result"]["reply"] == "저장됐어요."
+        assert saved["result"]["baseRevision"] == 1
         # FE가 같은 키로 다시 요청하면 저장된 결과를 done 하나로 받는다.
         replay = await http.post(f"/api/v1/events/{event_id}/plan/chat/stream",
                                  headers={**headers, "Idempotency-Key": "stream-cut"}, json=CHAT_BODY)

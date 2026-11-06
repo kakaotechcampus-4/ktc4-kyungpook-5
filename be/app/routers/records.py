@@ -38,7 +38,7 @@ async def search_records(
         raise ValidationFailed({"query": "검색어를 입력해 주세요."})
     await ensure_member(session, club_id=club_id, account=account)
     data, total = await record_discovery_service.search_records(
-        session, club_id=club_id, query=query, page=page, size=size
+        session, club_id=club_id, query=query, page=page, size=size, semantic_filter=True
     )
     return RecordSearchResponse(data=data, meta=PageMeta(page=page, size=size, total_count=total))
 

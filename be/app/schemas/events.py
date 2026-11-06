@@ -12,6 +12,8 @@ from typing import Annotated, Any, Literal
 from pydantic import Field, StringConstraints, model_serializer
 
 from app.core.enums import (
+    ActionContentSource,
+    ActionContentStatus,
     ActionStatus,
     ActionType,
     EventStatus,
@@ -107,6 +109,14 @@ class ActionOut(CamelModel):
     manual_value: str | None
     # 처리·수정 요청의 expectedVersion으로 그대로 보낸다 (#41 낙관적 잠금).
     version: int
+    # 본문 초안 (#334). 3분 넘게 DRAFTING이면 멈춘 작성으로 보고 FAILED로 내려보낸다.
+    content_status: ActionContentStatus
+    # 본문을 누가 썼는지. null은 본문 없음.
+    content_source: ActionContentSource | None
+    # 본문의 [ ] 자리표시(토리가 비워 둔 곳). 없으면 [].
+    content_unknowns: list[str]
+    # 「초안 다시 받기」를 보여 줄지. POST /actions/{id}/draft 허용 조건과 같다.
+    can_request_draft: bool
 
 
 class ActionListResponse(CamelModel):
@@ -377,6 +387,9 @@ class ActionUpdateIn(CamelModel):
     amount: int | None = None
     due_date: date | None = None
     payload: ActionPayloadOut | None = None
+    # 승인 대상 본문 (#334). 비울 수 없다(빈 문자열·공백만이면 422). 고치면 운영진이 쓴
+    # 글(USER)이 되어 토리가 덮어쓰지 않는다.
+    content: str | None = None
 
 
 class PlannedStepListResponse(CamelModel):
@@ -497,6 +510,18 @@ class PlanViewOut(CamelModel):
     # 예전에 저장한 멱등 응답에는 없어서 기본값을 둔다.
     history_usage: HistoryUsageOut | None = None
     base_revision: int
+
+
+class PlanRequestOut(CamelModel):
+    """요청 키 하나의 처리 결과 (#342). 응답 도중 연결이 끊긴 FE가 조회한다.
+
+    completed: 저장까지 끝남. result는 그 요청이 받았어야 할 PlanViewOut 그대로다.
+    processing: 아직 처리 중. 잠시 뒤 다시 조회한다.
+    not_saved: 저장되지 않았다. 같은 내용을 새 요청으로 다시 보내도 된다.
+    """
+
+    status: Literal["completed", "processing", "not_saved"]
+    result: PlanViewOut | None = None
 
 
 class ExcludedStepOut(CamelModel):

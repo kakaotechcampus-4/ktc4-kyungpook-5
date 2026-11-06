@@ -56,13 +56,33 @@ export function useEvents(status?: EventStatus, enabled = true) {
   })
 }
 
+const eventDetailKey = (
+  userId: string | undefined,
+  clubId: string | null,
+  eventId: string | undefined,
+  demo: boolean,
+) => ['events', userId, clubId, eventId, 'detail', demo]
+
+// 첫 계획의 주소로 이동하기 전에 상세 조회도 같은 캐시에 준비한다.
+export function usePrefetchEventDetail() {
+  const client = useQueryClient()
+  const userId = useAuthStore((state) => state.me?.id)
+  const clubId = useAuthStore((state) => state.clubId)
+  return (eventId: string) =>
+    client.fetchQuery({
+      queryKey: eventDetailKey(userId, clubId, eventId, false),
+      queryFn: () => getEventDetail(eventId),
+      retry: false,
+    })
+}
+
 // 없는 행사면 null(초기 화면)
 export function useEventDetail(eventId: string | undefined) {
   const demo = useDemo()
   const userId = useAuthStore((state) => state.me?.id)
   const clubId = useAuthStore((state) => state.clubId)
   return useQuery({
-    queryKey: ['events', userId, clubId, eventId, 'detail', demo],
+    queryKey: eventDetailKey(userId, clubId, eventId, demo),
     queryFn: async (): Promise<EventDetail | null> =>
       demo ? (DEMO_EVENT_DETAILS[eventId!] ?? null) : await getEventDetail(eventId!),
     enabled: !!eventId && (demo || Boolean(userId && clubId)),

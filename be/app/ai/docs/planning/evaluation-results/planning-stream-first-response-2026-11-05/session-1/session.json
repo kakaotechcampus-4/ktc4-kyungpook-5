@@ -1,0 +1,17 @@
+{
+  "started_at": "2026-11-05T23:28:31.024082+09:00",
+  "api": "http://localhost:8020/api/v1",
+  "rounds": 10,
+  "warmup": true,
+  "interval_seconds": 1.0,
+  "fixture": "app/ai/tests/fixtures/eval/planning_latency.json",
+  "commit": "b151b5897849e3a00ac19939ba3069e7168a89d0",
+  "dirty": false,
+  "model": "gpt-5.6-luna",
+  "python": "3.13.14",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "httpx": "0.28.1",
+  "allowed_total_increase_ms": 500,
+  "measured_from": "script receive time (perf_counter_ns); browser rendering not included",
+  "finished_at": "2026-11-05T23:36:06.972135+09:00"
+}

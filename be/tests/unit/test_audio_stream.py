@@ -74,6 +74,15 @@ async def test_vad_suppresses_stationary_noise_above_energy_threshold() -> None:
     assert vad.flush() is None
 
 
+async def test_vad_ignores_dc_offset_as_voice_energy() -> None:
+    # A microphone DC offset can exceed the old RMS floor while containing no
+    # speech. RMS must be measured around the frame mean.
+    offset = struct.pack("<{}h".format(16000 * 2), *([1200] * (16000 * 2)))
+    vad = PcmVad()
+    assert vad.feed(offset) == []
+    assert vad.flush() is None
+
+
 async def test_vad_suppresses_low_level_noise_and_preserves_short_voiced_tail() -> None:
     rng = random.Random(11)
     samples = [rng.randint(-300, 300) for _ in range(16000)]
@@ -332,9 +341,160 @@ async def test_whisper_posts_wav_and_reads_nested_gateway_response() -> None:
         assert b'RIFF' in request.content
         assert b'\r\nko\r\n' in request.content
         assert b'\r\nopenai/whisper-large-v3\r\n' in request.content
+        assert b'\r\nverbose_json\r\n' in request.content
+        assert b'\r\nfalse\r\n' in request.content
         return httpx.Response(200, json={"transcript": {"text": " 회의를 시작합니다. "}})
     provider = WhisperStt(url="https://gateway.example/transcriptions", api_key="private-test-key", transport=httpx.MockTransport(respond))
     assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko-KR") == "회의를 시작합니다."
+
+
+async def test_whisper_discards_provider_marked_silence_hallucination() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다.",
+            "segments": [{"text": "감사합니다.", "no_speech_prob": 0.91}],
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
+
+
+async def test_whisper_skips_silent_audio_before_provider_hallucination() -> None:
+    called = False
+
+    def respond(_):
+        nonlocal called
+        called = True
+        return httpx.Response(200, json={"text": "감사합니다."})
+
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(respond),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(1000, 0)), language="ko") == ""
+    assert called is False
+
+
+async def test_whisper_skips_sparse_noise_before_provider_hallucination() -> None:
+    called = False
+
+    def respond(_):
+        nonlocal called
+        called = True
+        return httpx.Response(200, json={"text": "감사합니다."})
+
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(respond),
+    )
+    sparse_noise = pcm(120, 0) + pcm(20, 2000) + pcm(860, 0)
+    assert await provider.transcribe(pcm_to_wav(sparse_noise), language="ko") == ""
+    assert called is False
+
+
+async def test_whisper_accepts_provider_null_no_speech_probability() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "회의를 시작합니다.",
+            "segments": [{"text": "회의를 시작합니다.", "no_speech_prob": None}],
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == "회의를 시작합니다."
+
+
+async def test_whisper_discards_low_confidence_hallucination() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다.",
+            "segments": [{
+                "text": "감사합니다.",
+                "no_speech_prob": None,
+                "avg_logprob": -1.4,
+                "compression_ratio": 3.2,
+            }],
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
+
+
+async def test_whisper_discards_provider_unrecognized_marker() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": " (알아듣지 못했어요) ",
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
+
+
+async def test_whisper_discards_repeated_short_hallucination() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다. 감사합니다. 감사합니다.",
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
+
+
+async def test_whisper_falls_back_for_legacy_gateway_options() -> None:
+    requests = []
+
+    def respond(request):
+        requests.append(request)
+        if len(requests) == 1:
+            return httpx.Response(422, json={"error": "unsupported option"})
+        return httpx.Response(200, json={"text": " 회의 기록 "})
+
+    provider = WhisperStt(
+        url="https://legacy-gateway.example/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(respond),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == "회의 기록"
+    assert len(requests) == 2
+    assert b"verbose_json" in requests[0].content
+    assert b"verbose_json" not in requests[1].content
+
+
+async def test_whisper_keeps_real_speech_when_provider_marks_speech() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다.",
+            "segments": [{
+                "text": "감사합니다.",
+                "no_speech_prob": 0.02,
+                "avg_logprob": -0.2,
+                "compression_ratio": 1.3,
+            }],
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == "감사합니다."
+
+
+async def test_whisper_rejects_malformed_speech_metadata() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다.",
+            "segments": [{"text": "감사합니다.", "no_speech_prob": "unknown"}],
+        })),
+    )
+    with pytest.raises(SttError) as error:
+        await provider.transcribe(pcm_to_wav(pcm(300)), language="ko")
+    assert error.value.code == "STT_INVALID_RESPONSE"
 
 
 async def test_whisper_reads_openai_compatible_response() -> None:

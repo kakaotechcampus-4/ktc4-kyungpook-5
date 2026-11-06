@@ -5,8 +5,10 @@ import { useAuthStore } from '@/shared/auth/store'
 import { useRecordingLock } from '@/shared/lib/recordingLock'
 import { Avatar } from '@/shared/ui/Avatar'
 import { Button } from '@/shared/ui/Button'
+import { DemoNotice } from '@/shared/ui/DemoNotice'
 import { Modal } from '@/shared/ui/Modal'
 import { Tori } from '@/shared/ui/Tori'
+import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
 import { WorkspaceNavigation } from './AppNavigation'
 
 // select의 특별 항목. 소속 id와 겹치지 않는 값이면 된다.
@@ -15,15 +17,16 @@ const JOIN_CLUB = '__join_club__'
 
 export function AppLayout() {
   const navigate = useNavigate()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   useMe()
-  const { me, clubId, selectClub } = useAuthStore()
+  const { me, clubId, user, selectClub } = useAuthStore()
   const recording = useRecordingLock((state) => state.recording)
   const logout = useLogout()
   const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const menuButton = useRef<HTMLButtonElement>(null)
+  const showOnboardingGuide = new URLSearchParams(search).has('demo')
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1024px)')
@@ -80,6 +83,11 @@ export function AppLayout() {
           <option value={NEW_CLUB}>+ 새 동아리 만들기</option>
           <option value={JOIN_CLUB}>+ 초대 코드로 참여</option>
         </select>
+        {user && clubId && (
+          <span className="mt-2 block text-[12px] font-medium text-[#aebbd0]" role="status">
+            운영 범위 · {MEMBER_ROLE_LABEL[user.role] ?? '역할 확인 필요'}
+          </span>
+        )}
         {recording && (
           <span id="club-locked" className="mt-2 block text-[12px] font-medium text-[#aebbd0]">
             녹음을 끝낸 뒤 바꿀 수 있어요
@@ -140,9 +148,11 @@ export function AppLayout() {
           <div className="flex min-h-0 flex-1 flex-col gap-6 pt-8">
               <WorkspaceNavigation dark collapsed={!sidebarOpen} />
               {sidebarOpen && <>
-              <Button size="sm" variant="secondary" onClick={() => navigate('/onboarding')}>
-                처음 사용 가이드 (임시)
-              </Button>
+              {showOnboardingGuide && (
+                <Button size="sm" variant="secondary" onClick={() => navigate('/onboarding')}>
+                  처음 사용 가이드 (예시)
+                </Button>
+              )}
               {account}
               </>}
           </div>
@@ -157,6 +167,7 @@ export function AppLayout() {
           tabIndex={-1}
           className="min-w-0 flex-1 bg-white px-4 pt-16 pb-11 outline-none sm:px-7 lg:px-10 lg:pt-7"
         >
+          <DemoNotice />
           <Outlet />
         </main>
       </div>
@@ -171,16 +182,18 @@ export function AppLayout() {
         <div id="mobile-navigation" className="flex min-h-[calc(100dvh-140px)] flex-col gap-8">
           <NavLink to="/dashboard" onClick={() => setDrawerOpen(false)} className="flex items-center gap-2 font-bold"><Tori size={30} />운영해</NavLink>
           <WorkspaceNavigation onNavigate={() => setDrawerOpen(false)} />
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              setDrawerOpen(false)
-              navigate('/onboarding')
-            }}
-          >
-            처음 사용 가이드 (임시)
-          </Button>
+          {showOnboardingGuide && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setDrawerOpen(false)
+                navigate('/onboarding')
+              }}
+            >
+              처음 사용 가이드 (예시)
+            </Button>
+          )}
           <div className="mt-auto rounded-lg bg-[#172333] p-4">{account}</div>
         </div>
       </Modal>

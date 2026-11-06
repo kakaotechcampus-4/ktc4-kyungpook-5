@@ -133,6 +133,7 @@ async def add_action(
     resolved_by: str | None = None,
     content: str | None = None,
     payload: dict | None = None,
+    amount: int | None = None,
 ) -> str:
     return await _insert(
         Action(
@@ -147,5 +148,6 @@ async def add_action(
             resolved_by=resolved_by,
             content=content,
             payload=payload,
+            amount=amount,
         )
     )

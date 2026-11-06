@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { usePlanningChat, usePlanningDrafts } from '@/features/planning/hooks'
-import { useEventDetail } from '@/features/events/hooks'
+import { useEventDetail, usePrefetchEventDetail } from '@/features/events/hooks'
 import { planningStage } from '../reviewModel'
 import { PlanReviewScreen } from './PlanReviewScreen'
 import { PlanStageNav } from './PlanStageNav'
@@ -23,16 +23,26 @@ const REASONS: Record<string, string> = {
   condition_change_pending: '반영하지 못한 조건 변경을 먼저 확인해 주세요.',
 }
 
+// 대화로 돌아가 있는 동안 끝난 생성(#327). P2로 옮기지 않고 P1에 안내만 남긴다.
+interface GenerationReady {
+  eventId: string
+  count: number
+  key: string
+}
+
 export function LivePlanning() {
   const clubId = useAuthStore((state) => state.clubId)
   const userId = useAuthStore((state) => state.me?.id)
   const [params, setParams] = useSearchParams()
   const location = useLocation()
   const failedText = typeof location.state?.failedText === 'string' ? location.state.failedText : ''
+  // 새 계획은 생성이 끝나며 이 계획 주소로 넘어가 대화 영역이 새로 그려지므로 안내를 여기 둔다.
+  const [ready, setReady] = useState<GenerationReady | null>(null)
   const eventId = params.get('eventId')
-  const journal = usePlanningRequestJournal(userId, clubId)
+  // 탭 기록은 행사마다 따로 둔다(#342). 이 행사의 결과를 확인하는 동안에도 다른 계획은 열 수 있다.
+  const journal = usePlanningRequestJournal(userId, clubId, eventId)
   const [busy, setBusy] = useState(false)
-  const blocked = busy || !!journal.raw
+  const blocked = busy
   const select = (id: string | null, text?: string) =>
     setParams(id ? { eventId: id } : {}, { state: text ? { failedText: text } : null })
   return (
@@ -58,24 +68,26 @@ export function LivePlanning() {
         )}
       </header>
       {!clubId ? (
-        <Card className="p-5">로그인하고 소속을 선택해 주세요.</Card>
+        <Card className="space-y-3 p-5">
+          <h2 className="text-h3">로그인과 소속 선택이 필요합니다.</h2>
+          <p className="text-caption text-mute">행사 계획은 선택한 소속의 자료와 함께 저장됩니다.</p>
+          <Link to="/login?next=%2Fplanning" className="text-caption font-semibold text-blue-700 underline">
+            로그인·소속 선택
+          </Link>
+        </Card>
       ) : (
         <>
+          {/* 글자가 든 채 새로 붙는 알림 영역은 낭독기가 놓칠 수 있다. 새 계획은 완료와 함께
+              대화 영역이 새로 그려지므로, 그 바깥에 늘 붙여 두고 글자만 바꾼다. */}
+          <p role="status" className="sr-only">
+            {ready?.eventId === eventId
+              ? '초안이 준비됐어요. 계획 검토하기에서 확인할 수 있어요.'
+              : ''}
+          </p>
           {journal.raw && !journal.request && (
             <p role="alert" className="text-failed">
               이전 요청 기록을 확인하지 못했어요. 새 요청을 보내기 전에 브라우저의 임시 저장 기능과
               처리 결과를 확인해 주세요.
-            </p>
-          )}
-          {journal.request && journal.request.eventId !== eventId && (
-            <p role="status" className="text-ink2">
-              다른 계획의 처리 결과를 확인해야 해요. 새 요청은 잠가 두었어요.{' '}
-              <Link
-                className="font-semibold text-blue-700 underline"
-                to={`/planning?${new URLSearchParams({ eventId: journal.request.eventId, stage: 'conditions' })}`}
-              >
-                요청한 계획 확인하기
-              </Link>
             </p>
           )}
           <Conversation
@@ -91,6 +103,8 @@ export function LivePlanning() {
             }
             failedText={failedText}
             userId={userId}
+            ready={ready?.eventId === eventId ? ready : null}
+            onReady={setReady}
           />
         </>
       )}
@@ -225,6 +239,8 @@ function Conversation({
   failedText,
   userId,
   onBusy,
+  ready,
+  onReady,
 }: {
   clubId: string
   eventId: string | null
@@ -232,21 +248,57 @@ function Conversation({
   failedText: string
   userId: string | undefined
   onBusy: (busy: boolean) => void
+  ready: GenerationReady | null
+  onReady: (ready: GenerationReady | null) => void
 }) {
   const navigate = useNavigate()
   const generationDescriptionId = useId()
-  const live = usePlanningChat(clubId, eventId, userId, onCreated, (id, count, key) => {
-    navigate(`/planning?${new URLSearchParams({ eventId: id, stage: 'review' })}`, {
-      replace: true,
-      state: { generated: count > 0 ? { count, key } : undefined, focusPlan: true },
-    })
-  })
+  // 생성 중 「대화로 돌아가기」(#327). 화면만 바꾸고 요청은 이 훅에서 계속 받는다.
+  // 완료 콜백은 요청을 보낸 렌더의 것이 불리므로 지금 보고 있는 화면은 ref로 읽는다.
+  const [away, setAway] = useState(false)
+  const awayRef = useRef(false)
+  const showChat = (value: boolean) => {
+    awayRef.current = value
+    setAway(value)
+  }
+  const awayNote = useRef<HTMLParagraphElement>(null)
   useEffect(() => {
-    onBusy(live.busy)
-  }, [live.busy, onBusy])
+    if (away) awayNote.current?.focus()
+  }, [away])
+  const prefetchEventDetail = usePrefetchEventDetail()
+  const chat = usePlanningChat(
+    clubId,
+    eventId,
+    userId,
+    onCreated,
+    (id, count, key) => {
+      if (awayRef.current) {
+        onReady({ eventId: id, count, key })
+        if (!eventId) onCreated(id)
+        return
+      }
+      navigate(`/planning?${new URLSearchParams({ eventId: id, stage: 'review' })}`, {
+        replace: true,
+        state: { generated: count > 0 ? { count, key } : undefined, focusPlan: true },
+      })
+    },
+    prefetchEventDetail,
+  )
+  // 대화로 돌아가 있으면 생성 화면 대신 P1을 그린다. 잠금은 chat.busy가 그대로 건다.
+  const live = away ? { ...chat, generationFlow: null } : chat
+  // 새 요청은 생성 화면부터 보이고, 지난 완료 안내는 내린다.
+  const beginRequest = () => {
+    showChat(false)
+    onReady(null)
+  }
+  useEffect(() => {
+    onBusy(live.streaming)
+  }, [live.streaming, onBusy])
   const [params] = useSearchParams()
   const event = useEventDetail(eventId ?? undefined)
   const [showFailure, setShowFailure] = useState(Boolean(failedText))
+  // 끊긴 첫 메시지가 저장된 것으로 확인되면 "결과를 확인해 주세요" 안내를 내린다(#342).
+  if (showFailure && live.settled === 'saved') setShowFailure(false)
   if (live.generationFlow)
     return (
       <>
@@ -255,6 +307,7 @@ function Conversation({
           flow={live.generationFlow}
           onReload={live.reloadGenerated}
           onViewCurrent={live.viewCurrentPlan}
+          onBackToChat={() => showChat(true)}
         />
       </>
     )
@@ -313,9 +366,38 @@ function Conversation({
   const readiness = live.view?.generationReadiness ?? screen?.generationReadiness ?? null
   const lastMessage = live.snapshot.data?.messages.at(-1)
   const generationFailure = live.generationFailure
+  const flow = chat.generationFlow
   return (
     <>
       <PlanStageNav current="conditions" />
+      {away && flow && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-blue-50 px-4 py-3">
+          <p ref={awayNote} tabIndex={-1} className="break-keep text-ink focus:outline-none">
+            {['requesting', 'generating', 'verifying', 'loading'].includes(flow.phase)
+              ? '초안을 만들고 있어요. 생성은 계속되고, 끝날 때까지 새 대화와 생성은 잠가 둘게요.'
+              : '초안 생성 결과를 확인해야 해요.'}
+          </p>
+          <Button size="sm" variant="secondary" onClick={() => showChat(false)}>
+            생성 화면 보기
+          </Button>
+        </div>
+      )}
+      {ready && eventId && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-blue-50 px-4 py-3">
+          <p className="break-keep font-semibold text-ink">초안이 준비됐어요.</p>
+          <Link
+            className="rounded-lg px-2 py-2 text-caption font-semibold text-blue-700 underline underline-offset-4 hover:bg-blue-100"
+            to={`/planning?${new URLSearchParams({ eventId, stage: 'review' })}`}
+            state={{
+              generated: ready.count > 0 ? { count: ready.count, key: ready.key } : undefined,
+              focusPlan: true,
+            }}
+            onClick={() => onReady(null)}
+          >
+            계획 검토하기
+          </Link>
+        </div>
+      )}
       {stage === 'review' && !eventId && (
         <p role="status" className="text-mute">
           먼저 행사 조건을 정하고 초안을 만들어 주세요.
@@ -331,6 +413,7 @@ function Conversation({
         <PlanChat
           messages={live.messages}
           onSend={async (text) => {
+            beginRequest()
             const success = await live.send(text)
             if (success) setShowFailure(false)
             return success
@@ -340,6 +423,7 @@ function Conversation({
           progress={live.progress}
           pendingReply={live.pendingReply}
           notice={live.notice}
+          historyUsage={live.view?.historyUsage ?? screen?.historyUsage ?? null}
           error={
             (!generationFailure ? live.error : '') ||
             (showFailure ? '이전 요청 결과를 확인해 주세요. 서버에 반영됐을 수 있어요.' : '')
@@ -348,7 +432,11 @@ function Conversation({
             eventId ? () => Promise.all([live.snapshot.refetch(), event.refetch()]) : undefined
           }
           persisted={!!eventId}
-          initialDraft={failedText}
+          initialDraft={
+            // 결과 확인 화면 뒤에 입력창이 다시 그려진다. 저장되지 않았으면 원래 문장을 되돌리고,
+            // 저장된 것으로 확인됐으면 다시 보내지 않게 비운다(#342).
+            live.retryText || (live.settled === 'saved' ? '' : failedText)
+          }
         />
         <div className="flex w-full min-w-0 flex-col gap-4 lg:w-[340px] lg:shrink-0">
           {lastMessage?.role === 'USER' && !live.busy && (
@@ -384,7 +472,10 @@ function Conversation({
               aria-describedby={generationDescriptionId}
               loading={live.generating}
               disabled={!eventId || !readiness?.canGenerate || live.busy}
-              onClick={() => void live.generate()}
+              onClick={() => {
+                beginRequest()
+                void live.generate()
+              }}
             >
               {live.generating
                 ? '초안을 만드는 중…'
@@ -392,7 +483,8 @@ function Conversation({
                   ? '이 조건으로 다시 만들기'
                   : '이 조건으로 초안 만들기'}
             </Button>
-            {eventId && steps.length > 0 && (
+            {/* 생성 중에는 지난 초안으로 가는 길을 닫고, 완료 안내가 있으면 그 링크 하나만 둔다. */}
+            {eventId && steps.length > 0 && !flow && !ready && (
               <Link
                 className="self-center rounded-lg px-2 py-2 text-caption font-semibold text-blue-700 underline underline-offset-4 hover:bg-blue-50"
                 to={`/planning?${new URLSearchParams({ eventId, stage: 'review' })}`}

@@ -1,5 +1,5 @@
-import { apiGet, apiGetPage, apiPatch, apiPost, apiPostForm } from '@/shared/api/client'
-import type { CreateExpenseInput, Expense, ExpensePageMeta, ReceiptImport, ReceiptImportListItem, ReceiptDraft, ReceiptConfirm } from './types'
+import { apiDelete, apiGet, apiGetPage, apiPatch, apiPost, apiPostForm } from '@/shared/api/client'
+import type { CreateExpenseInput, Expense, ExpensePageMeta, ReceiptImport, ReceiptImportListItem, ReceiptDraft, ReceiptConfirm, UpdateExpenseInput } from './types'
 
 export const EXPENSE_PAGE_SIZE = 20
 
@@ -11,6 +11,21 @@ export function getExpenses(clubId: string, page: number) {
 
 export function createExpense(clubId: string, body: CreateExpenseInput) {
   return apiPost<Expense>(`/clubs/${encodeURIComponent(clubId)}/expenses`, body)
+}
+
+// 회장·임원만 고칠 수 있다. 그사이 누가 먼저 고쳤으면 409 VERSION_CONFLICT 다.
+export function updateExpense(clubId: string, expenseId: string, body: UpdateExpenseInput) {
+  return apiPatch<Expense>(
+    `/clubs/${encodeURIComponent(clubId)}/expenses/${encodeURIComponent(expenseId)}`,
+    body,
+  )
+}
+
+// 되돌릴 수 없다. 204라 돌려줄 본문이 없다.
+export function deleteExpense(clubId: string, expenseId: string) {
+  return apiDelete<void>(
+    `/clubs/${encodeURIComponent(clubId)}/expenses/${encodeURIComponent(expenseId)}`,
+  )
 }
 
 export function getReceiptImports(clubId: string) {

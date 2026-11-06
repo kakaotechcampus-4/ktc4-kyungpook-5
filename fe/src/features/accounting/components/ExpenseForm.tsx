@@ -1,6 +1,12 @@
-// 지출 직접 입력. CSV·영수증 가져오기와 달리 한 건씩 손으로 적는 경로다.
+// 지출 직접 입력·수정. CSV·영수증 가져오기와 달리 한 건씩 손으로 적는 경로다.
+// expense 를 받으면 그 건을 고치고, 없으면 새로 등록한다. 밭 구성이 같아 한 폼을 쓴다.
 import { useState } from 'react'
-import { expenseFormErrorMessage, useCreateExpense } from '@/features/accounting/hooks'
+import {
+  expenseFormErrorMessage,
+  useCreateExpense,
+  useUpdateExpense,
+} from '@/features/accounting/hooks'
+import type { Expense } from '@/features/accounting/types'
 import { Field } from '@/shared/ui/AuthShell'
 import { Button } from '@/shared/ui/Button'
 import { Input, Textarea } from '@/shared/ui/Input'
@@ -15,44 +21,62 @@ function today(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date())
 }
 
+// 서버가 주는 ISO 시각을 <input type="date">가 받는 한국 날짜로 되돌린다.
+function toDateInput(iso: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(iso))
+}
+
 interface ExpenseFormProps {
   clubId: string
+  // 있으면 수정, 없으면 새 등록.
+  expense?: Expense
   onDone: () => void
 }
 
-export function ExpenseForm({ clubId, onDone }: ExpenseFormProps) {
+export function ExpenseForm({ clubId, expense, onDone }: ExpenseFormProps) {
   const create = useCreateExpense(clubId)
-  const [spentAt, setSpentAt] = useState(today)
-  const [amount, setAmount] = useState('')
-  const [merchant, setMerchant] = useState('')
-  const [category, setCategory] = useState('')
-  const [description, setDescription] = useState('')
+  const update = useUpdateExpense(clubId)
+  const [spentAt, setSpentAt] = useState(() => (expense ? toDateInput(expense.spentAt) : today()))
+  const [amount, setAmount] = useState(expense ? String(expense.amount) : '')
+  const [merchant, setMerchant] = useState(expense?.merchant ?? '')
+  const [category, setCategory] = useState(expense?.category ?? '')
+  const [description, setDescription] = useState(expense?.description ?? '')
   const [error, setError] = useState('')
 
   const won = Number(amount)
   const amountValid = Number.isInteger(won) && won > 0
+  const pending = create.isPending || update.isPending
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (create.isPending) return
+    if (pending) return
     if (!spentAt || !amountValid) {
       setError('지출일과 1원 이상의 금액을 확인해 주세요.')
       return
     }
     setError('')
+    const fields = {
+      spentAt: toSpentAt(spentAt),
+      amount: won,
+      // 서버 기본값과 같지만 생성 스키마가 필수로 둔다. 통화 선택은 아직 없다.
+      currency: 'KRW' as const,
+      merchant: merchant.trim() || null,
+      category: category.trim() || null,
+      description: description.trim() || null,
+    }
     try {
-      await create.mutateAsync({
-        spentAt: toSpentAt(spentAt),
-        amount: won,
-        // 서버 기본값과 같지만 생성 스키마가 필수로 둔다. 통화 선택은 아직 없다.
-        currency: 'KRW',
-        merchant: merchant.trim() || null,
-        category: category.trim() || null,
-        description: description.trim() || null,
-      })
+      if (expense) {
+        // 비운 칸은 null 로 가서 서버가 그 값을 지운다. 그사이 바뀌었으면 409다.
+        await update.mutateAsync({
+          expenseId: expense.id,
+          body: { ...fields, expectedVersion: expense.version },
+        })
+      } else {
+        await create.mutateAsync(fields)
+      }
       onDone()
     } catch (cause) {
-      setError(expenseFormErrorMessage(cause))
+      setError(expenseFormErrorMessage(cause, expense ? '수정' : '등록'))
     }
   }
 
@@ -118,10 +142,10 @@ export function ExpenseForm({ clubId, onDone }: ExpenseFormProps) {
         />
       </Field>
       <div className="flex gap-[8px]">
-        <Button type="submit" disabled={create.isPending || !amountValid}>
-          {create.isPending ? '등록하는 중…' : '등록'}
+        <Button type="submit" loading={pending} disabled={!amountValid}>
+          {expense ? (pending ? '저장하는 중…' : '저장') : pending ? '등록하는 중…' : '등록'}
         </Button>
-        <Button type="button" variant="ghost" disabled={create.isPending} onClick={onDone}>
+        <Button type="button" variant="ghost" disabled={pending} onClick={onDone}>
           취소
         </Button>
       </div>

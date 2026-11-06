@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { downloadRecord, RECORD_PAGE_SIZE } from '@/features/records/api'
 import {
+  useDeleteRecord,
   useRecordCounts,
   useRecordDetail,
   useRecordUploads,
@@ -40,6 +41,7 @@ function RecordStatusRow({
 }) {
   const detail = useRecordDetail(clubId, record.id, record.parseStatus)
   const retryIndex = useRetryRecordIndex(clubId, record.id)
+  const remove = useDeleteRecord(clubId)
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState(false)
   // 상세와 목록 중 더 최근에 받은 쪽을 보여 준다. 예전에 받아 둔 상세가 새 목록 상태를 덮지 않고,
@@ -86,6 +88,11 @@ function RecordStatusRow({
           {recordErrorMessage(retryIndex.error)} 검색 준비 재시도가 완료되지 않았어요.
         </p>
       )}
+      {remove.isError && (
+        <p role="alert" className="text-[12px] text-failed">
+          {recordErrorMessage(remove.error)} 자료를 지우지 못했어요.
+        </p>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-[8px]">
         <span className="break-all text-[10px] text-mute">자료 ID · {record.id}</span>
         <div className="flex flex-wrap gap-[6px]">
@@ -120,6 +127,23 @@ function RecordStatusRow({
             onClick={() => void detail.refetch()}
           >
             {detail.isFetching ? '상태 확인 중…' : '상태 다시 확인'}
+          </Button>
+          {/* 되돌릴 수 없어 파일 이름을 물어보는 문구에 넣는다. 지우면 검색에서도 빠진다. */}
+          <Button
+            variant="danger"
+            size="sm"
+            disabled={remove.isPending}
+            onClick={() => {
+              if (
+                window.confirm(
+                  `${current.fileName}을(를) 지울까요? 원본 파일과 검색 결과가 함께 사라지고 되돌릴 수 없어요.`,
+                )
+              ) {
+                remove.mutate(record.id)
+              }
+            }}
+          >
+            {remove.isPending ? '지우는 중…' : '삭제'}
           </Button>
         </div>
       </div>
@@ -258,7 +282,7 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
                 if (upload.isSuccess) upload.reset()
               }}
               className={cn(
-                'rounded-[8px] border px-[11px] py-[6px] text-[12px]',
+                'rounded-[8px] border px-[11px] py-[6px] text-[12px] transition-colors duration-150 motion-reduce:transition-none',
                 filter === value
                   ? 'border-blue-600 bg-blue-600 font-bold text-white'
                   : 'border-soft bg-card font-medium text-ink2 hover:bg-bg',

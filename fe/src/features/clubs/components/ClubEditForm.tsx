@@ -66,7 +66,7 @@ export function ClubEditForm({ club, onDone }: ClubEditFormProps) {
               aria-pressed={item === category}
               onClick={() => setCategory(item === category ? null : item)}
               className={cn(
-                'rounded-[8px] border px-[13px] py-[7px] text-[11.5px] font-bold',
+                'rounded-[8px] border px-[13px] py-[7px] text-[11.5px] font-bold transition-colors duration-150 motion-reduce:transition-none',
                 item === category
                   ? 'border-blue-600 bg-blue-600 text-white'
                   : 'border-soft bg-card text-ink2 hover:bg-bg',
