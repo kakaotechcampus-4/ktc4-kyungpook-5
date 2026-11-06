@@ -53,7 +53,7 @@ await api(`/events/${single.id}/plan/steps`, 'PATCH', { expectedRevision: 0, cod
 await page.goto(`${ui}/planning?eventId=${single.id}`)
 await ready()
 assert.ok(
-  (await page.locator('main').innerText()).includes('포함 단계 1개 · 포함하지 않은 단계 12개'),
+  (await page.locator('main').innerText()).includes('포함하지 않은 단계 12개 보기'),
 )
 await page.reload()
 await ready()

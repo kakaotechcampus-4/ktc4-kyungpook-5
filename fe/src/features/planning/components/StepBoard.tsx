@@ -11,7 +11,22 @@ import type { CatalogueStep } from '../catalogue'
 import { PHASES } from '../catalogue'
 import type { StepPhase } from '../types'
 import { formatMonthDay } from '@/shared/lib/format'
-import { Button } from '@/shared/ui/Button'
+import { cn } from '@/shared/lib/cn'
+import { Chip } from '@/shared/ui/Chip'
+
+const ACTOR_TONE = {
+  '승인 필요': 'pending',
+  'AI 실행': 'approved',
+  '직접 수행': 'neutral',
+} as const
+
+function Key({ children }: { children: string }) {
+  return (
+    <span className="mx-[1px] inline-block rounded-[4px] bg-white/15 px-[4px] font-semibold text-white">
+      {children}
+    </span>
+  )
+}
 
 interface StepBoardProps {
   included: CatalogueStep[]
@@ -19,8 +34,6 @@ interface StepBoardProps {
   onReorder: (phase: StepPhase, from: number, to: number) => void
   onRemove: (code: string) => void
   dates?: Record<string, { startsAt: string | null; deadline: string | null }>
-  onEditDetail?: (code: string) => void
-  detailsDisabled?: boolean
 }
 type Sort = {
   phase: StepPhase
@@ -40,18 +53,12 @@ function dateRange(range?: { startsAt: string | null; deadline: string | null })
   return from && to ? `${from} – ${to}` : from || to || '일정 미정'
 }
 
-export function StepBoard({
-  included,
-  schedule,
-  onReorder,
-  onRemove,
-  dates,
-  onEditDetail,
-  detailsDisabled = false,
-}: StepBoardProps) {
+export function StepBoard({ included, schedule, onReorder, onRemove, dates }: StepBoardProps) {
   const helpId = useId()
   const boardRef = useRef<HTMLDivElement>(null)
   const [sort, setSort] = useState<Sort | null>(null)
+  // 손잡이 말풍선을 Escape로 닫았는지. 손잡이를 떠나면 다시 뜰 수 있다.
+  const [tipClosed, setTipClosed] = useState(false)
   const [announcement, setAnnouncement] = useState('')
   useLayoutEffect(() => {
     if (sort && !sort.pointer)
@@ -76,6 +83,10 @@ export function StepBoard({
     count: number,
   ) => {
     if (sort?.pointer) return
+    if (!sort && event.key === 'Escape') {
+      setTipClosed(true)
+      return
+    }
     if (event.key === ' ' || event.key === 'Enter') {
       event.preventDefault()
       if (sort) finish(true)
@@ -149,17 +160,15 @@ export function StepBoard({
         if (sort?.pointer && event.key === 'Escape') finish(false)
       }}
     >
-      <div className="mb-5">
-        <h2 className="text-h2">포함된 단계 · {included.length}개</h2>
-        <p id={helpId} className="mt-2 text-label text-mute">
-          왼쪽 손잡이로 같은 묶음 안에서 이동해요. 키보드: Space/Enter로 선택 → 위아래 방향키 →
-          Space/Enter로 놓기, Escape로 취소.
-        </p>
-      </div>
+      {/* 사용법은 손잡이 말풍선으로 보인다. 화면 낭독기는 손잡이마다 이 글을 설명으로 읽는다. */}
+      <p id={helpId} className="sr-only">
+        손잡이를 끌어 같은 묶음 안에서 순서를 바꿔요. 키보드로는 Space 또는 Enter로 집고, 위아래
+        방향키로 옮긴 뒤 Space 또는 Enter로 놓아요. Escape로 취소해요.
+      </p>
       <p role="status" className="sr-only">
         {announcement}
       </p>
-      <div className="space-y-6">
+      <div className="space-y-7">
         {PHASES.map((phase) => {
           const rows = included.filter((step) => step.phase === phase)
           const preview = [...rows]
@@ -169,109 +178,145 @@ export function StepBoard({
               key={phase}
               aria-label={phase}
               data-phase-group={phase}
-              className={`overflow-hidden rounded-xl border bg-card ${sort?.phase === phase ? 'border-blue-400' : 'border-line'}`}
+              className={cn(
+                '-mx-3 rounded-2xl px-3 py-2 transition-colors duration-150 motion-reduce:transition-none',
+                sort?.phase === phase && 'ring-1 ring-blue-200',
+              )}
             >
-              <header className="flex items-center justify-between gap-3 border-b border-line bg-blue-50 px-4 py-4">
+              <header className="mb-3 flex items-center justify-between">
                 <h3 className="text-h3">{phase}</h3>
-                <span className="text-label text-ink2">{rows.length}개 단계</span>
+                <span className="text-label font-normal text-mute">{rows.length}개 단계</span>
               </header>
-              <div className="px-3 sm:px-4">
-                {!rows.length && (
-                  <p className="py-6 text-caption text-mute">
-                    포함된 단계가 없어요. 미포함 목록에서 다시 포함할 수 있어요.
-                  </p>
-                )}
+              {!rows.length && (
+                <p className="rounded-xl border border-dashed border-line px-4 py-5 text-caption text-mute">
+                  포함된 단계가 없어요. 포함하지 않은 단계에서 다시 넣을 수 있어요.
+                </p>
+              )}
+              <ol className="space-y-3">
                 {preview.map((step, index) => {
                   const active = sort?.code === step.code
+                  const movable = rows.length > 1
                   return (
-                    <div
+                    <li
                       key={step.code}
                       data-sort-code={step.code}
-                      className={`flex items-center gap-2 border-b border-line py-3 last:border-b-0 sm:gap-3 ${active ? 'rounded-lg bg-blue-50 outline-1 outline-dashed outline-blue-400' : ''}`}
+                      className="grid grid-cols-[42px_minmax(0,1fr)] items-stretch gap-2 sm:grid-cols-[52px_minmax(0,1fr)] sm:gap-3"
                     >
-                      <button
-                        type="button"
-                        aria-label={`${step.name} 순서 변경`}
-                        aria-describedby={helpId}
-                        aria-pressed={active}
-                        disabled={rows.length < 2}
-                        onKeyDown={(event) =>
-                          keyboard(
-                            event,
-                            step,
-                            rows.findIndex((row) => row.code === step.code),
-                            rows.length,
-                          )
-                        }
-                        onPointerDown={(event) => {
-                          if (event.button !== 0 || rows.length < 2 || sort) return
-                          event.preventDefault()
-                          event.currentTarget.focus()
-                          boardRef.current?.setPointerCapture(event.pointerId)
-                          const rect = event.currentTarget.parentElement!.getBoundingClientRect()
-                          setSort({
-                            phase,
-                            code: step.code,
-                            from: index,
-                            to: index,
-                            pointer: true,
-                            valid: true,
-                            x: event.clientX,
-                            y: event.clientY,
-                            width: rect.width,
-                          })
-                        }}
-                        className="flex min-h-11 min-w-11 shrink-0 touch-none items-center justify-center self-stretch rounded-lg text-mute select-none hover:bg-blue-100 focus-visible:bg-blue-100 disabled:opacity-30 [cursor:grab] active:[cursor:grabbing]"
-                      >
-                        <svg
-                          aria-hidden
-                          viewBox="0 0 20 24"
-                          width="18"
-                          height="22"
-                          fill="currentColor"
-                        >
-                          {[6, 12, 18].flatMap((y) =>
-                            [7, 13].map((x) => <circle key={`${x}:${y}`} cx={x} cy={y} r="1.5" />),
-                          )}
-                        </svg>
-                      </button>
+                      {/* 계획 검토의 날짜 줄 자리에 손잡이가 온다. 칸 모양은 계획 검토와 같다. */}
                       <div
-                        className={`min-w-0 flex-1 ${active && sort.pointer ? 'opacity-40' : ''}`}
+                        className="group/handle relative flex justify-center"
+                        onPointerLeave={() => setTipClosed(false)}
                       >
-                        <h4 className="text-body-strong [overflow-wrap:anywhere]">{step.name}</h4>
-                        <p className="mt-1 text-label text-mute">
-                          {step.actor} ·{' '}
-                          {dates ? dateRange(dates[step.code]) : schedule[step.code] || '일정 미정'}
-                        </p>
-                        {dates && !dates[step.code] && (
-                          <p className="mt-1 text-label text-blue-700">
-                            새 단계 · 저장 후 일정과 기본 작업을 확인해 주세요.
-                          </p>
-                        )}
-                        {onEditDetail && dates?.[step.code] && (
-                          <button
-                            type="button"
-                            disabled={detailsDisabled || !!sort}
-                            onClick={() => onEditDetail(step.code)}
-                            className="mt-1 min-h-8 rounded px-1 text-label text-blue-700 underline underline-offset-4 disabled:opacity-40"
+                        <button
+                          type="button"
+                          aria-label={`${step.name} 순서 변경`}
+                          aria-describedby={helpId}
+                          aria-pressed={active}
+                          disabled={!movable}
+                          onBlur={() => setTipClosed(false)}
+                          onKeyDown={(event) =>
+                            keyboard(
+                              event,
+                              step,
+                              rows.findIndex((row) => row.code === step.code),
+                              rows.length,
+                            )
+                          }
+                          onPointerDown={(event) => {
+                            if (event.button !== 0 || !movable || sort) return
+                            event.preventDefault()
+                            event.currentTarget.focus()
+                            boardRef.current?.setPointerCapture(event.pointerId)
+                            const rect = event.currentTarget.closest('li')!.getBoundingClientRect()
+                            setSort({
+                              phase,
+                              code: step.code,
+                              from: index,
+                              to: index,
+                              pointer: true,
+                              valid: true,
+                              x: event.clientX,
+                              y: event.clientY,
+                              width: rect.width,
+                            })
+                          }}
+                          className={cn(
+                            'flex min-h-11 w-11 touch-none items-center justify-center self-stretch rounded-xl text-mute outline-none select-none [cursor:grab] hover:bg-blue-100 hover:text-blue-700 focus-visible:bg-blue-100 focus-visible:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600 active:[cursor:grabbing] disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent',
+                            active && 'bg-blue-100 text-blue-700',
+                          )}
+                        >
+                          <svg
+                            aria-hidden
+                            viewBox="0 0 20 24"
+                            width="18"
+                            height="22"
+                            fill="currentColor"
                           >
-                            일정·내용 수정
-                          </button>
+                            {[6, 12, 18].flatMap((y) =>
+                              [7, 13].map((x) => (
+                                <circle key={`${x}:${y}`} cx={x} cy={y} r="1.5" />
+                              )),
+                            )}
+                          </svg>
+                        </button>
+                        {movable && !sort && (
+                          <span
+                            aria-hidden
+                            className={cn(
+                              'invisible absolute bottom-full left-0 z-20 mb-1.5 w-max whitespace-nowrap rounded-[8px] bg-ink px-[10px] py-[7px] text-[11.5px] leading-[17px] text-white opacity-0 shadow-[0_6px_18px_rgba(32,43,56,0.18)] transition-opacity duration-150 motion-reduce:transition-none',
+                              'group-hover/handle:visible group-hover/handle:opacity-100 group-hover/handle:delay-300 group-has-[:focus-visible]/handle:visible group-has-[:focus-visible]/handle:opacity-100',
+                              tipClosed && '!invisible',
+                            )}
+                          >
+                            <span className="block font-semibold">끌어서 순서 바꾸기</span>
+                            <span className="block text-blue-100">
+                              <Key>Space</Key> 집기 · <Key>↑</Key>
+                              <Key>↓</Key> 옮기기 · <Key>Space</Key> 놓기 · <Key>Esc</Key> 취소
+                            </span>
+                          </span>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={!!sort}
-                        aria-label={`${step.name} 제외`}
-                        onClick={() => onRemove(step.code)}
+                      <div
+                        className={cn(
+                          'flex min-w-0 items-start justify-between gap-2 rounded-xl border p-3 sm:p-4',
+                          active
+                            ? 'border-dashed border-blue-400 bg-blue-50'
+                            : 'border-transparent bg-bg',
+                          active && sort.pointer && 'opacity-50',
+                        )}
                       >
-                        제외
-                      </Button>
-                    </div>
+                        <div className="min-w-0">
+                          <h4 className="font-semibold [overflow-wrap:anywhere]">{step.name}</h4>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-label">
+                            <Chip size="sm" tone={ACTOR_TONE[step.actor]}>
+                              {step.actor}
+                            </Chip>
+                            <span className="text-mute">
+                              {dates
+                                ? dateRange(dates[step.code])
+                                : schedule[step.code] || '일정 미정'}
+                            </span>
+                          </div>
+                          {dates && !dates[step.code] && (
+                            <p className="mt-2 text-label text-blue-700">
+                              새 단계 · 저장 후 일정과 기본 작업을 확인해 주세요.
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!!sort}
+                          aria-label={`${step.name} 제외`}
+                          onClick={() => onRemove(step.code)}
+                          className="min-h-9 shrink-0 rounded-[8px] px-[10px] text-[13px] font-medium text-ink2 hover:bg-card hover:text-ink focus-visible:bg-card disabled:opacity-40"
+                        >
+                          제외
+                        </button>
+                      </div>
+                    </li>
                   )
                 })}
-              </div>
+              </ol>
             </section>
           )
         })}
