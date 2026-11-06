@@ -56,6 +56,7 @@ interface PlanFactsProps {
   flash?: FactFlash | null
   // 초안을 만들려면 먼저 정해야 하는 칸(서버 생성 판정의 이유). 값이 없으면 「필요해요」로 보인다.
   needed?: readonly PlanFactKey[]
+  className?: string
 }
 
 // 강조가 켜져 있는 동안의 값. 남은 시간이 지나면 비워 다시 그릴 때 지난 강조가 켜지지 않게 한다.
@@ -71,7 +72,7 @@ function useActiveFlash(flash: FactFlash | null | undefined): FactFlash | null {
   return flash !== expired && flashLeft(flash, Date.now()) ? (flash ?? null) : null
 }
 
-export function PlanFacts({ facts, children, flash, needed }: PlanFactsProps) {
+export function PlanFacts({ facts, children, flash, needed, className }: PlanFactsProps) {
   const titleId = useId()
   const active = useActiveFlash(flash)
   // 주소 이동으로 다시 그려져도 이미 지난 시간만큼 색이 사라진 지점에서 이어 간다.
@@ -81,7 +82,7 @@ export function PlanFacts({ facts, children, flash, needed }: PlanFactsProps) {
     <Card
       role="region"
       aria-labelledby={titleId}
-      className="flex w-full min-w-0 flex-col gap-4 px-[22px] pt-5 pb-[22px]"
+      className={cn('flex w-full min-w-0 flex-col gap-4 px-[22px] pt-5 pb-[22px]', className)}
     >
       <h2 id={titleId} className="text-h2 text-ink">
         이번 행사 조건

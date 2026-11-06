@@ -86,6 +86,11 @@
   --animate-done-in: done-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-done-draw: done-draw 360ms 140ms cubic-bezier(0.65, 0, 0.35, 1) both;
   --animate-done-out: done-out 200ms ease-in forwards;
+  /* 초안 생성 완료(P1→P2). 계획 검토로 넘어가기까지 남은 시간이 바닥 막대로 줄어든다.
+     시간은 GenerationScreen.tsx의 DONE_HOLD_MS를 쓰는 쪽이 animation-duration으로 넣는다. */
+  --animate-hold-bar: hold-bar 1800ms linear both;
+  /* 새 초안으로 계획 검토에 들어왔을 때 단계 카드가 위에서부터 차례로 올라온다. 지연은 쓰는 쪽이 넣는다. */
+  --animate-step-rise: step-rise 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
 
   /* 입력 중 점 세 개가 차례로 떠올랐다 내려온다. */
   @keyframes typing-dot {
@@ -160,6 +165,17 @@
     to {
       opacity: 0;
       transform: translateY(-4px) scale(0.98);
+    }
+  }
+  @keyframes hold-bar {
+    to {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes step-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
     }
   }
   @keyframes line-out {
@@ -272,4 +288,52 @@ textarea[aria-label='계획 대화 답변'] {
 .workspace-sidebar > a {
   background: #344b6a;
   color: #fff;
+}
+
+/* 행사 계획 P1 → 초안 생성 → P2 전환(shared/lib/viewTransition.ts, PlanStageNav).
+   plan-generation  P1 오른쪽 조건 카드 ↔ 생성 화면 카드. 카드가 제자리에서 가운데로 옮겨 가며 커진다.
+                    글자를 늘이지 않도록 두 화면의 모습은 원래 크기로 왼쪽 위에 붙이고, 커지는 상자 밖은 자른다.
+   plan-stage-pill  위 단계 토글의 파란 칸. 「행사 조건」에서 「계획 검토」로 미끄러진다.
+   plan-stage-*     토글 글자. 파란 칸이 지나가는 동안에도 글자가 칸 위에 보이게 따로 찍는다.
+   나머지 화면은 짧게 겹쳐 바뀐다. 「움직임 줄이기」면 옮겨 가는 움직임 없이 겹쳐 바뀌기만 한다. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+}
+::view-transition-group(plan-generation) {
+  overflow: clip;
+  border-radius: 16px;
+  animation-duration: 380ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+::view-transition-old(plan-generation),
+::view-transition-new(plan-generation) {
+  height: 100%;
+  object-fit: none;
+  object-position: left top;
+}
+::view-transition-old(plan-generation) {
+  animation-duration: 160ms;
+}
+::view-transition-new(plan-generation) {
+  animation-duration: 260ms;
+  animation-delay: 80ms;
+}
+/* 「만드는 중」이 붙으면 글자 상자 너비가 바뀐다. 글자를 늘이지 않고 가운데에 둔 채 겹쳐 바꾼다. */
+::view-transition-old(plan-stage-conditions),
+::view-transition-new(plan-stage-conditions),
+::view-transition-old(plan-stage-review),
+::view-transition-new(plan-stage-review) {
+  height: 100%;
+  object-fit: none;
+}
+::view-transition-group(plan-stage-pill) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(plan-generation),
+  ::view-transition-group(plan-stage-pill) {
+    animation: none;
+  }
 }
