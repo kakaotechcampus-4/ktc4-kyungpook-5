@@ -13,7 +13,7 @@ const source = await readFile(
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 })
-const { sourceOf, transcriptTime, visibleDecision, meetingAnswers, toriResults, extractionFailed, meetingWhen, clockTime, askedAgo, recordedClock, meetingView } = await import(
+const { sourceOf, transcriptTime, visibleDecision, meetingAnswers, toriResults, extractionFailed, meetingProcessingSteps, meetingWhen, clockTime, askedAgo, recordedClock, meetingView } = await import(
   `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
 )
 
@@ -164,4 +164,22 @@ test('a failed task extraction is told apart from a meeting with no candidates',
   assert.equal(extractionFailed([ok]), false)
   assert.equal(extractionFailed([ok, failed]), true)
   assert.equal(extractionFailed([ok, stale]), false, 'an outdated decision does not count')
+})
+
+test('meeting processing status keeps failures separate from empty results and saves', () => {
+  const steps = meetingProcessingSteps({
+    transcriptCount: 2,
+    transcriptPending: false,
+    transcriptError: false,
+    answerCount: 1,
+    answerPending: false,
+    answerError: true,
+    candidateCount: 3,
+    candidateSavedCount: 1,
+    candidatePending: false,
+    candidateError: false,
+    extractionError: false,
+  })
+  assert.deepEqual(steps.map((step) => step.state), ['done', 'failed', 'done', 'waiting'])
+  assert.match(steps[3].detail, /1\/3/)
 })

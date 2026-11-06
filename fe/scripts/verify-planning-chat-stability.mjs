@@ -311,10 +311,10 @@ try {
   await page.getByRole('button', { name: '이전 계획', exact: true }).click()
   await page.getByRole('button', { name: /가을 MT.*생성/ }).click()
   await page.getByText('확인했어요 4.', { exact: true }).waitFor()
-  // 복원된 다른 계획의 요청에 대해서는 기존 잠금·안내가 남아 있어야 한다.
+  // 요청 기록은 행사마다 따로 둔다(#342). 다른 계획에 확인할 요청이 남아 있어도 이 계획은 잠그지 않는다.
   await page.evaluate((draft) => {
     sessionStorage.setItem(
-      'planning-request:v1:trace-user:trace-club',
+      'planning-request:v1:trace-user:trace-club:other-event',
       JSON.stringify({
         version: 1,
         userId: 'trace-user',
@@ -330,8 +330,9 @@ try {
     )
     window.dispatchEvent(new Event('planning-request-change'))
   }, draft)
-  await page.getByText('다른 계획의 처리 결과를 확인해야 해요.', { exact: false }).waitFor()
-  assert.equal(await input.getAttribute('readonly'), '')
+  await page.waitForTimeout(300)
+  assert.equal(await page.getByText('다른 계획의 처리 결과를 확인해야 해요.', { exact: false }).count(), 0)
+  assert.equal(await input.getAttribute('readonly'), null)
   assert.equal(created, 1, '첫 계획을 만든 뒤 같은 계획을 다시 생성하지 않는다')
   assert.equal(streamed, 5, '각 메시지를 한 번씩만 전송한다')
   assert.deepEqual(errors, [], '브라우저 JavaScript 오류가 없어야 한다')
@@ -354,7 +355,7 @@ try {
           'manual fold',
           'failure recovery',
           'new/previous plan isolation',
-          'foreign-request lock',
+          'other-plan request does not lock',
         ],
       },
       null,

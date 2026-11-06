@@ -5,11 +5,13 @@
 """
 
 from collections.abc import Sequence
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Protocol
 
 from app.core.enums import (
     SERVICE_ROLES,
+    ActionContentSource,
+    ActionContentStatus,
     ActionStatus,
     ActionType,
     EventStatus,
@@ -118,6 +120,17 @@ def is_editable(status: ActionStatus) -> bool:
     return status in (ActionStatus.PENDING, ActionStatus.APPROVED)
 
 
+def records_expense(action_type: ActionType, amount: int | None) -> bool:
+    """행동이 DONE이 될 때 지출 내역을 자동으로 남기는지 (#348).
+
+    송금(TRANSFER)만 남긴다. 카탈로그상 계약금(BOOK_VENUE)과 환불(REFUND_FEES)에만
+    붙어 둘 다 실제로 나간 돈이다. EXPENSE는 지출 정산 단계에만 붙고 그 금액은
+    예산 한도(event.budget_total)라 실제 지출로 적으면 장부가 부풀려진다.
+    금액이 없거나 0 이하면 남길 지출이 없다.
+    """
+    return action_type == ActionType.TRANSFER and amount is not None and amount > 0
+
+
 def is_step_editable(completed_at: datetime | None) -> bool:
     """단계의 일정을 고칠 수 있는지 (#106 ③).
 
@@ -125,6 +138,64 @@ def is_step_editable(completed_at: datetime | None) -> bool:
     되돌릴 방법이 없어 APPROVED 같은 중간 상태가 없다.
     """
     return completed_at is None
+
+
+# 본문 초안을 쓰는 Action 종류 (#334). 글로 내보내는 일이라 초안이 바로 쓸모 있다.
+# 계약·송금·지출은 금액과 대상이 핵심이라 대상이 아니다.
+DRAFT_ACTION_TYPES: frozenset[ActionType] = frozenset(
+    {ActionType.NOTICE, ActionType.EXTERNAL_SEND}
+)
+# 이 시간이 지나도 DRAFTING이면 서버 재시작 등으로 멈춘 작성으로 본다
+# (운영 상황 operation_cases.ATTEMPT_TIMEOUT과 같은 값).
+DRAFT_TIMEOUT = timedelta(minutes=3)
+
+
+def is_draft_stale(
+    content_status: ActionContentStatus, draft_started_at: datetime | None, now: datetime
+) -> bool:
+    """멈춘 작성인지. DRAFTING이고 시작한 지 DRAFT_TIMEOUT이 지났으면 그렇다."""
+    if content_status != ActionContentStatus.DRAFTING:
+        return False
+    return draft_started_at is None or now - draft_started_at >= DRAFT_TIMEOUT
+
+
+def shown_content_status(
+    content_status: ActionContentStatus, draft_started_at: datetime | None, now: datetime
+) -> ActionContentStatus:
+    """응답의 contentStatus. 멈춘 작성은 응답에서만 FAILED로 바꾼다(DB는 그대로)."""
+    if is_draft_stale(content_status, draft_started_at, now):
+        return ActionContentStatus.FAILED
+    return content_status
+
+
+def can_request_draft(
+    *,
+    event_status: EventStatus,
+    action_status: ActionStatus,
+    action_type: ActionType,
+    content_status: ActionContentStatus,
+    content_source: ActionContentSource | None,
+    draft_started_at: datetime | None,
+    now: datetime,
+) -> bool:
+    """「초안 다시 받기」를 받을 수 있는지. 응답의 canRequestDraft와 POST /draft가 같이 쓴다.
+
+    운영 중, 승인 대기(PENDING), 대상 종류, 운영진이 고친 글이 아님, 작성 중이 아님(3분 넘게
+    멈춘 작성은 허용). 한 번도 초안을 요청하지 않은 Action(NONE)은 "다시" 받을 것이 없어서
+    제외한다 — 아직 현재 단계가 아닌 공지에 미리 초안을 쓰지 않는다.
+    """
+    if content_status == ActionContentStatus.NONE:
+        return False
+    if content_status == ActionContentStatus.DRAFTING and not is_draft_stale(
+        content_status, draft_started_at, now
+    ):
+        return False
+    return (
+        is_operating(event_status)
+        and action_status == ActionStatus.PENDING
+        and action_type in DRAFT_ACTION_TYPES
+        and content_source != ActionContentSource.USER
+    )
 
 
 class _StepLike(Protocol):

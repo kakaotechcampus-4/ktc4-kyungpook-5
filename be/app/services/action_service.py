@@ -10,6 +10,13 @@
 행동이 DONE이 되면 그 단계의 행동이 모두 끝났는지 보고 단계 completed_at을 자동으로
 채운다(FE 명세 v1 §819). 같은 단계의 두 행동이 동시에 끝나도 단계를 놓치지 않도록
 단계 행도 잠그고 확인한다.
+
+현재 단계가 바뀔 수 있는 네 곳(start_event·mark_done·resolve·complete_step)은 커밋한 뒤
+action_draft_service.request_current_step_drafts로 공지·발송 Action의 본문 초안을 요청한다
+(#334). 초안은 뒤에서 받으므로 응답은 AI를 기다리지 않는다.
+
+금액이 있는 송금 행동이 DONE이 되면 같은 트랜잭션에서 지출 내역을 남긴다(#348).
+운영진이 장부에 같은 내역을 다시 입력하지 않게 하기 위해서다.
 """
 
 from datetime import UTC, datetime
@@ -30,7 +37,7 @@ from app.core.exceptions import (
 )
 from app.models.clubs import Member
 from app.models.events import Action, Event, Step
-from app.services import event_rules
+from app.services import accounting_service, action_draft_service, event_rules
 
 MANUAL_CHOICE = "MANUAL"
 
@@ -147,6 +154,8 @@ async def start_event(session: AsyncSession, *, event_id: str) -> Event:
         raise PlanIncomplete(missing)
     event.status = EventStatus.ON_GOING
     await session.commit()
+    # 첫 단계가 현재 단계가 된다.
+    await action_draft_service.request_current_step_drafts(event_id)
     return event
 
 
@@ -268,6 +277,8 @@ async def resolve(
     _set_resolution(action, member, ActionStatus.DONE)
     await _finish_step_if_done(session, action.step_id)
     await session.commit()
+    # 단계가 자동 완료됐으면 다음 단계가 현재 단계가 된다.
+    await action_draft_service.request_current_step_drafts(action.event_id)
     return await _reload(session, action_id)
 
 
@@ -280,14 +291,24 @@ async def mark_done(
     if not event_rules.can_mark_done(action.status, approve_needed=action.approve_needed):
         raise AlreadyResolved()
     _check_version(action, expected_version)
+    now = datetime.now(UTC)
     if action.resolved_by is None:
         # 승인이 필요 없는 행동은 실행을 기록한 사람이 처리자다.
         action.resolved_by = member.id
-        action.resolved_at = datetime.now(UTC)
+        action.resolved_at = now
     action.status = ActionStatus.DONE
     action.version += 1
+    if event_rules.records_expense(action.type, action.amount):
+        # 돈이 나간 건 승인 때가 아니라 실행 완료 때다. 남긴 사람도 완료를 기록한 운영진이다
+        # (승인자 resolved_by는 탈퇴하면 비워질 수 있다).
+        event = await session.get(Event, action.event_id)
+        accounting_service.add_action_expense(
+            session, action=action, club_id=event.club_id, spent_at=now, created_by=member.id
+        )
     await _finish_step_if_done(session, action.step_id)
     await session.commit()
+    # 단계가 자동 완료됐으면 다음 단계가 현재 단계가 된다.
+    await action_draft_service.request_current_step_drafts(action.event_id)
     return await _reload(session, action_id)
 
 
@@ -310,6 +331,7 @@ async def complete_step(session: AsyncSession, *, step_id: str, member: Member) 
         )
     )
     await session.commit()
+    await action_draft_service.request_current_step_drafts(step.event_id)
     return {
         "id": step.id,
         "completed_at": step.completed_at,

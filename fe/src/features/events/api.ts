@@ -1,5 +1,5 @@
 // 행사 서버 호출. 화면은 이 파일을 직접 쓰지 않고 hooks.ts를 거친다.
-import { apiGet, apiGetPage, apiPost } from '@/shared/api/client'
+import { apiGet, apiGetPage, apiPatch, apiPost } from '@/shared/api/client'
 import type {
   ActionPage,
   EventAction,
@@ -76,3 +76,11 @@ export const denyAction = (action: EventAction, reason: string) =>
   apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/deny`, { expectedVersion: actionVersion(action), reason })
 export const markActionDone = (action: EventAction) =>
   apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/done`, { expectedVersion: actionVersion(action) })
+// 토리 초안 다시 받기(#334). 성공하면 DRAFTING으로 바뀐 Action이 온다.
+// 409 VERSION_CONFLICT(그사이 바뀜) · DRAFT_NOT_ALLOWED(받을 수 없는 상태)
+export const requestActionDraft = (action: EventAction) =>
+  apiPost<EventAction>(`/actions/${encodeURIComponent(action.id)}/draft`, { expectedVersion: actionVersion(action) })
+// 본문 고치기. 응답은 계획 화면과 같은 단계 모양(PlannedStepOut)이라 쓰지 않고, 호출한 쪽이 Action을 다시 불러온다.
+// expectedVersion은 고치기 시작한 때의 version이다. 그사이 초안이 도착했으면 409 VERSION_CONFLICT.
+export const updateActionContent = (action: EventAction, content: string, expectedVersion = actionVersion(action)) =>
+  apiPatch<unknown>(`/actions/${encodeURIComponent(action.id)}`, { expectedVersion, content })

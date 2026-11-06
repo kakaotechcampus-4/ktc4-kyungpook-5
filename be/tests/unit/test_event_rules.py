@@ -154,3 +154,22 @@ def test_canApprove는_처리_API가_받는_조건과_같다() -> None:
         MemberRole.MEMBER, ActionStatus.PENDING, action_type=ActionType.TRANSFER,
         approve_needed=True, event_status=EventStatus.ON_GOING,
     ) is False
+
+
+@pytest.mark.parametrize(
+    ("action_type", "amount", "expected"),
+    [
+        (ActionType.TRANSFER, 30000, True),
+        (ActionType.TRANSFER, None, False),
+        (ActionType.TRANSFER, 0, False),
+        (ActionType.TRANSFER, -1, False),
+        # 지출 정산(EXPENSE)의 금액은 실제 지출이 아니라 예산 한도다.
+        (ActionType.EXPENSE, 50000, False),
+        (ActionType.CONTRACT, 50000, False),
+        (ActionType.NOTICE, 50000, False),
+    ],
+)
+def test_금액이_있는_송금_행동만_지출로_기록한다(
+    action_type: ActionType, amount: int | None, expected: bool
+) -> None:
+    assert event_rules.records_expense(action_type, amount) is expected

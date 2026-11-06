@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { EXPENSE_PAGE_SIZE } from '@/features/accounting/api'
 import { ExpenseForm } from '@/features/accounting/components/ExpenseForm'
-import { useExpenses } from '@/features/accounting/hooks'
+import { expenseFormErrorMessage, useDeleteExpense, useExpenses } from '@/features/accounting/hooks'
 import type { Expense } from '@/features/accounting/types'
 import { ApiError } from '@/shared/api/types'
 import { formatCurrency, formatDotDate } from '@/shared/lib/format'
@@ -9,6 +9,8 @@ import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { Skeleton } from '@/shared/ui/Skeleton'
+import { staggerDelay } from '@/shared/lib/stagger'
 
 const SOURCE_LABEL: Record<Expense['source'], string> = {
   MANUAL: '직접 입력',
@@ -32,6 +34,9 @@ export function ExpensesPanel({ clubId }: { clubId: string }) {
 function ClubExpensesPanel({ clubId }: { clubId: string }) {
   const [page, setPage] = useState(1)
   const [adding, setAdding] = useState(false)
+  // 고치는 중인 한 건. 등록 폼과 동시에 열지 않는다.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const remove = useDeleteExpense(clubId)
   const expenses = useExpenses(clubId, page)
   const rows = expenses.data?.data
   const totalCount = expenses.data?.meta?.totalCount ?? rows?.length ?? 0
@@ -53,7 +58,14 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
           >
             {expenses.isFetching ? '불러오는 중…' : '새로고침'}
           </Button>
-          <Button size="sm" aria-expanded={adding} onClick={() => setAdding((open) => !open)}>
+          <Button
+            size="sm"
+            aria-expanded={adding}
+            onClick={() => {
+              setEditingId(null)
+              setAdding((open) => !open)
+            }}
+          >
             지출 등록
           </Button>
         </div>
@@ -70,10 +82,31 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
         />
       )}
 
+      {remove.isError && (
+        <div
+          role="alert"
+          className="border-t border-line px-[22px] py-[14px] text-[13px] text-failed"
+        >
+          {expenseFormErrorMessage(remove.error, '삭제')}
+        </div>
+      )}
+
       {expenses.isPending && (
-        <p role="status" className="border-t border-line px-[22px] py-[30px] text-[13px] text-mute">
-          지출 내역을 불러오고 있어요.
-        </p>
+        <div className="border-t border-line" role="status" aria-busy>
+          <p className="sr-only">지출 내역을 불러오고 있어요.</p>
+          {/* 표가 들어올 자리를 행 높이 그대로 잡아 둔다. 숫자는 오른쪽에 붙는다. */}
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="flex items-center gap-[14px] border-t border-line px-[22px] py-[16px] first:border-0"
+            >
+              <Skeleton className="h-[17px] w-[72px] shrink-0" />
+              <Skeleton className="h-[17px] flex-1" />
+              <Skeleton className="h-[17px] w-[64px] shrink-0" />
+              <Skeleton className="h-[17px] w-[88px] shrink-0" />
+            </div>
+          ))}
+        </div>
       )}
       {expenses.isError && (
         <div
@@ -109,33 +142,87 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
                 <th scope="col" className="px-[22px] py-[12px] font-medium">
                   기록 방식
                 </th>
+                <th scope="col" className="px-[22px] py-[12px] text-right font-medium">
+                  <span className="sr-only">수정·삭제</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((expense) => (
-                <tr key={expense.id} className="border-t border-line">
-                  <td className="whitespace-nowrap px-[22px] py-[16px] text-ink2">
-                    {formatDotDate(expense.spentAt)}
-                  </td>
-                  <td className="max-w-[320px] px-[14px] py-[16px]">
-                    <p className="break-words font-bold text-ink">
-                      {expense.merchant || '사용처 미입력'}
-                    </p>
-                    {expense.description && (
-                      <p className="mt-[4px] break-words leading-[18px] text-mute">
-                        {expense.description}
+              {rows.map((expense, i) =>
+                editingId === expense.id ? (
+                  <tr key={expense.id} className="border-t border-line">
+                    <td colSpan={6} className="p-0">
+                      <ExpenseForm
+                        key={expense.version}
+                        clubId={clubId}
+                        expense={expense}
+                        onDone={() => setEditingId(null)}
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  <tr
+                    key={expense.id}
+                    className="border-t border-line animate-turn-in motion-reduce:animate-none"
+                    style={{ animationDelay: staggerDelay(i) }}
+                  >
+                    <td className="whitespace-nowrap px-[22px] py-[16px] text-ink2">
+                      {formatDotDate(expense.spentAt)}
+                    </td>
+                    <td className="max-w-[320px] px-[14px] py-[16px]">
+                      <p className="break-words font-bold text-ink">
+                        {expense.merchant || '사용처 미입력'}
                       </p>
-                    )}
-                  </td>
-                  <td className="px-[14px] py-[16px] text-ink2">{expense.category || '미분류'}</td>
-                  <td className="whitespace-nowrap px-[14px] py-[16px] text-right font-bold text-ink">
-                    {formatCurrency(expense.amount)}
-                  </td>
-                  <td className="whitespace-nowrap px-[22px] py-[16px] text-mute">
-                    {SOURCE_LABEL[expense.source]}
-                  </td>
-                </tr>
-              ))}
+                      {expense.description && (
+                        <p className="mt-[4px] break-words leading-[18px] text-mute">
+                          {expense.description}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-[14px] py-[16px] text-ink2">
+                      {expense.category || '미분류'}
+                    </td>
+                    <td className="whitespace-nowrap px-[14px] py-[16px] text-right font-bold text-ink">
+                      {formatCurrency(expense.amount)}
+                    </td>
+                    <td className="whitespace-nowrap px-[22px] py-[16px] text-mute">
+                      {SOURCE_LABEL[expense.source]}
+                    </td>
+                    <td className="whitespace-nowrap px-[22px] py-[16px] text-right">
+                      <span className="flex justify-end gap-[6px]">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={remove.isPending}
+                          onClick={() => {
+                            setAdding(false)
+                            setEditingId(expense.id)
+                          }}
+                        >
+                          수정
+                        </Button>
+                        {/* 되돌릴 수 없어 금액과 사용처를 확인 문구에 넣는다. */}
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={remove.isPending}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `${formatDotDate(expense.spentAt)} ${formatCurrency(expense.amount)} (${expense.merchant || '사용처 미입력'}) 지출을 지울까요? 되돌릴 수 없어요.`,
+                              )
+                            ) {
+                              remove.mutate(expense.id)
+                            }
+                          }}
+                        >
+                          삭제
+                        </Button>
+                      </span>
+                    </td>
+                  </tr>
+                ),
+              )}
             </tbody>
           </table>
         </div>

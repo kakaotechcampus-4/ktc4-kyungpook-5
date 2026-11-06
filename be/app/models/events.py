@@ -15,10 +15,13 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import (
+    ActionContentSource,
+    ActionContentStatus,
     ActionStatus,
     ActionType,
     EventStatus,
@@ -174,6 +177,28 @@ class Action(IdMixin, TimestampMixin, Base):
     # 필요해 생명주기가 다르므로 따로 둔다 — services에서 content가 바뀌면
     # status를 PENDING으로 되돌린다.
     content: Mapped[str | None] = mapped_column(Text)
+    # 본문 초안 (#334). 운영 중 공지·발송 Action이 현재 단계가 되면 토리가 content를 채운다.
+    # 기존 행은 migration에서 NONE으로 시작한다.
+    content_status: Mapped[ActionContentStatus] = mapped_column(
+        enum_column(ActionContentStatus),
+        nullable=False,
+        default=ActionContentStatus.NONE,
+        server_default=ActionContentStatus.NONE.value,
+    )
+    # 누가 쓴 본문인지. null은 본문 없음. USER면 토리가 덮어쓰지 않는다.
+    content_source: Mapped[ActionContentSource | None] = mapped_column(
+        enum_column(ActionContentSource)
+    )
+    # 본문의 [ ] 자리표시(토리가 비워 둔 곳). 예: ["신청 링크"]. 운영진이 고치면 비운다.
+    content_unknowns: Mapped[list[str]] = mapped_column(
+        JsonB, nullable=False, default=list, server_default=text("'[]'")
+    )
+    # 초안 시도 표지. 늦게 온 옛 시도의 결과를 버리고(draft_attempt_id), 서버 재시작으로
+    # 멈춘 작성을 3분 뒤 실패로 본다(draft_started_at).
+    draft_attempt_id: Mapped[str | None] = mapped_column(String(32))
+    draft_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 실패 이유. AI_UNAVAILABLE / AI_INVALID_RESPONSE / INTERNAL_ERROR
+    draft_error_code: Mapped[str | None] = mapped_column(String(64))
     # 되돌릴 수 없는 작업인지 (사실)
     irreversible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # 승인을 받아야 하는지 (정책 판정)

@@ -6,6 +6,7 @@ import { AddMemberModal } from '@/features/mypage/components/AddMemberModal'
 import { MembersTab } from '@/features/mypage/components/MembersTab'
 import { MyInfoTab } from '@/features/mypage/components/MyInfoTab'
 import { RecordsTab } from '@/features/mypage/components/RecordsTab'
+import { RecordsPanel } from '@/features/records'
 import {
   DEMO_CLUB,
   DEMO_JOIN_REQUESTS,
@@ -20,6 +21,7 @@ import { cn } from '@/shared/lib/cn'
 import { useAuthStore } from '@/shared/auth/store'
 import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
 import { useClubMembers } from '@/features/clubs/hooks'
+import { Card } from '@/shared/ui/Card'
 
 const TABS = ['내 정보', '동아리원', '동아리 자료'] as const
 type Tab = (typeof TABS)[number]
@@ -70,7 +72,7 @@ export default function MyPage() {
             onClick={() => setTab(item)}
             aria-current={item === tab}
             className={cn(
-              'rounded-[9px] px-[18px] py-[10px] text-[13px]',
+              'rounded-[9px] px-[18px] py-[10px] text-[13px] transition-colors duration-150 motion-reduce:transition-none',
               item === tab
                 ? 'bg-blue-600 font-bold text-white'
                 : 'font-medium text-ink2 hover:bg-bg',
@@ -113,7 +115,19 @@ export default function MyPage() {
         </>
       )}
 
-      {tab === '동아리 자료' && <RecordsTab records={demo ? DEMO_RECORDS : []} />}
+      {tab === '동아리 자료' && (
+        <>
+          {demo ? (
+            <RecordsTab records={DEMO_RECORDS} />
+          ) : clubId ? (
+            <RecordsPanel key={clubId} clubId={clubId} title="동아리 자료" />
+          ) : (
+            <Card className="p-[20px]">
+              <p className="text-mute">동아리 자료를 보려면 먼저 소속을 선택해 주세요.</p>
+            </Card>
+          )}
+        </>
+      )}
 
       {!demo && clubId && (
         <InviteStaffModal open={inviteOpen} clubId={clubId} onClose={() => setInviteOpen(false)} />

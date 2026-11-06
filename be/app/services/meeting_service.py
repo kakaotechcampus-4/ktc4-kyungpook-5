@@ -447,17 +447,36 @@ async def save_stream_transcript(
     session: AsyncSession, *, meeting_id: str, chunk_id: str, job_id: str, text: str,
     start_ms: int, end_ms: int,
 ) -> str | None:
-    """Commit final STT independently of AI. Empty STT is recorded, never invented."""
+    """Commit final STT independently of AI. Empty STT is a gap, never a row."""
     from app.schemas.meetings import TranscriptSegmentOut
 
     meeting = await session.scalar(select(Meeting).where(Meeting.id == meeting_id).with_for_update())
     if meeting is None:
         raise MeetingNotFound()
     job = await agent_job_service.get_job(session, job_id=job_id)
-    empty_transcript = not text.strip()
+    clean_text = text.strip()
+    empty_transcript = not clean_text
+    if empty_transcript:
+        agent_job_service.succeed(
+            session,
+            job,
+            {"audioChunkId": chunk_id, "segmentIds": [], "emptyTranscript": True},
+        )
+        await session.commit()
+        await _broadcast(
+            meeting_id,
+            {
+                "type": "audio.no_transcript",
+                "audioChunkId": chunk_id,
+                "startMs": start_ms,
+                "endMs": end_ms,
+            },
+        )
+        return None
+
     last_seq = await session.scalar(select(func.max(TranscriptSegment.seq)).where(TranscriptSegment.meeting_id == meeting_id))
     segment, _, _ = await _save_segment(
-        session, meeting, seq=(last_seq or 0) + 1, text=text.strip(), is_final=True,
+        session, meeting, seq=(last_seq or 0) + 1, text=clean_text, is_final=True,
         expected_version=None, speaker_label=None, start_ms=start_ms, end_ms=end_ms,
         audio_chunk_id=chunk_id, run_decision=False,
     )
@@ -474,13 +493,6 @@ async def save_stream_transcript(
         created_at=segment.created_at, modified_at=segment.modified_at,
     )
     await _broadcast(meeting_id, {"type": "transcript.final", "meetingId": meeting_id, "cursor": meeting.transcript_cursor, **output.model_dump(mode="json", by_alias=True)})
-    if empty_transcript:
-        await _broadcast(meeting_id, {
-            "type": "audio.no_transcript", "segmentId": segment.id,
-            "startMs": start_ms, "endMs": end_ms,
-        })
-        # An unrecognized voiced interval is evidence of a gap, not AI input.
-        return None
     return segment.id
 
 

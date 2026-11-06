@@ -33,6 +33,7 @@ from app.schemas.events import (
     PlanChatIn,
     PlanMessageOut,
     PlanMessageListResponse,
+    PlanRequestOut,
     PlanStepsUpdateIn,
     PlanStepsSnapshotOut,
     PlannedStepOut,
@@ -240,6 +241,28 @@ async def chat_plan_stream(
     )
     return StreamingResponse(planning_stream.stream(turn), media_type="text/event-stream",
                              headers=_STREAM_HEADERS)
+
+
+@router.get("/{event_id}/plan/requests/{request_key}", response_model=Envelope[PlanRequestOut])
+async def get_plan_request(
+    event_id: str,
+    request_key: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[PlanRequestOut]:
+    """채팅·생성 요청의 처리 결과만 읽는다 (#342). AI를 부르지 않는다.
+
+    응답 도중 연결이 끊기면 FE는 결과를 몰라 새 요청을 잠근다. 이때 보낸 Idempotency-Key로
+    조회해 저장된 응답을 받거나(completed), 기다리거나(processing), 잠금을 푼다(not_saved).
+    같은 사용자가 이 행사에 보낸 요청만 찾는다. 계획 단계가 끝난 행사도 결과는 읽을 수 있다.
+    """
+    event, member = await _get_event_for_account(session, event_id=event_id, account=account)
+    status, body = await planning_service.lookup_request(
+        session, event_id=event.id, member_id=member.id, key=request_key
+    )
+    return Envelope(data=PlanRequestOut(
+        status=status, result=PlanViewOut.model_validate(body) if body is not None else None,
+    ))
 
 
 @router.get("/{event_id}/plan/messages", response_model=PlanMessageListResponse)

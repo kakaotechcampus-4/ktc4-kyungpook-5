@@ -54,7 +54,10 @@ export function Toaster() {
   return createPortal(
     <div className="pointer-events-none fixed inset-x-0 bottom-[24px] z-50 flex flex-col items-center gap-[8px] px-[16px]">
       {items.map(({ id, ...item }) => (
-        <div key={id} className="pointer-events-auto max-w-full">
+        <div
+          key={id}
+          className="pointer-events-auto max-w-full animate-toast-in motion-reduce:animate-none"
+        >
           <ToastView {...item} />
         </div>
       ))}

@@ -2,6 +2,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ChatMessage, PlanProgress } from '@/features/planning/types'
 import type { TurnLine } from '@/features/planning/turn'
+import type { components } from '@/shared/api/schema'
 import { isSendKey } from '@/features/planning/chatKey'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
@@ -24,6 +25,8 @@ interface PlanChatProps {
   progress?: TurnLine[]
   pendingReply?: string
   notice?: string
+  // 대화 이력 사용량(#329). 서버가 주지 않으면(null) 안내하지도 막지도 않는다.
+  historyUsage?: components['schemas']['HistoryUsageOut'] | null
 }
 
 function CheckIcon({ className }: { className?: string }) {
@@ -243,6 +246,7 @@ export function PlanChat({
   progress = [],
   pendingReply = '',
   notice = '',
+  historyUsage = null,
   demo = false,
   persisted = false,
   initialDraft = '',
@@ -274,9 +278,18 @@ export function PlanChat({
 
   // 보낸 글은 곧바로 입력창에서 빼서 대화 쪽 말풍선으로만 보인다. 실패하면 다시 보낼 수
   // 있게 입력창에 돌려놓는다. 빠른 답변 버튼으로 보낸 것은 입력 중이던 글을 건드리지 않는다.
+  // 대화 이력 한도(#329). 한 턴은 내 말과 답변으로 최소 2개를 더하므로 그만큼 남지 않으면 어떤 채팅도
+  // 저장되지 않는다. 그때는 입력을 막고, 이력을 더하지 않는 버튼 생성으로 이어가게 안내한다.
+  const historyFull = !!historyUsage && historyUsage.messageCount + 2 > historyUsage.maxMessages
+  const historyNote = historyFull
+    ? '대화가 길어져 더 이어갈 수 없어요. 지금 정한 조건으로 초안을 만들 수 있어요.'
+    : historyUsage?.nearLimit
+      ? '대화가 길어지고 있어요. 현재 정한 내용을 확인해 주세요.'
+      : ''
+
   const send = async (text: string, fromInput: boolean) => {
     const trimmed = text.trim()
-    if (!trimmed || busy) return
+    if (!trimmed || busy || historyFull) return
     if (fromInput) setDraft('')
     if (!(await onSend(trimmed)) && fromInput) setDraft(trimmed)
   }
@@ -362,7 +375,7 @@ export function PlanChat({
                       <button
                         key={reply}
                         type="button"
-                        disabled={busy}
+                        disabled={busy || historyFull}
                         onClick={() => {
                           if (reply === '직접 입력') {
                             composerRef.current?.querySelector('textarea')?.focus()
@@ -425,6 +438,14 @@ export function PlanChat({
           )}
         </>
       )}
+      {/* 늘 붙여 두고 글자만 바꾼다. 처음부터 글자가 든 채 붙는 알림은 낭독기가 놓칠 수 있다. */}
+      <p
+        id="planning-history-note"
+        role="status"
+        className={cn('px-[24px] break-keep text-caption text-pending', historyNote && 'pb-3')}
+      >
+        {historyNote}
+      </p>
       <form
         className="flex items-center gap-2.5 border-t border-line px-4 py-4 sm:px-5"
         onSubmit={(e) => {
@@ -434,15 +455,23 @@ export function PlanChat({
       >
         <div ref={composerRef} className="min-w-0 flex-1">
           {/* 기다리는 동안 막지(disabled) 않고 읽기 전용으로 둔다. 막으면 포커스가 빠져
-              답변이 끝난 뒤 입력창을 다시 눌러야 한다. 읽기 전용이면 커서가 그대로 남는다. */}
+              답변이 끝난 뒤 입력창을 다시 눌러야 한다. 읽기 전용이면 커서가 그대로 남는다.
+              이력 한도에 닿으면 다시 풀리지 않으므로 그때만 막는다. */}
           <Textarea
             id="planning-chat-answer"
             aria-label="계획 대화 답변"
-            aria-describedby="planning-input-help"
+            aria-describedby="planning-input-help planning-history-note"
             rows={2}
-            className="min-h-[58px] max-h-[160px] resize-y"
+            className="min-h-[58px] max-h-[160px] resize-y disabled:cursor-not-allowed disabled:opacity-60"
             readOnly={busy}
-            placeholder={busy ? '토리의 답변을 기다리고 있어요' : '답을 입력하세요'}
+            disabled={historyFull}
+            placeholder={
+              historyFull
+                ? '대화가 길어져 더 보낼 수 없어요'
+                : busy
+                  ? '토리의 답변을 기다리고 있어요'
+                  : '답을 입력하세요'
+            }
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -471,7 +500,7 @@ export function PlanChat({
           className="h-[42px] w-[76px] shrink-0"
           aria-label={busy ? '토리의 답변을 기다리는 중' : '보내기'}
           loading={busy}
-          disabled={!draft.trim()}
+          disabled={!draft.trim() || historyFull}
         >
           <span className={busy ? 'sr-only' : undefined}>보내기</span>
         </Button>

@@ -9,22 +9,35 @@ import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 import { Switch } from '@/shared/ui/Switch'
 import { ToriNote } from '@/shared/ui/ToriNote'
+import { useLogout } from '@/features/auth/hooks'
 
 // 누르면 다른 곳으로 가거나 창이 열리는 줄. 오른쪽에 현재 값을 덧붙일 수 있다.
-function LinkRow({ label, value, danger }: { label: string; value?: string; danger?: boolean }) {
+function LinkRow({
+  label,
+  value,
+  danger,
+  disabled = false,
+  onClick,
+}: {
+  label: string
+  value?: string
+  danger?: boolean
+  disabled?: boolean
+  onClick?: () => void
+}) {
   return (
     <button
       type="button"
-      className="flex items-center justify-between border-t border-line px-[26px] py-[15px] text-left first:border-t-0 hover:bg-bg"
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex items-center justify-between border-t border-line px-[26px] py-[15px] text-left first:border-t-0 ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:bg-bg'}`}
     >
       <span className={danger ? 'text-[12.5px] text-mute' : 'text-[12.5px] font-medium text-ink'}>
         {label}
       </span>
       <span className="flex items-center gap-[10px]">
         {value && <span className="text-[11.5px] text-mute">{value}</span>}
-        <span className="text-[12px] text-mute" aria-hidden>
-          ›
-        </span>
+        {!disabled && <span className="text-[12px] text-mute" aria-hidden>›</span>}
       </span>
     </button>
   )
@@ -61,11 +74,12 @@ export function MyInfoTab({
   canEditClub = false,
   linkedAccounts,
 }: MyInfoTabProps) {
-  // TODO(연동): PATCH /me/notifications. 지금은 화면에서만 바뀐다.
-  const [notifications, setNotifications] = useState<NotificationSettings>({
+  const logout = useLogout()
+  // 베타에서는 알림 설정 API가 없어 현재 값만 표시하고 변경은 막는다.
+  const notifications: NotificationSettings = {
     pendingApproval: true,
     stepDelayed: true,
-  })
+  }
 
   const toggles: Array<[keyof NotificationSettings, string, string]> = [
     ['pendingApproval', '승인 대기 알림', '새 승인 요청이 생기면'],
@@ -86,7 +100,9 @@ export function MyInfoTab({
             </div>
             <span className="text-[11.5px] text-mute">{profile.email}</span>
           </div>
-          <Button variant="secondary">프로필 수정</Button>
+          <Button variant="secondary" disabled title="프로필 수정은 베타 범위에 포함되지 않습니다.">
+            프로필 수정 · 베타 제외
+          </Button>
         </Card>
 
         <Card className="flex flex-col gap-[18px] px-[26px] pt-[22px] pb-[24px]">
@@ -104,16 +120,27 @@ export function MyInfoTab({
 
         <Card className="flex flex-col pt-[4px]">
           <h2 className="px-[26px] pt-[18px] pb-[14px] text-h2 text-ink">계정</h2>
-          <LinkRow label="비밀번호 변경" />
-          <LinkRow label="연결된 계정" value={linkedAccounts ?? '없음'} />
-          <LinkRow label="로그아웃" />
-          <LinkRow label="탈퇴" danger />
+          <LinkRow label="비밀번호 변경" value="베타 제외" disabled />
+          <LinkRow label="연결된 계정" value={linkedAccounts ?? '베타 제외'} disabled />
+          <LinkRow
+            label="로그아웃"
+            value={logout.isPending ? '진행 중…' : undefined}
+            disabled={logout.isPending}
+            onClick={() => logout.mutate()}
+          />
+          <LinkRow label="탈퇴" value="베타 제외" danger disabled />
         </Card>
       </div>
 
       <div className="flex w-[300px] shrink-0 flex-col gap-[16px]">
         <Card className="flex flex-col gap-[16px] px-[22px] pt-[20px] pb-[22px]">
-          <h2 className="text-h2 text-ink">알림</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-h2 text-ink">알림</h2>
+            <Chip size="sm">베타 제외</Chip>
+          </div>
+          <p className="text-[11.5px] leading-5 text-mute">
+            알림 설정 변경은 아직 지원하지 않아요. 회의 화면의 이 기기 알림에서 Push 상태를 확인해 주세요.
+          </p>
           {toggles.map(([key, label, desc]) => (
             <div key={key} className="flex items-center justify-between gap-[12px]">
               <span className="flex flex-col gap-[3px]">
@@ -123,7 +150,8 @@ export function MyInfoTab({
               <Switch
                 checked={notifications[key]}
                 label={label}
-                onChange={(checked) => setNotifications((s) => ({ ...s, [key]: checked }))}
+                disabled
+                onChange={() => undefined}
               />
             </div>
           ))}

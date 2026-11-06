@@ -14,6 +14,7 @@ import {
   clockTime,
   extractionFailed,
   meetingAnswers,
+  meetingProcessingSteps,
   meetingView,
   recordedClock,
 } from '../timeline'
@@ -75,6 +76,36 @@ export function MeetingWorkspace({
   const transcripts = data.transcripts.data?.items ?? EMPTY
   const decisions = data.decisions.data ?? EMPTY
   const answers = useMemo(() => meetingAnswers(transcripts, decisions), [transcripts, decisions])
+  const heard = transcripts.filter((t) => t.final).length
+  const processingSteps = useMemo(
+    () => meetingProcessingSteps({
+      transcriptCount: heard,
+      transcriptPending: data.transcripts.isPending,
+      transcriptError: data.transcripts.isError,
+      answerCount: answers.length,
+      answerPending: data.decisions.isPending,
+      answerError:
+        data.decisions.isError ||
+        decisions.some((d) => d.status !== 'STALE' && String(d.kind) === 'FAILED'),
+      candidateCount: data.suggestions.length,
+      candidateSavedCount: data.suggestions.filter((suggestion) => suggestion.status === 'ACCEPTED').length,
+      candidatePending: data.suggestionsQuery.isPending,
+      candidateError: data.suggestionsQuery.isError,
+      extractionError: extractionFailed(decisions),
+    }),
+    [
+      answers.length,
+      data.decisions.isError,
+      data.decisions.isPending,
+      data.suggestions,
+      data.suggestionsQuery.isError,
+      data.suggestionsQuery.isPending,
+      data.transcripts.isError,
+      data.transcripts.isPending,
+      decisions,
+      heard,
+    ],
+  )
 
   // Leaving the page stops the microphone, so ask first (in-app links) or let the
   // browser warn (reload, tab close).
@@ -166,7 +197,6 @@ export function MeetingWorkspace({
       ? `${clockTime(meeting.startedAt)} – ${clockTime(meeting.endedAt)}`
       : `${clockTime(meeting.startedAt)} 시작`
     : '시작 전'
-  const heard = transcripts.filter((t) => t.final).length
   const meta = `${when} · 후보 ${data.suggestions.length}건 · 토리 ${answers.length}번`
   const candidates = (
     <CandidatesModal
@@ -197,6 +227,7 @@ export function MeetingWorkspace({
           onSaveReviewCandidates={(version, requestId, candidates) => data.saveReviewCandidates.mutateAsync({ version, clientRequestId: requestId, candidates })}
           reviewBusy={data.startReview.isPending || data.submitReview.isPending || data.updateReviewSpeakers.isPending || data.createReviewDraft.isPending || data.saveReviewCandidates.isPending}
           reviewError={data.review.error || data.startReview.error || data.submitReview.error || data.updateReviewSpeakers.error || data.createReviewDraft.error || data.saveReviewCandidates.error}
+          processingSteps={processingSteps}
         />
         {candidates}
       </>

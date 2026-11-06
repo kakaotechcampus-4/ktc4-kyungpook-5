@@ -18,15 +18,20 @@ import {
   getCancelTasks,
   completeCancelTask,
   beginEventCancellation,
+  requestActionDraft,
+  updateActionContent,
 } from './api'
+import { draftPollInterval } from '@/features/events/actionDraft'
 import {
   DEMO_ACTIONS,
   DEMO_CONFIRMATIONS,
   DEMO_EVENT_DETAILS,
   DEMO_EVENTS,
   DEMO_RESOLVED,
-  DEMO_STEP_ACTIONS,
   DEMO_STEPS,
+  demoRequestDraft,
+  demoSaveContent,
+  demoStepActions,
 } from '@/features/events/mock'
 import type {
   ActionPage,
@@ -113,6 +118,8 @@ export function usePendingApprovals(eventId: string | undefined) {
         ? (DEMO_ACTIONS[eventId!] ?? [])
         : await getEventActions(eventId!, 'status=PENDING&excludeType=CONFIRMATION'),
     enabled: !!eventId && (demo || Boolean(userId && clubId)),
+    // 토리가 초안을 쓰는 동안만 몇 초마다 다시 조회한다(#335)
+    refetchInterval: (query) => draftPollInterval(query.state.data),
   })
 }
 
@@ -190,11 +197,12 @@ export function useStepActions(eventId: string | undefined, stepId: string | und
     queryKey: ['events', userId, clubId, eventId, 'actions', 'step', stepId, demo],
     queryFn: async (): Promise<EventAction[]> =>
       demo
-        ? (DEMO_STEP_ACTIONS[eventId!]?.[stepId!] ?? [])
+        ? demoStepActions(eventId!, stepId!)
         : (await getEventActions(eventId!, 'size=100')).filter(
             (action) => action.stepId === stepId,
           ),
     enabled: !!eventId && !!stepId && (demo || Boolean(userId && clubId)),
+    refetchInterval: (query) => draftPollInterval(query.state.data),
   })
 }
 
@@ -215,7 +223,8 @@ export function useResolveAction() {
 }
 export function useApproveAction() {
   const client = useQueryClient()
-  return useMutation({ mutationFn: approveAction, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
+  // 409(그사이 초안 도착 등)에도 다시 불러와야 최신 내용을 보고 승인할 수 있다
+  return useMutation({ mutationFn: approveAction, onSettled: () => client.invalidateQueries({ queryKey: ['events'] }) })
 }
 export function useDenyAction() {
   const client = useQueryClient()
@@ -224,4 +233,29 @@ export function useDenyAction() {
 export function useMarkActionDone() {
   const client = useQueryClient()
   return useMutation({ mutationFn: markActionDone, onSuccess: () => client.invalidateQueries({ queryKey: ['events'] }) })
+}
+
+// 토리 초안 다시 받기(#335). 성공·409 모두 다시 불러와 최신 상태를 보인다.
+export function useRequestActionDraft() {
+  const demo = useDemo()
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (action: EventAction) =>
+      demo ? demoRequestDraft(action) : await requestActionDraft(action),
+    onSettled: () => client.invalidateQueries({ queryKey: ['events'] }),
+  })
+}
+
+// 본문 고치기(#335). 응답은 단계 모양이라 버리고, 다시 불러온 Action을 쓴다.
+// onSettled가 다시 불러오기를 기다리므로 mutateAsync가 끝나면 목록은 이미 최신이다.
+export function useUpdateActionContent() {
+  const demo = useDemo()
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ action, content, expectedVersion }: { action: EventAction; content: string; expectedVersion: number | undefined }) => {
+      if (demo) return demoSaveContent(action.id, content, expectedVersion)
+      await updateActionContent(action, content, expectedVersion ?? action.version)
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: ['events'] }),
+  })
 }
