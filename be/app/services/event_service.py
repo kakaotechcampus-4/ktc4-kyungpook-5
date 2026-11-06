@@ -65,7 +65,7 @@ class EventCancelNotAllowed(ApiError):
     status_code = 409
     code = "EVENT_CANCEL_NOT_ALLOWED"
     def __init__(self):
-        super().__init__("계획 중이거나 진행 중인 행사만 취소할 수 있어요.")
+        super().__init__("진행 중인 행사만 취소할 수 있어요.")
 
 class CancelTaskNotFound(ApiError):
     status_code = 404
@@ -83,7 +83,8 @@ async def begin_event_cancellation(session: AsyncSession, *, event_id: str) -> E
     event = await session.scalar(select(Event).where(Event.id == event_id).with_for_update())
     if event is None:
         raise EventCancelNotAllowed()
-    if event.status not in (EventStatus.PLANNING, EventStatus.ON_GOING):
+    # 취소 정리 항목(참가자 안내·예약 취소·환불)은 운영을 시작한 뒤에만 의미가 있다.
+    if event.status != EventStatus.ON_GOING:
         raise EventCancelNotAllowed()
     event.status = EventStatus.CANCELLING
     existing = await session.scalar(select(func.count()).select_from(EventCancelTask).where(EventCancelTask.event_id == event_id))

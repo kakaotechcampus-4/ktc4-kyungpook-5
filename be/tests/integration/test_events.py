@@ -66,6 +66,15 @@ async def test_event_cancel_persists_tasks_and_final_status(client, app_db):
     detail = client.get(f'{EVENTS_URL}/{event_id}', headers=headers).json()['data']
     assert detail['status'] == 'CANCELLED'
 
+async def test_planning_event_cannot_be_cancelled(client, app_db):
+    headers, club_id = owner_with_club(client, 'cancel-planning')
+    event_id = await add_event(club_id, title='계획 행사', status=EventStatus.PLANNING)
+    rejected = client.post(f'{EVENTS_URL}/{event_id}/cancel', headers=headers)
+    assert rejected.status_code == 409
+    assert rejected.json()['error']['code'] == 'EVENT_CANCEL_NOT_ALLOWED'
+    assert client.get(f'{EVENTS_URL}/{event_id}', headers=headers).json()['data']['status'] == 'PLANNING'
+    assert client.get(f'{EVENTS_URL}/{event_id}/cancel/tasks', headers=headers).json()['data'] == []
+
 async def test_event_cancel_tasks_must_be_completed_in_order(client, app_db):
     headers, club_id = owner_with_club(client, 'cancel-order')
     event_id = await add_event(club_id, title='순서 행사', status=EventStatus.ON_GOING)
