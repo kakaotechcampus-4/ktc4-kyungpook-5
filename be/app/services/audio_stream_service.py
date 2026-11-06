@@ -51,7 +51,10 @@ class PcmVad:
 
     def __init__(self, *, rms_threshold: float = 450) -> None:
         self.threshold = rms_threshold
-        self.speech_detector = webrtcvad.Vad(2)
+        # The microphone is already noise-suppressed in the browser. Use the
+        # stricter WebRTC mode for the remaining room/fan noise so it does not
+        # become a Whisper hallucination.
+        self.speech_detector = webrtcvad.Vad(3)
         self.pending = bytearray()
         self.offset_ms = 0
         self.pre_roll: deque[tuple[int, bytes]] = deque(maxlen=10)
@@ -74,7 +77,8 @@ class PcmVad:
     def _block(self, block: bytes) -> Utterance | None:
         duration = len(block) // BYTES_PER_MS
         samples = struct.unpack(f"<{len(block) // 2}h", block)
-        rms = math.sqrt(sum(sample * sample for sample in samples) / len(samples))
+        mean = sum(samples) / len(samples)
+        rms = math.sqrt(sum((sample - mean) ** 2 for sample in samples) / len(samples))
         # WebRTC requires a complete 10, 20, or 30ms frame, including the final tail.
         speech = self.speech_detector.is_speech(block.ljust(640, b"\0"), SAMPLE_RATE)
         voiced = rms >= self.threshold and speech

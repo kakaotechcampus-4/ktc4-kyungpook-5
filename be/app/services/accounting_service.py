@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import (
     AgentJobKind,
+    CurrencyCode,
     AgentJobStage,
     ExpenseSource,
     ReceiptImportStatus,
@@ -33,7 +34,7 @@ from app.core.exceptions import (
 from app.infra.storage import delete_file, read_file, save_file
 from starlette.concurrency import run_in_threadpool
 from app.models.accounting import Expense, ReceiptImport, ReceiptImportRow
-from app.models.events import Event
+from app.models.events import Action, Event
 from app.models.agent import AgentJob
 from app.models.records import Record
 from app.schemas.accounting import ExpenseRowDraftIn
@@ -83,6 +84,36 @@ async def create_expense(
     )
     session.add(expense)
     await session.commit()
+    return expense
+
+
+def add_action_expense(
+    session: AsyncSession,
+    *,
+    action: Action,
+    club_id: str,
+    spent_at: datetime,
+    created_by: str,
+) -> Expense:
+    """완료된 행사 행동의 금액을 지출 내역으로 남긴다 (#348).
+
+    행동 완료와 한 트랜잭션이어야 해서 커밋하지 않는다 — 호출한 쪽이 커밋한다.
+    같은 행동이 두 번 적히는 건 expenses.action_id UNIQUE가 막는다.
+    """
+    expense = Expense(
+        club_id=club_id,
+        event_id=action.event_id,
+        spent_at=spent_at,
+        merchant=None,
+        amount=action.amount,
+        currency=CurrencyCode.KRW,
+        category=None,
+        description=action.title,
+        source=ExpenseSource.ACTION,
+        action_id=action.id,
+        created_by=created_by,
+    )
+    session.add(expense)
     return expense
 
 

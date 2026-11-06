@@ -120,6 +120,17 @@ def is_editable(status: ActionStatus) -> bool:
     return status in (ActionStatus.PENDING, ActionStatus.APPROVED)
 
 
+def records_expense(action_type: ActionType, amount: int | None) -> bool:
+    """행동이 DONE이 될 때 지출 내역을 자동으로 남기는지 (#348).
+
+    송금(TRANSFER)만 남긴다. 카탈로그상 계약금(BOOK_VENUE)과 환불(REFUND_FEES)에만
+    붙어 둘 다 실제로 나간 돈이다. EXPENSE는 지출 정산 단계에만 붙고 그 금액은
+    예산 한도(event.budget_total)라 실제 지출로 적으면 장부가 부풀려진다.
+    금액이 없거나 0 이하면 남길 지출이 없다.
+    """
+    return action_type == ActionType.TRANSFER and amount is not None and amount > 0
+
+
 def is_step_editable(completed_at: datetime | None) -> bool:
     """단계의 일정을 고칠 수 있는지 (#106 ③).
 

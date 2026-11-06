@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  deleteRecord,
   getRecord,
   getRecordCategoryCounts,
   getRecords,
@@ -65,6 +66,17 @@ export function useRecordCounts(clubId: string) {
       RECORD_CATEGORIES.map(({ value }) => [value, data?.byCategory[value]]),
     ) as Record<RecordCategory, number | undefined>),
   } as Record<RecordFilter, number | undefined>
+}
+
+// 목록·칩 건수·그 자료의 상세가 한꺼번에 달라진다. 업로드와 같은 범위를 지운다.
+export function useDeleteRecord(clubId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (recordId: string) => deleteRecord(recordId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['records', clubId] })
+    },
+  })
 }
 
 export function useRetryRecordIndex(clubId: string, recordId: string) {

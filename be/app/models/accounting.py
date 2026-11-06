@@ -108,6 +108,10 @@ class Expense(IdMixin, TimestampMixin, Base):
 
     __tablename__ = "expenses"
     __id_prefix__ = "exp"
+    __table_args__ = (
+        # 같은 행동이 재시도·중복 호출로 두 번 적히지 않게 DB에서 막는다 (#348).
+        UniqueConstraint("action_id", name="uq_expenses_action_id"),
+    )
 
     club_id: Mapped[str] = mapped_column(
         String(ID_LENGTH), fk("clubs.id"), nullable=False, index=True
@@ -129,6 +133,10 @@ class Expense(IdMixin, TimestampMixin, Base):
     # 영수증 원본(있으면). 직접 입력은 null.
     receipt_record_id: Mapped[str | None] = mapped_column(
         String(ID_LENGTH), fk("records.id", ondelete="SET NULL")
+    )
+    # 행사 행동 완료로 자동 기록된 지출이면 그 행동. 직접 입력·가져오기는 null.
+    action_id: Mapped[str | None] = mapped_column(
+        String(ID_LENGTH), fk("actions.id", ondelete="SET NULL")
     )
     created_by: Mapped[str] = mapped_column(
         String(ID_LENGTH), fk("members.id"), nullable=False

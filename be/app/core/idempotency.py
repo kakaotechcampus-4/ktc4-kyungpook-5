@@ -27,6 +27,11 @@ from app.models.common import IdempotencyKey
 STALE_PROCESSING_AFTER = timedelta(minutes=5)
 
 
+def is_stale(record: IdempotencyKey) -> bool:
+    """PROCESSING으로 남은 지 오래돼 처리하던 서버가 사라졌다고 보는 키인가."""
+    return datetime.now(UTC) - record.modified_at >= STALE_PROCESSING_AFTER
+
+
 @dataclass
 class IdempotencyResult:
     record: IdempotencyKey
@@ -59,7 +64,7 @@ async def resolve(
             raise IdempotencyConflict()
         if existing.status == "COMPLETED":
             return IdempotencyResult(record=existing, is_replay=True)
-        if datetime.now(UTC) - existing.modified_at < STALE_PROCESSING_AFTER:
+        if not is_stale(existing):
             raise IdempotencyInProgress()
         # 오래된 PROCESSING은 처리하던 서버가 사라진 것으로 보고 이어받는다. 같은 키의
         # 재요청 둘이 동시에 이 행을 읽을 수 있어, 읽은 시각 그대로일 때만 갱신하는

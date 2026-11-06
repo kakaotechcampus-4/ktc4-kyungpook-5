@@ -41,17 +41,16 @@ creation. Query tokens must be redacted from access logs by the deployment.
 `audioSeq`, transcript `seq`, and transcript change `cursor` are separate axes.
 Speech utterance WAV files are saved in the configured storage backend before STT;
 frame-level resume state is held in process memory for at most 60 seconds.
-Silence is suppressed by WebRTC VAD and a 20ms RMS floor (200ms pre-roll, 600ms
+Silence is suppressed by WebRTC VAD and a centered 20ms RMS floor (200ms pre-roll, 600ms
 silence endpoint, at least 160ms voiced audio, maximum 15s segments). Noise can
 still pass or quiet speech can be missed; this has not been evaluated on beta
 devices. The RMS threshold is adjustable
 with `AUDIO_VAD_RMS_THRESHOLD` (default 450 on signed PCM16 values). A provider that
-returns empty transcript text persists a final segment with `text:""` and the real
-voiced interval, then emits `transcript.final` plus `audio.no_transcript` with its
-segmentId. GET transcripts restores this unrecognized interval; the FE can show
-“알아듣지 못함” for empty text. No placeholder text is saved and AI is not called for
-that gap. Pure silence produces no utterance or transcript row. Provider failures
-persist as FAILED STT jobs.
+returns empty transcript text emits `audio.no_transcript` for the real voiced
+interval without creating a transcript row. The FE can show “알아듣지 못함” for
+that gap. No placeholder text is saved and AI is not called for that gap. Pure
+silence produces no utterance or transcript row. Provider failures persist as
+FAILED STT jobs.
 
 The receiver, one ordered STT worker, and AI processing are separate. STT saves
 segments in speech order. Each saved segment then starts its own AI task

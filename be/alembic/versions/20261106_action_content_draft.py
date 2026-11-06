@@ -1,14 +1,14 @@
 """Draft status columns for operating NOTICE/EXTERNAL_SEND action content (#334).
 
 Revision ID: 20261106_action_content_draft
-Revises: 20261105_planning_history
+Revises: 20261105_expense_action_link
 """
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = "20261106_action_content_draft"
-down_revision = "20261105_planning_history"
+down_revision = "20261105_expense_action_link"
 branch_labels = None
 depends_on = None
 

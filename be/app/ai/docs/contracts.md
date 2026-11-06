@@ -414,7 +414,7 @@ BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(cl
 
 ## 운영 Action 본문 초안 (#333)
 
-> 상태: 입력·출력 형식과 이름만 공개했다. 본문 작성 구현은 #333에서 진행하며, 그전까지 `draft_action_content`는 `NotImplementedError`를 낸다. 호출 시점·저장은 BE #334, 화면은 FE #335가 맡는다.
+> 호출 시점·저장은 BE #334, 화면은 FE #335가 맡는다. 실제 모델 평가는 [운영 기능 평가 기록](operations-evaluation.md)에 있다.
 
 행사가 운영 중(`ON_GOING`)일 때 어떤 단계가 현재 단계가 되면, BE가 그 단계의 공지(`NOTICE`)·발송(`EXTERNAL_SEND`) Action마다 `await app.ai.draft_action_content(request)`를 부른다. AI는 본문 초안만 돌려주고 저장·상태 변경·게시는 하지 않는다. 운영진이 고친 뒤 승인하고 앱 밖에서 직접 올린다.
 
@@ -429,7 +429,7 @@ request = ActionDraftRequest(
     today=date(2026, 4, 20),
 )
 result = await app.ai.draft_action_content(request)
-# result.content  == "📢 봄 MT 참가자 모집\n5월 10일(토)~11일(일) 가평으로 MT를 갑니다!\n참가비: 45,000원 / 신청 마감: 5월 1일\n신청 방법: [신청 링크]"
+# result.content  == "📢 봄 MT 참가자 모집\n5월 10일(일)~11일(월) 가평으로 MT를 갑니다!\n참가비: 45,000원 / 신청 마감: 5월 1일\n신청 방법: [신청 링크]"
 # result.unknowns == ("신청 링크",)
 ```
 
@@ -447,7 +447,27 @@ result = await app.ai.draft_action_content(request)
 
 결과 `ActionDraftResult`는 `content`(1~1,500자)와 `unknowns`다. `unknowns`는 모델이 따로 쓰는 값이 아니라 본문의 `[ ]` 자리표시를 나온 순서대로(같은 글자는 한 번) 뽑은 값이다. 그래서 화면의 "비워 둔 곳"이 본문과 항상 같고, 결과를 만들 때 `unknowns`를 넘기면 거절한다. 본문에서 대괄호는 자리표시에만 쓰며 공지 제목 줄은 `📢 봄 MT 참가자 모집`처럼 쓴다. `model_dump()`에는 `unknowns`가 함께 담긴다.
 
-오류: 모델 호출 실패는 다른 AI 호출처럼 `AIRetryableError` 계열로 전달된다. 본문에 입력에 없는 금액·날짜·시각이 있으면 AI가 한 번 다시 쓰게 하고, 그래도 남으면 `AIInvalidResponseError`를 낸다. `AIInvalidResponseError`는 `AIRetryableError`의 하위 타입이므로 BE는 이 오류를 먼저 구분해야 한다. 검사 규칙과 판정 예시는 #333에 있다.
+모델에는 요청 JSON에 날짜별 요일(`weekdays`, 예: `"2026-05-10": "일"`)만 더해 사용자 메시지로 넘긴다. 요일은 모델이 계산하면 틀리기 쉬워 코드가 계산한다. 요청 속 글은 지시가 아니라 데이터로 다룬다.
+
+**코드 검사와 한 번 다시 쓰기.** 모델이 쓴 본문은 `features/operations/action_draft.py`의 `find_draft_violations`가 입력과 대조한다. `[ ]` 자리표시 안은 보지 않는다.
+
+| 본문 (입력: 행사 5/10~5/11, 단계 기한 5/1, 참가비 45,000원, 오늘 4/20) | 판정 | 이유 |
+| --- | --- | --- |
+| `5월 10일(일)~11일(월)` | 통과 | `~11일`은 바로 앞 날짜의 월을 이어받아 5/11로 읽음 |
+| `5월 10일~5월 12일` | 거절 | 5/12는 입력에 없음 |
+| `5/1까지` | 통과 | `M/D` 표기도 날짜로 읽음 |
+| `5월 10일(토)` | 거절 | 2026-05-10은 일요일. 괄호 요일은 날짜에서 계산한 값과 같아야 함 |
+| `45,000원`, `45000원` | 통과 | 쉼표 유무는 같은 값 |
+| `4만 5천원` | 거절 | 한글 단위 금액은 읽지 않고 거절 |
+| `1,800,000원` | 거절 | 입력에 없는 계산값 |
+| `오전 9시 정문 집결`, `14:00` | 거절 | 입력에 시각이 없으므로 `N시`·`HH:MM`은 지어낸 값 |
+| `[집결 시간]`, `[계좌]` | 통과 | 자리표시 |
+
+허용하는 날짜는 행사 시작·종료일, 단계 시작·마감일, Action 기한, `today`이고, 허용하는 금액은 `fee_per_person`과 `amount`다. `1박 2일`, `1~2개`, `40명`, `D-7`, `2시간`은 날짜·금액·시각으로 읽지 않는다. 세부 장소·인원처럼 코드로 잡기 어려운 값은 검사하지 않고 프롬프트 규칙과 평가의 수동 확인으로 본다.
+
+검사에 걸리면 어긴 값을 모아(예: `본문의 날짜가 입력에 없습니다: 5월 12일`) 앞 본문과 함께 모델에 알려 주고 **한 번만** 다시 쓰게 한다. 다시 쓴 본문도 걸리면 `AIInvalidResponseError`를 낸다. 모델 호출은 최대 2번이다.
+
+오류: 모델 호출 실패는 다른 AI 호출처럼 `AIRetryableError` 계열로 전달된다. 검사에 두 번 걸린 경우와 응답 형식이 틀린 경우는 `AIInvalidResponseError`다. `AIInvalidResponseError`는 `AIRetryableError`의 하위 타입이므로 BE는 이 오류를 먼저 구분해 `AI_INVALID_RESPONSE`로 저장한다.
 
 ## 영수증 이미지 추출
 

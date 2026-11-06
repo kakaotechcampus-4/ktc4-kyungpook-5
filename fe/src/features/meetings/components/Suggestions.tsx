@@ -403,7 +403,7 @@ export function CandidatesModal({
       onClose={onClose}
       title="일정·할 일 후보 확인"
       chip={<Chip tone="approved">{suggestions.length}건</Chip>}
-      subtitle="저장한 후보만 일정과 알림이 돼요."
+      subtitle="후보 저장과 일정·알림 예약을 나눠 확인해요."
       footerNote="다시 열면 이어서 확인할 수 있어요."
       footer={
         <Button variant="secondary" onClick={onClose}>

@@ -105,10 +105,11 @@ async def respond_operational_situation(request: "OperationalSituationRequest") 
 async def draft_action_content(request: "ActionDraftRequest") -> "ActionDraftResult":
     """운영 중 공지·발송 Action 하나의 본문 초안을 쓴다. 저장·상태 변경·호출 시점은 BE 책임이다.
 
-    #333: BE(#334)·FE(#335)가 먼저 진행할 수 있게 입력·출력 형식과 이름을 먼저 공개했다.
-    본문 작성 구현이 들어오기 전까지는 NotImplementedError를 낸다(BE는 실패로 저장).
+    본문의 날짜·요일·금액·시각을 입력과 대조하고, 걸리면 한 번만 다시 쓰게 한다(#333).
+    다시 써도 걸리면 AIInvalidResponseError를 낸다. 계약은 docs/contracts.md "운영 Action 본문 초안".
     """
-    raise NotImplementedError("draft_action_content는 아직 구현 전입니다(#333)")
+    from .features.operations.action_draft import draft_action_content as draft
+    return await draft(request)
 
 
 async def review_plan_edit(request: "PlanEditReviewRequest") -> "PlanEditReviewResult":

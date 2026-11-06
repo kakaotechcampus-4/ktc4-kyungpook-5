@@ -366,7 +366,7 @@ async def test_같은_키의_첫_요청이_처리_중이면_AI를_다시_부르�
 
 
 async def _leftover_processing_key(
-    client: TestClient, headers: dict, club_id: str, key: str, *, age: timedelta
+    client: TestClient, headers: dict, club_id: str, event_id: str, key: str, *, age: timedelta
 ) -> None:
     """처리하던 서버가 사라져 PROCESSING으로 남은 키를 흉내 낸다."""
     members = client.get(f"/api/v1/clubs/{club_id}/members", headers=headers).json()
@@ -376,7 +376,7 @@ async def _leftover_processing_key(
             IdempotencyKey(
                 club_id=club_id,
                 member_id=members["data"][0]["id"],
-                endpoint="POST /events/{event_id}/plan/chat",
+                endpoint=f"POST /events/{event_id}/plan/chat",
                 idempotency_key=key,
                 request_body_hash=body_hash,
                 status="PROCESSING",
@@ -397,10 +397,10 @@ async def test_오래_남은_처리_중_키는_새_요청이_이어받는다(
 
     monkeypatch.setattr("app.ai.chat_planning", fake_chat_planning)
     await _leftover_processing_key(
-        client, headers, club_id, "idem-fresh", age=timedelta(seconds=10)
+        client, headers, club_id, event_id, "idem-fresh", age=timedelta(seconds=10)
     )
     await _leftover_processing_key(
-        client, headers, club_id, "idem-stale", age=timedelta(minutes=10)
+        client, headers, club_id, event_id, "idem-stale", age=timedelta(minutes=10)
     )
 
     assert _chat(client, headers, event_id, "idem-fresh").status_code == 409

@@ -235,6 +235,8 @@ class ExpenseSource(CodeEnum):
     MANUAL = "MANUAL"
     CSV_IMPORT = "CSV_IMPORT"
     OCR_IMPORT = "OCR_IMPORT"
+    # 행사 송금 행동(TRANSFER)을 완료하면서 자동으로 남긴 지출 (#348)
+    ACTION = "ACTION"
 
 
 # --- meetings (#135) ------------------------------------------------------
