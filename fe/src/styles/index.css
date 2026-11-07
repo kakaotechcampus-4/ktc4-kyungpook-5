@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+/* 세로가 짧은 화면(작은 창, 브라우저 확대, 옆에 띄운 패널). 모달 머리·하단이 본문 자리를 다 먹지 않게
+   모달 전체가 스크롤되도록 바꿀 때 쓴다(Modal.tsx). */
+@custom-variant short (@media (max-height: 520px));
+
 /* v11 와이어프레임 「0·기준」 팔레트·타이포 스케일. 색 이름은 Figma 라벨 그대로 쓴다. */
 @theme {
   --font-sans:
@@ -61,15 +65,192 @@
   --text-caption: 13px;
   --text-label: 12px;
   --text-label--font-weight: 500;
+
+  /* 토리 대화의 기다리는 동안 움직임(#290). 전환은 0.2초 안팎, 튀는 곡선은 쓰지 않는다.
+     움직임 줄이기 설정이면 쓰는 쪽에서 motion-reduce:animate-none으로 끈다. */
+  --animate-typing-dot: typing-dot 1.2s ease-in-out infinite;
+  --animate-progress-dim: progress-dim 1.6s ease-in-out infinite;
+  --animate-turn-in: turn-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-check-in: check-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-in: fade-in 150ms ease-out both;
+  /* 토스트가 화면 아래에서 올라온다(#353). 사라질 때는 띄우는 쪽(shared/lib/toast)이
+     항목을 바로 지워서 들어올 때만 움직인다. */
+  --animate-toast-in: toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* 결과 없이 끝난 진행 줄(거절·같은 값)이 조용히 사라진다. 시간은 turn.ts의 LINE_EXIT_MS와 맞춘다. */
+  --animate-line-out: line-out 180ms ease-in forwards;
+  /* 조건 패널의 바뀐 칸 강조(#300). 저장이 끝난 순간 옅은 파란 배경으로 켜져 잠시 머문 뒤 사라진다.
+     시간은 factFlash.ts의 FACT_FLASH_MS와 맞춘다. 움직임 줄이기면 쓰는 쪽에서 끄고 색만 그 시간 동안 둔다. */
+  --animate-fact-flash: fact-flash 1500ms ease-out both;
+  /* 단계 완료 순간(#370). 카드가 떠오르고 → 원 안의 체크가 그려지고 → 잠시 머문 뒤 사라진다.
+     머무는 시간은 StepDoneMoment.tsx의 STEP_DONE_MS와 맞춘다. 움직임 줄이기면 쓰는 쪽에서 끈다. */
+  --animate-done-in: done-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-done-draw: done-draw 360ms 140ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  --animate-done-out: done-out 200ms ease-in forwards;
+  /* 초안 생성 완료(P1→P2). 계획 검토로 넘어가기까지 남은 시간이 바닥 막대로 줄어든다.
+     시간은 GenerationScreen.tsx의 DONE_HOLD_MS를 쓰는 쪽이 animation-duration으로 넣는다. */
+  --animate-hold-bar: hold-bar 1800ms linear both;
+  /* 새 초안으로 계획 검토에 들어왔을 때 단계 카드가 위에서부터 차례로 올라온다. 지연은 쓰는 쪽이 넣는다. */
+  --animate-step-rise: step-rise 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  /* 입력 중 점 세 개가 차례로 떠올랐다 내려온다. */
+  @keyframes typing-dot {
+    0%,
+    60%,
+    100% {
+      opacity: 0.35;
+      transform: translateY(0);
+    }
+    30% {
+      opacity: 1;
+      transform: translateY(-3px);
+    }
+  }
+  /* 진행 중인 작업 줄의 글자. 옅어질 때도 읽히도록 0.6 아래로 내리지 않는다. */
+  @keyframes progress-dim {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+  @keyframes turn-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+  @keyframes check-in {
+    from {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  @keyframes fact-flash {
+    0%,
+    25% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  /* 진행 중 줄은 "조건을 반영하고 있어요" 한 줄(18px)이라 높이를 정해 두고 줄인다.
+     위쪽 음수 여백은 목록의 줄 간격(4px)까지 거둬, 지운 뒤 아래 줄이 튀지 않게 한다. */
+  @keyframes done-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.96);
+    }
+  }
+  /* 체크 선 길이(pathLength=1)를 지운 상태에서 그려 나간다 */
+  @keyframes done-draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
+  @keyframes done-out {
+    to {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+  }
+  @keyframes hold-bar {
+    to {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes step-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  @keyframes line-out {
+    from {
+      opacity: 1;
+      max-height: 18px;
+    }
+    to {
+      opacity: 0;
+      max-height: 0;
+      margin-top: -4px;
+    }
+  }
 }
 
 body {
   @apply bg-bg font-sans text-body text-ink;
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-blue-600);
-  outline-offset: 2px;
+/* 모달이 열릴 때(#353). 배경은 서서히 덮이고, 패널은 아래에서 살짝 떠오른다.
+   가운데 모달과 왼쪽 서랍(placement="left")은 들어오는 방향이 다르다.
+
+   닫힐 때는 움직이지 않는다. <dialog>를 닫는 동안 보이게 하려면 display·overlay를
+   allow-discrete로 전환해야 하는데, 이 화면의 모달은 Tailwind의 open:flex로 display를
+   따로 쥐고 있어 둘이 부딪힌다. 실제로 걸어 보니 다시 열었을 때 opacity가 0에 멈추거나
+   배경 덮개가 top layer에서 빠지는 일이 있었다. 들어올 때만 움직이는 쪽이 안전하다.
+
+   0.18초, 튀지 않는 곡선 — --animate-* 토큰의 기존 규칙과 같다.
+   「움직임 줄이기」면 전부 끈다. 그때도 열리고 닫히는 것 자체는 그대로다. */
+@media (prefers-reduced-motion: no-preference) {
+  dialog[open] {
+    animation: modal-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  dialog.modal-drawer[open] {
+    animation: drawer-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  dialog[open]::backdrop {
+    animation: backdrop-in 180ms ease-out;
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+.planning-conversation {
+  scrollbar-color: var(--color-soft) transparent;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+
+.planning-conversation::selection,
+.planning-conversation *::selection {
+  background: var(--color-blue-100);
+  color: var(--color-blue-900);
+}
+
+textarea[aria-label='계획 대화 답변'] {
+  caret-color: var(--color-blue-600);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -107,4 +288,63 @@ body {
 .workspace-sidebar > a {
   background: #344b6a;
   color: #fff;
+}
+
+/* 행사 계획 P1 → 초안 생성 → P2 전환(shared/lib/viewTransition.ts, PlanStageNav).
+   plan-generation  P1 오른쪽 조건 카드 ↔ 생성 화면 카드. 카드가 제자리에서 가운데로 옮겨 가며 커진다.
+                    글자를 늘이지 않도록 두 화면의 모습은 원래 크기로 왼쪽 위에 붙이고, 커지는 상자 밖은 자른다.
+   plan-stage-pill  위 단계 토글의 파란 칸. 「행사 조건」에서 「계획 검토」로 미끄러진다.
+   plan-stage-*     토글 글자. 파란 칸이 지나가는 동안에도 글자가 칸 위에 보이게 따로 찍는다.
+   나머지 화면은 짧게 겹쳐 바뀐다. 「움직임 줄이기」면 옮겨 가는 움직임 없이 겹쳐 바뀌기만 한다. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+}
+::view-transition-group(plan-generation) {
+  overflow: clip;
+  border-radius: 16px;
+  animation-duration: 380ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+::view-transition-old(plan-generation),
+::view-transition-new(plan-generation) {
+  height: 100%;
+  object-fit: none;
+  object-position: left top;
+}
+::view-transition-old(plan-generation) {
+  animation-duration: 160ms;
+}
+::view-transition-new(plan-generation) {
+  animation-duration: 260ms;
+  animation-delay: 80ms;
+}
+/* 「만드는 중」이 붙으면 글자 상자 너비가 바뀐다. 글자를 늘이지 않고 가운데에 둔 채 겹쳐 바꾼다. */
+::view-transition-old(plan-stage-conditions),
+::view-transition-new(plan-stage-conditions),
+::view-transition-old(plan-stage-review),
+::view-transition-new(plan-stage-review) {
+  height: 100%;
+  object-fit: none;
+}
+::view-transition-group(plan-stage-pill) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* 계획 검토 → 행사 상세(운영 시작 뒤, PlanReviewScreen의 START_HOLD_MS).
+   event-title   계획 검토의 행사 제목 ↔ 행사 상세 머리 카드의 제목. 21px에서 26px로 커지며 옮겨 간다.
+   event-status  바로 옆 상태 칩. 막 「진행 중」으로 바뀐 칩이 상세 화면의 같은 칩 자리로 간다.
+   나머지 화면(root)은 위와 같이 짧게 겹쳐 바뀐다. */
+::view-transition-group(event-title),
+::view-transition-group(event-status) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(plan-generation),
+  ::view-transition-group(plan-stage-pill),
+  ::view-transition-group(event-title),
+  ::view-transition-group(event-status) {
+    animation: none;
+  }
 }

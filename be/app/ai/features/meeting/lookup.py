@@ -23,11 +23,17 @@ from ..retrieval.nodes import (
     find_chunks,
 )
 from ..retrieval.schemas import RecordFact, RecordSearchRequest, RecordSearchResult
+from ..tori.records import _AMBIGUOUS_AMOUNT, _found, _numbers, _requested_years, _supported
 from .schemas import MeetingAnswer
 
 
 MEETING_ASSESS_PROMPT_VERSION = f"{ASSESS_EVIDENCE_PROMPT_VERSION}+meeting-assess-v2"
 _MEETING_ASSESS_PROMPT = (Path(__file__).parent / "prompts" / "assess.md").read_text(encoding="utf-8")
+
+
+def _question_text(request: RecordSearchRequest) -> str:
+    # 검색어 재작성에서 빠진 질문 의도도 보존한다.
+    return f"{request.query} {getattr(request, 'original_question', '')}"
 
 
 @lru_cache(maxsize=1)
@@ -67,8 +73,9 @@ class RecordsLookup:
     async def search(self, request: RecordSearchRequest) -> tuple[RetrievedChunk, ...]:
         # 이 두 질문은 의미 검색이 제목만 우선하는 사례가 있어 후보 안의 본문을 먼저 본다.
         query = request.query
-        recap = '회고' in query
-        latest_attendance = ('최근' in query or '마지막' in query) and '참가' in query and '인원' in query
+        question = _question_text(request)
+        recap = '회고' in question
+        latest_attendance = ('최근' in question or '마지막' in question) and '참가' in question and '인원' in question
         if not (recap or latest_attendance):
             return await find_chunks(request, port=self._records, embed=self._embed)
         candidates = await find_chunks(request.model_copy(update={'limit': max(request.limit, 20)}),
@@ -104,9 +111,23 @@ class RecordsLookup:
                 messages = [*messages, HumanMessage('회의의 원래 질문(데이터): ' + original)]
             return await self._invoke(messages, schema)
 
-        result = await assess_chunks(request, chunks, invoke=invoke)
+        years = _requested_years(_question_text(request))
+
+        def filter_evidence(assessment):
+            facts = [item for item in assessment.facts if _supported(item, chunks, years)]
+            conflicts = [conflict for conflict in assessment.conflicts
+                         if not _AMBIGUOUS_AMOUNT.search(conflict.description)
+                         and all(_supported(value, chunks, years) for value in conflict.values)
+                         and _found(_numbers(conflict.description), _numbers(' '.join(v.content for v in conflict.values)))]
+            removed = len(facts) != len(assessment.facts) or len(conflicts) != len(assessment.conflicts)
+            not_found = list(assessment.not_found)
+            if removed and not not_found:
+                not_found.append('자료의 일부 내용을 확인하지 못했어요')
+            return assessment.model_copy(update={'facts': facts, 'conflicts': conflicts, 'not_found': not_found})
+
+        result = await assess_chunks(request, chunks, invoke=invoke, filter_assessment=filter_evidence)
         answer = to_meeting_answer(result)
-        if answer is not None and ('최근' in request.query or '마지막' in request.query):
+        if answer is not None and ('최근' in _question_text(request) or '마지막' in _question_text(request)):
             return answer.model_copy(update={'answer': '검색된 자료 기준이며 전체 자료에서 가장 최근인지 확인하지 못했어요.\n' + answer.answer})
         return answer
 

@@ -12,11 +12,14 @@ from typing import Annotated, Any, Literal
 from pydantic import Field, StringConstraints, model_serializer
 
 from app.core.enums import (
+    ActionContentSource,
+    ActionContentStatus,
     ActionStatus,
     ActionType,
     EventStatus,
     EventType,
     MemberRole,
+    PlanReviewStatus,
     StepActor,
     StepCode,
     StepPhase,
@@ -106,6 +109,14 @@ class ActionOut(CamelModel):
     manual_value: str | None
     # 처리·수정 요청의 expectedVersion으로 그대로 보낸다 (#41 낙관적 잠금).
     version: int
+    # 본문 초안 (#334). 3분 넘게 DRAFTING이면 멈춘 작성으로 보고 FAILED로 내려보낸다.
+    content_status: ActionContentStatus
+    # 본문을 누가 썼는지. null은 본문 없음.
+    content_source: ActionContentSource | None
+    # 본문의 [ ] 자리표시(토리가 비워 둔 곳). 없으면 [].
+    content_unknowns: list[str]
+    # 「초안 다시 받기」를 보여 줄지. POST /actions/{id}/draft 허용 조건과 같다.
+    can_request_draft: bool
 
 
 class ActionListResponse(CamelModel):
@@ -154,6 +165,8 @@ class StepProgressOut(CamelModel):
 
 
 class EventOut(CamelModel):
+    """L1 행사 카드. 계획 중(PLANNING)에는 단계 진행 전이라 currentStepName이 null이고 stepProgress가 모두 TODO다(#336)."""
+
     id: str
     title: str
     status: EventStatus
@@ -203,7 +216,7 @@ class CurrentStepOut(CamelModel):
 
 
 class EventDetailOut(CamelModel):
-    """L2 헤더. 목록 카드와 달리 현재 단계를 id까지 내려 Step 모달을 바로 연다."""
+    """L2 헤더. 목록 카드와 달리 현재 단계를 id까지 내려 Step 모달을 바로 연다. 계획 중(PLANNING)에는 currentStep이 null이다(#336)."""
 
     id: str
     title: str
@@ -233,6 +246,8 @@ class RemainingActionOut(CamelModel):
 
 
 class StepOut(CamelModel):
+    """L2 단계. state는 운영 시작 뒤에만 CURRENT가 생긴다. 계획 중(PLANNING)에는 모두 TODO다(#336)."""
+
     id: str
     step_order: int
     # P2는 단계를 묶음(phase)별로 나눠 그리고, 카탈로그 코드로 단계를 구분한다.
@@ -350,6 +365,8 @@ class PlanStepsSnapshotOut(CamelModel):
     """단계 구성과 그 구성을 읽은 시점의 버전."""
 
     base_revision: int
+    # 계획 편집 버전 (#177). 저장 뒤 값과 비교해 실제로 바뀌었을 때만 검토를 요청한다.
+    plan_revision: int
     steps: list[PlannedStepOut]
 
 
@@ -370,6 +387,9 @@ class ActionUpdateIn(CamelModel):
     amount: int | None = None
     due_date: date | None = None
     payload: ActionPayloadOut | None = None
+    # 승인 대상 본문 (#334). 비울 수 없다(빈 문자열·공백만이면 422). 고치면 운영진이 쓴
+    # 글(USER)이 되어 토리가 덮어쓰지 않는다.
+    content: str | None = None
 
 
 class PlannedStepListResponse(CamelModel):
@@ -449,12 +469,47 @@ class RecordLookupOut(CamelModel):
     result: RecordEvidenceOut | None = None
 
 
+class RecordLookupHistoryOut(CamelModel):
+    revision: int
+    lookup: RecordLookupOut
+
+
 class HistoryUsageOut(CamelModel):
     """대화 이력 사용량 (#194). Tool 메시지까지 센 값이라 남은 대화 횟수가 아니다."""
 
     message_count: int
     max_messages: int
     near_limit: bool
+
+
+class PlanProgressStepOut(CamelModel):
+    """작성 중인 초안에서 모델이 고른 단계 하나(#389). 검증 전이며 저장된 단계가 아니다."""
+
+    index: int  # 초안 steps 안의 위치. 0부터 차례로 온다
+    code: StepCode
+    name: str  # 카탈로그 고정 이름. 모델이 쓴 글이 아니다
+
+
+class PlanProgressOut(CamelModel):
+    """SSE progress 이벤트(#284). 저장되지 않는 임시 작업 상태이며 DB 저장 완료가 아니다.
+
+    같은 operationId의 running 줄을 completed/failed 줄로 바꿔 표시한다.
+    """
+
+    operation_id: str
+    kind: Literal[
+        "condition_started", "condition_applied", "search_started", "search_finished",
+        "generation_started", "generation_writing", "generation_step", "generation_finished",
+    ]
+    # generation_writing은 같은 operationId의 생성 줄이 생각을 마치고 초안을 쓰기 시작했다는 뜻이다(running, #388).
+    # generation_step은 같은 생성 작업이 단계 하나의 코드를 다 썼다는 뜻이다(running, step 포함, #389).
+    # 생성 화면의 「초안 작성」 아래 목록에만 쓰고, 대화의 작업 줄로는 그리지 않는다.
+    # skipped는 같은 operationId의 running 줄을 지우라는 뜻이다(조건 거절·같은 값, #290).
+    # empty는 정상으로 끝났지만 찾은 것이 없다는 뜻이다(기록 검색 자료 없음, #300).
+    status: Literal["running", "completed", "failed", "skipped", "empty"]
+    text: str
+    condition_draft: PlanDraftOut | None = None
+    step: PlanProgressStepOut | None = None
 
 
 class PlanViewOut(CamelModel):
@@ -467,6 +522,18 @@ class PlanViewOut(CamelModel):
     # 예전에 저장한 멱등 응답에는 없어서 기본값을 둔다.
     history_usage: HistoryUsageOut | None = None
     base_revision: int
+
+
+class PlanRequestOut(CamelModel):
+    """요청 키 하나의 처리 결과 (#342). 응답 도중 연결이 끊긴 FE가 조회한다.
+
+    completed: 저장까지 끝남. result는 그 요청이 받았어야 할 PlanViewOut 그대로다.
+    processing: 아직 처리 중. 잠시 뒤 다시 조회한다.
+    not_saved: 저장되지 않았다. 같은 내용을 새 요청으로 다시 보내도 된다.
+    """
+
+    status: Literal["completed", "processing", "not_saved"]
+    result: PlanViewOut | None = None
 
 
 class ExcludedStepOut(CamelModel):
@@ -483,6 +550,32 @@ class PlanSummaryOut(CamelModel):
     manual_steps: int
 
 
+class PlanReviewIn(CamelModel):
+    """계획 수정 후 AI 검토 요청 (#177). 화면이 본 버전과 다르면 409."""
+
+    expected_revision: int = Field(ge=0)
+
+
+class PlanReviewItemOut(CamelModel):
+    step_codes: list[StepCode]
+    # 카탈로그 고정 이름. AI 출력에 이름을 맡기지 않는다.
+    step_names: list[str]
+    kind: str
+    message: str
+    suggestion: str | None
+
+
+class PlanReviewOut(CamelModel):
+    """REVIEWING이 90초를 넘으면 status=FAILED, errorCode=REVIEW_TIMEOUT으로 내보낸다."""
+
+    status: PlanReviewStatus
+    generated_revision: int
+    reviewed_revision: int | None
+    outcome: str | None
+    items: list[PlanReviewItemOut]
+    error_code: str | None
+
+
 class PlanScreenOut(CamelModel):
     draft: PlanDraftOut
     warnings: list[str]
@@ -492,3 +585,8 @@ class PlanScreenOut(CamelModel):
     base_revision: int
     generation_readiness: GenerationReadinessOut | None = None
     last_record_lookup: RecordLookupOut | None = None
+    record_lookup_history: list[RecordLookupHistoryOut] = Field(default_factory=list)
+    # 계획 편집 버전 (#177). review.reviewedRevision과 비교해 검토가 지금 계획 기준인지 본다.
+    plan_revision: int
+    # 초안 생성 전이면 null.
+    review: PlanReviewOut | None

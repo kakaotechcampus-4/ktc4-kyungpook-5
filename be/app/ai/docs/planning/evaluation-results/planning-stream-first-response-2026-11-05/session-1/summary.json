@@ -1,0 +1,136 @@
+{
+  "session": {
+    "started_at": "2026-11-05T23:28:31.024082+09:00",
+    "api": "http://localhost:8020/api/v1",
+    "rounds": 10,
+    "warmup": true,
+    "interval_seconds": 1.0,
+    "fixture": "app/ai/tests/fixtures/eval/planning_latency.json",
+    "commit": "b151b5897849e3a00ac19939ba3069e7168a89d0",
+    "dirty": false,
+    "model": "gpt-5.6-luna",
+    "python": "3.13.14",
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "httpx": "0.28.1",
+    "allowed_total_increase_ms": 500,
+    "measured_from": "script receive time (perf_counter_ns); browser rendering not included",
+    "finished_at": "2026-11-05T23:36:06.972135+09:00"
+  },
+  "groups": {
+    "C2/json": {
+      "attempts": 10,
+      "success": 10,
+      "first_visible_ms": {
+        "n": 10,
+        "p50": 6338.479083,
+        "p95": 7439.7599811
+      },
+      "first_progress_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+      },
+      "first_reply_delta_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+      },
+      "total_ms": {
+        "n": 10,
+        "p50": 6338.479083,
+        "p95": 7439.7599811
+      }
+    },
+    "C2/sse": {
+      "attempts": 10,
+      "success": 10,
+      "first_visible_ms": {
+        "n": 10,
+        "p50": 3055.1189995,
+        "p95": 3466.65515785
+      },
+      "first_progress_ms": {
+        "n": 10,
+        "p50": 3055.1189995,
+        "p95": 3466.65515785
+      },
+      "first_reply_delta_ms": {
+        "n": 10,
+        "p50": 5042.458812000001,
+        "p95": 8031.983597250001
+      },
+      "total_ms": {
+        "n": 10,
+        "p50": 6114.998104,
+        "p95": 8929.01760975
+      }
+    },
+    "G2/json": {
+      "attempts": 10,
+      "success": 10,
+      "first_visible_ms": {
+        "n": 10,
+        "p50": 11724.0438335,
+        "p95": 13019.77988955
+      },
+      "first_progress_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+      },
+      "first_reply_delta_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+      },
+      "total_ms": {
+        "n": 10,
+        "p50": 11724.0438335,
+        "p95": 13019.77988955
+      }
+    },
+    "G2/sse": {
+      "attempts": 10,
+      "success": 10,
+      "first_visible_ms": {
+        "n": 10,
+        "p50": 32.3552915,
+        "p95": 39.890414250000006
+      },
+      "first_progress_ms": {
+        "n": 10,
+        "p50": 32.3552915,
+        "p95": 39.890414250000006
+      },
+      "first_reply_delta_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null
+      },
+      "total_ms": {
+        "n": 10,
+        "p50": 12085.4350835,
+        "p95": 14053.273220800002
+      }
+    }
+  },
+  "comparisons": {
+    "C2": {
+      "total_p50_increase_ms": -223.48097899999993,
+      "within_allowed": true,
+      "first_visible_p50_saved_ms": 3283.3600835,
+      "paired_rounds": 10,
+      "sse_first_visible_earlier": 10,
+      "sse_total_faster": 6
+    },
+    "G2": {
+      "total_p50_increase_ms": 361.3912500000006,
+      "within_allowed": true,
+      "first_visible_p50_saved_ms": 11691.688542,
+      "paired_rounds": 10,
+      "sse_first_visible_earlier": 10,
+      "sse_total_faster": 3
+    }
+  },
+  "failures": []
+}

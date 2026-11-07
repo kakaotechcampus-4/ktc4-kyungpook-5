@@ -13,9 +13,12 @@ from app.ai.scripts.check_meeting_judge import (
     EVAL_UTTERANCES,
     SETS,
     SPLITS,
+    auroc,
     breakdown,
     confusion,
     load_requests,
+    luna_missed,
+    summarize_probabilities,
     threshold_sweep,
 )
 
@@ -163,6 +166,38 @@ def test_threshold_sweep_counts_probability_equal_to_threshold_as_lookup():
     assert row["missed"] == "0 / 1"
 
 
+
+def test_auroc_counts_tied_probabilities_as_half():
+    # Jev는 확률을 0.01 단위로 줘서 같은 값이 흔하다. 같으면 어느 쪽도 위가 아니므로 반으로 센다
+    assert auroc([0.9, 0.3, 0.3], [True, True, False]) == 0.75
+    assert auroc([0.9], [True]) is None
+
+
+def test_summarize_probabilities_leaves_either_out_of_auroc():
+    # 둘 다 허용은 채점하지 않으므로 확률의 순서를 볼 때도 뺀다
+    records = [
+        {"truth": True, "p_true": 0.8, "pred": True},
+        {"truth": False, "p_true": 0.2, "pred": False},
+        {"truth": False, "p_true": 0.95, "pred": True, "either": True},
+    ]
+    summary = summarize_probabilities(records)
+    assert summary["auroc"] == 1.0
+    assert summary["p_true_mean"] == {"lookup": 0.8, "no_lookup": 0.2}
+
+
+def test_luna_missed_counts_only_lookups_luna_caught():
+    # 1단계 기준은 "luna가 잡은 조회를 하나도 놓치지 않음"이다. luna도 놓친 조회와 둘 다 허용은 세지 않는다
+    records = [
+        {"id": "a", "truth": True, "p_true": 0.10, "pred": False},
+        {"id": "b", "truth": True, "p_true": 0.40, "pred": True},
+        {"id": "c", "truth": True, "p_true": 0.05, "pred": False},
+        {"id": "d", "truth": True, "p_true": 0.01, "pred": False, "either": True},
+    ]
+    caught = {"a", "b", "d"}
+    assert luna_missed(records, caught) == {"missed": "1 / 2", "ids": ["a"]}
+    assert luna_missed(records, caught, threshold=0.10) == {"missed": "0 / 2", "ids": []}
+
+
 SET_ROWS = [
     json.loads(line)
     for line in EVAL_SET.read_text(encoding="utf-8").splitlines()
@@ -197,12 +232,15 @@ def test_eval_set_splits_by_meeting():
     for row in SET_ROWS:
         meetings.setdefault(row["meeting"], set()).add((row["split"], row["audio"]))
     assert all(len(kinds) == 1 for kinds in meetings.values())
-    holdout = {m for m, kinds in meetings.items() if next(iter(kinds))[0] == "holdout"}
+    split = {m: next(iter(kinds))[0] for m, kinds in meetings.items()}
+    holdout = {m for m, name in split.items() if name == "holdout"}
     # j01~j16은 대본을 다 쓴 뒤 회의 4개를 홀드아웃으로 뽑았다(#115).
     # j17~j28은 홀드아웃을 키우려고 다른 모델·다른 회의 종류로 따로 쓴 회의라 모두 홀드아웃이다(#117)
     first = {m for m in meetings if m <= "j16"}
     assert len(holdout & first) * 4 == len(first)
-    assert meetings.keys() - first <= holdout
+    assert {m for m in meetings if "j17" <= m <= "j28"} <= holdout
+    # j29~j40은 질문 문구 v2를 정하려고 새로 쓴 두 번째 홀드아웃이다(#260). 처음 홀드아웃과 섞지 않는다
+    assert {m for m in meetings if m >= "j29"} == {m for m, name in split.items() if name == "holdout2"}
 
 
 def test_eval_set_does_not_repeat_laya_comparison_items():

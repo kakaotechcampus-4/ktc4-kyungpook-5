@@ -9,7 +9,7 @@ from app.ai.config import get_settings
 from app.ai.errors import AIRetryableError
 from app.ai.features.meeting import nodes
 from app.ai.features.meeting.lookup import RecordsLookup
-from app.ai.features.meeting.schemas import JudgeOutput
+from app.ai.features.meeting.schemas import QueryOutput
 from app.ai.features.retrieval.schemas import EvidenceAssessment, EvidenceItem
 from app.ai.llm import EMBEDDING_DIMENSIONS
 from app.core.enums import RecordCategory
@@ -44,8 +44,11 @@ class FakePort:
 
 
 def run(monkeypatch, port):
-    async def judge(messages):
-        return JudgeOutput(needs_lookup=True, query="작년 숙소비")
+    async def decide(state):
+        return 0.9
+
+    async def query(messages):
+        return QueryOutput(query="작년 숙소비")
 
     async def embed(texts):
         return [(1.0,) + (0.0,) * (EMBEDDING_DIMENSIONS - 1) for _ in texts]
@@ -56,7 +59,8 @@ def run(monkeypatch, port):
             not_found=[], conflicts=[])
 
     async def injected_judge(request, *, lookup, progress):
-        return await nodes.judge_utterance(request, lookup=lookup, progress=progress, judge=judge)
+        return await nodes.judge_utterance(request, lookup=lookup, progress=progress,
+                                         decide=decide, query=query)
 
     monkeypatch.setattr(app.ai.facade, "judge_meeting_utterance", injected_judge)
     monkeypatch.setattr(app.ai.facade, "RecordsLookup",
@@ -80,4 +84,5 @@ def test_public_payload_keeps_empty_and_failure_distinct(monkeypatch):
     assert run(monkeypatch, FakePort()).kind == "NOT_FOUND"
     with pytest.raises(AIRetryableError) as raised:
         run(monkeypatch, FakePort(error=AIRetryableError("검색 실패")))
-    assert raised.value.trace.tool_calls[0].status == "FAILED"
+    # 판단(Jev)과 검색어(luna) 다음의 기록 검색이 실패했다
+    assert [call.status for call in raised.value.trace.tool_calls] == ["OK", "OK", "FAILED"]

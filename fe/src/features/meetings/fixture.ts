@@ -36,6 +36,7 @@ const decision = (
   kind: 'ANSWER' | 'NOT_FOUND',
   minute: number,
   output: string | null,
+  question: string | null = null,
 ): Decision => ({
   id,
   jobId: `job-${id}`,
@@ -47,7 +48,7 @@ const decision = (
   route: 'RAG',
   kind,
   reasonSummary: null,
-  question: null,
+  question,
   output,
   citations:
     kind === 'ANSWER'
@@ -65,8 +66,15 @@ const decision = (
   createdAt: `2026-10-19T05:0${minute}:30Z`,
 })
 export const fixtureDecisions = [
-  decision('d1', 'f1', 'ANSWER', 2, '지난 워크숍은 교내 세미나실에서 진행했어요.'),
-  decision('d2', 'f4', 'NOT_FOUND', 3, null),
+  decision(
+    'd1',
+    'f1',
+    'ANSWER',
+    5,
+    '지난 워크숍은 교내 세미나실에서 진행했어요.',
+    '2025 워크숍 장소',
+  ),
+  decision('d2', 'f4', 'NOT_FOUND', 4, null, '2025 워크숍 간식 예산'),
 ]
 export const fixtureSuggestion: Suggestion = {
   id: 'fixture-task',

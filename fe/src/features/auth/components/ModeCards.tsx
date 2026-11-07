@@ -24,7 +24,7 @@ export function ModeCards({ value, onChange }: ModeCardsProps) {
             aria-pressed={selected}
             onClick={() => onChange(mode.value)}
             className={cn(
-              'flex flex-1 items-start gap-[9px] rounded-[12px] border px-[14px] py-[13px] text-left',
+              'flex flex-1 items-start gap-[9px] rounded-[12px] border px-[14px] py-[13px] text-left transition-colors duration-150 motion-reduce:transition-none',
               selected ? 'border-blue-600 bg-blue-50' : 'border-soft bg-card hover:bg-bg',
             )}
           >

@@ -62,6 +62,15 @@ class EventStatus(CodeEnum):
     CANCELLED = "CANCELLED"
 
 
+class PlanReviewStatus(CodeEnum):
+    """계획 수정 후 AI 검토 상태 (#177)."""
+
+    NOT_REQUESTED = "NOT_REQUESTED"
+    REVIEWING = "REVIEWING"
+    DONE = "DONE"
+    FAILED = "FAILED"
+
+
 class EventType(CodeEnum):
     MT = "MT"
     WELCOME = "WELCOME"
@@ -143,6 +152,26 @@ class ActionStatus(CodeEnum):
     FAILED = "FAILED"
 
 
+class ActionContentStatus(CodeEnum):
+    """공지·발송 Action 본문 초안의 상태 (#334). Action.status(승인 흐름)와 따로 움직인다.
+
+    NONE: 초안을 요청한 적 없음 / DRAFTING: 토리가 쓰는 중 / READY: 본문 있음(토리 또는
+    운영진) / FAILED: 작성 실패. 3분 넘은 DRAFTING은 응답에서만 FAILED로 보인다.
+    """
+
+    NONE = "NONE"
+    DRAFTING = "DRAFTING"
+    READY = "READY"
+    FAILED = "FAILED"
+
+
+class ActionContentSource(CodeEnum):
+    """본문을 누가 썼는지. 운영진이 고친 글(USER)은 토리가 덮어쓰지 않는다 (#334)."""
+
+    AI = "AI"
+    USER = "USER"
+
+
 # --- records ------------------------------------------------------------
 
 
@@ -206,6 +235,8 @@ class ExpenseSource(CodeEnum):
     MANUAL = "MANUAL"
     CSV_IMPORT = "CSV_IMPORT"
     OCR_IMPORT = "OCR_IMPORT"
+    # 행사 송금 행동(TRANSFER)을 완료하면서 자동으로 남긴 지출 (#348)
+    ACTION = "ACTION"
 
 
 # --- meetings (#135) ------------------------------------------------------
@@ -299,6 +330,7 @@ class AgentRunStatus(CodeEnum):
 class AgentJobKind(CodeEnum):
     RECEIPT_OCR = "RECEIPT_OCR"
     MEETING_STT = "MEETING_STT"
+    MEETING_REVIEW = "MEETING_REVIEW"
     CONTEXT_DECISION = "CONTEXT_DECISION"
     DISCORD_SYNC = "DISCORD_SYNC"
 

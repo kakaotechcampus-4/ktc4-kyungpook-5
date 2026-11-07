@@ -27,7 +27,8 @@ class ToriIntentRequest(ContractModel):
 
 
 class ToriIntentResult(ContractModel):
-    intent: Literal['record_search', 'task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported']
+    intent: Literal['record_search', 'task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported',
+                    'self_intro']
     query: NonBlankStr | None = None
     scope: Literal['self', 'all'] | None = None
     kind: Literal['task', 'schedule', 'all'] | None = None

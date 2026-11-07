@@ -1,0 +1,440 @@
+{
+  "events": [
+    {
+      "at": 13234.800000011921,
+      "frame": 1576,
+      "event": "progress",
+      "data": {
+        "operationId": "call_WdA5zY3DDAiaLtZLATZvt3ER",
+        "kind": "condition_started",
+        "status": "running",
+        "text": "조건을 반영하고 있어요"
+      }
+    },
+    {
+      "at": 14543.40000000596,
+      "frame": 1733,
+      "event": "progress",
+      "data": {
+        "operationId": "call_WdA5zY3DDAiaLtZLATZvt3ER",
+        "kind": "condition_applied",
+        "status": "completed",
+        "text": "참가비 반영했어요",
+        "conditionDraft": {
+          "conditions": {
+            "title": null,
+            "eventType": "MT",
+            "headcount": 40,
+            "feePerPerson": 30000,
+            "startDate": null,
+            "endDate": null,
+            "location": null,
+            "budgetTotal": null
+          },
+          "conditionMeta": {
+            "headcount": {
+              "status": "specified",
+              "evidenceMessageId": "f1b81fce-9069-443e-93dd-94118fa41bbb",
+              "evidenceQuote": "예상 인원은 40명"
+            },
+            "event_type": {
+              "status": "specified",
+              "evidenceMessageId": "f1b81fce-9069-443e-93dd-94118fa41bbb",
+              "evidenceQuote": "MT를 준비할게요."
+            },
+            "fee_per_person": {
+              "status": "specified",
+              "evidenceMessageId": "5086d5c4-551b-42e5-a763-654768b1ef8c",
+              "evidenceQuote": "참가비 3만원으로 해줘."
+            }
+          },
+          "deferredTopics": []
+        }
+      }
+    },
+    {
+      "at": 16121.5,
+      "frame": 1921,
+      "event": "reply_delta",
+      "data": {
+        "text": "참"
+      }
+    },
+    {
+      "at": 16137.5,
+      "frame": 1923,
+      "event": "reply_delta",
+      "data": {
+        "text": "가"
+      }
+    },
+    {
+      "at": 16143.800000011921,
+      "frame": 1924,
+      "event": "reply_delta",
+      "data": {
+        "text": "비"
+      }
+    },
+    {
+      "at": 16143.800000011921,
+      "frame": 1924,
+      "event": "reply_delta",
+      "data": {
+        "text": "를"
+      }
+    },
+    {
+      "at": 16143.800000011921,
+      "frame": 1924,
+      "event": "reply_delta",
+      "data": {
+        "text": " "
+      }
+    },
+    {
+      "at": 16168.09999999404,
+      "frame": 1927,
+      "event": "reply_delta",
+      "data": {
+        "text": "3"
+      }
+    },
+    {
+      "at": 16176.09999999404,
+      "frame": 1927,
+      "event": "reply_delta",
+      "data": {
+        "text": "만"
+      }
+    },
+    {
+      "at": 16202.800000011921,
+      "frame": 1931,
+      "event": "reply_delta",
+      "data": {
+        "text": " 원"
+      }
+    },
+    {
+      "at": 16208.199999988079,
+      "frame": 1931,
+      "event": "reply_delta",
+      "data": {
+        "text": "으로"
+      }
+    },
+    {
+      "at": 16413.69999998808,
+      "frame": 1956,
+      "event": "reply_delta",
+      "data": {
+        "text": " 변경"
+      }
+    },
+    {
+      "at": 16413.80000001192,
+      "frame": 1956,
+      "event": "reply_delta",
+      "data": {
+        "text": "했"
+      }
+    },
+    {
+      "at": 16413.80000001192,
+      "frame": 1956,
+      "event": "reply_delta",
+      "data": {
+        "text": "어요"
+      }
+    },
+    {
+      "at": 16413.80000001192,
+      "frame": 1956,
+      "event": "reply_delta",
+      "data": {
+        "text": "."
+      }
+    },
+    {
+      "at": 16413.80000001192,
+      "frame": 1956,
+      "event": "reply_delta",
+      "data": {
+        "text": " 초"
+      }
+    },
+    {
+      "at": 16475.09999999404,
+      "frame": 1964,
+      "event": "reply_delta",
+      "data": {
+        "text": "안"
+      }
+    },
+    {
+      "at": 16475.30000001192,
+      "frame": 1964,
+      "event": "reply_delta",
+      "data": {
+        "text": " 생성"
+      }
+    },
+    {
+      "at": 16481.19999998808,
+      "frame": 1964,
+      "event": "reply_delta",
+      "data": {
+        "text": "은"
+      }
+    },
+    {
+      "at": 16481.19999998808,
+      "frame": 1964,
+      "event": "reply_delta",
+      "data": {
+        "text": " 계속"
+      }
+    },
+    {
+      "at": 16481.19999998808,
+      "frame": 1964,
+      "event": "reply_delta",
+      "data": {
+        "text": " 보"
+      }
+    },
+    {
+      "at": 16481.19999998808,
+      "frame": 1964,
+      "event": "reply_delta",
+      "data": {
+        "text": "류"
+      }
+    },
+    {
+      "at": 16481.19999998808,
+      "frame": 1964,
+      "event": "reply_delta",
+      "data": {
+        "text": "할"
+      }
+    },
+    {
+      "at": 16481.19999998808,
+      "frame": 1964,
+      "event": "reply_delta",
+      "data": {
+        "text": "게"
+      }
+    },
+    {
+      "at": 16660.09999999404,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": "요"
+      }
+    },
+    {
+      "at": 16660.09999999404,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": ".\n\n"
+      }
+    },
+    {
+      "at": 16662.30000001192,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": "일"
+      }
+    },
+    {
+      "at": 16662.30000001192,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": "정"
+      }
+    },
+    {
+      "at": 16662.30000001192,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": "은"
+      }
+    },
+    {
+      "at": 16670.40000000596,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": " 언제"
+      }
+    },
+    {
+      "at": 16670.40000000596,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": "쯤"
+      }
+    },
+    {
+      "at": 16670.40000000596,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": "으로"
+      }
+    },
+    {
+      "at": 16670.40000000596,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": " 생각"
+      }
+    },
+    {
+      "at": 16670.40000000596,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": "하고"
+      }
+    },
+    {
+      "at": 16670.40000000596,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": " 계"
+      }
+    },
+    {
+      "at": 16670.40000000596,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": "세요"
+      }
+    },
+    {
+      "at": 16670.40000000596,
+      "frame": 1986,
+      "event": "reply_delta",
+      "data": {
+        "text": "?"
+      }
+    },
+    {
+      "at": 17271.90000000596,
+      "frame": 2059,
+      "event": "done",
+      "data": {
+        "reply": "참가비를 3만 원으로 변경했어요. 초안 생성은 계속 보류할게요.\n\n일정은 언제쯤으로 생각하고 계세요?",
+        "draft": {
+          "conditions": {
+            "title": null,
+            "eventType": "MT",
+            "headcount": 40,
+            "feePerPerson": 30000,
+            "startDate": null,
+            "endDate": null,
+            "location": null,
+            "budgetTotal": null
+          },
+          "conditionMeta": {
+            "headcount": {
+              "status": "specified",
+              "evidenceMessageId": "f1b81fce-9069-443e-93dd-94118fa41bbb",
+              "evidenceQuote": "예상 인원은 40명"
+            },
+            "event_type": {
+              "status": "specified",
+              "evidenceMessageId": "f1b81fce-9069-443e-93dd-94118fa41bbb",
+              "evidenceQuote": "MT를 준비할게요."
+            },
+            "fee_per_person": {
+              "status": "specified",
+              "evidenceMessageId": "5086d5c4-551b-42e5-a763-654768b1ef8c",
+              "evidenceQuote": "참가비 3만원으로 해줘."
+            }
+          },
+          "deferredTopics": []
+        },
+        "changedFields": [
+          "fee_per_person"
+        ],
+        "recordLookup": null,
+        "generationReadiness": {
+          "canGenerate": false,
+          "reasons": [
+            "dates_unanswered",
+            "location_unanswered"
+          ]
+        },
+        "generationResult": null,
+        "historyUsage": {
+          "messageCount": 9,
+          "maxMessages": 60,
+          "nearLimit": false
+        },
+        "baseRevision": 2
+      }
+    }
+  ],
+  "renders": [
+    {
+      "frame": 1576,
+      "at": 13239.199999988079,
+      "url": "?eventId=evt_LxvvLVIWg22Xy0vr7clLS",
+      "completedChecks": 1,
+      "lines": [
+        "행사 종류 · 예상 인원 · 참가비 반영했어요",
+        "조건을 반영하고 있어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n✓\n종류\nMT\n✓\n예상 인원\n40명\n✓\n참가비\n1인 20,000원\n일정\n아직이에요\n장소\n아직이에요",
+      "flash": [],
+      "animation": null
+    },
+    {
+      "frame": 1733,
+      "at": 14553.300000011921,
+      "url": "?eventId=evt_LxvvLVIWg22Xy0vr7clLS",
+      "completedChecks": 2,
+      "lines": [
+        "행사 종류 · 예상 인원 · 참가비 반영했어요",
+        "참가비 반영했어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n✓\n종류\nMT\n✓\n예상 인원\n40명\n✓\n참가비\n1인 30,000원\n일정\n아직이에요\n장소\n아직이에요",
+      "flash": [
+        "✓\n참가비\n1인 30,000원"
+      ],
+      "animation": "fact-flash"
+    },
+    {
+      "frame": 1912,
+      "at": 16046.90000000596,
+      "url": "?eventId=evt_LxvvLVIWg22Xy0vr7clLS",
+      "completedChecks": 2,
+      "lines": [
+        "행사 종류 · 예상 인원 · 참가비 반영했어요",
+        "참가비 반영했어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n✓\n종류\nMT\n✓\n예상 인원\n40명\n✓\n참가비\n1인 30,000원\n일정\n아직이에요\n장소\n아직이에요",
+      "flash": [],
+      "animation": null
+    }
+  ],
+  "message": "참가비 3만원으로 해줘.",
+  "reducedMotion": false,
+  "codeCommit": "12f73c139d4ece779e25c5c0ba156acf2f46f787",
+  "model": "gpt-5.6-luna",
+  "promptVersion": "planning-agent-v8"
+}

@@ -6,6 +6,16 @@ on:
   pull_request:
     branches: [develop]
   workflow_dispatch:
+    inputs:
+      run_migration:
+        description: Run the explicitly approved database migration and preflight
+        required: false
+        default: false
+        type: boolean
+      backend_image:
+        description: Existing ECR backend image containing the migration
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -19,6 +29,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test deployment script
+        run: |
+          bash -n deploy/remote-deploy.sh
+          python3 -m unittest discover -s deploy/tests -v
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -112,6 +126,7 @@ jobs:
           printf %s '$bootstrap_b64' | base64 -d > /opt/unyounghae/bootstrap-instance.sh
           printf %s '$script_b64' | base64 -d > /opt/unyounghae/remote-deploy.sh
           bash /opt/unyounghae/bootstrap-instance.sh
+          docker image ls --format '{{.Repository}}:{{.Tag}}' | awk '/\/unyounghae-(api|web):[^<]+$/ {print}' | xargs -r docker image rm --no-prune || true
           AWS_REGION=ap-northeast-2 BACKEND_IMAGE='$BACKEND_IMAGE' FRONTEND_IMAGE='$FRONTEND_IMAGE' SITE_ADDRESS='$site_address' ACME_EMAIL='$ACME_EMAIL' bash /opt/unyounghae/remote-deploy.sh"
           jq -n --arg command "$command_text" '{commands: [$command]}' > "$RUNNER_TEMP/ssm-parameters.json"
           command_id=$(aws ssm send-command \
@@ -134,4 +149,51 @@ jobs:
             sleep 5
           done
           echo 'Timed out waiting for Systems Manager deployment' >&2
+          exit 1
+
+  migrate:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_migration == true && vars.EC2_INSTANCE_ID != '' && inputs.backend_image != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/ktc-github-deploy
+          aws-region: ap-northeast-2
+      - name: Backup, migrate, and preflight through Systems Manager
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          BACKEND_IMAGE: ${{ inputs.backend_image }}
+        run: |
+          command_text="set -eu
+          cd /opt/unyounghae
+          install -d /opt/unyounghae/backups
+          stamp=\$(date -u +%Y%m%dT%H%M%SZ)
+          pg_container=\$(docker ps --format '{{.Names}}' | awk '/postgres/{print; exit}')
+          test -n \"\$pg_container\"
+          env_text=\"\$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' \"\$pg_container\")\"
+          pg_user=\"\$(printf '%s\\n' \"\$env_text\" | sed -n 's/^POSTGRES_USER=//p' | head -1)\"
+          pg_db=\"\$(printf '%s\\n' \"\$env_text\" | sed -n 's/^POSTGRES_DB=//p' | head -1)\"
+          pg_password=\"\$(printf '%s\\n' \"\$env_text\" | sed -n 's/^POSTGRES_PASSWORD=//p' | head -1)\"
+          test -n \"\$pg_user\" -a -n \"\$pg_db\"
+          if [ -n \"\$pg_password\" ]; then
+            docker exec -e PGPASSWORD=\"\$pg_password\" \"\$pg_container\" pg_dump -Fc -U \"\$pg_user\" -d \"\$pg_db\" > \"/opt/unyounghae/backups/pre-migration-\$stamp.dump\"
+          else
+            docker exec \"\$pg_container\" pg_dump -Fc -U \"\$pg_user\" -d \"\$pg_db\" > \"/opt/unyounghae/backups/pre-migration-\$stamp.dump\"
+          fi
+          docker run --rm --network unyounghae-db --env-file /opt/unyounghae/api.env \"$BACKEND_IMAGE\" uv run --no-sync alembic upgrade head
+          docker run --rm --network unyounghae-db --env-file /opt/unyounghae/api.env \"$BACKEND_IMAGE\" uv run --no-sync python deployment_preflight.py"
+          jq -n --arg command "$command_text" '{commands: [$command]}' > "$RUNNER_TEMP/ssm-migration.json"
+          command_id=$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name AWS-RunShellScript --parameters "file://$RUNNER_TEMP/ssm-migration.json" --query 'Command.CommandId' --output text)
+          for attempt in {1..180}; do
+            status=$(aws ssm get-command-invocation --command-id "$command_id" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || true)
+            case "$status" in
+              Success) aws ssm get-command-invocation --command-id "$command_id" --instance-id "$INSTANCE_ID" --query '{Status:Status,Output:StandardOutputContent}' --output json; exit 0 ;;
+              Failed|Cancelled|TimedOut|Cancelling) aws ssm get-command-invocation --command-id "$command_id" --instance-id "$INSTANCE_ID" --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}' --output json; exit 1 ;;
+            esac
+            sleep 5
+          done
+          echo 'Timed out waiting for database migration' >&2
           exit 1

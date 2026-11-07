@@ -41,6 +41,8 @@ export type StepActor = 'AI' | 'APPROVAL_REQUIRED' | 'MANUAL'
 export interface EventStep {
   id: string
   stepOrder: number
+  // 단계 카탈로그 코드. 서버는 항상 내려주고, 예시 데이터(?demo)에는 없다.
+  code?: string
   name: string
   state: StepState
   deadline: string | null
@@ -61,6 +63,12 @@ export type ActionType =
 export type ActionStatus = 'PENDING' | 'APPROVED' | 'DENIED' | 'DONE' | 'FAILED'
 
 export type MemberRole = 'OWNER' | 'MANAGER' | 'MEMBER'
+
+// 토리 본문 초안의 상태(#334·#335). NOTICE·EXTERNAL_SEND만 초안을 받는다.
+// NONE: 초안 대상이 아니거나 아직 현재 단계가 아님 · DRAFTING: 쓰는 중 · READY: 본문 있음 · FAILED: 받지 못함
+export type ActionContentStatus = 'NONE' | 'DRAFTING' | 'READY' | 'FAILED'
+// 본문을 누가 썼는지. null은 본문이 없음
+export type ActionContentSource = 'AI' | 'USER'
 
 // GET /events/{id}/actions 한 줄
 // 선택(?) 필드는 응답에는 늘 오지만, 예시 데이터는 그 화면에서 쓰는 것만 채운다.
@@ -86,6 +94,13 @@ export interface EventAction {
   answer?: string | null
   failReason?: string | null
   version?: number
+  // 초안 상태(#334). 이전 응답·예시 데이터에는 없을 수 있어 없으면 NONE으로 본다.
+  contentStatus?: ActionContentStatus
+  contentSource?: ActionContentSource | null
+  // 본문의 [ ] 안 글자. 운영진이 채울 자리다. 예: ["신청 링크"]
+  contentUnknowns?: string[]
+  // 「다시 받기」를 보여 줄지. POST /actions/{id}/draft 허용 조건과 같은 값을 서버가 계산한다.
+  canRequestDraft?: boolean
 }
 
 // 목록 일부와 전체 개수("12건")

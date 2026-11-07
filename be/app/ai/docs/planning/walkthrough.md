@@ -1,5 +1,74 @@
 # 행사계획 코드 따라가기
 
+## 처리 중 진행 알림 (#266, #279)
+
+BE가 `chat_planning(request, progress=port)` 또는
+`generate_planning_preview(request, progress=port)`를 호출하면 실제 작업에 맞춰
+`port.progress(PlanningProgress)`가 실행된다. 포트를 생략하면 기존 호출 방식을 유지한다.
+BE의 SSE 경로(`services/planning_stream.py`, #284)가 이 알림을 `progress`·`reply_delta` 이벤트로 보낸다. 제품 FE는 `features/planning/stream.ts` → `hooks.usePlanningChat` → `PlanChat`에서 진행 줄과 답변 조각을 그린다(#285).
+화면은 한 턴의 진행 줄을 토리 답변과 한 덩어리로 묶고, 답변이 끝난 뒤에도 답변 위에 남긴다(#290, `features/planning/turn.ts`). 진행 줄은 저장하지 않으므로 새로고침하면 답변만 남는다.
+보내자마자 토리 자리에 입력 중 말풍선(점 세 개)이 뜨고, 답변 첫 조각이 오면 같은 말풍선이 글자로 바뀐다. 진행 중인 줄은 글자가 옅어졌다 진해지고, 완료되면 같은 자리에 체크가 나타난다. 답변이 저장된 뒤 줄이 2개 이상이면 “처리한 작업 2개” 한 줄로 접히고 눌러서 펼칠 수 있다(#295, `components/PlanChat.tsx`).
+검색이 정상으로 끝났지만 맞는 기록이 없으면 `search_finished/empty`와 “맞는 기록이 없었어요”가 오고, 화면은 체크 대신 회색 대시로 남긴다. 검색 실패(`failed`)와 구분한다(#300).
+조건 완료(`condition_applied/completed`)에 검증된 `condition_draft`가 오면 오른쪽 「지금까지 정한 것」도 체크와 같은 화면 갱신에서 바뀐다(#302).
+`hooks.usePlanningChat`은 저장된 초안과 별도로 임시 초안을 두고, 값·상태가 바뀐 칸에 1.5초 강조를 켠다(`factFlash.ts`).
+진행 줄은 항목 이름만 적는다. 3개까지는 “예상 인원 · 일정 · 참가비 반영했어요”, 4개 이상은 “예상 인원 · 일정 외 2개 반영했어요”다.
+시작일·종료일은 패널과 진행 줄 모두 「일정」 한 항목이다.
+done 결과가 임시 패널과 같으면 그대로 두고, 다르면 다른 칸만 다시 강조한다. 실패하면 저장된 값으로 돌아가고 강조를 지운다.
+새 계획은 진행 이벤트 당시 아직 eventId 주소가 아니므로 현재 화면 상태에도 강조를 넣는다. 계획별 react-query 캐시에는 같은 시작 시각을 보관해 주소 이동 뒤에도 강조를 다시 시작하지 않는다.
+토리 답변 글은 모델이 쓴 원문 그대로 저장되고, 화면이 그중 굵게(`**`)·목록(`- `, 들여쓴 하위 목록)·빈 줄 문단만 모양으로 바꿔 그린다. 받는 중에도 닫히지 않은 `**` 뒤를 굵게 두어 별표가 보였다 사라지지 않는다(#304, `features/planning/replyText.ts`).
+
+```text
+입력      “인원은 40명, 참가비는 2만원으로 해 줘”
+조건 완료 ✓ 예상 인원 · 참가비 반영했어요
+같은 갱신 패널 예상 인원 40명 · 참가비 1인 20,000원 + 두 칸 강조
+답변      “인원은 40명, 참가비는 …”
+done      저장된 값이 같으면 그대로, 다르면 그 칸만 다시 강조
+실패      진행 줄 실패 표시, 패널은 저장된 값으로 복구(강조 없음)
+```
+
+예: “예상 인원을 60명으로 바꾸고 초안 만들어줘”:
+
+1. 모델이 조건 변경 Tool을 쓰기 시작하면(첫 조각) `call_agent_model`이
+   `condition_started/running`과 “조건을 반영하고 있어요”를 보낸다(#297).
+   `agent/tools.py`가 조건을 검증한 뒤 `nodes.tools_node`가 같은 Tool 호출 ID로
+   `condition_applied/completed`와 “예상 인원 반영했어요”, 검증된 초안 `condition_draft`를 보낸다.
+   거절·같은 값이면 `condition_applied/skipped`를 보낸다. 화면은 그 줄을 답변이 시작될 때 지운다.
+   예: "…참가비는 20000원" → [검색, 참가비 변경]에서 참가비가 거절되고(검색 결과 전) 모델이 다시
+   요청하면, 새 `condition_started`가 처음 줄의 자리를 이어 써 줄이 사라졌다 다시 생기지 않는다(#299).
+2. `generation/entrypoints.generate_with_context`는 생성 차단과 성공 결과 재사용을 확인한다.
+   실제 생성이 필요할 때만 `generation_started/running`을 보낸다.
+   생성 모델이 계획 JSON의 첫 글자를 보내면 같은 `operation_id`로 `generation_writing/running`과
+   “초안을 작성하는 중이에요”를 한 번 보낸다(#388, 아래 「생각 중과 작성 중은 어떻게 나누나」).
+   그 뒤 모델이 단계 하나의 코드를 다 쓸 때마다 `generation_step/running`과 고정 이름을 보낸다
+   (#389, 아래 「작성 중 단계 이름은 어떻게 찾나」).
+3. 생성 및 기준 조건 검증 후 같은 `operation_id`로 `generation_finished`를 보낸다.
+   성공은 `completed`, 실패는 `failed`이며 기존 반환 결과는 유지한다.
+4. 기존 Agent 답변 작성 → 상태 직렬화 → 공개 결과 반환을 거친다. 저장은 여전히 BE가 맡는다.
+
+`progress.py`의 순수 함수가 검증 결과로 문구를 만들며, `notify`가 알림 포트의 일반 오류를
+원문 없이 기록한다. 검색은 실제 호출 직전에 시작을 알리고 자료 없음과 실패를 구분한다.
+진행 이벤트는 대화 이력이나 다음 상태 JSON에 넣지 않는다. 단위 테스트는
+`tests/test_planning_progress.py`에서 이벤트 순서·거절·재사용·알림 실패와 결과 보존을 확인한다.
+
+### 답변을 쓰는 동안 전달하기 (#280)
+
+`agent.graph`는 기존처럼 최종 상태를 반환한다. 선택적 포트가 있으면 `call_agent_model`이
+`llm.astream_with_tools`를 호출한다. 포트가 없으면 `ainvoke_with_tools`를 유지한다.
+
+“인원을 60명으로 바꿔줘” → 첫 호출의 Tool 첫 조각에서 시작 알림(`ReplyStream`의 `on_tool_start`) →
+Tool 조각을 온전히 조립·검증 → 조건 변경 실행 →
+진행 완료 알림 → 다음 호출의 final_answer 블록을 `reply_delta`로 전달 → SDK 메시지 조립 →
+기존 `capture_turn_state`로 저장 상태 반환 순서다. Tool은 미완성 조각으로 실행하지 않는다.
+
+`llm_stream.ReplyStream`은 블록별 phase를 합친 상태에서 답변만 선택한다. commentary와
+추론은 표시하지 않으며 phase가 없으면 완료 후 답변을 한 번에 보낸다. 연결이 끊기거나
+답변 뒤 Tool이 나타나면 `reply_reset`으로 임시 표시를 비운다. completed 없는 수신은 실패다.
+`assembled_message`는 전송용 index와 빈 annotations 차이만 맞춘다. `final_answer_text`는
+invoke/stream 공통으로 최종 답변을 선택하며 원본 content는 이력에 남긴다.
+
+실제 공급자 8회 관찰과 한계는 [스트림 형태 확인](evaluation-results/planning-stream-probe-2026-11-04/README.md),
+고정 응답 검증은 `tests/test_planning_stream.py`에 있다. 제품 화면 연결은 #285에서 했다(맨 위 절 참고).
+
 현재 흐름은 `agent/`와 `generation/`을 따른다. 이전 `turn_*`, `lookup.py`, `records.py`, `questions.py`, 조건 추출 `nodes.py`는 [features/planning/legacy](../../features/planning/legacy/README.md)에 있다. 공유 조건 값과 `PlanningMessage`는 `planning/schemas.py`에 남겼으며 현재 코드가 legacy 타입을 가져오지 않는다.
 
 #184에서 공개 함수로 실제 모델을 확인했다. 25,000원 → 30,000원 상담(값 유지) → JSON 저장/복원 → “일단 그렇게 잡자”(30,000원 잠정 반영) → 권유 수락 생성 순서다. [실측 결과](evaluation.md#공개-함수-실제-모델-연결-검증-184-2026-10-25)와 [BE 저장 예시](p1-public-contract.md#13-be-호출과-저장-순서-184)를 함께 읽으면 호출부터 저장까지 연결된다.
@@ -210,11 +279,15 @@ asyncio.run(main())
 제품 연결(#235, #236)은 `services/planning_service.py:chat`에서 `app.ai.chat_planning`
 공개 함수에 동아리 범위의 `PostgresRecordSearch`를 주입한다. 아래 검색 경로는 그대로
 사용하고, `_view_out`이 구조화 사실과 출처까지 제품 DTO로 옮긴다. `_save_turn`은
-조건·답변·Agent 상태와 함께 `Conversation.last_record_lookup`을 저장한다.
-GET 계획 화면의 `lastRecordLookup`은 이 스냅샷을 읽으며 AI를 호출하지 않는다.
-이번 턴 검색이 없으면 기존 스냅샷을 유지하고, 새 검색이 실패하거나 근거를 못 찾으면
-그 새 상태로 바꾼다. AI 이력은 여전히 다음 대화·버튼 생성용이고 화면 카드 복원과
-별개다. 제품 출처 카드의 FE 구현은 아직 후속이며 아래 사진은 독립 테스트 UI다.
+조건·답변·Agent 상태와 같은 트랜잭션에서 `Conversation.last_record_lookup`을 저장하고
+`record_lookup_history`에 `{revision, lookup}`을 추가한다. GET 계획 화면의
+`lastRecordLookup`·`recordLookupHistory`는 저장 스냅샷을 읽으며 AI를 호출하지 않는다.
+이번 턴 검색이 없으면 기존 최근 조회와 이력을 유지한다. 새 실패·없음은 최신 상태로
+표시하며 이전 성공은 이전 조회로 보관한다. FE의 `planningRecordHistory()`는 revision을
+확인해 늦은 응답과 중복을 막고 `PlanningRecordReferences`는 현재 조건 아래에서 사실·출처·
+이전 조회·인증 원본 다운로드를 표시한다. AI 이력은 다음 대화·버튼 생성용이고 카드 복원과
+별개다. 현재 제품 검증 범위는 [인계 안내 §10](p1-handoff.md#10-지금-어디까지-확인했나요)을
+따르며 아래 기존 사진과 실제 모델 예시는 독립 테스트 UI의 당시 기록이다.
 
 현재 참가비 25,000원에서 “2025년 봄 MT 참가비는 얼마였어?”라고 묻는 예시다. 실제 샘플 검색에서는 45,000원이 나왔다.
 
@@ -313,6 +386,24 @@ ButtonPlanGenerationRequest(request_id="click-1", draft=MT·50명·날짜 미정
 
 `generate_with_context()`는 성공한 preview만 상태에 채택한다. 같은 클릭 ID·같은 기준으로 성공 요청을 다시 보내면 모델 호출 없이 같은 preview를 반환한다. 같은 ID에 다른 조건을 넣으면 재확인을 요구한다. 아직 마지막 성공 한 건만 보관하므로 임의의 오래된 요청 전체를 중복 제거하는 서버 저장소는 아니다. 별도 버튼 HTTP/FE 연결은 아래 5-3 절을 따른다.
 
+### 모델이 고를 수 있는 단계 코드는 몇 개인가? (#276)
+
+13개다. 단계 코드 목록 `StepCode`(`app.core.enums`)에는 17개가 있지만, 그중 `CANCEL_*` 4개는 운영 중 행사를 취소할 때 쓰는 코드라 계획 카탈로그에 없다. 생성 모델의 출력 형식([generation/schemas.py](../../features/planning/generation/schemas.py)의 `ModelStep`, `ModelExcludedStep`)은 `code` 칸에 카탈로그 13개(`PLANNING_STEP_NAMES`의 키)만 허용한다.
+
+17개를 그대로 보여 주던 때(`planning-generation-v1`)에는 아래처럼 실패했다.
+
+```text
+생성 모델 출력 (v1, 11-04 실측)
+  steps          = 카탈로그 13개 전부
+  excluded_steps = CANCEL_NOTIFY_PARTICIPANTS, CANCEL_VENUE, CANCEL_REFUND, CANCEL_RECORD
+                   "현재 취소 조건이 없으므로 … 포함하지 않습니다."
+validate_plan(): 넣은 13 + 뺀 4 = 17 ≠ 카탈로그 13 → catalog_partition 거절 → 사용자는 "초안이 검증을 통과하지 못했어요"
+
+v2: 출력 형식에 CANCEL_*가 없다 → 같은 사례 30번 모두 13개 안에서만 고르고 통과
+```
+
+생성 모델 요청은 스트리밍이라 LangChain이 형식을 `strict: true`로 보낸다. 그래도 모델이 형식 밖 코드를 쓰면 `compose_plan()`의 형식 확인에서 출력 형식 실패(`invalid_output`)가 된다. 공개 계약(`contracts.py`)과 저장 형식의 `code`는 그대로 `StepCode`다. #239 재검사 도구는 예전 실패 원본을 읽어야 하므로 v1 형식(`scripts/generation_output_v1.py`)으로 읽는다. 측정은 [평가 기록](evaluation.md)에 있다.
+
 ### 제외한 단계의 이름은 누가 붙이나? (#198)
 
 예를 들어 생성 모델이 사전 수요 조사를 제외했다고 하자. 이 선택이 적절한지와 별개로, 화면에서 `DEMAND_SURVEY`라는 코드만 보여 주면 운영진이 이해하기 어렵다. 모델이 고정 이름을 다시 작성할 필요도 없다.
@@ -341,7 +432,7 @@ excluded_steps = tuple(ExcludedPreviewStep(
 ) for item in composition.excluded_steps)
 ```
 
-이름의 원본은 공통 [planning_catalog.py](../../planning_catalog.py)의 `PLANNING_STEP_NAMES`다. 포함 단계와 제외 단계 모두 이 목록을 읽는다. 공개 [contracts.py](../../contracts.py)는 내부 Graph에 의존하지 않고 같은 이름 목록을 사용한다. 모델용 `ExcludedPlanStep(code, reason)`과 최종 화면용 `ExcludedPreviewStep(code, name, reason)`을 나눠, LLM 출력 스키마와 프롬프트는 유지했다.
+이름의 원본은 공통 [planning_catalog.py](../../planning_catalog.py)의 `PLANNING_STEP_NAMES`다. 포함 단계와 제외 단계 모두 이 목록을 읽는다. 공개 [contracts.py](../../contracts.py)는 내부 Graph에 의존하지 않고 같은 이름 목록을 사용한다. 모델용 `ModelExcludedStep(code, reason)`(#276부터 code는 카탈로그 13개만)과 최종 화면용 `ExcludedPreviewStep(code, name, reason)`을 나눠, LLM 출력 스키마와 프롬프트는 유지했다.
 
 **예전에 저장한 JSON에는 name이 없는데 괜찮을까?** 공개 타입의 `restore_missing_name()`이 누락된 이름만 고정 목록으로 보완한다. `parse_resume_state()`로 복원하거나 공개 요청의 `resume_state`에 dict를 넣는 두 방식 모두 적용된다. 버전 1을 유지하며 기존 초안 ID, 조건, 제외 이유와 대화 이력을 보존한다. 이름이 명시돼 있는데 틀렸거나 코드가 유효하지 않으면 오류를 반환한다. 모델을 다시 부르거나 상태를 초기화하지 않는다.
 
@@ -435,6 +526,111 @@ model_calls = 대화 Agent 호출 수 / generation_model_calls = 생성 내부 �
 
 신규 39개(요청/권유 5, 생성/버튼 22, 대화 연결 12)와 이번 커밋 대상의 AI 회귀 680개가 통과했다. 테스트는 모델 응답을 대체한 실제 graph 실행이며, 생성 품질·친근함·자율 선택의 정확도 검증은 아니다. 실제 모델과 P2 UI 검증은 아래 5-3 절과 평가 기록을 따른다.
 
+## 생성 전 재확인 반복을 비교하기 (#239)
+
+예를 들어 30명일 때 권유한 뒤 인원만 40명으로 바꾸었다고 하자. 예전 권유는 여전히 30명 기준이고, 현재 draft와 변경 이력은 40명 기준이다. 이 상태에서 “최신 조건으로 초안 만들어줘.”와 버튼을 비교한다.
+
+```text
+같은 저장 JSON을 두 번 독립 복원
+  ├─ 채팅: chat_planning → Agent의 생성 Tool 선택 → 권유/근거 검사 ┐
+  └─ 버튼: generate_planning_preview → 공통 최소 조건 검사         ├→ 생성 Graph
+```
+
+`scripts/check_planning_generation_requests.py`의 `build_fixture()`는 공개 함수와 실제 조건/권유 처리기에 고정 대화 응답을 주입해 세 상태를 만든다. `current_offer`는 정상 권유, `changed_headcount`는 30→40명 뒤 옛 권유, `specified_dates`는 같은 일정의 잠정→명시 변경 뒤 옛 권유다. 최초 작성에 외부 모델을 사용하지 않았고 저장본은 `tests/fixtures/eval/planning_generation_requests.json`이다. 실제 멘토 세션을 복원한 것은 아니다.
+
+`make_request()`는 매번 그 JSON에서 새 객체를 만든다. `attempt()`는 공개 함수를 실제 실행하고 기존 #196 관측기로 대화/생성/검증 구간을 기록한다. `capture_tools()`는 합성 Tool 요청과 처리 상태만 선별해, 최종 답변이 예외로 끝나도 직전 생성 요청을 확인할 수 있게 한다. 모델 응답의 추론 블록이나 공급자 오류 원문을 저장하지 않는다.
+
+고정 응답 검사에서는 오래된 `offer_id`를 넣으면 생성 0회, 같은 새 요청에 ID를 넣지 않으면 생성 1회가 되는 분기를 비교한다. 이는 검사가 지켜지는지 확인하는 방법이고 실제 모델의 잘못된 선택을 관찰한 결과는 아니다. 실제 모델에서는 세 상태·두 경로를 3회씩 번갈아 호출하며, 결과를 기대값으로 고치거나 실패 표본을 대체하지 않는다.
+
+`be/`에서 실행한다.
+
+```sh
+# 설정/모델 없이 입력과 18개 예정 요청 확인
+.venv/bin/python -m app.ai.scripts.check_planning_generation_requests --dry-run
+# 실제 모델. 기존 폴더를 덮어쓰지 않도록 새 경로를 사용한다.
+.venv/bin/python -m app.ai.scripts.check_planning_generation_requests --output-dir /tmp/generation-requests-new
+```
+
+`session.json`은 모델·설정의 공개 가능한 항목·코드/입력 해시·예정/완료 수와 요약이다. `attempts.jsonl`은 시작/종료, Tool 인자/처리 결과와 구간 관측을 가진다. 입력을 고정했더라도 두 모델 응답은 달라질 수 있으므로 “버튼 성공·채팅 실패”만으로 해석 실패를 확정하지 않는다. 생성에 진입했는지와 그 뒤 어느 구간에서 실패했는지 먼저 본다. 실제 관찰과 한계는 [평가 기록](evaluation.md)에 별도로 남긴다.
+
+2026-11-03 실제 luna 기본 비교는 18요청 중 16건 생성 성공이었다. 인원 변경 채팅 2건은 다음 흐름이었다.
+
+```text
+현재 워크숍·40명 + 30명일 때의 옛 권유 + “최신 조건으로 초안 만들어줘.”
+  → generate_event_plan(quote=이번 원문, offer_id=null)
+  → 생성 모델: 구조화 초안 작성
+  → validate_plan: invalid_plan으로 거절
+  → generation_result.failed, 현재 조건과 다음 상태 보존
+  → Agent: 실제 실패를 설명
+```
+
+여기서는 새 요청을 올바르게 해석했고 생성에도 진입했다. 코드의 옛 권유 차단 검사 때문에 실패한 것이 아니다. 기본 기록은 어느 세부 규칙에 걸렸는지 남기지 않아 그 두 응답의 상세 원인은 미확인이다. 이 결과와 주입 응답의 재확인 반복을 섞지 않으며, 실제 mini나 제품 화면 오류를 해결했다고 설명하지 않는다.
+
+### 다음 진단: 불합격한 초안을 그대로 재검사한다 (#239)
+
+현재는 시험 결과에 “불합격”만 적혀 있는 상황과 비슷하다. 다음에는 “3번 항목의 날짜가 조건과 다름, 기대값은 11월 7일, 실제 값은 11월 8일”처럼 어느 부분이 왜 거절됐는지 남긴다. 다음은 설명용 가상 예시이며 앞선 실패 두 건의 원인이 아니다.
+
+```text
+입력 조건: 행사 시작일 2026-11-07
+실패 초안: 세 번째 단계 EVENT_DAY 시작 2026-11-08T09:00:00+09:00
+  → validate_plan: 행사 당일 시작일 불일치
+  → 내부 진단: rule=event_start_mismatch, path=/steps/2/starts_at
+               expected=2026-11-07, actual의 한국 날짜=2026-11-08
+  → 진단 도구: 검증에 필요한 입력 + 실패한 PlanComposition + 위반 정보를 저장
+  → 재검사 도구: 같은 저장본을 validate_plan에 다시 넣음 (모델 호출 0회)
+  → 같은 규칙·위치·값으로 거절되는지 확인
+```
+
+AI에게 다시 써 달라고 해서 새 답이 잘 나오는지 확인하는 일이 아니다. 실패한 **같은 답안**을 다시 검사하는 것이다. 이 자료를 보고 모델이 조건을 어겼는지, 검증 코드가 잘못 막았는지를 요구사항과 대조해 판단한다.
+
+1단계에서 `generation/validation.py`의 `PlanValidationViolation`과 내부 `PlanValidationError`를 구현했다. 실제 검사는 계속 `validate_plan()`의 같은 순서로 실행한다. 행사 당일 분기는 다음과 같다.
+
+```python
+if start and start != conditions.start_date:
+    invalid('event_start_mismatch', path + '/starts_at',
+            date_text(conditions.start_date), moment_details(step.starts_at), **location)
+```
+
+`invalid()`가 위반 객체를 담은 `PlanValidationError`를 올리면 기존 `AIInvalidResponseError` 처리에서 같은 공개 실패 안내로 바꾼다. 위 예시를 실제 검증기에 넣으면 `expected="2026-11-07"`, `actual={"timestamp":"2026-11-08T09:00:00+09:00","local_date":"2026-11-08"}`가 내부 오류에 남는다. UTC 11월 6일 16시는 한국 11월 7일이므로 정상 통과하는 경계도 검사했다.
+
+2단계에서 `scripts/planning_validation_diagnostics.py`의 수집기와 `replay_planning_validation.py`를 구현했다. 흐름은 다음과 같다.
+
+```text
+validate_plan → PlanValidationError
+  → capture_validation_failures: 입력/초안/위반 복사 → 같은 예외를 다시 올림
+  → 기존 생성 Graph: generation_result.failed → Agent의 기존 설명/재시도
+요청 종료 → failure-001.json 저장
+replay_file → 저장 타입/해시 검사 → validate_plan만 실행 → 같은 위반인지 기록
+```
+
+재검사의 핵심은 아래 코드다. 생성 모델을 부르는 경로가 없다.
+
+```python
+graph.validate_plan(dict(
+    request=snapshot.input.model_copy(deep=True),
+    composition=snapshot.composition.model_copy(deep=True),
+))
+```
+
+합성 11월 7일/8일 예시는 실제 저장 후 키·주소·모델을 비운 별도 프로세스에서도 `status=rejected`, `reproduced=true`, `same_validator_source=true`로 재검사됐다. [실패 자료](evaluation-results/planning-validation-details-2026-11-03/offline/example-failure.json)와 [재검사 결과](evaluation-results/planning-validation-details-2026-11-03/offline/example-replay.json)는 연습용이며 실제 모델 실패로 세지 않는다.
+
+공개 결과의 failed/안내 문구와 검증 통과 기준은 유지하며, [11개 규칙·보관 항목·완료 기준](step-05-generation.md#11-실패한-초안과-구체적-검증-위반을-확보하기-239)을 따른다.
+
+3단계에서는 최신 v7에서 같은 인원 변경 채팅 상태를 최대 10요청 실행했다. 수집기의 실제 중단 분기는 다음과 같다(기록 처리는 생략).
+
+```python
+for number in range(1, max_attempts + 1):
+    # check.attempt()로 공개 P1 요청과 그 안의 재시도를 끝까지 실행한다.
+    ...
+    if files:
+        report['status'] = 'captured' if all(replays) else 'replay_mismatch'
+        break
+else:
+    report['status'] = 'limit_reached'
+```
+
+실제 10요청은 모두 성공해 파일을 보관할 검증 실패가 없었고, for의 `else`로 종료됐다. 요청을 다시 보낼 때마다 원래 JSON을 복원하며 앞 요청의 성공 초안을 재사용하지 않는다. 이 실험 상한은 제품의 자동 재시도 횟수를 바꾸지 않는다. [실제 원본과 검산](evaluation-results/planning-validation-details-2026-11-03/real-v7/analysis.json)을 보존했고, 기존 v6 실패를 대체하거나 진단 기능의 개선 효과로 해석하지 않았다. 다음에 실패가 나오면 저장본의 같은 규칙/위치/값을 재검사할 수 있는 상태다.
+
 ## 5-3: 두 API의 실제 응답이 같은 P2에 표시된다
 
 [PlanningPlaygroundPage.tsx](../../tests/ui/planning/src/pages/PlanningPlaygroundPage.tsx)의 `session`은 `draft + history + generation`이다. `messages`는 화면 말풍선 목록이며 SDK Tool 이력인 history와 구분한다.
@@ -509,13 +705,160 @@ agent: 현재 상태와 이번 발화 해석
 결과: 인원만 60명, 날짜 질문 보류는 추가하지 않음
 ```
 
-날짜가 미정이라는 사실은 날짜 질문을 보류하라는 사용자 의사와 다르다. “날짜와 장소는 나중에 정할게. 초안도 만들지 마.”라면 주제 보류와 생성 권유 보류를 각각 처리한다. 지침 버전은 planning-agent-v7이다. 생성 후 설명은 실제 단계와 행동을 따르고, 수동 단계만으로 담당자 입력 UI나 자동 후속 처리가 생겼다고 말하지 않는다. `prompts/chat.md`의 구분을 명시했으며 Tool 스키마, 조건 변경 처리기와 Node 연결은 바꾸지 않았다. 원문 존재 검사가 의미 연결까지 보장하지 않는 기존 한계도 유지한다.
+날짜가 미정이라는 사실은 날짜 질문을 보류하라는 사용자 의사와 다르다. “날짜와 장소는 나중에 정할게. 초안도 만들지 마.”라면 주제 보류와 생성 권유 보류를 각각 처리한다. 이 구분은 planning-agent-v7에서 넣었다(현재는 메시지 순서만 바꾼 v8, #269). 생성 후 설명은 실제 단계와 행동을 따르고, 수동 단계만으로 담당자 입력 UI나 자동 후속 처리가 생겼다고 말하지 않는다. `prompts/chat.md`의 구분을 명시했으며 Tool 스키마, 조건 변경 처리기와 Node 연결은 바꾸지 않았다. 원문 존재 검사가 의미 연결까지 보장하지 않는 기존 한계도 유지한다.
 
 검증 도구 [check_planning_deferrals.py](../../scripts/check_planning_deferrals.py)는 같은 공개 함수와 상태에서 기존/수정 시스템 지침만 교체해 한 요청씩 번갈아 실행한다. 인원, 나머지 조건, 보류 목록과 생성 보류를 확인하고 tentative/specified 차이는 점수 대신 진단으로 남긴다. 날짜 보류와 재개를 실제로 요청한 사례도 함께 검사해 모든 주제 변경을 막는 방식이 통과하지 못하도록 했다. 기존 #196 점수는 별도로 유지한다. 실제 모델의 개선 여부는 [평가 기록](evaluation.md)에 확인한 결과만 남긴다.
 
 실제 비교에서 핵심 입력의 불필요한 날짜 보류는 기존 지침 17/30건, 수정 지침 0/30건이었다. 날짜를 직접 보류하거나 “그건 나중에”로 날짜 질문을 가리킨 사례도 각각 3/3건 처리했다. 다만 “날짜는 다시 얘기하자”를 나중에 논의하자는 뜻으로 해석한 실패 1건을 남겼고, 이후 명확한 재개 표현은 별도 3/3건 통과했다. [102요청 원본과 해석](evaluation-results/planning-deferrals-2026-10-29/README.md)을 함께 본다.
 
 이번 수정은 요청 해석 지침의 경계를 보완한 것이다. Tool의 원문 존재 검사만으로 모든 의미 오류를 막는다고 설명하지 않는다. 이미 저장된 dates 보류를 사용자 의사 확인 없이 삭제하지도 않는다. 실제 날짜 보류였을 수 있으므로 보류 재개 요청과 구분해야 한다.
+
+## 대화 모델에 보내는 메시지 순서 (#269)
+
+대화 모델(`agent_node`)은 매 호출 지시문, 대화 이력, 이번 발화, 이번 턴의 Tool 결과와 함께 **실행 문맥**을 받는다. 실행 문맥은 코드가 만든 현재 상태 JSON이다(이번 메시지 ID, 기준일, 현재 초안, 검색·생성 가능 여부, 생성 권유 상태). 순서는 `nodes.agent_messages()`가 정한다.
+
+```text
+입력: "예상 참가 인원을 60명으로 바꿔줘. 계획 초안은 만들지 마." (메시지 ID u2)
+
+agent_node
+  → context = {"current_message_id": "u2", "draft": {"headcount": 50, …}, "generation": {…}, …}
+  → agent_messages(context, state["messages"], allow_tools=True)
+
+호출 1  [시스템: chat.md] [이력…] [사용자: 60명…] [시스템: 실행 문맥 headcount=50]
+        → update_event_conditions(인원 60명)
+호출 2  [시스템: chat.md] [이력…] [사용자: 60명…] [Tool 요청·결과] [시스템: 실행 문맥 headcount=60]
+        → update_generation_offer(action=defer)
+호출 3  [시스템: chat.md] [이력…] [사용자: 60명…] [Tool 요청·결과 ×2] [시스템: 실행 문맥 generation=deferred]
+        → 답변
+```
+
+맨 앞 시스템 메시지는 지시문 원문뿐이라 모든 호출에서 글자 그대로 같다. 바뀌는 실행 문맥은 맨 끝에만 있다. 이 공급자는 첫 시스템 메시지가 조금이라도 다르면 입력 캐시를 쓰지 않았기 때문이다. v7은 지시문 뒤에 실행 문맥을 붙여 첫 시스템 메시지 하나로 보냈고, 메시지 ID가 매 요청 달라 대화 호출 캐시가 항상 0이었다. Tool 한도에 도달한 호출은 마지막 실행 문맥 끝에 "이번 턴의 Tool 한도에 도달했습니다…"(`TOOL_LIMIT_NOTICE`)를 붙이고 Tool을 끈다.
+
+`planning-agent-v9`부터는 마지막 시스템 메시지의 JSON 뒤에 [토리 소개 지시](../../features/planning/agent/prompts/persona.md)를 붙인다. “너의 페르소나는?”이라는 질문에 모델이 토리라는 이름과 행사 계획에서 돕는 일을 설명한다. 첫 시스템 메시지의 원문과 메시지 순서는 v8과 같다.
+
+마지막 시스템 메시지는 모델 호출에만 붙이고 `state["messages"]`에는 저장하지 않는다. 그래서 다음 턴의 이력이나 생성 입력(`plan_messages`)에 들어가지 않는다.
+
+테스트 `test_first_system_message_is_identical_across_turns_and_calls_for_provider_cache`가 서로 다른 턴·호출의 첫 시스템 메시지가 같고, 같은 턴 2번째 호출이 1번째 호출의 실행 문맥만 빼고 앞부분을 그대로 이어 쓰는지 고정한다. v7과 v8은 [compare_agent_context_layout.py](../../scripts/compare_agent_context_layout.py)로 같은 실행 안에서 번갈아 쟀다. 요청마다 `agent_messages`를 v7 함수로 바꿔 끼우고 끝나면 되돌린다. 결과는 [11-04 측정 기록](evaluation-results/planning-agent-context-layout-2026-11-04/README.md)에 있다.
+
+### 생각 중과 작성 중은 어떻게 나누나 (#388)
+
+생성 모델은 계획 JSON을 쓰기 전에 몇 초 동안 추론하고, 그 뒤 글자를 수백 조각으로 나눠 보낸다. 버튼 생성 기준으로 시작 신호 뒤 첫 글자까지 p50 4.9초, 그 뒤 끝까지 p50 7.9초였다([측정](evaluation-results/planning-generation-writing-start-2026-11-06/README.md)). 첫 글자가 온 순간에 진행 신호를 하나 더 보내면 화면이 「토리가 생각 중이에요」에서 「초안을 작성하는 중이에요」로 바뀐다.
+
+```text
+「이 조건으로 초안 만들기」 (진행 포트 있음)
+generate_with_context()
+  notify(generation_started)                         → SSE progress: generation_started
+  generate(request, on_writing=writing)              ← 포트가 있을 때만 콜백을 넘긴다
+    run_plan_generation → compose_plan
+      invoke_plan_composition(..., on_writing=writing)
+        astream_structured(..., on_text=on_text)      ← #389부터 글자 조각마다 on_text(글자)
+          조각: 응답 시작          글자 없음 → 모으기만
+          조각: 추론 블록 ×2        글자 없음 → 모으기만
+          조각: '{"steps":[{"co'   첫 글자 → on_text의 첫 호출 → SSE progress: generation_writing
+          조각 … 900개 안팎         모으기만
+          완료 → ainvoke_structured와 같은 검사 → PlanComposition
+    validate_plan                                    그대로
+  notify(generation_finished)                        그대로
+```
+
+포트가 없으면 `on_text`를 넘기지 않고, `invoke_plan_composition`은 기존 `ainvoke_structured`로 완성본만 받는다. 대화 모델이 포트 유무로 `astream_with_tools`와 `ainvoke_with_tools`를 나눠 쓰는 것(#280)과 같은 규칙이다.
+
+두 함수의 차이는 **조각을 누가 모으느냐** 하나다. `ainvoke_structured`는 SDK 안에서 다 모은 뒤에야 돌아오기 때문에 그 사이에 신호를 낼 곳이 없다. `astream_structured`는 [형식을 붙인 모델 | 파서] 중 앞 단계에서 조각을 직접 받아 모으고, 다 모은 뒤 같은 완료 검사(`_check_structured_finish`)와 같은 파서를 쓴다. `test_structured_output.py`가 같은 가짜 응답 11가지(정상, 출력 한도, 끊긴 스트림, 형식 오류, HTTP 오류 등)에 두 함수가 같은 결과나 같은 오류를 내는지 고정한다.
+
+첫 글자는 블록 종류가 `text`이고 글자가 비어 있지 않은 첫 조각이다. 추론 블록에는 글자가 오지 않아(실측 20건 모두) 「생각 중」 동안 보여 줄 실제 진행은 없다. 신호에는 초안 내용을 싣지 않는다. 검증 전 초안이기 때문이다(#266).
+
+### 작성 중 단계 이름은 어떻게 찾나 (#389)
+
+「초안을 작성하는 중이에요」를 누르면 모델이 고른 단계 이름이 고른 순서대로 쌓인다. 모델은 계획 JSON을 `steps` → `excluded_steps` → `assumptions` 순서로 쓰고, 단계마다 `code`를 맨 앞에 쓴다(실측 20건 모두). 그래서 단계 코드는 작성 구간의 앞쪽에서 차례로 나온다. 버튼 생성 기준으로 첫 코드는 첫 글자 뒤 p50 0.06초에 나오고, 13개가 p50 4.8초에 걸쳐 나온다. 그 뒤 p50 2.6초는 제외 단계·가정을 쓰고 검증하는 시간이다([측정](evaluation-results/planning-generation-step-signal-2026-11-07/README.md)).
+
+```text
+「이 조건으로 초안 만들기」 (진행 포트 있음)
+generate_with_context()
+  notify(generation_started)
+  generate(request, on_text=on_text)            ← entrypoints.py: 아래 판단은 모두 이 콜백 하나에 있다
+    ... invoke_plan_composition(on_text=on_text)
+          astream_structured(..., on_text=on_text)
+            on_text('{"steps":[{"co')            첫 호출 → generation_writing
+            on_text('de":"ASSIGN_ROL')           reader.feed → []
+            on_text('ES","purpose":"역할을…')    reader.feed → [(0, "ASSIGN_ROLES")] → generation_step 「담당 인원 배치」
+            … 약 900조각 …
+            on_text(',{"code":"RESEARCH_VENUE"') reader.feed → [(1, "RESEARCH_VENUE")] → generation_step 「장소·교통 알아보기」
+            … excluded_steps의 code는 reader가 무시한다
+          완료 → 지금과 같은 형식 검사
+    validate_plan                                 그대로
+  notify(generation_finished)                     성공이면 화면은 목록을 두고, 실패면 목록을 지운다
+```
+
+`llm.astream_structured`는 받은 글자를 넘기기만 하고 JSON 모양을 모른다. 글을 읽는 일은 [generation/step_reader.py](../../features/planning/generation/step_reader.py)의 `StepCodeReader`가 맡는다. 문자열 검색으로는 목적 글 속의 `"code"`나 `excluded_steps`의 code와 구분할 수 없어서, 따옴표·이스케이프·괄호 깊이를 한 글자씩 따라간다. 읽는 위치가 최상위 객체 `"steps"` 배열 안 단계 객체의 `"code"` 값일 때만, 닫는 따옴표가 온 순간 `(위치, 코드)`를 돌려준다.
+
+```text
+글: {"steps":[{"code":"BOOK_VENUE","purpose":"\"code\":\"X\" {임시}"}],"excluded_steps":[{"code":"REFUND_FEES"…
+     ↑깊이1 키 steps ↑깊이3 키 code → 값 BOOK_VENUE 닫힘 → (0, "BOOK_VENUE")
+                                         ↑문자열 안: 따옴표가 이스케이프돼 있고 { 도 글자일 뿐이다
+                                                                ↑깊이1 키가 excluded_steps라 무시
+```
+
+이름은 `progress.generation_step()`이 `PLANNING_STEP_NAMES`(카탈로그 고정 이름)에서 붙인다. 카탈로그에 없는 코드는 보내지 않는다. 신호에는 `{index, code, name}`만 있고 모델이 쓴 문장은 없다. 검증 전 초안이라 화면은 「작성 중」 아래에만 보이고, 실패하면 목록을 지운다(#266 범위를 #389에서 다시 정함, [공개 계약](p1-public-contract.md)).
+
+FE는 `useGenerationRequest`가 `appendDraftStep`으로 0번부터 차례인 신호만 붙이고, `GenerationScreen`이 펼침 버튼과 목록을 그린다. 채팅의 작업 줄은 같은 `operation_id`를 한 줄로 덮어 쓰므로, `turn.ts upsertProgress`가 `generation_step`을 걸러 「초안을 작성하는 중이에요」 줄이 단계 이름으로 바뀌지 않게 한다.
+
+시험: `test_step_reader.py`(조각 크기 1~10,000글자, 문자열 속 `"code"`·괄호, 제외 단계, 깨진 글), `test_planning_progress.py`(신호 순서·이름 = 최종 초안, 검증 실패 시 단계 신호 뒤 failed), `test_structured_output.py`(넘긴 글자를 이으면 원문과 같다).
+
+## 생성 모델은 얼마나 생각하고 쓰나 (#264)
+
+생성 모델은 계획 JSON을 쓰기 전에 내부에서 추론한다. 추론에 쓴 토큰도 출력 토큰에 들어가고, 생성 호출 시간은 출력 토큰 수에 거의 비례한다(#263). 그래서 추론 깊이(reasoning effort)를 `low`로 정해 둔다.
+
+```text
+입력: 「다음: 흐름 만들기」 클릭 (MT / 50명 / 날짜·장소 미정)
+
+generate_planning_preview
+  → run_plan_generation → compose_plan
+      → invoke_plan_composition
+          → build_plan_model()   max_tokens=8192, streaming=True, reasoning={"effort": "low"}
+          → ainvoke_structured(..., PlanComposition)
+  → validate_plan → 13단계 초안
+
+같은 입력을 30번씩 번갈아 잰 값(11-04)
+  추론 미지정  출력 약 1,500토큰(그중 추론 516) → 생성 호출 p50 15.4초
+  low         출력 약 1,190토큰(그중 추론 240) → 생성 호출 p50 11.1초
+```
+
+추론을 뺀 계획 JSON은 두 설정 모두 약 930~950토큰이었다. 단계 수(13)와 계획 검증 통과도 줄지 않았다. 값은 `generation/model.py`의 `PLAN_REASONING` 한 곳에 있고, 테스트 `test_default_graph_uses_streaming_budget_and_validates_complete_preview`가 실제 SDK 요청 본문에 `reasoning: {"effort": "low"}`가 실리는지 고정한다.
+
+비교는 [compare_generation_reasoning.py](../../scripts/compare_generation_reasoning.py)로 했다. 요청마다 `build_plan_model`을 변형 함수로 바꿔 끼워 `reasoning`만 덮어쓰고(기본값 변형은 `None`이라 값을 보내지 않음), 끝나면 되돌린다. 계획 검증에서 거절되면 #239의 `capture_validation_failures`로 어느 규칙에서 거절됐는지 남긴다. 결과는 [추론 깊이 측정](evaluation-results/planning-generation-reasoning-2026-11-04/README.md)에 있다.
+
+## 한 응답에 Tool이 여러 개 오면 (#265, #274)
+
+대화 모델은 Tool 요청을 응답에 적어 보내고, 코드가 실행한 결과는 그다음 호출에서야 받는다. 지금은 한 응답에 Tool을 여러 개 받는다(`llm.ainvoke_with_tools`의 `parallel_tool_calls`, 행사계획은 `nodes.PARALLEL_TOOL_CALLS = True`).
+
+```text
+"예상 참가 인원을 60명으로 바꿔줘. 계획 초안은 만들지 마."
+
+하나만 허용     호출 1 update_event_conditions(인원 60) → 결과
+               호출 2 update_generation_offer(defer)   → 결과
+               호출 3 답변
+지금 (여러 개)  호출 1 update_event_conditions(인원 60) + update_generation_offer(defer)
+                      → tools_node가 앞에서부터 차례로 실행
+               호출 2 답변
+```
+
+여러 개 허용은 11-04에 쟀다. 호출이 3번에서 2번, 요청 p50이 7.19초에서 6.17초로 줄었다(#265). 처음에는 "날짜는 다시 얘기하자. …"의 통과가 줄어 보류했는데, 실패한 응답의 Tool 인자를 보니 두 설정 모두 "나중에 다시 얘기하자"로 읽어 날짜를 다시 보류한 같은 모양이었다. 분명한 재개("이제 날짜 정하자")와 정정("아니, 날짜는 지금 정하자는 거였어")은 두 설정 모두 10/10이라 켰다(#274, [평가 기록](evaluation.md)).
+
+모델이 여러 개를 보내면 `tools_node()`가 아래를 지킨다. 같은 응답 안의 뒤 Tool은 앞 Tool의 결과를 보지 못한 채 인자가 정해졌기 때문이다.
+
+```text
+"작년 봄 MT 참가비로 하자" → [search_past_events, update_event_conditions(참가비 30,000원)]
+  search_past_events  → 실행. 결과 "작년 봄 MT 참가비 45,000원"
+  update_event_conditions → 실행하지 않음(rejected). "검색 결과를 확인한 뒤 다시 요청"
+  다음 호출에서 모델이 45,000원을 보고 다시 변경
+
+"60명으로 바꿔줘. 초안은 만들지 마." → [update_generation_offer(defer), update_event_conditions(인원 60)]
+  보류 → 50명 기준으로 저장
+  인원 변경 성공 → 이번 응답에서 남긴 보류의 기준을 60명 초안으로 맞춤
+  (맞추지 않으면 다음 턴에 "조건이 바뀌었다"며 같은 권유를 다시 할 수 있다)
+```
+
+`tools_node()` 안에서는 `searched`(앞에 검색이 있었나)와 `deferred_offer_id`(이번 응답에서 남긴 보류)로 이 둘을 판단한다. 사용자가 값을 직접 말한 변경은 보통 [변경, 검색] 순서로 오므로 그대로 실행한다. 고정 응답 회귀 테스트는 [test_planning_agent_parallel_tools.py](../../tests/test_planning_agent_parallel_tools.py)에 있다. 비교 실행기는 [compare_parallel_tool_calls.py](../../scripts/compare_parallel_tool_calls.py)이고 요청마다 `PARALLEL_TOOL_CALLS`만 바꿔 끼운다.
 
 ## 응답 시간은 어떻게 비교할까? (#196)
 
@@ -677,7 +1020,7 @@ with trace.span(stage, **details) as item:
 }
 ```
 
-새 `report_version=2`의 finished 이벤트에는 `observation.spans`와 `model_call_attempts`가 들어간다. 메시지 본문이나 공급자 예외 원문은 구간에 복사하지 않는다. 모델 메시지 text 길이와 개수는 숫자로 남기지만 Tool 스키마를 포함한 전체 입력 토큰 수는 아니다.
+새 `report_version=2`의 finished 이벤트에는 `observation.spans`와 `model_call_attempts`가 들어간다. 메시지 본문이나 공급자 예외 원문은 구간에 복사하지 않는다. 모델 메시지 text 길이와 개수는 숫자로 남기지만 Tool 스키마를 포함한 전체 입력 토큰 수는 아니다. 전체 입력·출력 토큰은 #263부터 모델 구간의 `usage`(입력, 출력, 그중 추론, 캐시 입력)에 따로 남는다. 측정 세션에만 등록한 LangChain 콜백이 모델 호출이 끝날 때 열린 구간에 붙이며, 못 받은 경우는 0이 아니라 `usage_missing`에 이유를 남긴다([토큰 사용량 관측](latency-baseline.md#토큰-사용량-관측의-구현-범위)).
 
 집계기는 시간이 부모/요청 범위 안에 있는지, 자식과 부모의 유형이 맞는지, 호출 수가 실제 구간 수와 일치하는지 확인한다. 그런 뒤 `groups.measurement.G1.observation`에 구간별 요약을 붙인다.
 
@@ -812,3 +1155,47 @@ history_usage = PlanningHistoryUsage.from_count(len(state.payload.history))
 이후 버튼으로 생성해도 새 채팅 이력이 없으므로 48개를 유지한다. JSON 저장 후 복원한 상태를 다시 사용해도 같은 개수다. 과거 화면 응답에 필드가 없으면 null이며 0개로 꾸미지 않는다. Agent 상태 형식 버전은 바꾸지 않는다.
 
 독립 UI의 테스트 API도 같은 `from_count()`를 사용하고 화면은 `near_limit`만 읽어 안내를 표시한다. 프롬프트와 Tool은 바꾸지 않는다. 제품 HTTP 매핑은 [공개 계약 14절](p1-public-contract.md#14-대화-이력-안내-194)의 AI 구현안이며 BE/FE 합의와 실제 연결은 남아 있다.
+
+## 수정 → 검토: P2 계획 수정 후 AI 검토 (#177)
+
+생성된 계획에서 운영진이 "수요 조사"를 빼고 「단계 수정」에서 저장하면 검토가 자동으로 이어지는 예시다(카드에는 「검토 받기」·「다시 시도」·「다시 검토」 버튼이 있다). 인원은 "대략 30명"으로 잠정이다. 평가 케이스 `survey_removed`와 같은 입력이다.
+
+```text
+FE: 「단계 수정」 저장(PATCH /plan/steps) → 저장 뒤 GET /plan/steps/snapshot의 planRevision이
+    편집을 시작할 때 본 값보다 커졌을 때만 → POST /api/v1/events/{id}/plan/review {expectedRevision}
+  → plan_review_service.request_review()
+     · 행사·검토 행을 잠그고 버전 확인(다르면 409), 같은 버전을 이미 끝냈으면 AI를 다시 부르지 않음
+     · build_review_request(draft, today, current, baseline, ai_excluded)
+         baseline(생성 직후 스냅샷)과 current를 비교해 changes를 채움
+     · REVIEWING으로 커밋한 뒤 잠금을 놓고 AI 호출
+  → app.ai.review_plan_edit(request)
+  → 결과를 요청이 아직 최신일 때만 저장(DONE/FAILED) → 카드 표시
+```
+
+`build_review_request()`가 만드는 입력의 핵심은 아래와 같다. DB 접근이 없는 순수 함수다.
+
+```python
+PlanEditReviewRequest(
+    draft=...,  # headcount=30은 condition_meta에서 tentative
+    included_steps=(ReviewStep(code=RECRUIT_NOTICE, ...), ...),
+    excluded_steps=(ReviewExcludedStep(code=DEMAND_SURVEY, excluded_by="user"),),
+    changes=PlanChangeSet(removed_codes=(DEMAND_SURVEY,)),
+)
+```
+
+`excluded_by`는 처음 생성 때 AI가 뺀 단계(`ai`)와 사용자가 뺀 단계(`user`)를 구분하려고 둔다. AI가 뺐던 단계를 사용자가 다시 넣으면 `added_codes`에 들어가고 제외 목록에서 사라진다.
+
+`features/planning/review/review.py`의 `review_plan_edit()`는 프롬프트(`prompts/review.md`)를 시스템 메시지로, 요청 JSON을 별도 사용자 메시지로 보내 `PlanEditReviewResult`를 받는다. 요청 속 문장은 데이터로만 취급한다. 결과의 `step_codes`가 입력의 포함·제외 단계에 없으면 `AIInvalidResponseError`를 낸다. 모델이 입력에 없는 단계를 지어내면 화면에 잘못된 안내가 나가기 때문이다.
+
+결과가 카드가 되는 모습은 이렇다.
+
+```text
+outcome=issues, items=[{step_codes:[DEMAND_SURVEY, CHECK_RESPONSES, CONFIRM_DETAILS, BOOK_VENUE], kind:missing_step,
+  message:"수요 조사를 빼면, 약 25명이라는 잠정 인원을 행사 전에 별도로 확인하는 단계가 없어져요. …",
+  suggestion:"모집 공지와 신청 현황 확인에서 잠정 인원을 검증한 뒤 …"}]
+  → BE가 status=DONE, items 저장 → PlanReviewCard가 항목별로 message와 suggestion 표시
+outcome=no_issues → "이번 검토에서는 추가로 짚을 주의점을 찾지 못했어요" 카드
+AI 오류 → status=FAILED(error_code) → 카드가 실패와 다시 시도 표시, 편집은 그대로
+```
+
+위 결과 예시는 실제 모델 평가의 `undecided_dates`(날짜 미정, 인원 약 25명 잠정) 응답이며 입력 예시와 다른 케이스다. 입력 예시의 시나리오(`survey_removed`)는 평가에서 no_issues가 나왔다. 인원이 잠정이어도 수요 조사 누락을 짚지 않은 것으로, 남은 한계다. 고정 케이스 6개의 결과와 프롬프트 수정 전후는 [평가 기록](evaluation.md#계획-수정-검토-실제-모델-확인-177-ai-plan-07-2026-11-01)에 있다. 직접 돌리려면 api 컨테이너에서 `python -m app.ai.scripts.run_plan_review_eval --out <폴더>`를 실행한다. AI는 계획을 자동으로 고치지 않으며 검토한 버전(`reviewed_revision`)과 현재 버전이 다르면 FE가 최신 검토로 표시하지 않는다.

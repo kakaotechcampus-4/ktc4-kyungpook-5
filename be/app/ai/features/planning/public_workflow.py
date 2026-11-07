@@ -6,7 +6,7 @@ from ...contracts import (
     PlanningView, PlanningGenerationReadiness, PlanningResumeState, PlanningStatePayload, PlanningHistoryUsage,
     PlanningDraft, PlanningStateError,
 )
-from ...ports import RecordSearchPort
+from ...ports import RecordSearchPort, PlanningProgressPort
 from .agent.graph import run_planning_agent_turn
 from .agent.record_tool import search_past_events
 from .agent.generation_tools import latest_reference_facts, plan_messages
@@ -50,18 +50,21 @@ def build_result(request, state, *, reply=None, record_lookup=None, generation_r
     ).model_copy(deep=True)
 
 
-async def chat(request: PlanningChatRequest, *, records: RecordSearchPort | None) -> PlanningPublicResult:
+async def chat(request: PlanningChatRequest, *, records: RecordSearchPort | None,
+               progress: PlanningProgressPort | None = None) -> PlanningPublicResult:
     # frozen 타입 안의 dict도 호출 중 바뀔 수 있으므로 실행용 스냅샷을 만든다.
     request = PlanningChatRequest.model_validate(request.model_dump(mode='json'))
     search = partial(search_past_events, club_id=request.club_id, port=records) if records is not None else None
-    result = await run_planning_agent_turn(to_agent_input(request), search=search, generate=run_plan_generation)
+    result = await run_planning_agent_turn(to_agent_input(request), search=search, generate=run_plan_generation,
+                                           progress=progress)
     # 전체 호출 예외는 위로 전달한다. 정상 턴 안의 검색/생성 실패만 부분 결과로 반환한다.
     state = capture_turn_state(request, result)
     return build_result(request, state, reply=result.reply, record_lookup=result.record_lookup,
                         generation_result=result.generation_result)
 
 
-async def generate_preview(request: PlanningPreviewRequest) -> PlanningPublicResult:
+async def generate_preview(request: PlanningPreviewRequest, *,
+                           progress: PlanningProgressPort | None = None) -> PlanningPublicResult:
     request = PlanningPreviewRequest.model_validate(request.model_dump(mode='json'))
     history = restore_history(request.resume_state)
     generation = (request.resume_state.payload.generation if request.resume_state else PlanningGenerationState())
@@ -70,7 +73,7 @@ async def generate_preview(request: PlanningPreviewRequest) -> PlanningPublicRes
         messages=plan_messages(history), reference_facts=latest_reference_facts(history),
         reference_date=request.reference_date, timezone=request.timezone,
         use_current_conditions=request.use_current_conditions,
-    ), generate=run_plan_generation)
+    ), generate=run_plan_generation, progress=progress)
     # 버튼은 새 발화가 아니다. 이력은 유지하고 생성 상태만 갱신한다.
     state = PlanningResumeState(
         club_id=request.club_id, event_id=request.event_id, conversation_id=request.conversation_id,

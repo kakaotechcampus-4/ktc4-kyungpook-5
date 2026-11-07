@@ -1,0 +1,285 @@
+{
+  "artifact_version": 1,
+  "scope": "synthetic_planning_validation",
+  "run_id": "reasoning-01",
+  "request_id": "reasoning-01-measurement-002-G2-low",
+  "route": "button",
+  "generation_attempt": 1,
+  "generation_span_id": 1,
+  "validation_span_id": 4,
+  "captured_at": "2026-11-04T13:18:38.885462+09:00",
+  "model": "gpt-5.6-luna",
+  "agent_prompt_version": "planning-agent-v8",
+  "generation_prompt_version": "planning-generation-v1",
+  "source": {
+    "commit": "23006de11429b0bb1be9b003165998841f509b49",
+    "sha256": {
+      "features/planning/generation/graph.py": "c9c19c89c078968d11afb121de15a46f2c918fe7bc96f92c3a1ac194cca1d112",
+      "features/planning/generation/validation.py": "d473ab9aea7528abbf73dc3b8b174e6d5c22f08b8fd53e4d595a6890f1079e01",
+      "features/planning/generation/schemas.py": "78c19e499702e2aec6ea55c8da85e8c1b2507c13331182816b0bc7a7dd886253",
+      "features/planning/generation/catalog.py": "f100ef03fd8ed059edf8a74f58c5200cd2316590f1454852eacb2a0caaf0c7d5",
+      "contracts.py": "af92fab0ac1fec0c71853a79af113855550194544b6e185ba0b92a8894bd87fc",
+      "planning_catalog.py": "79a09450a2a26a149faf28a82a9b6bacd08a55551898701eab5f7d187db4ded0",
+      "errors.py": "68d223bf71b58a42c786ee3a9e63322827b81cb41bc6a9e5f47870c426dab296"
+    }
+  },
+  "input": {
+    "basis_draft": {
+      "conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": 25000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "condition_meta": {},
+      "deferred_topics": [
+        "dates",
+        "location"
+      ]
+    },
+    "trigger": {
+      "source": "button",
+      "request_id": "reasoning-01-measurement-002-G2-low"
+    },
+    "reference_date": "2026-10-28",
+    "timezone": "Asia/Seoul",
+    "reference_facts": []
+  },
+  "composition": {
+    "steps": [
+      {
+        "code": "ASSIGN_ROLES",
+        "purpose": "행사 준비와 진행에 필요한 역할과 책임 범위를 정리합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "RESEARCH_VENUE",
+        "purpose": "50명 규모의 MT에 적합한 장소와 교통 조건을 비교하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "DEMAND_SURVEY",
+        "purpose": "참가 가능 여부와 선호 조건을 확인해 행사 추진 및 세부 준비의 기초를 마련합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "사전 수요 조사 안내 예정",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "RECRUIT_NOTICE",
+        "purpose": "행사 조건과 참가비를 안내하고 참가 신청을 받기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "모집 공지 예정",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "CHECK_RESPONSES",
+        "purpose": "모집 응답을 확인해 예상 참가 인원과 추가 확인 사항을 파악합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "응답 확인 관련 안내 예정",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "CONFIRM_DETAILS",
+        "purpose": "참가 인원과 행사 일정을 최종적으로 정리하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "BOOK_VENUE",
+        "purpose": "행사 장소와 조건이 정해진 뒤 예약을 진행하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "CONTRACT",
+            "title": "장소 예약 계약 검토 예정",
+            "due_date": null
+          },
+          {
+            "type": "TRANSFER",
+            "title": "장소 예약 관련 이체 검토 예정",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "COLLECT_FEES",
+        "purpose": "참가비를 수금하고 참가자에게 수금 관련 안내를 하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "참가비 수금 안내 예정",
+            "due_date": null
+          },
+          {
+            "type": "EXTERNAL_SEND",
+            "title": "참가비 수금 요청 예정",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "PRE_EVENT_NOTICE",
+        "purpose": "확정된 행사 일정과 장소 등 행사 전 확인 사항을 참가자에게 안내하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "NOTICE",
+            "title": "행사 전 안내 예정",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "EVENT_DAY",
+        "purpose": "확정된 일정과 장소에 따라 MT를 진행하는 단계입니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      },
+      {
+        "code": "SETTLE_EXPENSES",
+        "purpose": "행사 종료 후 실제 지출을 정리하고 정산하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "EXPENSE",
+            "title": "행사 지출 정산 검토 예정",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "REFUND_FEES",
+        "purpose": "환급 사유가 발생하는 경우 행사 종료 후 참가비를 환급하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": [
+          {
+            "type": "TRANSFER",
+            "title": "참가비 환급 검토 예정",
+            "due_date": null
+          }
+        ]
+      },
+      {
+        "code": "RECORD_FEEDBACK",
+        "purpose": "행사 종료 후 참가자 의견과 운영상 개선 사항을 기록하기 위해 필요합니다.",
+        "starts_at": null,
+        "deadline": null,
+        "actions": []
+      }
+    ],
+    "excluded_steps": [
+      {
+        "code": "CANCEL_NOTIFY_PARTICIPANTS",
+        "reason": "현재 조건에는 행사 취소 상황이 없습니다."
+      },
+      {
+        "code": "CANCEL_VENUE",
+        "reason": "현재 조건에는 행사 취소에 따른 장소 취소 상황이 없습니다."
+      },
+      {
+        "code": "CANCEL_REFUND",
+        "reason": "현재 조건에는 행사 취소에 따른 일괄 환급 상황이 없습니다."
+      },
+      {
+        "code": "CANCEL_RECORD",
+        "reason": "현재 조건에는 행사 취소 기록이 필요하다는 내용이 없습니다."
+      }
+    ],
+    "assumptions": [],
+    "open_questions": [
+      "행사 시작일과 종료일은 언제인가요?",
+      "행사 장소 또는 희망 지역은 어디인가요?",
+      "행사 제목을 정할 예정인가요?",
+      "예산 총액 또는 장소·교통·식사 등 주요 지출 기준이 있나요?"
+    ],
+    "warnings": [
+      "행사 시작일과 종료일이 미정이므로 모든 단계의 일정과 행동 예정일을 제안할 수 없습니다.",
+      "장소가 미정이므로 장소 조사와 예약 조건을 구체화할 수 없습니다.",
+      "참가비 25,000원은 입력된 조건으로 반영했으며, 총 예상 수입이나 지출은 계산하지 않았습니다."
+    ]
+  },
+  "violation": {
+    "rule": "catalog_partition",
+    "path": "",
+    "step_code": null,
+    "action_index": null,
+    "expected": {
+      "catalog_codes": [
+        "ASSIGN_ROLES",
+        "BOOK_VENUE",
+        "CHECK_RESPONSES",
+        "COLLECT_FEES",
+        "CONFIRM_DETAILS",
+        "DEMAND_SURVEY",
+        "EVENT_DAY",
+        "PRE_EVENT_NOTICE",
+        "RECORD_FEEDBACK",
+        "RECRUIT_NOTICE",
+        "REFUND_FEES",
+        "RESEARCH_VENUE",
+        "SETTLE_EXPENSES"
+      ],
+      "each_code_once": true
+    },
+    "actual": {
+      "included": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded": [
+        "CANCEL_NOTIFY_PARTICIPANTS",
+        "CANCEL_VENUE",
+        "CANCEL_REFUND",
+        "CANCEL_RECORD"
+      ]
+    },
+    "timezone": null
+  },
+  "input_sha256": "880c8f03695972dfca9b81449e8715844d0145932d66ddd7df42f412e905cad3",
+  "composition_sha256": "de3bf021112031a32b7d52eea301bd6550b140ffe0dd24399374f8a3a06a47c4"
+}

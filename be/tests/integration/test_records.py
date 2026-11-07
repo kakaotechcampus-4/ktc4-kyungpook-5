@@ -123,6 +123,48 @@ async def test_동아리원이_아니면_목록을_볼_수_없다(client: TestCl
     assert res.json()["error"]["code"] == "FORBIDDEN"
 
 
+async def test_분류별_건수를_한번에_받는다(client: TestClient, app_db: None) -> None:
+    headers, club_id = _owner_with_club(client)
+    _upload(client, headers, club_id, "RULES", "rules-1.csv")
+    _upload(client, headers, club_id, "RULES", "rules-2.csv")
+    _upload(client, headers, club_id, "LEDGER", "ledger.csv")
+
+    other_headers, other_club_id = _owner_with_club(client)
+    _upload(client, other_headers, other_club_id, "ETC", "theirs.csv")
+
+    res = client.get(
+        "/api/v1/records/category-counts", headers=headers, params={"clubId": club_id}
+    )
+
+    assert res.status_code == 200, res.text
+    assert res.json()["data"] == {
+        "all": 3,
+        "byCategory": {
+            "RULES": 2,
+            "EVENT_HISTORY": 0,
+            "LEDGER": 1,
+            "RECEIPT": 0,
+            "ETC": 0,
+        },
+    }
+
+
+async def test_동아리원이_아니면_분류별_건수를_볼_수_없다(
+    client: TestClient, app_db: None
+) -> None:
+    _, club_id = _owner_with_club(client)
+    outsider_headers = _login(client, "rec-count-outsider")
+
+    res = client.get(
+        "/api/v1/records/category-counts",
+        headers=outsider_headers,
+        params={"clubId": club_id},
+    )
+
+    assert res.status_code == 403
+    assert res.json()["error"]["code"] == "FORBIDDEN"
+
+
 async def test_원본_다운로드는_같은_동아리만_허용(client: TestClient, app_db: None, tmp_path, monkeypatch) -> None:
     from app.core.config import get_settings
     monkeypatch.setenv("STORAGE_DIR", str(tmp_path))
@@ -580,3 +622,40 @@ async def test_토리_자료명확화_한번_후속과_새요청(client, app_db,
     assert followups == [(original, value) for value in
         ('첫 번째', '2025 환영회', '전체 요약', '잘 모르겠어', '다시 물어봐', '이번 주 내 할 일', '새 행사 예산')] + [('새 행사 예산', '전체 요약'), ('예산', '예전 거'), ('예산', '숙소비만')]
     assert answered_followups == ['예전 거', '숙소비만']
+
+
+async def test_자료검색_AI추천은_관련_낮으면_빠지고_토리는_그대로(client, app_db, monkeypatch, tmp_path):
+    """자료함 화면만 AI 추천을 거른다(테스트 브랜치). 토리 대화가 쓰는 기본 호출은 그대로 받는다."""
+    import app.ai as ai
+    from app.ai.features.retrieval import nodes
+    from app.core.config import get_settings
+    from app.db.session import get_sessionmaker
+    from app.services import record_discovery_service
+    monkeypatch.setenv('STORAGE_DIR', str(tmp_path))
+    get_settings.cache_clear()
+    chunk_vector = (1.0,) + (0.0,) * 1535
+    # 질의 벡터를 거의 직교로 둬 점수(1 - 코사인 거리)가 바닥선 아래가 되게 한다.
+    query_vector = (0.1, 1.0) + (0.0,) * 1534
+    async def fake_index(request):
+        return ai.IndexRecordResult(chunks=(ai.IndexedChunk(text='버스 대절 영수증', location=ai.SourceLocation(label='2행'), block_indexes=(0,), embedding=chunk_vector),))
+    monkeypatch.setattr(ai, 'index_record', fake_index)
+    original_find = nodes.find_chunks
+    async def embed(_texts):
+        return [list(query_vector)]
+    async def find(request, *, port):
+        return await original_find(request, port=port, embed=embed)
+    monkeypatch.setattr(nodes, 'find_chunks', find)
+    headers, club_id = _owner_with_club(client)
+    _upload(client, headers, club_id, 'ETC', 'receipt.csv')
+
+    response = client.get('/api/v1/records/search', headers=headers, params={'clubId': club_id, 'query': '양자역학'})
+
+    assert response.status_code == 200, response.text
+    data = response.json()['data']
+    assert data['semanticStatus'] == 'AVAILABLE'
+    assert data['items'] == []
+    async with get_sessionmaker()() as session:
+        tori_view, total = await record_discovery_service.search_records(
+            session, club_id=club_id, query='양자역학', page=1, size=20
+        )
+    assert total == 1 and tori_view['items'][0].match_types == ['SEMANTIC']

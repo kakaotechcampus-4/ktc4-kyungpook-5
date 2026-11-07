@@ -92,3 +92,97 @@ instance; otherwise, the public IP can change after a stop/start.
 
 The account's IAM deny on attaching policies to `ktc-ec2-ssm-role` is expected.
 It does not imply that the preconfigured `ktc-github-deploy` OIDC role is broken.
+
+## Disk space and deployment image retention (#243)
+
+Before ECR login or image pulls, `remote-deploy.sh` checks the filesystem at
+Docker's `DockerRootDir`. It stops if less than **2 GiB (2,097,152 KiB)** is
+available, reporting the path, available space and required space. It leaves the
+running containers and deployed configuration in place. This is a minimum for
+pulling about two image sets, not a reservation of space or a guarantee that a
+larger future image will fit.
+
+After the API/frontend health checks pass and `compose.next.yml` and `.env.next`
+replace the deployed files, cleanup removes old tags from exactly these ECR
+repositories in the deployment registry: `unyounghae-api` and `unyounghae-web`.
+It keeps the new images and the images from the preceding successful deployment,
+read from the saved Compose configuration **before** it is replaced. Image build
+time is not used, so deploying an older commit also preserves the correct
+rollback version. Shell image/site variables are cleared when reading the old
+configuration or restoring it after a failed health check, so they cannot
+override the saved `.env` values.
+
+The previous image references are saved to `/opt/unyounghae/.previous-images`;
+the retained references are also printed in the deployment command output.
+Re-running the same commit retains this rollback history. On the first deployment
+there is no previous version to retain. If the previous configuration or required
+history cannot be read, cleanup is skipped with a warning. A failed cleanup or
+history write also emits a warning and **does not fail or roll back a successful
+deployment**. Pull, preflight or health-check failures never run image cleanup.
+
+Deletion uses individual image tags with `docker image rm --no-prune`, without
+`--force`. Images still required by containers may remain when Docker refuses to
+delete them. PostgreSQL/pgvector images, other repositories, unidentifiable
+dangling images, containers, networks, volumes, `api-storage/` and `backups/` are
+not cleanup targets. ECR images remain available for pulling older versions.
+See Docker's [image removal reference](https://docs.docker.com/reference/cli/docker/image/rm/)
+and [Compose variable precedence](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/#ways-to-set-variables-with-interpolation)
+for the underlying CLI behavior.
+
+### Inspect and clean images manually
+
+Use Session Manager on the existing instance. Inspect disk usage, current image
+references and the rollback manifest before choosing any old tags to remove:
+
+```bash
+cd /opt/unyounghae
+docker_root=$(sudo docker info --format '{{.DockerRootDir}}')
+df -h "$docker_root"
+sudo docker system df
+sudo env -u BACKEND_IMAGE -u FRONTEND_IMAGE -u SITE_ADDRESS -u ACME_EMAIL \
+  docker compose --env-file .env -f compose.yml config --images api web
+sudo cat .previous-images  # absent until the first cleanup with known history
+sudo docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+sudo docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}'
+```
+
+If `.previous-images` is absent (for example, before this change is first
+deployed), identify the previous successful deployment's SHA from GitHub Actions
+and preserve its API and web tags as well as the current tags. Do not infer the
+previous deployment from image creation time.
+
+Remove only specific older API/web tags after inspecting the list, replacing
+the account and SHA placeholders below. These are explicit examples to edit,
+not a command to prune the host:
+
+```bash
+registry='<AWS_ACCOUNT_ID>.dkr.ecr.ap-northeast-2.amazonaws.com'
+old_sha='<SHA_OLDER_THAN_CURRENT_AND_PREVIOUS>'
+sudo docker image rm --no-prune "$registry/unyounghae-api:$old_sha"
+sudo docker image rm --no-prune "$registry/unyounghae-web:$old_sha"
+df -h "$docker_root"
+sudo docker system df
+```
+
+Do not use `docker system prune`, `docker image prune -a`, volume prune commands,
+`--force`, or delete files under `api-storage/` or `backups/` for this task.
+If Docker reports an image is still in use, inspect the container; automatic
+cleanup intentionally leaves it alone. Once at least 2 GiB is free, retry the
+deployment. Older removed tags can be pulled from ECR if needed.
+
+### Deployment regression checks
+
+Run from the repository root (also included in the CI `verify` job):
+
+```bash
+bash -n deploy/remote-deploy.sh
+python3 -m unittest discover -s deploy/tests -v
+```
+
+The tests execute the shell script with isolated, stateful Docker/AWS/disk/HTTP
+doubles. They cover two consecutive releases, same-release retries, repository
+scope, disk thresholds, rollback, skipped cleanup and non-fatal cleanup errors;
+they do not connect to the production instance or remove real images. After
+deploying two distinct commits on the instance, verify that each app repository
+has only the current and previous tags (unless Docker refused an in-use image),
+and check the API health endpoint again.

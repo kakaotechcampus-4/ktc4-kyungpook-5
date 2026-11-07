@@ -34,14 +34,21 @@ AIError
 회의 판단(`judge_utterance`)이 올린 `AIError`는 `trace`에 실패하기 전까지의 판단 기록을 담는다. 실패한 판단도 판단 기록에 남기기 위해서다([회의 발화 처리 초안](contracts.md#비동기와-실패), #117). 다른 기능에서는 `None`이다.
 BE는 이 타입들을 `app.ai`에서 가져온다.
 
+계획 생성의 내부 `generation/validation.py`에는 `PlanValidationError`가 있다(#239).
+`AIInvalidResponseError`의 하위 타입이므로 기존 실패 처리를 그대로 거치며, `app.ai`에
+공개하지 않는다. `violation`에 첫 규칙·위치·기대/실제 값을 담되 예외 문자열은 기존
+고정 문구다. 일반 로그와 공개 결과에는 이 세부 값을 추가하지 않고 합성 진단 도구에서만
+명시적으로 수집한다. 자세한 기준은 [생성 진단 명세 §11](planning/step-05-generation.md#11-실패한-초안과-구체적-검증-위반을-확보하기-239)을 따른다.
+
 ## 모델 호출 오류 변환
 
-모델 호출 예외는 `llm.ainvoke_structured`(구조화 출력), `llm.ainvoke_with_tools`(Tool 선택·대화), `llm.aembed_texts`(임베딩)가 위 타입으로 바꾼다. 기능 코드는 openai 예외를 직접 다루지 않는다.
+모델 호출 예외는 `llm.ainvoke_structured`(구조화 출력), `llm.ainvoke_with_tools`(Tool 선택·대화), `llm.astream_with_tools`(Tool 선택·대화를 조각으로 받기, #280), `llm.astream_structured`(구조화 출력을 조각으로 받으며 첫 글자 도착을 알리기, #388), `llm.aembed_texts`(임베딩)가 위 타입으로 바꾼다. 기능 코드는 openai 예외를 직접 다루지 않는다.
 
 | 실패 | 오류 |
 | --- | --- |
 | 응답 시간 초과 | `AITimeoutError` |
 | 연결 실패·429·5xx | `AIRetryableError` |
+| 스트리밍 응답 도중 공급자가 보낸 오류 이벤트(HTTP 상태 없는 `openai.APIError`) | `AIRetryableError` |
 | 401·403·404 (주소·키·모델명), 모델명 오류 400 | `AIConfigError` |
 | 응답 형식 불일치·거절·빈 응답 | `AIInvalidResponseError` |
 | 응답 메타정보에 출력 한도 도달이 명시됨 | `AIOutputLimitError` |
@@ -49,9 +56,11 @@ BE는 이 타입들을 `app.ai`에서 가져온다.
 | 그 밖 (모델명 외 400 등) | 감싸지 않고 그대로 |
 
 - 일시적 오류는 `DEFAULT_MAX_RETRIES`만큼 재시도한 뒤에 변환한다.
+- `astream_structured`는 `ainvoke_structured`와 같은 완료 검사와 파서를 써서, 같은 응답에 같은 결과나 같은 오류를 낸다(`test_structured_output.py`). 응답 도중 공급자 오류 이벤트도 `ainvoke_structured`처럼 감싸지 않고 그대로 올린다.
 - 구조화 스트리밍은 완성본을 모은 뒤 검증한다. 최종 완료 상태가 없거나 미완성이라고 명시된 응답은 JSON 파싱 여부와 무관하게 거절한다. 구문 오류만 보고 출력 한도 도달로 추정하지 않는다. 일반 응답은 SDK 파싱이 먼저 실패해 메타정보를 얻지 못하면 기존 `AIInvalidResponseError`로 남는다.
 - 게이트웨이는 허용하지 않은 모델명에 404가 아니라 400으로 답한다. 본문의 `type`·`code`로는 다른 400과 구분되지 않아 문구(`MODEL_NOT_ALLOWED`)로 판별한다.
 - 오류 메시지에는 고정 문구와 HTTP 코드만 넣는다. 응답 본문에 키나 요청 원문이 섞일 수 있어 원인 예외는 `__cause__`로만 연결한다.
+- 회의 판단을 하는 Jev(`features/meeting/jev.py`)는 OpenAI 호환 API가 아니라 httpx로 부르지만 같은 표로 바꾼다. 연결 실패·429·5xx만 두 번까지 다시 보내고, 시간 초과는 판단 단계의 제한 시간(10초) 안에 끝나기 어려워 다시 보내지 않는다. 응답에 조회 확률이 없거나 0~1 밖이면 `AIInvalidResponseError`다.
 
 ## 호출할 때
 

@@ -56,8 +56,8 @@ def test_search_reuses_retrieval_scope_and_preserves_draft_and_sources():
     assert result.record_lookup.result.facts[0].sources==(port.chunks[0].source,)
     assert port.calls[0].club_id=="server-club" and port.calls[0].event_id is None
     assert port.calls[0].category is None
-    assert isinstance(seen[1][-1],ToolMessage)
-    assert "45,000원" in seen[1][-1].content
+    assert isinstance(seen[1][-2],ToolMessage)
+    assert "45,000원" in seen[1][-2].content
     assert PlanningAgentTurnResult.model_validate_json(result.model_dump_json())==result
 
 

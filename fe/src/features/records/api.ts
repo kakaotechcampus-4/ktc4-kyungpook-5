@@ -1,4 +1,5 @@
 import {
+  apiDelete,
   apiDownload,
   apiGet,
   apiGetEnvelope,
@@ -7,7 +8,12 @@ import {
   apiPostForm,
 } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
-import type { ClubRecord, RecordDetail, UploadRecordInput } from '@/features/records/types'
+import type {
+  ClubRecord,
+  RecordCategory,
+  RecordDetail,
+  UploadRecordInput,
+} from '@/features/records/types'
 
 export function uploadRecord({ clubId, category, file }: UploadRecordInput) {
   const form = new FormData()
@@ -23,10 +29,24 @@ export function getRecord(recordId: string) {
 
 export const RECORD_PAGE_SIZE = 20
 
-export function getRecords(clubId: string, page: number) {
-  return apiGetPage<ClubRecord, components['schemas']['PageMeta']>(
-    `/records?clubId=${encodeURIComponent(clubId)}&page=${page}&size=${RECORD_PAGE_SIZE}`,
+// category를 빼면 모든 분류를 받는다. totalCount도 고른 분류 기준으로 온다.
+export function getRecords(clubId: string, page: number, category?: RecordCategory) {
+  const params = new URLSearchParams({ clubId, page: String(page), size: String(RECORD_PAGE_SIZE) })
+  if (category) params.set('category', category)
+  return apiGetPage<ClubRecord, components['schemas']['PageMeta']>(`/records?${params}`)
+}
+
+// 칩 건수. 분류마다 1페이지를 받던 것을 이 한 번으로 대신한다(#287).
+// 자료가 없는 분류도 0으로 채워 오므로 화면에서 빈 칸을 메울 필요가 없다.
+export function getRecordCategoryCounts(clubId: string) {
+  return apiGet<components['schemas']['RecordCategoryCountsOut']>(
+    `/records/category-counts?clubId=${encodeURIComponent(clubId)}`,
   )
+}
+
+// 되돌릴 수 없다. 원본 파일과 검색 색인이 함께 사라진다. 204라 돌려줄 본문이 없다.
+export function deleteRecord(recordId: string) {
+  return apiDelete<void>(`/records/${encodeURIComponent(recordId)}`)
 }
 
 export function retryRecordIndex(recordId: string) {

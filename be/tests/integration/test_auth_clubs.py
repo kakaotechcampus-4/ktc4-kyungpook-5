@@ -3,18 +3,20 @@
 service-flow.curl.sh 01~10번이 실제 DB로 끝까지 도는지 확인한다.
 """
 
+import asyncio
 import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from app.core.enums import MemberRole
-from app.core.security import hash_token
+from app.core.enums import InvitationStatus
 from app.db import session as db_session
-from app.models.clubs import Invitation, Member
+from app.main import app
+from app.models.clubs import Invitation
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
 
@@ -168,7 +170,7 @@ async def test_logout_후_refresh는_401(client: TestClient, app_db: None) -> No
     assert refresh_res.status_code == 401
 
 
-async def test_초대_생성과_기존_초대_수락은_비활성이다(
+async def test_한_초대를_여러_계정이_동시에_수락하고_중복_가입은_막는다(
     client: TestClient, app_db: None
 ) -> None:
     owner_email = _unique_email("inv-owner")
@@ -187,33 +189,96 @@ async def test_초대_생성과_기존_초대_수락은_비활성이다(
         headers=owner_headers,
         json={"email": manager_email, "role": "MANAGER"},
     )
-    assert invite_res.status_code == 503, invite_res.text
-    assert invite_res.json()["error"]["code"] == "INVITATION_UNAVAILABLE"
+    assert invite_res.status_code == 201, invite_res.text
 
-    invite_token = uuid.uuid4().hex
-    async with db_session.get_sessionmaker()() as session:
-        owner = await session.scalar(select(Member).where(Member.club_id == club_id))
-        session.add(Invitation(club_id=club_id, email=manager_email,
-                               role=MemberRole.MANAGER, token_hash=hash_token(invite_token),
-                               expires_at=datetime.now(UTC) + timedelta(days=1),
-                               invited_by=owner.id))
-        await session.commit()
+    invite_token = invite_res.json()["data"]["token"]
+    assert invite_res.json()["data"]["expiresAt"]
 
     _signup(client, manager_email, name="매니저")
     manager_token, _ = _login(client, manager_email)
 
-    accept_res = client.post(
-        "/api/v1/invitations/accept",
-        headers={"Authorization": f"Bearer {manager_token}"},
-        json={"token": invite_token},
-    )
-    assert accept_res.status_code == 503, accept_res.text
-    assert accept_res.json()["error"]["code"] == "INVITATION_UNAVAILABLE"
+    second_email = _unique_email("inv-second")
+    _signup(client, second_email)
+    second_token, _ = _login(client, second_email)
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as ac:
+        def accept(token: str):
+            return ac.post(
+                "/api/v1/invitations/accept",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"token": invite_token},
+            )
+
+        first, second, duplicate = await asyncio.gather(
+            accept(manager_token), accept(second_token), accept(manager_token)
+        )
+
+    assert second.status_code == 200, second.text
+    assert sorted((first.status_code, duplicate.status_code)) == [200, 422]
+    for accepted in (second, first if first.status_code == 200 else duplicate):
+        assert accepted.json()["data"] == {"clubId": club_id, "role": "MANAGER"}
 
     me_res = client.get(
         "/api/v1/me", headers={"Authorization": f"Bearer {manager_token}"}
     )
-    assert me_res.json()["data"]["clubs"] == []
+    assert me_res.json()["data"]["clubs"] == [
+        {"id": club_id, "name": "초대 테스트 동아리", "role": "MANAGER"}
+    ]
+
+    roster = client.get(f"/api/v1/clubs/{club_id}/members", headers=owner_headers)
+    assert roster.status_code == 200, roster.text
+    rows = roster.json()["data"]
+    assert len(rows) == 3
+    assert {row["account"] for row in rows} == {"JOINED"}
+
+    sessionmaker = db_session.get_sessionmaker()
+    async with sessionmaker() as session:
+        invitation = await session.scalar(select(Invitation).where(Invitation.club_id == club_id))
+        assert invitation.status == InvitationStatus.PENDING
+        assert invitation.accepted_at is not None
+        assert invitation.accepted_by is not None
+
+
+@pytest.mark.parametrize("already_consumed", [False, True])
+async def test_만료됐거나_이전_버전에서_사용된_초대는_수락할_수_없다(
+    client: TestClient, app_db: None, already_consumed: bool
+) -> None:
+    owner_email = _unique_email("inv-closed-owner")
+    _signup(client, owner_email)
+    owner_token, _ = _login(client, owner_email)
+    owner_headers = {"Authorization": f"Bearer {owner_token}"}
+    club_res = client.post("/api/v1/clubs", headers=owner_headers, json={"name": "만료 테스트"})
+    club_id = club_res.json()["data"]["id"]
+
+    member_email = _unique_email("inv-closed-member")
+    _signup(client, member_email)
+    member_token, _ = _login(client, member_email)
+    invite_res = client.post(
+        f"/api/v1/clubs/{club_id}/invitations",
+        headers=owner_headers,
+        json={"email": member_email, "role": "MANAGER"},
+    )
+    assert invite_res.status_code == 201, invite_res.text
+    invite = invite_res.json()["data"]
+    sessionmaker = db_session.get_sessionmaker()
+    async with sessionmaker() as session:
+        invitation = await session.get(Invitation, invite["id"])
+        if already_consumed:
+            invitation.status = InvitationStatus.ACCEPTED
+        else:
+            invitation.expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        await session.commit()
+
+    res = client.post(
+        "/api/v1/invitations/accept",
+        headers={"Authorization": f"Bearer {member_token}"},
+        json={"token": invite["token"]},
+    )
+    assert res.status_code == 422, res.text
+    assert res.json()["error"]["fields"]["token"] == (
+        "이미 처리된 초대입니다." if already_consumed else "초대가 만료되었습니다."
+    )
 
 
 async def test_권한_없는_멤버는_초대를_못_만든다(client: TestClient, app_db: None) -> None:

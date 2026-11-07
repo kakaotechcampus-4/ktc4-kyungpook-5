@@ -27,6 +27,14 @@ from app.models.tasks import TaskSuggestion
 from app.services import context_service, meeting_ai_service, meeting_service
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
+REAL_EVENT_ANSWER = context_service.meeting_event_service.answer
+
+
+@pytest.fixture(autouse=True)
+def no_event_lookup(monkeypatch):
+    async def answer(payload):
+        return None, None
+    monkeypatch.setattr(context_service.meeting_event_service, 'answer', answer)
 
 
 @pytest.fixture
@@ -323,3 +331,161 @@ async def test_failed_judge_keeps_judge_time_from_error_trace(app_db, monkeypatc
         assert decision.route == JudgeRoute.ERROR
         assert decision.judge_ms == 10004
         assert ai.JudgeUtteranceRequest.model_validate(decision.judge_input).utterance.utterance_id == segment_id
+
+
+# ── #249: 판단 결과는 추출을 기다리지 않고 보낸다 ─────────────────────────────
+
+
+async def _process(meeting_id: str, segment_id: str) -> None:
+    async with db_session.get_sessionmaker()() as session:
+        await meeting_service.process_saved_segment(session, meeting_id=meeting_id, segment_id=segment_id)
+
+
+async def test_judgment_is_sent_before_slow_extraction_finishes(app_db, monkeypatch) -> None:
+    # 추출을 멈춰 둔 채로 판단 결과(judgment)가 먼저 화면에 가는지 본다.
+    release_extraction, judgment_sent = asyncio.Event(), asyncio.Event()
+    sent: list[dict] = []
+
+    async def judge(payload):
+        return _no_lookup(payload)
+
+    async def extract(payload):
+        await release_extraction.wait()
+        return [_draft()]
+
+    async def broadcast(meeting_id, message):
+        sent.append(message)
+        if message["type"] == "judgment":
+            judgment_sent.set()
+
+    monkeypatch.setattr(meeting_ai_service, "judge", judge)
+    monkeypatch.setattr(meeting_ai_service, "extract", extract)
+    monkeypatch.setattr(meeting_service, "_broadcast", broadcast)
+    factory = db_session.get_sessionmaker()
+    async with factory() as session:
+        _, meeting_id, segment_id = await _saved_transcript(session)
+    running = asyncio.create_task(_process(meeting_id, segment_id))
+    try:
+        await asyncio.wait_for(judgment_sent.wait(), timeout=3)
+        judgment = next(message for message in sent if message["type"] == "judgment")
+        assert (judgment["route"], judgment["kind"], judgment["status"]) == ("NONE", "NO_LOOKUP", "SUCCEEDED")
+        # 판단 기록은 이미 커밋돼 다른 세션에서 보인다. 추출은 아직이라 작업은 RUNNING이고 후보가 없다
+        async with factory() as reading:
+            decision = await reading.get(ContextDecision, judgment["contextDecisionId"])
+            assert decision.status == ContextDecisionStatus.SUCCEEDED
+            assert (await reading.get(AgentJob, judgment["jobId"])).status == AgentJobStatus.RUNNING
+            assert not list(await reading.scalars(select(TaskSuggestion).where(TaskSuggestion.decision_id == decision.id)))
+    finally:
+        release_extraction.set()
+    await asyncio.wait_for(running, timeout=5)
+    async with factory() as session:
+        job = await session.get(AgentJob, judgment["jobId"])
+        candidates = list(await session.scalars(
+            select(TaskSuggestion).where(TaskSuggestion.decision_id == judgment["contextDecisionId"])
+        ))
+        assert job.status == AgentJobStatus.SUCCEEDED
+        assert [candidate.id for candidate in candidates] == job.result["taskSuggestionIds"]
+        assert len(candidates) == 1
+
+
+async def test_extraction_only_failure_keeps_judgment_and_does_not_fail_processing(app_db, monkeypatch) -> None:
+    # 추출만 실패하면 판단 결과는 그대로 가고, 처리 자체는 실패로 올리지 않는다.
+    # 실패는 작업의 기능별 실패와 판단 기록의 PARTIAL로 남아 나중에 셀 수 있다.
+    sent: list[dict] = []
+
+    async def judge(payload):
+        return _no_lookup(payload)
+
+    async def extract(payload):
+        raise ai.AITimeoutError("추출이 제한 시간 안에 끝나지 않았습니다")
+
+    async def broadcast(meeting_id, message):
+        sent.append(message)
+
+    monkeypatch.setattr(meeting_ai_service, "judge", judge)
+    monkeypatch.setattr(meeting_ai_service, "extract", extract)
+    monkeypatch.setattr(meeting_service, "_broadcast", broadcast)
+    factory = db_session.get_sessionmaker()
+    async with factory() as session:
+        _, meeting_id, segment_id = await _saved_transcript(session)
+    await _process(meeting_id, segment_id)  # 예외가 올라오지 않아야 한다
+    judgment = next(message for message in sent if message["type"] == "judgment")
+    assert (judgment["route"], judgment["kind"]) == ("NONE", "NO_LOOKUP")
+    async with factory() as session:
+        decision = await session.get(ContextDecision, judgment["contextDecisionId"])
+        job = await session.get(AgentJob, judgment["jobId"])
+        assert decision.status == ContextDecisionStatus.PARTIAL
+        assert (decision.route, decision.kind) == (JudgeRoute.NONE, JudgeKind.NO_LOOKUP)
+        assert job.status == AgentJobStatus.FAILED
+        [failure] = job.error["features"]
+        assert (failure['tool'], failure['status'], failure['code']) == ('tasks.extract', 'FAILED', 'AITimeoutError')
+        assert failure['durationMs'] >= 0
+
+async def test_event_answer_and_citation_survive_storage_with_candidate(app_db, monkeypatch):
+    async def judge(payload):
+        return _no_lookup(payload)
+    async def extract(payload):
+        return [_draft()]
+    async def event_answer(payload):
+        return ({'answer': '우리 행사: 예상 인원: 40명', 'citations': [
+            {'type': 'event', 'eventId': 'evt-1', 'title': '우리 행사'}]},
+            ai.JudgeTrace(model='fake', prompt_version='event-v1', judge_ms=12))
+    monkeypatch.setattr(meeting_ai_service, 'judge', judge)
+    monkeypatch.setattr(meeting_ai_service, 'extract', extract)
+    monkeypatch.setattr(context_service.meeting_event_service, 'answer', event_answer)
+    factory = db_session.get_sessionmaker()
+    async with factory() as session:
+        _, meeting_id, segment_id = await _saved_transcript(session)
+        job, decision = await _decide(session, meeting_id, segment_id)
+        decision_id = decision.id
+    async with factory() as session:
+        decision = await session.get(ContextDecision, decision_id)
+        assert decision.kind == JudgeKind.ANSWER
+        assert '예상 인원: 40명' in decision.output
+        assert decision.citations == [{'type': 'event', 'eventId': 'evt-1', 'title': '우리 행사'}]
+        assert any(call['tool'] == 'event.classify' and call['durationMs'] == 12 for call in decision.tool_calls)
+        assert any(call['tool'] == 'tasks.extract' and call['durationMs'] >= 0 for call in decision.tool_calls)
+
+async def test_classification_to_real_event_query_to_saved_decision(app_db, monkeypatch):
+    from app.models.events import Event
+    from app.core.enums import EventStatus
+    async def judge(payload): return _no_lookup(payload)
+    async def extract(payload): return []
+    async def classify(request):
+        return SimpleNamespace(intent=ai.MeetingEventIntent(disposition='lookup', scope='current',
+            fields=('status', 'expected_headcount'), event_reference=None),
+            trace=ai.JudgeTrace(model='fake', prompt_version='event-v1', judge_ms=2))
+    monkeypatch.setattr(meeting_ai_service, 'judge', judge)
+    monkeypatch.setattr(meeting_ai_service, 'extract', extract)
+    monkeypatch.setattr(ai, 'classify_meeting_event_facts', classify)
+    monkeypatch.setattr(context_service.meeting_event_service, 'answer', REAL_EVENT_ANSWER)
+    factory = db_session.get_sessionmaker()
+    async with factory() as session:
+        club_id, meeting_id, segment_id = await _saved_transcript(session)
+        session.add(Event(club_id=club_id, title='연결 행사', status=EventStatus.ON_GOING, expected_headcount=30))
+        await session.commit()
+        _, decision = await _decide(session, meeting_id, segment_id)
+        decision_id = decision.id
+    async with factory() as session:
+        decision = await session.get(ContextDecision, decision_id)
+        assert decision.kind == JudgeKind.ANSWER
+        assert '연결 행사' in decision.output and '예상 인원: 30명' in decision.output
+        assert decision.citations[0]['type'] == 'event'
+
+async def test_failed_judge_trace_keeps_tool_timings_and_extraction_succeeds(app_db, monkeypatch):
+    async def judge(payload):
+        error = ai.AITimeoutError('private')
+        error.trace = ai.JudgeTrace(model='fake', prompt_version='fake', judge_ms=15,
+            tool_calls=(ai.ToolCall(tool='records.search', input='question', status='TIMEOUT', duration_ms=12),))
+        raise error
+    async def extract(payload): return [_draft()]
+    monkeypatch.setattr(meeting_ai_service, 'judge', judge)
+    monkeypatch.setattr(meeting_ai_service, 'extract', extract)
+    factory = db_session.get_sessionmaker()
+    async with factory() as session:
+        _, meeting_id, segment_id = await _saved_transcript(session)
+        _, decision = await _decide(session, meeting_id, segment_id)
+        assert decision.judge_ms == 15
+        assert any(call['tool'] == 'records.search' and call['status'] == 'TIMEOUT'
+                   and call['duration_ms'] == 12 for call in decision.tool_calls)
+        assert any(call['tool'] == 'tasks.extract' and call['durationMs'] >= 0 for call in decision.tool_calls)

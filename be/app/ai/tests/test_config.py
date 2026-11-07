@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.ai.config import AISettings
+from app.ai.config import AISettings, JevSettings, jev_decisions_url
 from app.ai.errors import AIConfigError
 
 ENV_NAMES = (
@@ -13,6 +13,8 @@ ENV_NAMES = (
     "AI_EMBEDDING_BASE_URL",
     "AI_EMBEDDING_API_KEY",
     "AI_EMBEDDING_MODEL",
+    "JEV_BASE_URL",
+    "JEV_API_KEY",
 )
 
 
@@ -137,3 +139,46 @@ def test_임베딩_설정을_문자열로_만들어도_키가_남지_않는다(c
 
     assert "super-secret-embedding-key" not in repr(settings)
     assert "super-secret-embedding-key" not in settings.model_dump_json()
+
+
+def test_Jev_설정이_비어도_생성되고_확인_시점에_실패한다(clean_env):
+    settings = JevSettings()
+
+    assert settings.base_url == ""
+    with pytest.raises(AIConfigError) as error:
+        settings.require()
+
+    message = str(error.value)
+    assert "JEV_BASE_URL" in message
+    assert "JEV_API_KEY" in message
+
+
+def test_Jev_환경변수를_읽는다(clean_env, monkeypatch):
+    monkeypatch.setenv("JEV_BASE_URL", "https://mlapi.test/jev")
+    monkeypatch.setenv("JEV_API_KEY", "jev-key")
+
+    settings = JevSettings()
+    settings.require()
+
+    assert settings.decisions_url == "https://mlapi.test/jev/v1/decisions"
+    assert settings.api_key.get_secret_value() == "jev-key"
+
+
+def test_Jev_키가_오류와_문자열에_남지_않는다(clean_env, monkeypatch):
+    monkeypatch.setenv("JEV_API_KEY", "super-secret-jev-key")
+
+    settings = JevSettings()
+    with pytest.raises(AIConfigError) as error:
+        settings.require()
+
+    assert "super-secret-jev-key" not in str(error.value)
+    assert "super-secret-jev-key" not in repr(settings)
+    assert "super-secret-jev-key" not in settings.model_dump_json()
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    ["https://mlapi.test/jev", "https://mlapi.test/jev/", "https://mlapi.test/jev/v1", "https://mlapi.test/jev/v1/"],
+)
+def test_Jev_주소는_v1을_두_번_붙이지_않는다(base_url):
+    assert jev_decisions_url(base_url) == "https://mlapi.test/jev/v1/decisions"

@@ -193,3 +193,55 @@ def test_event_name_is_not_four_attendees_in_grounded_answer(monkeypatch):
 def test_korean_people_quantity_is_still_checked(monkeypatch, claim):
     mock_assessment(monkeypatch, facts=[item(claim, 'c1')])
     assert run((chunk('참가자 3명'),)).status == 'no_evidence'
+
+
+# #281 멘토 리뷰: 장부 원문 "45000"과 답변 "45,000원"을 다른 숫자로 봐서 맞는 답이 사라졌다.
+# 숫자는 값으로 읽고, 단위는 원문과 답변 양쪽에 다 있을 때만 같은지 본다.
+@pytest.mark.parametrize(('source', 'claim'), [
+    ('항목: 숙소비, 금액: 45000', '숙소비는 45,000원'),       # CSV 장부 칸
+    ('항목: 숙소비, 금액: 45,000', '숙소비는 45000원'),       # ₩ 서식 XLSX 칸(파서가 ₩를 남기지 않음)
+    ('금액: 45,000원', '숙소비는 45000'),
+    ('금액: 45000\\', '숙소비는 45,000원'),                  # 숫자 뒤 \ 표시
+    ('금액: 45,000 \\', '숙소비는 45,000원'),
+    ('금액: \\45,000', '숙소비는 45,000원'),                 # 숫자 앞 \ 표시
+    ('금액: 45,000₩', '숙소비는 ₩45,000'),
+    ('금액: 45,000.00', '숙소비는 45,000원'),
+    ('참가 인원: 40', '참가 인원은 40명'),
+    ('금액: 10만원', '금액은 100,000원'),
+    ('금액: 100,000원', '금액은 10만원'),
+    ('금액: 45000', '숙소비는 4만 5천원'),
+    ('예산 4.5만원', '예산 45,000원'),
+    ('예산 1억 2천만원', '예산 120,000,000원'),
+    ('예산 십만 원', '예산 100,000원'),
+])
+def test_same_value_in_other_notation_is_supported(monkeypatch, source, claim):
+    mock_assessment(monkeypatch, facts=[item(claim, 'c1')])
+    assert run((chunk(source),)).status == 'answered'
+
+
+@pytest.mark.parametrize(('source', 'claim'), [
+    ('금액: 45,000원', '숙소비는 45,000명'),     # 양쪽 단위가 다름
+    ('금액: 45000', '숙소비는 46,000원'),        # 값이 다름
+    ('잔액: -100000', '잔액은 100,000원'),       # 부호가 다름
+    ('금액: $45', '금액은 45원'),                # 외화는 원 금액으로 통과하지 않음
+    ('금액: 45달러', '금액은 45원'),
+    ('예산 10만원과 2만원', '합계 12만원'),       # 합산은 하지 않음
+    ('예산 1억 2천만원', '예산 10,000원'),        # "2천만원" 속 "만원"을 따로 세지 않음
+    ('예산 5천 4만원', '예산 45,000원'),          # 큰 단위 순서가 어긋난 표기는 값으로 읽지 않음
+    ('잔액 (45,000\\)', '잔액 45,000원'),        # 괄호 금액은 양·음이 모호해 근거에서 뺌
+])
+def test_different_value_or_unit_is_still_rejected(monkeypatch, source, claim):
+    mock_assessment(monkeypatch, facts=[item(claim, 'c1')])
+    assert run((chunk(source),)).status == 'no_evidence'
+
+
+def test_amount_with_won_mark_after_is_not_a_year(monkeypatch):
+    mock_assessment(monkeypatch, facts=[item('예산은 2025원', 'c1')])
+    assert run((chunk('예산: 2025\\'),), '2025\\ 예산은?').status == 'answered'
+
+
+def test_known_limit_unitless_number_of_other_item(monkeypatch):
+    # 알려진 한계: 숫자 검사는 "어느 항목의 숫자인지"를 보지 않는다.
+    # 원문의 인원 40에 단위가 없어서, 모델이 회비로 잘못 옮겨도 통과한다.
+    mock_assessment(monkeypatch, facts=[item('회비는 40원', 'c1')])
+    assert run((chunk('참가 인원: 40, 회비: 20000'),)).status == 'answered'

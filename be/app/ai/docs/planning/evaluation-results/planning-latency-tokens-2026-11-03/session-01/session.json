@@ -1,0 +1,465 @@
+{
+  "report_version": 2,
+  "session_id": "real-20261103-tokens-01",
+  "status": "completed",
+  "started_at": "2026-11-03T23:10:48.863926+09:00",
+  "fixture_sha256": "f4a8fa5f6df9c3415ad963edadc3c50ab5a72f04efb72a2266e1130f7c9db425",
+  "fixture_version": 1,
+  "profile": {
+    "rounds": 10,
+    "warmup": true,
+    "interval_seconds": 1.0,
+    "concurrency": 1,
+    "reference_date": "2026-10-28",
+    "timezone": "Asia/Seoul"
+  },
+  "environment": {
+    "mode": "real_model",
+    "python": "3.13.14",
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "dependencies": {
+      "langgraph": "1.2.12",
+      "langchain-openai": "1.6.2",
+      "pydantic": "2.13.5",
+      "openai": "3.16.2"
+    },
+    "commit": "536389eb06f483f6f4e381e660f52e8a68f82f54",
+    "dirty": false,
+    "source_sha256": {
+      "__init__.py": "30ba2d1ad1997cdb4afb633bb650f3bd380847cf35148a7052839235c9f86af3",
+      "contracts.py": "af92fab0ac1fec0c71853a79af113855550194544b6e185ba0b92a8894bd87fc",
+      "facade.py": "7f58ebfa02096836164cde813f1610d7ec31986ec6d1a9b84ae85dbf3f1818d6",
+      "ports.py": "965b8a802e992a98e7f2fafd0859efe9c2595fd80ceee27794b7bcbd8ec99207",
+      "config.py": "8e73de866fb2ba884d892b3e9d073d56e369af7adcfd4574f66619e70ec35042",
+      "llm.py": "47e55dbcb69ce4ea9cc887b3e5e5857a3f5368f178aed53d3f4a4916ab468e6b",
+      "errors.py": "68d223bf71b58a42c786ee3a9e63322827b81cb41bc6a9e5f47870c426dab296",
+      "planning_catalog.py": "79a09450a2a26a149faf28a82a9b6bacd08a55551898701eab5f7d187db4ded0",
+      "features/planning/agent/generation_tools.py": "0a586b5750d93f86678464a80b2529d4b31dce3aeb9b5843416247321d669bdd",
+      "features/planning/agent/graph.py": "83292a96948abb8a37edb94948c855e503a0b054ea9c02ecbc3f19d04b879b88",
+      "features/planning/agent/nodes.py": "342b82050c359911c13bc028de8308b546a889680738a205fd9d3bd0a93b4ef7",
+      "features/planning/agent/record_tool.py": "49c78509084ac094835d7b08a00e8b94bd701767b9796a7f45e621b85dd7e587",
+      "features/planning/agent/schemas.py": "98a149880147d89b018ca3aed23f3f6e6fedcdbaee0892d0a2699b07e687199d",
+      "features/planning/agent/state.py": "9bb22837b9f662ef8e1d8b398fd398ee2032bc5fcd6f75718f5d24130df07180",
+      "features/planning/agent/tools.py": "a7af857e94efc4619a9a021dbb57b2a59ae4f6672a66648daf869aa733fc2c6a",
+      "features/planning/generation/__init__.py": "d64c4710852440e504ea0b350647283c050637a2fbafa6864c0b81feeba87f26",
+      "features/planning/generation/catalog.py": "f100ef03fd8ed059edf8a74f58c5200cd2316590f1454852eacb2a0caaf0c7d5",
+      "features/planning/generation/entrypoints.py": "ee0734da3a0013f61f864bc518c8182ab96cd776e67d9ebc6438f4a20b825aff",
+      "features/planning/generation/graph.py": "09faef8472c47dd730460f24fe5921a93e9eb34fe5b934d1fa68c66cca3f764d",
+      "features/planning/generation/model.py": "916cb7a1de4af503d7b467561f9a432253a84221a5ad84d961072e35f452c9d1",
+      "features/planning/generation/offers.py": "330a785334f9ce1c7e3094b4e1b242375cf2157474da25087bf1df75277e413a",
+      "features/planning/generation/readiness.py": "6ea211a1ae19f22ac97ca8f070bd38753158cf7ee18f05ff9beb42f76cdc5b28",
+      "features/planning/generation/schemas.py": "78c19e499702e2aec6ea55c8da85e8c1b2507c13331182816b0bc7a7dd886253",
+      "features/planning/legacy/__init__.py": "ccb2cf6104f535a3f11a69d8519c70478e7c869fe671625aa31589c10712973e",
+      "features/planning/legacy/lookup.py": "f9ba70f85e03e171191727da47f4ecfa37751337e4a68785116a9d08a774cee7",
+      "features/planning/legacy/nodes.py": "729f2e11f2cac2bd017712cc74ccb74908b4c2e69a05308982e7854a961d441b",
+      "features/planning/legacy/questions.py": "c4c61a997fef981ce3c7a8f299993a915ca175779b0963ff67d1557d9f1e8c2a",
+      "features/planning/legacy/records.py": "7c41800667c79c90f8ef4249e5b98cbc4e3237ff5f8222290341533e9698fd8b",
+      "features/planning/legacy/schemas.py": "d85c6a8abe05c72c72fb60408939eda4fae4567aab5adf3b8ab757c79ee36247",
+      "features/planning/legacy/turn_assembly.py": "6789cc7014116c7bbb2a35e4289d45232550560783327b6d79b5539b7fa9c9cb",
+      "features/planning/legacy/turn_flow.py": "1d78bf73d46fce3a2513bf51fa033cafa4336ed2373ff2d20ac3f21172e976aa",
+      "features/planning/legacy/turn_policy.py": "03eddee6dd029c8901c181e4a8d958ec14cd71ac8157cc8f606938b571d119a8",
+      "features/planning/legacy/turn_schemas.py": "d452ffb1d2669f92a1e698ec506c8b3cb03a4fe04ea6546469bd427791dd11ea",
+      "features/planning/public_workflow.py": "0dd41ab429d7afd06606eb0c98059d373c91a5689e3637a7a9e2d6dffcebd5ce",
+      "features/planning/schemas.py": "76322b809f170e2d4a26f86e018d51a67dad5f981ffc9bcb00962e0c07ed7651",
+      "features/planning/state_codec.py": "a76ac37d00d37d8db01280067729473c2b1888941a9b4fc536fd1935f649035b",
+      "features/planning/agent/prompts/chat.md": "76ca3203e1f5ad89ed0b6300dd9d4beab7b5dbf6ed2588b3fbc5e721e09be412",
+      "features/planning/generation/prompts/compose.md": "57b54f2ab15a4fbd775aac42a06c63e0cbbf33a380dcff10b177bd0d3fb94902",
+      "features/planning/legacy/README.md": "b490dbbe3906fff65377c5eb6cccd627260370c29411218a8292273107041ebc",
+      "features/planning/legacy/prompts/decide_lookup.md": "3c2a3bbdfb7ba10f6fe7b3640431310db436d6bd42df213aa103406761658b82",
+      "features/planning/legacy/prompts/extract_conditions.md": "b4aaf9d1c66d57c7739526bb90dd6661224c1ed650fdede7ed30d00c8df8735b",
+      "scripts/measure_planning_latency.py": "c5feb0cf1b4e092302ea2fdd50f1949fb4f4933161c54a12cf1e777403128930",
+      "scripts/planning_latency_inputs.py": "e9ffc6fd6983a81fd65d05d03d30a9cc7173f79e13f0178c24eb396da3a2c2a2",
+      "scripts/planning_latency_checks.py": "5daaf38ca129b9f03404bdfbe96f89fb79c7e2a91162e3bc19f745282d64ab5c",
+      "scripts/planning_latency_observation.py": "ebcca9a7da5cc8a6638abc3c96bd264ddce7bd117d05c392c416a47336f98f55"
+    },
+    "model": "gpt-5.6-luna",
+    "model_options": {
+      "temperature": "not_set",
+      "reasoning": "not_set",
+      "sdk_max_retries": 2,
+      "request_timeout_seconds": 60.0,
+      "generation_max_tokens": 8192,
+      "generation_streaming": true
+    },
+    "coverage": {
+      "timing": "public_function_with_nested_spans",
+      "stage_timings": "planning_function_wrappers_v1",
+      "model_call_attempts": "wrapped_invoker_attempts",
+      "http_attempts": null,
+      "token_usage": "langchain_usage_metadata_last_response",
+      "model_input_chars": null,
+      "unavailable_reason": "SDK 내부 HTTP 시도는 미관측. 토큰은 재시도 중 마지막 응답의 값. 구간의 메시지 문자 수는 text만 포함"
+    }
+  },
+  "planned_attempts": [
+    {
+      "attempt_id": "real-20261103-tokens-01-warmup-0000-C1",
+      "phase": "warmup",
+      "round": 0,
+      "case_id": "C1",
+      "request_sha256": "77d55c85ea87ffc4284c573a45321a4ef0b2ff4725c547a3b830675933b8b0e4",
+      "normalized_input_sha256": "1fba7ccb1975cd14a2977360c07b99ddcffbfaed3ec7e99659240253c2a1ace6"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-warmup-0000-C2",
+      "phase": "warmup",
+      "round": 0,
+      "case_id": "C2",
+      "request_sha256": "11b86576c4dc7bd762dda532f4e4b27e45cd7f8e98c332d513c714d9484177db",
+      "normalized_input_sha256": "f21ca7891734abe7db2e3ae2b07c80fc0e86b0b92d51614be35c90cb2bd0fe5a"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-warmup-0000-G1",
+      "phase": "warmup",
+      "round": 0,
+      "case_id": "G1",
+      "request_sha256": "49c0c865c236e41386db66019c2c01f21322cea64d43eb2556b4c118b9d2a8b6",
+      "normalized_input_sha256": "bbbe826e96d394cfdf596879a539bca1ebb262bd696d2b86b423ec2f81623a5c"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-warmup-0000-G2",
+      "phase": "warmup",
+      "round": 0,
+      "case_id": "G2",
+      "request_sha256": "9fec309d8b6a2d3037a541eb84e43a0addfaaf0e8494c804841af2fc96d5d5a2",
+      "normalized_input_sha256": "601abc323c5eeb439c088789def0dffeadbf54f416ff72f64d95d662b494e86f"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0001-C1",
+      "phase": "measurement",
+      "round": 1,
+      "case_id": "C1",
+      "request_sha256": "d363222ed765b39f740d67f51b6d3937a4a27436b5fbdfc21cc1015d1bbcd33a",
+      "normalized_input_sha256": "1fba7ccb1975cd14a2977360c07b99ddcffbfaed3ec7e99659240253c2a1ace6"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0001-C2",
+      "phase": "measurement",
+      "round": 1,
+      "case_id": "C2",
+      "request_sha256": "262d1f26cc2d6acca1430c3cc801b2171b329c345ddb3d316f349d6da2a0d998",
+      "normalized_input_sha256": "f21ca7891734abe7db2e3ae2b07c80fc0e86b0b92d51614be35c90cb2bd0fe5a"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0001-G1",
+      "phase": "measurement",
+      "round": 1,
+      "case_id": "G1",
+      "request_sha256": "5f054ace751173d50ad135c37d2a2c20ca7ec24b791cf2b592c10e1124ced45b",
+      "normalized_input_sha256": "bbbe826e96d394cfdf596879a539bca1ebb262bd696d2b86b423ec2f81623a5c"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0001-G2",
+      "phase": "measurement",
+      "round": 1,
+      "case_id": "G2",
+      "request_sha256": "72e3b060f45cf35ff1fff53edaeb47743aa7680cb76bc001bdd5868219b0fde9",
+      "normalized_input_sha256": "601abc323c5eeb439c088789def0dffeadbf54f416ff72f64d95d662b494e86f"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0002-G2",
+      "phase": "measurement",
+      "round": 2,
+      "case_id": "G2",
+      "request_sha256": "08540ff492c78f318e863c4bb9c57ce0a60c2476ab7617d78b43a89bb081546c",
+      "normalized_input_sha256": "601abc323c5eeb439c088789def0dffeadbf54f416ff72f64d95d662b494e86f"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0002-G1",
+      "phase": "measurement",
+      "round": 2,
+      "case_id": "G1",
+      "request_sha256": "f4235cff8c89f7c362012e6bd3ddc36d49059f66f97cb8c78e1573edb9b7d3d3",
+      "normalized_input_sha256": "bbbe826e96d394cfdf596879a539bca1ebb262bd696d2b86b423ec2f81623a5c"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0002-C2",
+      "phase": "measurement",
+      "round": 2,
+      "case_id": "C2",
+      "request_sha256": "2a630115cb785cda3016a4aa9ea7199c75feaa88a816c6aa1234c1987ef42ff8",
+      "normalized_input_sha256": "f21ca7891734abe7db2e3ae2b07c80fc0e86b0b92d51614be35c90cb2bd0fe5a"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0002-C1",
+      "phase": "measurement",
+      "round": 2,
+      "case_id": "C1",
+      "request_sha256": "136db35ce83d2631b4b5f477ea791758a4cba5bdd0355a63588e18c3e309c432",
+      "normalized_input_sha256": "1fba7ccb1975cd14a2977360c07b99ddcffbfaed3ec7e99659240253c2a1ace6"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0003-C1",
+      "phase": "measurement",
+      "round": 3,
+      "case_id": "C1",
+      "request_sha256": "19a1bb28ab9ec1edf313d7bbe3bedc90c850c92400107ee30d5ae52fc283d831",
+      "normalized_input_sha256": "1fba7ccb1975cd14a2977360c07b99ddcffbfaed3ec7e99659240253c2a1ace6"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0003-C2",
+      "phase": "measurement",
+      "round": 3,
+      "case_id": "C2",
+      "request_sha256": "2b4c7201979fb4b108d1ac7d678f1dc0d523b6d32d3af227330eece86c3f5d37",
+      "normalized_input_sha256": "f21ca7891734abe7db2e3ae2b07c80fc0e86b0b92d51614be35c90cb2bd0fe5a"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0003-G1",
+      "phase": "measurement",
+      "round": 3,
+      "case_id": "G1",
+      "request_sha256": "fc09055280c5a503d424d09ab99cf41b2752174f21dc5fd331cd9c31a0bca9d5",
+      "normalized_input_sha256": "bbbe826e96d394cfdf596879a539bca1ebb262bd696d2b86b423ec2f81623a5c"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0003-G2",
+      "phase": "measurement",
+      "round": 3,
+      "case_id": "G2",
+      "request_sha256": "dc93fcf04fe65e1de839ce413a488248e9b718b300215a0a5694bb404dc05b18",
+      "normalized_input_sha256": "601abc323c5eeb439c088789def0dffeadbf54f416ff72f64d95d662b494e86f"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0004-G2",
+      "phase": "measurement",
+      "round": 4,
+      "case_id": "G2",
+      "request_sha256": "81bea03a2d27fe20a703067e8eb51f54f6fc5a7dadcd73c075cb32c82e767e60",
+      "normalized_input_sha256": "601abc323c5eeb439c088789def0dffeadbf54f416ff72f64d95d662b494e86f"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0004-G1",
+      "phase": "measurement",
+      "round": 4,
+      "case_id": "G1",
+      "request_sha256": "3b618ad4f4bc07a3ff20da82d11475d7ab4749a30a556016f6c1c5763be0a933",
+      "normalized_input_sha256": "bbbe826e96d394cfdf596879a539bca1ebb262bd696d2b86b423ec2f81623a5c"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0004-C2",
+      "phase": "measurement",
+      "round": 4,
+      "case_id": "C2",
+      "request_sha256": "9f82de7082f58ab253f30712bc671319c55ef5e2ed8fbd56a4b5d3a80e8db1dd",
+      "normalized_input_sha256": "f21ca7891734abe7db2e3ae2b07c80fc0e86b0b92d51614be35c90cb2bd0fe5a"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0004-C1",
+      "phase": "measurement",
+      "round": 4,
+      "case_id": "C1",
+      "request_sha256": "0e4053623728223066c1ae6435bd491e69581d29097b8a56ce15bfbc9989862b",
+      "normalized_input_sha256": "1fba7ccb1975cd14a2977360c07b99ddcffbfaed3ec7e99659240253c2a1ace6"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0005-C1",
+      "phase": "measurement",
+      "round": 5,
+      "case_id": "C1",
+      "request_sha256": "a3cea45e71b842ee797e8f9e477964db31ef9ba7d78e1d4d7eabc44c5b33bf4c",
+      "normalized_input_sha256": "1fba7ccb1975cd14a2977360c07b99ddcffbfaed3ec7e99659240253c2a1ace6"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0005-C2",
+      "phase": "measurement",
+      "round": 5,
+      "case_id": "C2",
+      "request_sha256": "8c7e663578ace47d1703452541ba83ea107fedd5f974f6ec4c9700051bf13f5f",
+      "normalized_input_sha256": "f21ca7891734abe7db2e3ae2b07c80fc0e86b0b92d51614be35c90cb2bd0fe5a"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0005-G1",
+      "phase": "measurement",
+      "round": 5,
+      "case_id": "G1",
+      "request_sha256": "f9c130ba0332c837b091fe1f451c73f9cc187f681fd4705c2f48e6aca9ce4a28",
+      "normalized_input_sha256": "bbbe826e96d394cfdf596879a539bca1ebb262bd696d2b86b423ec2f81623a5c"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0005-G2",
+      "phase": "measurement",
+      "round": 5,
+      "case_id": "G2",
+      "request_sha256": "3a047d5902992bd7b97b553aa73dcd277afdd90f91c677975fb43609145b3049",
+      "normalized_input_sha256": "601abc323c5eeb439c088789def0dffeadbf54f416ff72f64d95d662b494e86f"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0006-G2",
+      "phase": "measurement",
+      "round": 6,
+      "case_id": "G2",
+      "request_sha256": "8d4675cd4c6e1cdbd85019ae7dfd1ebf47730bf8db7020fcae495230b596d1e1",
+      "normalized_input_sha256": "601abc323c5eeb439c088789def0dffeadbf54f416ff72f64d95d662b494e86f"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0006-G1",
+      "phase": "measurement",
+      "round": 6,
+      "case_id": "G1",
+      "request_sha256": "0d7c8a384c0116a54ba9ba18c4ef3bc09f4c3d31692579a793f7fd570c1e22c4",
+      "normalized_input_sha256": "bbbe826e96d394cfdf596879a539bca1ebb262bd696d2b86b423ec2f81623a5c"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0006-C2",
+      "phase": "measurement",
+      "round": 6,
+      "case_id": "C2",
+      "request_sha256": "b0250dc2cbf21a2498089a7a3c587a998b8d220c68b4fb3748ff089f388c5390",
+      "normalized_input_sha256": "f21ca7891734abe7db2e3ae2b07c80fc0e86b0b92d51614be35c90cb2bd0fe5a"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0006-C1",
+      "phase": "measurement",
+      "round": 6,
+      "case_id": "C1",
+      "request_sha256": "c65b05a8051cf2499855e480405034d471cfd61033b16cad472f93e300cdc2ec",
+      "normalized_input_sha256": "1fba7ccb1975cd14a2977360c07b99ddcffbfaed3ec7e99659240253c2a1ace6"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0007-C1",
+      "phase": "measurement",
+      "round": 7,
+      "case_id": "C1",
+      "request_sha256": "d1402c8808a19e69fc931b1f3bed776b36df34dd2f3c5bb496362058a2610913",
+      "normalized_input_sha256": "1fba7ccb1975cd14a2977360c07b99ddcffbfaed3ec7e99659240253c2a1ace6"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0007-C2",
+      "phase": "measurement",
+      "round": 7,
+      "case_id": "C2",
+      "request_sha256": "fa99e59df3d29c854c5214195edd588bafac093b6a8a994c4fb013a8724204de",
+      "normalized_input_sha256": "f21ca7891734abe7db2e3ae2b07c80fc0e86b0b92d51614be35c90cb2bd0fe5a"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0007-G1",
+      "phase": "measurement",
+      "round": 7,
+      "case_id": "G1",
+      "request_sha256": "a8328ec8d69cea474f650c1e031f3893cec794d07df517ad840ac83a4f373b67",
+      "normalized_input_sha256": "bbbe826e96d394cfdf596879a539bca1ebb262bd696d2b86b423ec2f81623a5c"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0007-G2",
+      "phase": "measurement",
+      "round": 7,
+      "case_id": "G2",
+      "request_sha256": "7be0a614c6263819f7fff1b9dbfca13d4fe27048d1262ccc9a29b9103721d333",
+      "normalized_input_sha256": "601abc323c5eeb439c088789def0dffeadbf54f416ff72f64d95d662b494e86f"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0008-G2",
+      "phase": "measurement",
+      "round": 8,
+      "case_id": "G2",
+      "request_sha256": "5a05559e7395ae5dd04cbf88085d821b721cea04eaf63394a194469d214bbf47",
+      "normalized_input_sha256": "601abc323c5eeb439c088789def0dffeadbf54f416ff72f64d95d662b494e86f"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0008-G1",
+      "phase": "measurement",
+      "round": 8,
+      "case_id": "G1",
+      "request_sha256": "f4dede0aa200e52f93327da473b1acb20b488e3765a3fc176623394c12cf7a54",
+      "normalized_input_sha256": "bbbe826e96d394cfdf596879a539bca1ebb262bd696d2b86b423ec2f81623a5c"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0008-C2",
+      "phase": "measurement",
+      "round": 8,
+      "case_id": "C2",
+      "request_sha256": "ea4748089294370027fe9de3797c826d35a4e404cd6588c8f27aca1856b0e5fd",
+      "normalized_input_sha256": "f21ca7891734abe7db2e3ae2b07c80fc0e86b0b92d51614be35c90cb2bd0fe5a"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0008-C1",
+      "phase": "measurement",
+      "round": 8,
+      "case_id": "C1",
+      "request_sha256": "9890d4b6e1c29a91a0daff7d67c9b125e35ee376303349e6bc3073c358df5337",
+      "normalized_input_sha256": "1fba7ccb1975cd14a2977360c07b99ddcffbfaed3ec7e99659240253c2a1ace6"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0009-C1",
+      "phase": "measurement",
+      "round": 9,
+      "case_id": "C1",
+      "request_sha256": "77747f9ed9552767eb79d344350b0e945b8fd23b9a045227371b849f14f88fc4",
+      "normalized_input_sha256": "1fba7ccb1975cd14a2977360c07b99ddcffbfaed3ec7e99659240253c2a1ace6"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0009-C2",
+      "phase": "measurement",
+      "round": 9,
+      "case_id": "C2",
+      "request_sha256": "7b93a130a6a93341b8d4ae573ea77b0fa444eb575f8b51bd07edd54ce1605492",
+      "normalized_input_sha256": "f21ca7891734abe7db2e3ae2b07c80fc0e86b0b92d51614be35c90cb2bd0fe5a"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0009-G1",
+      "phase": "measurement",
+      "round": 9,
+      "case_id": "G1",
+      "request_sha256": "1132a07a67510218038557f7425e9bc916673f69f895e5834b23661e4cab7da7",
+      "normalized_input_sha256": "bbbe826e96d394cfdf596879a539bca1ebb262bd696d2b86b423ec2f81623a5c"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0009-G2",
+      "phase": "measurement",
+      "round": 9,
+      "case_id": "G2",
+      "request_sha256": "9a9847171e6efedcf372cf01882b09282cf116dc78c972158657849f2da0c7e8",
+      "normalized_input_sha256": "601abc323c5eeb439c088789def0dffeadbf54f416ff72f64d95d662b494e86f"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0010-G2",
+      "phase": "measurement",
+      "round": 10,
+      "case_id": "G2",
+      "request_sha256": "b63704918f8531e5f7db7c9451b432df4eec7d4703cb6fe95b161e99ac603eb5",
+      "normalized_input_sha256": "601abc323c5eeb439c088789def0dffeadbf54f416ff72f64d95d662b494e86f"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0010-G1",
+      "phase": "measurement",
+      "round": 10,
+      "case_id": "G1",
+      "request_sha256": "1811e478ad08176dd9c56ab7fdcdb2c0819441ea7ea0dd409dde375742983e20",
+      "normalized_input_sha256": "bbbe826e96d394cfdf596879a539bca1ebb262bd696d2b86b423ec2f81623a5c"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0010-C2",
+      "phase": "measurement",
+      "round": 10,
+      "case_id": "C2",
+      "request_sha256": "28a0d4dd957766287e0da6d8a20a0000fb3207c83cf69977a7040b8c2b0c7f95",
+      "normalized_input_sha256": "f21ca7891734abe7db2e3ae2b07c80fc0e86b0b92d51614be35c90cb2bd0fe5a"
+    },
+    {
+      "attempt_id": "real-20261103-tokens-01-measurement-0010-C1",
+      "phase": "measurement",
+      "round": 10,
+      "case_id": "C1",
+      "request_sha256": "f726a70074980358455838cf43424922436d5a7121ef4c083eec88123605f360",
+      "normalized_input_sha256": "1fba7ccb1975cd14a2977360c07b99ddcffbfaed3ec7e99659240253c2a1ace6"
+    }
+  ],
+  "counts": {
+    "warmup": {
+      "started": 4,
+      "finished": 4,
+      "success": 4,
+      "failed": 0,
+      "interrupted": 0
+    },
+    "measurement": {
+      "started": 40,
+      "finished": 40,
+      "success": 38,
+      "failed": 2,
+      "interrupted": 0
+    }
+  },
+  "finished_at": "2026-11-03T23:22:01.871429+09:00"
+}

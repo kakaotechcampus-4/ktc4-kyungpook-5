@@ -125,23 +125,25 @@ class JudgeUtteranceRequest(ContractModel):
 
 
 class ToolCall(ContractModel):
-    """판단 뒤 AI가 실제로 부른 도구 하나"""
+    """발화 하나를 처리하며 AI가 실제로 부른 도구 하나"""
 
-    tool: Literal["records.search", "llm.generate"]
-    input: str                       # 예: 검색어 "2025 봄 MT 숙소비"
+    # judge.decide: 판단(Jev), records.search: 기록 검색, llm.generate: 검색어 만들기·답 작성
+    tool: Literal["judge.decide", "records.search", "llm.generate"]
+    input: str                       # 판단·검색어 만들기는 방금 발화, 검색·답 작성은 검색어 "2025 봄 MT 숙소비"
     status: Literal["OK", "FAILED", "TIMEOUT"]
     duration_ms: int
     result_count: int | None = None  # records.search일 때 찾은 조각 수
-    prompt_version: str | None = None  # llm.generate일 때 그 호출의 프롬프트 버전. 예: "records-assess-v1+meeting-assess-v2"
+    prompt_version: str | None = None  # llm.generate일 때 그 호출의 프롬프트 버전. 예: "meeting-query-v1", "records-assess-v1+meeting-assess-v2"
+    probability: float | None = None   # judge.decide일 때 Jev가 낸 조회가 필요할 확률(0~1)
 
 
 class JudgeTrace(ContractModel):
     """이 판단을 누가, 어떤 지시로 내렸고 무엇을 했는지. BE가 판단 기록으로 저장한다"""
 
-    model: str                       # 예: "gpt-5.6-luna". Laya·Jev로 바꾸면 그 이름
-    prompt_version: str              # 예: "meeting-judge-v6"
-    judge_ms: int                    # 판단(과 검색어) 호출에 걸린 시간
-    tool_calls: tuple[ToolCall, ...] = ()   # NONE이면 비어 있다
+    model: str                       # 판단 모델. "typesafe/jev-1.14" (코드에 고정)
+    prompt_version: str              # 판단 질문 문구의 버전. "meeting-questions-v1"
+    judge_ms: int                    # 판단 단계에 걸린 시간. 조회로 본 발화는 검색어 만들기까지 들어간다
+    tool_calls: tuple[ToolCall, ...] = ()   # 부른 순서대로. 판단(judge.decide)이 늘 처음이고, NONE이면 그것 하나다
 
 
 class JudgeUtteranceResult(ContractModel):
@@ -183,7 +185,7 @@ async def judge_utterance(
 대화가 넘어간 뒤에 떠도, 질문을 고쳐 답이 두 개 떠도 어느 답이 어느 질문에 대한 것인지 구분된다(AI-MEET-06).
 `question`은 검색어 구성 단계가 만든 검색어를 그대로 쓴다.
 앞 발화로 "그때" 같은 지시어를 풀어 만든 값이라, 따로 호출하지 않아도 Whisper 원문보다 무엇을 물었는지 잘 드러난다.
-`question`은 판단이 아니라 검색어에 묶여 있다. 판단을 Laya 같은 판단 전용 모델로 바꿔도 검색어는 LLM이 만들어야 하므로([판단 모델](architecture.md#판단-모델)), 그 단계가 만든 검색어를 그대로 쓰면 된다. 지금은 판단과 검색어를 한 호출에서 받는다.
+`question`은 판단이 아니라 검색어에 묶여 있다. 판단은 판단 전용 모델 Jev가 하고 검색어는 Jev가 조회로 본 발화에만 LLM(luna)이 만들므로([판단 모델](architecture.md#판단-모델)), 그 단계가 만든 검색어를 그대로 쓰면 된다.
 검색어에 오인식이 남거나 화면에 띄우기 어색하면, 검색어 출력에 필드를 더하지 않고 답을 만들 때 다시 쓴다. 출력 필드가 늘면 지연이 바로 늘기 때문이다([측정 기록](meeting-evaluation.md)).
 
 ```text
@@ -196,7 +198,9 @@ async def judge_utterance(
 
 답은 기록 검색 `search_records`(#72)와 같은 단계로 만든다. 판단이 만든 검색어로 청크를 찾고(`find_chunks`), 찾은 청크로 근거를 판단한다(`assess_chunks`).
 검색어는 판단이 이미 정리했으므로 다시 정리하지 않고, 다시 찾지도 않는다. 기준일은 회의 날짜다.
-회의 원발화는 검색어와 별도로 근거 판단에 전달한다. 회고 또는 최근 행사 참가 인원 질문은 한 번의 벡터 검색에서 후보 20개를 받아 원래 상위 3개를 보존하고 질문한 항목의 본문 최대 2개를 보충해 모델에는 5개만 보낸다. 명시 연도가 있으면 보충 자료도 그 연도와 일치해야 한다. 그 밖의 질문은 기존 상위 5개다. 검색된 자료만으로 전체 최신을 확정할 수 없어 최근 질문의 답에는 그 한계를 표시한다. 현재 진행 중인 행사의 실제 상태는 기록 검색으로 확정하지 않는다.
+회의 답의 금액·인원 등 숫자와 연도는 토리 자료 답변과 같은 방식으로 인용 청크의 원문과 문서명 연도를 확인한다. 근거가 없는 숫자는 제외하고 미확인으로 표시한다. 숫자는 값으로 읽어 비교하므로 `45000`과 `45,000원`, `10만원`과 `100,000원`은 같은 숫자로 본다(#383). 이 검사는 숫자가 원문에 있는지만 확인하므로 의미적 정확성을 보장하지 않으며, 계산한 값은 제외된다.
+
+회의 원발화는 검색어와 별도로 근거 판단에 전달한다. 검색어 재작성에서 회고·최근 표현이 빠져도 원발화를 함께 확인한다. 회고 또는 최근 행사 참가 인원 질문은 한 번의 벡터 검색에서 후보 20개를 받아 원래 상위 3개를 보존하고 질문한 항목의 본문 최대 2개를 보충해 모델에는 5개만 보낸다. 명시 연도가 있으면 보충 자료도 그 연도와 일치해야 한다. 그 밖의 질문은 기존 상위 5개다. 검색된 자료만으로 전체 최신을 확정할 수 없어 최근 질문의 답에는 그 한계를 표시한다. 현재 진행 중인 행사의 실제 상태는 기록 검색으로 확정하지 않는다.
 근거 판단 결과(확인한 사실, 확인하지 못한 것, 자료 간 차이)를 코드가 카드 문구로 옮긴다. 모델을 다시 부르지 않는다.
 
 | 근거 판단 결과 | `kind` · `answer` |
@@ -234,10 +238,12 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
   "answer": "2025 봄 MT 숙박비 550,000원",
   "sources": [{"record_id": "r-12", "file_name": "2025 봄 MT 결과보고", "location": {"label": "2쪽 · 2. 예산"}}],
   "trace": {
-    "model": "gpt-5.6-luna",
-    "prompt_version": "meeting-judge-v5",
-    "judge_ms": 1480,
+    "model": "typesafe/jev-1.14",
+    "prompt_version": "meeting-questions-v1",
+    "judge_ms": 2610,
     "tool_calls": [
+      {"tool": "judge.decide", "input": "그때 숙소비 얼마였지?", "status": "OK", "duration_ms": 520, "probability": 0.83},
+      {"tool": "llm.generate", "input": "그때 숙소비 얼마였지?", "status": "OK", "duration_ms": 2090, "prompt_version": "meeting-query-v1"},
       {"tool": "records.search", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 480, "result_count": 5},
       {"tool": "llm.generate", "input": "2025 봄 MT 숙소비", "status": "OK", "duration_ms": 3490, "prompt_version": "records-assess-v1"}
     ]
@@ -249,13 +255,15 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 | --- | --- | --- |
 | `source_version` | 전사가 나중에 고쳐지면, 옛 버전으로 내린 판단을 BE가 가려낸다(STALE) | 1번 버전 "회측"으로 판단 → 2번 버전 "회칙"으로 고쳐짐 → 1번 판단은 지난 것 |
 | `route` | 무슨 종류의 처리였는지 화면과 통계에서 본다 | "이번 회의에서 RAG 7번, NONE 120번" |
-| `trace.tool_calls` | 답이 틀리거나 늦을 때 어느 단계가 원인인지 찾는다 | 6초 걸림 → 검색 0.4초, 답 작성 5.5초 |
-| `trace.model`, `prompt_version` | 모델·프롬프트를 바꾼 전후를 나눠 비교하고, 학습 데이터를 고른다(#117) | v3a와 v4의 오탐률 비교 |
+| `trace.tool_calls` | 답이 틀리거나 늦을 때 어느 단계가 원인인지 찾는다 | 6초 걸림 → 판단 0.5초, 검색어 2.1초, 검색 0.4초, 답 작성 3.0초 |
+| `tool_calls[].probability` | 임계값(0.35)을 바꾸면 판단이 어떻게 달라지는지 회의 뒤에 다시 센다. 0.35 근처에서 떴다 안 떴다 한 말을 찾는다 | "0.30으로 내리면 이 회의에서 카드가 3장 더 뜬다" |
+| `trace.model`, `prompt_version` | 모델·질문 문구를 바꾼 전후를 나눠 비교하고, 학습 데이터를 고른다(#117) | `meeting-questions-v1`과 v2의 놓침 비교 |
 | `tool_calls[].prompt_version` | 답을 쓴 근거 판단 지시문이 바뀐 전후를 나눠 본다 | `records-assess-v1`과 v2의 "기록에 없음" 비율 비교 |
 
 - **BE는 판단에 넘긴 요청도 함께 저장한다(#241).** 판단 기록의 `judge_input`에 `JudgeUtteranceRequest`를 그대로(시각은 ISO 문자열로) 남기고, `trace.judge_ms`를 `judge_ms`에 남긴다. 전사는 고치면 덮어써지므로 발화 id와 version으로는 그때 모델이 본 앞 발화를 다시 만들 수 없다. 실패한 판단은 오류의 `trace`에서 `judge_ms`를 꺼내고, `trace`가 없으면 비운다.
-- **이 값들은 모델이 만들지 않고 AI 코드가 채운다.** 버전은 받은 값을 돌려주고, 시간은 코드가 재고, 모델·프롬프트 버전은 설정값이다. 모델 출력이 늘지 않으므로 판단 지연은 그대로다.
-- **조회하지 않은 이유(`reasonCode`)는 실시간 결과에 넣지 않는다.** 이유를 모델이 출력하게 하면 판단이 느려진다. 이유 문장과 확신도를 빼서 p50이 0.65초 줄었다(#111). 이유는 검수용이므로 회의가 끝난 뒤 별도 호출로 채운다(#114, #117).
+- **이 값들은 모델이 만들지 않고 AI 코드가 채운다.** 버전은 받은 값을 돌려주고, 시간은 코드가 재고, 모델·질문 문구 버전은 코드에 고정한 값이다. 확률은 Jev 응답을 그대로 옮긴다.
+- **BE는 `tool_calls`를 JSON 그대로 저장하므로 확률을 담으려고 DB를 바꾸지 않는다(#255).** 판단 모델은 `model_version`에, 질문 문구 버전은 `policy_version`에 들어간다.
+- **조회하지 않은 이유(`reasonCode`)는 실시간 결과에 넣지 않는다.** 판단 모델은 확률만 내고, luna로 판단할 때도 이유를 출력하게 하면 판단이 느려졌다. 이유 문장과 확신도를 빼서 p50이 0.65초 줄었다(#111). 이유는 검수용이므로 회의가 끝난 뒤 별도 호출로 채운다(#114, #117).
   값은 아래 일곱 중 하나이고 `route`가 `NONE`일 때만 채운다. `RAG`면 검색어가 곧 이유라 비운다. 기준은 `features/meeting/schemas.py`의 `ReasonCode`다.
 
   | 값 | 뜻 | 예 |
@@ -276,7 +284,7 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 화면의 진행 표시에 지금 어느 단계인지 보여줄 수 있도록, AI는 단계가 바뀔 때 `progress.stage_changed`를 부른다. 넘기지 않으면 알리지 않는다.
 
 ```text
-발화 u-31  JUDGING   판단과 검색어 구성
+발화 u-31  JUDGING   판단(Jev)과 검색어 구성(조회일 때 luna)
            SEARCHING 기록 검색          ← 조회가 필요할 때만
            ANSWERING 답 작성            ← 근거를 찾았을 때만
            (결과 반환)
@@ -324,10 +332,13 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 
   | 실패한 곳 | 오류 | `trace` |
   | --- | --- | --- |
-  | 판단 시간 초과 | `AITimeoutError` | `judge_ms` 약 10000, `tool_calls` 없음 |
-  | 판단 응답이 형식에 맞지 않음 | `AIInvalidResponseError` | `tool_calls` 없음 |
-  | 기록 검색 | 검색이 올린 오류 | `records.search`가 `FAILED` 또는 `TIMEOUT` |
-  | 답 작성 | 답 작성이 올린 오류 | `records.search`는 `OK`, `llm.generate`가 `FAILED` 또는 `TIMEOUT` |
+  | 판단 단계 시간 초과 (Jev와 검색어 호출을 합쳐 10초) | `AITimeoutError` | `judge_ms` 약 10000. 끝난 호출만 남는다 |
+  | Jev 호출 | 연결·429·5xx는 `AIRetryableError`, 키·주소는 `AIConfigError`, 확률이 없으면 `AIInvalidResponseError` | `judge.decide`가 `FAILED` 또는 `TIMEOUT` |
+  | 검색어 호출 | 모델 호출 오류. 검색어가 비면 `AIInvalidResponseError` | `judge.decide`는 `OK`, `llm.generate`(`meeting-query-v1`)가 `FAILED` 또는 `TIMEOUT` |
+  | 기록 검색 | 검색이 올린 오류 | 앞의 두 줄 다음 `records.search`가 `FAILED` 또는 `TIMEOUT` |
+  | 답 작성 | 답 작성이 올린 오류 | `records.search`는 `OK`, 마지막 `llm.generate`가 `FAILED` 또는 `TIMEOUT` |
+
+  Jev가 실패해도 luna로 대신 판단하지 않는다. 두 모델이 같은 게이트웨이를 거쳐 함께 멈추기 때문이다([판단 모델](architecture.md#판단-모델)).
 
   예상하지 못한 예외(`AIError`가 아닌 것)는 `trace` 없이 그대로 올라간다. BE는 서버 오류로 처리한다.
 - 운영진이 직접 다시 판단을 요청하면 같은 요청으로 다시 부를 수 있다. 회의를 멈추지 않으므로 자동 재시도와 다르다. 이전 실패 기록은 BE가 남긴다.
@@ -348,6 +359,21 @@ BE는 발화마다 판단 기록을 저장한다(PM 서비스 계약 제안(10-1
 - 답 카드의 길이. 사실이 여러 개면 한 줄씩 늘어나 4줄 이상인 답이 약 39개 중 7~9개였다. 화면에서 접어 보여줄지(FE)와 함께 정한다.
 - 카드에 근거 원문 조각을 보여줄지(FE·PM). 보여준다면 결과의 출처에 청크 원문을 더한다.
 
+## 계획 수정 후 검토 (#177)
+
+BE는 생성 직후 계획과 현재 계획을 비교해 `PlanEditReviewRequest`를 만들고 `await app.ai.review_plan_edit(request)`를 호출한다. AI는 저장·확정을 하지 않고 걱정되는 점만 돌려준다.
+
+입력 `PlanEditReviewRequest`: `draft`(P1 `PlanningDraft`, 잠정 여부와 미룬 주제 포함), `today`, `included_steps`(순서대로, 단계 코드·이름·phase·actor·일정·행동), `excluded_steps`(`excluded_by`가 `ai`면 처음 생성 때 AI가 뺀 것, `user`면 사용자가 뺀 것), `changes`(`removed_codes`, `added_codes`, `moved_codes`, `schedule_changes`, `action_changes`). 모두 BE가 채우며 AI는 이 입력만 근거로 쓴다.
+
+결과 `PlanEditReviewResult`: `outcome`(`issues`/`no_issues`)과 `items`(0~4개). 항목은 `step_codes`(1개 이상), `kind`(`missing_step`/`order`/`schedule`/`other`), `message`(해요체 1~2문장), `suggestion`(없으면 null)이다. `issues`는 항목 1개 이상, `no_issues`는 0개여야 계약 검증을 통과한다. 항목의 단계 코드가 입력의 포함·제외 단계에 없으면 `AIInvalidResponseError`로 막는다. 모델 실패는 다른 AI 호출처럼 `AIRetryableError` 등으로 전달되며 BE가 실패 상태로 저장한다.
+
+```python
+result = await app.ai.review_plan_edit(request)
+# PlanEditReviewResult(outcome="issues", items=(PlanReviewItem(step_codes=("BOOK_VENUE","CONFIRM_DETAILS"), kind="order", ...),))
+```
+
+[코드 따라가기](planning/walkthrough.md#수정--검토-p2-계획-수정-후-ai-검토-177)와 [실제 모델 평가](planning/evaluation.md#계획-수정-검토-실제-모델-확인-177-ai-plan-07-2026-11-01)를 함께 본다.
+
 ## 회의 일정·할 일 후보 추출 초안
 
 BE는 기존 회의 payload에 IANA `timezone`과 offset이 있는 `occurred_at`을 더해 `TaskExtractionRequest`를 만들고 `await app.ai.extract_task_suggestions(request)`를 호출한다. 최근 문맥은 지시 대상 해석에만 사용하며 현재 발화에서 새로 명시된 항목을 추출한다. 검색 판단과 독립 호출하므로 NONE이나 조회 실패에도 추출할 수 있다.
@@ -367,7 +393,12 @@ BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(cl
 
 ## 토리의 자료 질문 근거 판단
 
-`answer_tori_records(ToriRecordAnswerRequest(question, today, chunks))`는 BE가 소속 권한을 확인해 제공한 검색 청크만 판단해 `status`(answered/partial/no_evidence), `facts`(사실과 출처), `conflicts`, `not_found`를 반환한다. 빈 청크는 no_evidence이며 모델 오류는 전파한다. 모델이 지정한 청크 ID를 출처 변환 전까지 유지하고, 그 청크의 숫자나 요청 연도의 직접 근거가 없는 사실은 제외해 미확인으로 표시한다. 같은 위치를 공유하는 다른 청크는 근거를 섞지 않는다. 숫자 비교는 부호를 보존하고 쉼표·원화 기호와 명시적 양수 부호를 정규화하며, 괄호 금액은 양·음이 모호해 근거에서 제외한다. 금액·인원의 한글 수사는 원문과 같은 표기만 인정한다. 계산값·환산 표현과 같은 정당한 사실도 보수적으로 제외될 수 있고, 숫자 검사가 사실 전체의 정확성을 보장하지 않는다. 자료 범위·미색인·검색 실패 및 권한은 BE가 안내한다. 회의·계획의 기존 검색 경로는 바꾸지 않는다.
+`answer_tori_records(ToriRecordAnswerRequest(question, today, chunks))`는 BE가 소속 권한을 확인해 제공한 검색 청크만 판단해 `status`(answered/partial/no_evidence), `facts`(사실과 출처), `conflicts`, `not_found`를 반환한다. 빈 청크는 no_evidence이며 모델 오류는 전파한다. 모델이 지정한 청크 ID를 출처 변환 전까지 유지하고, 그 청크의 숫자나 요청 연도의 직접 근거가 없는 사실은 제외해 미확인으로 표시한다. 같은 위치를 공유하는 다른 청크는 근거를 섞지 않는다. 숫자 비교는 숫자를 값과 단위로 나눠 한다(#383).
+값은 쉼표·소수 끝 0을 정리하고 한글 큰 단위를 읽어 비교한다(`45,000.00`→45000, `4만 5천`→45000, `1억 2천만`→120000000, `십만`→100000). 큰 단위 순서가 어긋난 표기(`5천 4만`)는 원래 글자로 비교한다. 부호는 보존하고 명시적 양수 부호는 지운다.
+단위는 원·명·개·건·%·년·월·일이며, `원`·`₩`·`\`는 숫자 앞뒤 어디에 있어도 원이다. 단위가 원문과 답변 양쪽에 있을 때만 같아야 하고, 한쪽에 없으면 값만 비교한다. 예: 원문 `금액: 45000`과 답변 `45,000원`은 통과, `45,000원`과 `45,000명`은 제외.
+통화는 원만 지원한다. `$`·`달러`·`엔` 같은 외화 표시는 값을 읽지 않고 원 금액과 같은 값으로 통과하지 않게만 구분하며, 외화끼리는 구분하지 않는다.
+괄호 금액은 양·음이 모호해 근거에서 제외한다. 고유어 수사(`한 명`, `스무 명`)는 원문과 같은 표기만 인정하고, 한자어 수사(`이십 명`)는 값으로 읽는다.
+합산·나눗셈·비율처럼 계산한 값은 정당한 사실이어도 제외된다. 숫자 검사는 숫자가 어느 항목의 값인지 보지 않으므로 사실 전체의 정확성을 보장하지 않는다. 예: 원문 `참가 인원: 40, 회비: 20000`에서 `회비는 40원`도 통과한다. 자료 범위·미색인·검색 실패 및 권한은 BE가 안내한다. 회의·계획의 기존 검색 경로는 바꾸지 않는다.
 
 
 ### 토리 범위 질문과 후속 검색
@@ -385,3 +416,85 @@ BE는 권한 확인 후 `app.ai.search_related_records(RecordDiscoveryRequest(cl
 요청의 `situation`은 최대 4000자다. 기존 질문에 답하는 경우 별도 `clarification_question`(최대 500자), `clarification_options`(최대 3개, 각 200자), `answer`(최대 200자)를 함께 전달한다. 선택된 답도 BE가 실제 라벨로 바꿔 전달하며 AI가 인증·선택의 유효성을 판단하지 않는다. 최초 질문 생성과 후속 응답은 별도 호출이다.
 
 결과 `status=clarification`이면 질문 한 개와 선택지 최대 3개를 반환한다. `status=suggestion`이면 최대 1000자 요약과 1~5개 후속 제안(각 최대 500자)을 반환한다. 이미 답을 받은 요청에서 모델이 다시 질문하면 `AIInvalidResponseError`를 반환해 반복 질문을 막는다. 빈 값·길이·상태별 필드 불일치는 거절하며 모델 오류는 AI 오류로 전파한다. 내용은 제안일 뿐 실제 예약·발송·결제·계획 수정이나 확인을 실행하지 않는다. BE는 질문·답·결과를 보관하고 실패·재시도를 구분하며, 모델 호출 전후 소속 및 행사 상태를 검증한다. 사용자 상황과 답은 지시가 아닌 데이터이며 모델의 의미적 정확성은 보장하지 않는다.
+
+## 운영 Action 본문 초안 (#333)
+
+> 호출 시점·저장은 BE #334, 화면은 FE #335가 맡는다. 실제 모델 평가는 [운영 기능 평가 기록](operations-evaluation.md)에 있다.
+
+행사가 운영 중(`ON_GOING`)일 때 어떤 단계가 현재 단계가 되면, BE가 그 단계의 공지(`NOTICE`)·발송(`EXTERNAL_SEND`) Action마다 `await app.ai.draft_action_content(request)`를 부른다. AI는 본문 초안만 돌려주고 저장·상태 변경·게시는 하지 않는다. 운영진이 고친 뒤 승인하고 앱 밖에서 직접 올린다.
+
+```python
+request = ActionDraftRequest(
+    club_name="경북대 등산 동아리",
+    event=ActionDraftEvent(title="봄 MT", event_type="MT",
+                           start_date=date(2026, 5, 10), end_date=date(2026, 5, 11),
+                           location="가평", expected_headcount=40, fee_per_person=45000),
+    step=ActionDraftStep(code="RECRUIT_NOTICE", name="모집 공지", starts_on=None, deadline=date(2026, 5, 1)),
+    action=ActionDraftAction(type="NOTICE", title="모집 공지 올리기", due_date=date(2026, 5, 1), amount=None),
+    today=date(2026, 4, 20),
+)
+result = await app.ai.draft_action_content(request)
+# result.content  == "📢 봄 MT 참가자 모집\n5월 10일(일)~11일(월) 가평으로 MT를 갑니다!\n참가비: 45,000원 / 신청 마감: 5월 1일\n신청 방법: [신청 링크]"
+# result.unknowns == ("신청 링크",)
+```
+
+입력 `ActionDraftRequest`는 모두 BE가 Event·Step·Action·Club 테이블에서 채운다. P1 대화 상태는 넘기지 않는다.
+
+| 칸 | 내용 |
+| --- | --- |
+| `club_name` | 동아리 이름 (최대 100자) |
+| `event` | 행사명, 유형, **시작일(필수)**, 종료일, 장소, 예상 인원, 1인 참가비(`fee_per_person`). 운영을 시작한 행사에는 시작일이 항상 있다. 예상 인원은 실제 참가 인원도 정원도 아니다. 총예산은 넣지 않는다 |
+| `step` | 단계 코드, 단계 이름, 시작일(`starts_on`), 마감일(`deadline`) |
+| `action` | 종류(`NOTICE`·`EXTERNAL_SEND`만, 그 밖은 거절), 제목, 기한(`due_date`), 금액(`amount`) |
+| `today` | 오늘 날짜 |
+
+날짜는 모두 **한국 시간 날짜**다. `Step.starts_at`·`deadline`은 시각과 시간대가 있는 값이라 BE가 한국 시간 날짜로 바꿔 넘긴다(예: `2026-04-30T15:00:00Z` → `2026-05-01`). 시각을 넘기면 모델이 "오후 11시 59분 마감"처럼 받아 써서, 운영진이 정하지 않은 시각이 공지에 들어간다.
+
+결과 `ActionDraftResult`는 `content`(1~1,500자)와 `unknowns`다. `unknowns`는 모델이 따로 쓰는 값이 아니라 본문의 `[ ]` 자리표시를 나온 순서대로(같은 글자는 한 번) 뽑은 값이다. 그래서 화면의 "비워 둔 곳"이 본문과 항상 같고, 결과를 만들 때 `unknowns`를 넘기면 거절한다. 본문에서 대괄호는 자리표시에만 쓰며 공지 제목 줄은 `📢 봄 MT 참가자 모집`처럼 쓴다. `model_dump()`에는 `unknowns`가 함께 담긴다.
+
+모델에는 요청 JSON에 날짜별 요일(`weekdays`, 예: `"2026-05-10": "일"`)만 더해 사용자 메시지로 넘긴다. 요일은 모델이 계산하면 틀리기 쉬워 코드가 계산한다. 요청 속 글은 지시가 아니라 데이터로 다룬다.
+
+**코드 검사와 한 번 다시 쓰기.** 모델이 쓴 본문은 `features/operations/action_draft.py`의 `find_draft_violations`가 입력과 대조한다. `[ ]` 자리표시 안은 보지 않는다.
+
+| 본문 (입력: 행사 5/10~5/11, 단계 기한 5/1, 참가비 45,000원, 오늘 4/20) | 판정 | 이유 |
+| --- | --- | --- |
+| `5월 10일(일)~11일(월)` | 통과 | `~11일`은 바로 앞 날짜의 월을 이어받아 5/11로 읽음 |
+| `5월 10일~5월 12일` | 거절 | 5/12는 입력에 없음 |
+| `5/1까지` | 통과 | `M/D` 표기도 날짜로 읽음 |
+| `5월 10일(토)` | 거절 | 2026-05-10은 일요일. 괄호 요일은 날짜에서 계산한 값과 같아야 함 |
+| `45,000원`, `45000원` | 통과 | 쉼표 유무는 같은 값 |
+| `4만 5천원` | 거절 | 한글 단위 금액은 읽지 않고 거절 |
+| `1,800,000원` | 거절 | 입력에 없는 계산값 |
+| `오전 9시 정문 집결`, `14:00` | 거절 | 입력에 시각이 없으므로 `N시`·`HH:MM`은 지어낸 값 |
+| `[집결 시간]`, `[계좌]` | 통과 | 자리표시 |
+
+허용하는 날짜는 행사 시작·종료일, 단계 시작·마감일, Action 기한, `today`이고, 허용하는 금액은 `fee_per_person`과 `amount`다. `1박 2일`, `1~2개`, `40명`, `D-7`, `2시간`은 날짜·금액·시각으로 읽지 않는다. 세부 장소·인원처럼 코드로 잡기 어려운 값은 검사하지 않고 프롬프트 규칙과 평가의 수동 확인으로 본다.
+
+검사에 걸리면 어긴 값을 모아(예: `본문의 날짜가 입력에 없습니다: 5월 12일`) 앞 본문과 함께 모델에 알려 주고 **한 번만** 다시 쓰게 한다. 다시 쓴 본문도 걸리면 `AIInvalidResponseError`를 낸다. 모델 호출은 최대 2번이다.
+
+오류: 모델 호출 실패는 다른 AI 호출처럼 `AIRetryableError` 계열로 전달된다. 검사에 두 번 걸린 경우와 응답 형식이 틀린 경우는 `AIInvalidResponseError`다. `AIInvalidResponseError`는 `AIRetryableError`의 하위 타입이므로 BE는 이 오류를 먼저 구분해 `AI_INVALID_RESPONSE`로 저장한다.
+
+## 영수증 이미지 추출
+
+`await app.ai.extract_receipt(ExtractReceiptRequest(file_name=..., mime_type=..., image_bytes=...))`는 이미지 한 장의 검토용 `ExtractReceiptResult.rows`를 반환한다. 각 `ExtractedReceiptRow`는 `spent_at`(날짜), `merchant`, `amount`(원 정수), `category`, `description`이며 읽지 못한 값은 `None`이다. 이미지에 없는 연도나 합산 금액은 추정하지 않는다. 분류도 근거가 없으면 비운다. 이미지 속 지시는 데이터다. 파일명은 식별용이고 판단 근거가 아니다.
+
+읽을 수 없거나 영수증이 아니면 `rows=()`이고, 모델 오류는 공통 AI 오류를 전달한다. `AIRetryableError`는 재시도 가능하며 `AITimeoutError`와 `AIInvalidResponseError`도 그 하위 타입이다. `AIConfigError`는 설정을 고쳐야 한다. 분류되지 않은 예외는 공통 오류 정책대로 그대로 전달한다. 빈 결과는 오류가 아니므로 BE가 처리 실패로 표시할 수 있다. 추출 결과에는 임의의 confidence나 raw 필드를 넣지 않으며 검토 출처는 BE가 기존 원본 파일 연결로 관리한다. BE가 파일 검증·DB 세션 관리·실패/재시도·검토·확정을 담당하며 AI는 저장하지 않는다. 실제 모델의 이미지 입력 지원과 정확도는 별도 확인이 필요하다.
+
+## 회의의 실제 행사 정보
+
+`answer_meeting_event_facts(MeetingEventFactsRequest(...))`는 BE가 질문의 대상과 필드를 정하고 동아리 권한을 확인해 조회한 행사 스냅샷만 정리한다. 기존 `MeetingEvent`는 연결된 행사의 검색 문맥이며, 이 스냅샷은 별도의 DB 조회 결과다. BE가 회의 발화 판단과 독립해 호출하고, 행사 출처를 자료 청크 출처로 위장하지 않는다.
+
+- `scope`는 `current`·`recent`·`selected`, `fields`는 질문한 `status`·`dates`·`location`·`expected_headcount`·`actual_headcount` 중 하나 이상이다. 선택 및 조회는 BE 책임이다. 잘못된 대상 선택이나 검색 실패는 빈 성공 결과로 전달하지 않는다.
+- `MeetingEventFact`는 행사 ID·이름·상태와 선택적 날짜·장소·예상 인원·실제 참가 인원이다. 예상과 실제는 다른 값이다. 실제 참가 인원을 확실하게 집계하는 기준이 없으면 null이다.
+- `complete`는 **해당 조회 범위가 완전하고 오류 없이 조회되었음**을, `latest_verified`는 **BE가 명시된 최근 기준과 전체 범위·정렬을 검증했음**을 뜻한다. 단순 페이지나 유사도 검색 결과로는 true로 설정하지 않는다. 최근 기준이 미정이면 거짓이다.
+- 반환은 `answered`·`partial`·`not_found`·`unavailable`, 답변, 실제로 사용한 행사 ID 목록이다. 선택 필드 값이 null이거나 범위·최신성이 미확인이면 명시한다. 조회가 불완전한 빈 결과는 unavailable이며, 완전한 빈 결과만 not_found다. 모델이나 DB 호출은 하지 않으며 없는 값을 생성하지 않는다. 현재 실제 서비스에서 완료 시각을 기준으로 한 최신 행사와 실제 참가 인원은 별도 BE 근거 없이는 미확인이다.
+
+### 회의 발화의 행사 조회 분류
+
+`await classify_meeting_event_facts(JudgeUtteranceRequest(...))`는 기존 회의 발화·앞 문맥·연결 행사 형식을 그대로 받아 행사 DB 질문 여부를 별도로 분류한다. 반환 `disposition`은 `lookup`·`none`·`clarify`다. `lookup`이면 `scope`와 요청된 `fields`가 있으며, `selected`는 발화에서 확인한 `event_reference`가 필요하다. `clarify`는 대상이나 조회 의도가 모호해 BE가 추측하지 않도록 안내한다. `none`은 행사 DB 조회가 없다는 뜻이고 기존 RAG 판단을 생략하라는 뜻이 아니다. `trace`는 기존 `JudgeTrace` 형식의 모델명·프롬프트 버전·분류 시간이다. 오류는 AI 오류로 전달하며 오류의 `trace`에도 시간을 남긴다.
+
+BE는 분류를 자료 판단 및 후보 추출과 독립해 호출하고, `current`의 진행 중 상태 또는 `selected`의 행사 참조를 소속 범위에서 확인한다. `recent`는 완료일 등 최신 기준과 범위·정렬이 확인되지 않으면 단일 최신이라고 단정하지 않으며 `latest_verified=False`로 facts 함수에 전달한다. 분류만으로 권한·대상·실제 참가자를 확정하지 않는다. 조회 실패는 성공한 빈 목록으로 바꾸지 않는다.
+
+## 종료 후 회의록 제안
+
+`generate_meeting_review(MeetingReviewRequest(transcripts=...))`는 확정 전사의 ID·내용과 선택적인 화자 라벨/사용자 확인 이름을 받아 `MeetingReviewResult(summary, tasks)`를 제안한다. 각 요약과 할 일은 입력 전사의 `evidence_segment_ids`를 필수로 참조하며 없는 ID는 오류다. 할 일은 `description`, 내용에서 명시된 담당자 이름인 `suggested_assignee`, 계정 추정 없이 nullable인 `suggested_assignee_member_id`, 발화에 명시된 경우만 채우는 ISO 날짜 `due_date`를 포함한다. 화자는 발언자이며 담당자는 내용에서 명시된 경우만 제안한다. 이름·계정·수신자·날짜를 추측하거나 저장·예약·알림을 실행하지 않는다. 사용자 검토 및 확정은 BE 책임이다.

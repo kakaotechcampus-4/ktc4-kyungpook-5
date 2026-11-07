@@ -1,0 +1,550 @@
+{
+ "step2-date-resume": {
+  "commit": "74ed0460e49de3ffff927b3d7bf897b759723a6a",
+  "dirty": false,
+  "started_at": "2026-11-04T15:32:38.177892+09:00",
+  "finished_at": "2026-11-04T15:35:07.652653+09:00",
+  "model": "gpt-5.6-luna",
+  "prompt_version": "planning-agent-v8",
+  "cases": {
+   "date_resume": {
+    "multi": {
+     "started": 10,
+     "passed": 7,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "resumed": 7
+      },
+      "failed": {
+       "deferred": 3
+      }
+     },
+     "responses_with_tools": {
+      "1": 9,
+      "2": 1
+     },
+     "bundled": 9,
+     "request_p50_seconds": 5.62,
+     "failures": [
+      {
+       "attempt_id": "resume-274-control-005-date_resume-multi",
+       "dates_handling": "deferred",
+       "conditions": [
+        {
+         "response": 1,
+         "status": "applied",
+         "changes": [
+          "headcount"
+         ],
+         "defer_topics": [
+          [
+           "dates",
+           "날짜는 다시 얘기하자"
+          ]
+         ],
+         "resume_topics": []
+        }
+       ],
+       "reply": "인원은 60명으로 변경했어요. 날짜 논의와 초안 생성은 보류해둘게요."
+      },
+      {
+       "attempt_id": "resume-274-control-006-date_resume-multi",
+       "dates_handling": "deferred",
+       "conditions": [
+        {
+         "response": 1,
+         "status": "applied",
+         "changes": [
+          "headcount"
+         ],
+         "defer_topics": [
+          [
+           "dates",
+           "날짜는 다시 얘기하자."
+          ]
+         ],
+         "resume_topics": []
+        }
+       ],
+       "reply": "인원은 60명으로 바꿨어요. 날짜 논의와 초안 생성은 보류해둘게요."
+      },
+      {
+       "attempt_id": "resume-274-control-008-date_resume-multi",
+       "dates_handling": "deferred",
+       "conditions": [
+        {
+         "response": 1,
+         "status": "applied",
+         "changes": [
+          "headcount"
+         ],
+         "defer_topics": [
+          [
+           "dates",
+           "날짜는 다시 얘기하자"
+          ]
+         ],
+         "resume_topics": []
+        }
+       ],
+       "reply": "인원은 60명으로 변경했어요. 날짜 논의와 초안 생성은 보류해둘게요."
+      }
+     ],
+     "resumed_but_reply_mentions_later": [
+      {
+       "attempt_id": "resume-274-control-002-date_resume-multi",
+       "reply": "인원은 60명으로 변경했어요. 날짜 논의는 나중으로 미뤄두고, 준비 순서 초안은 만들지 않을게요."
+      }
+     ]
+    },
+    "single": {
+     "started": 10,
+     "passed": 7,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "resumed": 7
+      },
+      "failed": {
+       "deferred": 3
+      }
+     },
+     "responses_with_tools": {
+      "2": 10
+     },
+     "bundled": 0,
+     "request_p50_seconds": 6.55,
+     "failures": [
+      {
+       "attempt_id": "resume-274-control-002-date_resume-single",
+       "dates_handling": "deferred",
+       "conditions": [
+        {
+         "response": 1,
+         "status": "applied",
+         "changes": [
+          "headcount"
+         ],
+         "defer_topics": [
+          [
+           "dates",
+           "날짜는 다시 얘기하자"
+          ]
+         ],
+         "resume_topics": []
+        }
+       ],
+       "reply": "인원은 60명으로 변경했어요. 날짜는 나중에 다시 논의하고, 준비 순서 초안은 지금 만들지 않을게요."
+      },
+      {
+       "attempt_id": "resume-274-control-004-date_resume-single",
+       "dates_handling": "deferred",
+       "conditions": [
+        {
+         "response": 1,
+         "status": "applied",
+         "changes": [
+          "headcount"
+         ],
+         "defer_topics": [
+          [
+           "dates",
+           "날짜는 다시 얘기하자"
+          ]
+         ],
+         "resume_topics": []
+        }
+       ],
+       "reply": "인원을 60명으로 변경했어요. 날짜는 나중에 다시 논의하고, 준비 순서 초안은 만들지 않을게요."
+      },
+      {
+       "attempt_id": "resume-274-control-009-date_resume-single",
+       "dates_handling": "deferred",
+       "conditions": [
+        {
+         "response": 1,
+         "status": "applied",
+         "changes": [
+          "headcount"
+         ],
+         "defer_topics": [
+          [
+           "dates",
+           "날짜는 다시 얘기하자"
+          ]
+         ],
+         "resume_topics": []
+        }
+       ],
+       "reply": "인원은 60명으로 변경했어요. 날짜는 나중에 다시 논의하고, 준비 순서 초안은 만들지 않을게요."
+      }
+     ],
+     "resumed_but_reply_mentions_later": []
+    }
+   }
+  }
+ },
+ "step3-controls": {
+  "commit": "03c2ddd36be66c31aefd88864c62d2112725b92f",
+  "dirty": false,
+  "started_at": "2026-11-04T15:56:34.271943+09:00",
+  "finished_at": "2026-11-04T16:14:33.768335+09:00",
+  "model": "gpt-5.6-luna",
+  "prompt_version": "planning-agent-v8",
+  "cases": {
+   "context_defer": {
+    "multi": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "deferred": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "2": 1,
+      "1": 9
+     },
+     "bundled": 9,
+     "request_p50_seconds": 5.98,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    },
+    "single": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "deferred": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "2": 10
+     },
+     "bundled": 0,
+     "request_p50_seconds": 7.36,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    }
+   },
+   "date_defer": {
+    "multi": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "deferred": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "1": 10
+     },
+     "bundled": 10,
+     "request_p50_seconds": 5.68,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    },
+    "single": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "deferred": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "2": 10
+     },
+     "bundled": 0,
+     "request_p50_seconds": 6.98,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    }
+   },
+   "date_resume": {
+    "multi": {
+     "started": 10,
+     "passed": 8,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "resumed": 8
+      },
+      "failed": {
+       "deferred": 2
+      }
+     },
+     "responses_with_tools": {
+      "1": 8,
+      "2": 2
+     },
+     "bundled": 8,
+     "request_p50_seconds": 5.92,
+     "failures": [
+      {
+       "attempt_id": "controls-274-control-005-date_resume-multi",
+       "dates_handling": "deferred",
+       "conditions": [
+        {
+         "response": 1,
+         "status": "applied",
+         "changes": [
+          "headcount"
+         ],
+         "defer_topics": [
+          [
+           "dates",
+           "날짜는 다시 얘기하자"
+          ]
+         ],
+         "resume_topics": []
+        }
+       ],
+       "reply": "인원은 60명으로 변경했어요. 날짜 논의와 준비 순서 초안 생성은暂시 미뤄둘게요."
+      },
+      {
+       "attempt_id": "controls-274-control-010-date_resume-multi",
+       "dates_handling": "deferred",
+       "conditions": [
+        {
+         "response": 1,
+         "status": "applied",
+         "changes": [
+          "headcount"
+         ],
+         "defer_topics": [
+          [
+           "dates",
+           "날짜는 다시 얘기하자"
+          ]
+         ],
+         "resume_topics": []
+        }
+       ],
+       "reply": "인원은 60명으로 변경했어요. 날짜 논의와 초안 생성은 보류해둘게요."
+      }
+     ],
+     "resumed_but_reply_mentions_later": [
+      {
+       "attempt_id": "controls-274-control-008-date_resume-multi",
+       "reply": "인원은 60명으로 변경했어요. 날짜는 나중에 다시 논의하고, 준비 순서 초안은 만들지 않을게요."
+      }
+     ]
+    },
+    "single": {
+     "started": 10,
+     "passed": 9,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "resumed": 9
+      },
+      "failed": {
+       "deferred": 1
+      }
+     },
+     "responses_with_tools": {
+      "2": 10
+     },
+     "bundled": 0,
+     "request_p50_seconds": 6.87,
+     "failures": [
+      {
+       "attempt_id": "controls-274-control-004-date_resume-single",
+       "dates_handling": "deferred",
+       "conditions": [
+        {
+         "response": 1,
+         "status": "applied",
+         "changes": [
+          "headcount"
+         ],
+         "defer_topics": [
+          [
+           "dates",
+           "날짜는 다시 얘기하자"
+          ]
+         ],
+         "resume_topics": []
+        }
+       ],
+       "reply": "인원은 60명으로 변경했어요. 날짜 논의와 준비 순서 초안 생성은 나중으로 미뤄둘게요."
+      }
+     ],
+     "resumed_but_reply_mentions_later": [
+      {
+       "attempt_id": "controls-274-control-003-date_resume-single",
+       "reply": "인원은 60명으로 변경했어요. 날짜는 나중에 다시 논의하고, 준비 순서 초안은 만들지 않을게요."
+      },
+      {
+       "attempt_id": "controls-274-control-006-date_resume-single",
+       "reply": "인원은 60명으로 변경했어요. 날짜는 나중에 다시 논의하고, 준비 순서 초안은 만들지 않을게요."
+      }
+     ]
+    }
+   },
+   "date_resume_clear": {
+    "multi": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "resumed": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "1": 8,
+      "2": 2
+     },
+     "bundled": 8,
+     "request_p50_seconds": 5.95,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    },
+    "single": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "resumed": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "2": 10
+     },
+     "bundled": 0,
+     "request_p50_seconds": 6.8,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    }
+   },
+   "date_resume_correction": {
+    "multi": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "resumed": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "1": 10
+     },
+     "bundled": 0,
+     "request_p50_seconds": 4.43,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    },
+    "single": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "resumed": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "1": 10
+     },
+     "bundled": 0,
+     "request_p50_seconds": 4.32,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    }
+   },
+   "multiple_defer": {
+    "multi": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "deferred": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "1": 10
+     },
+     "bundled": 10,
+     "request_p50_seconds": 6.41,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    },
+    "single": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "deferred": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "2": 10
+     },
+     "bundled": 0,
+     "request_p50_seconds": 7.1,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    }
+   },
+   "paraphrase": {
+    "multi": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "omitted": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "1": 10
+     },
+     "bundled": 10,
+     "request_p50_seconds": 5.28,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    },
+    "single": {
+     "started": 10,
+     "passed": 10,
+     "errors": {},
+     "dates_handling": {
+      "passed": {
+       "omitted": 10
+      },
+      "failed": {}
+     },
+     "responses_with_tools": {
+      "2": 10
+     },
+     "bundled": 0,
+     "request_p50_seconds": 7.45,
+     "failures": [],
+     "resumed_but_reply_mentions_later": []
+    }
+   }
+  }
+ }
+}

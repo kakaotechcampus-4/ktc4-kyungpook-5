@@ -61,7 +61,7 @@ def test_generation_attaches_names_without_asking_model_or_changing_selection(in
     assert len(model.calls) == result.model_calls == 1
     # name은 최종 응답의 필드다. LLM이 작성하는 구조화 출력에는 추가하지 않는다.
     schema = model.calls[0][1].model_json_schema()
-    assert set(schema['$defs']['ExcludedPlanStep']['properties']) == {'code', 'reason'}
+    assert set(schema['$defs']['ModelExcludedStep']['properties']) == {'code', 'reason'}
     assert model.calls[0][1] is PlanComposition
 
 

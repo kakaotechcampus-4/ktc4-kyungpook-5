@@ -1,0 +1,5101 @@
+{
+  "model": "gpt-5.6-luna",
+  "commit": "f5e823515b3ea1e6c2723a983f24a148fa71ebbf",
+  "product_code_dirty": false,
+  "rounds": 10,
+  "started_at": "2026-11-07T01:29:22+0900",
+  "attempts": [
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G2",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5099.5,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 11812.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11812.8,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G2",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 1.0,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 4640.5,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 4863.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 5208.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 5769.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 6059.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 6501.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 7003.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 7309.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 7872.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 8661.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 9042.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 9252.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 9648.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 10025.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 12420.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 12420.8,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G1",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 3979.8,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 8193.2,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 14994.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 18161.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "warmup",
+      "round": 0,
+      "case": "G1",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2244.8,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6151.4,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6194.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 6528.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 6948.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 7484.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 7922.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 8419.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 8755.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 9331.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 9884.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 10376.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 10753.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 11125.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 11636.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 14122.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 17848.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G2",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3835.2,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 10378.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 10378.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G2",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3883.8,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3911.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 4287.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 4554.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 5044.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 5424.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 5886.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 6322.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 6998.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 7509.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 7960.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 8245.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 8670.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 9141.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 11588.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11588.7,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G1",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2405.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 7322.8,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 14474.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 17913.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 1,
+      "case": "G1",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2274.0,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5873.0,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5924.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 6203.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 6592.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 7132.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 7546.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 7976.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 8247.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 8903.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 9551.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 9921.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 10178.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 10573.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 11013.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 13604.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 16711.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G1",
+      "path": "after",
+      "error": null,
+      "generation_status": "failed",
+      "preview_codes": null,
+      "excluded_codes": null,
+      "events": [
+        {
+          "ms": 2217.1,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5258.4,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5332.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 5660.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 6876.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 7219.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 7840.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 8053.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 8103.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 8159.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 8733.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 9108.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 9375.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 9758.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 10173.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 13426.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "failed",
+          "step": null
+        },
+        {
+          "ms": 17282.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G1",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2149.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6426.8,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 14818.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 17962.7,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G2",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3959.8,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3986.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 4312.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 4734.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 5218.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 5635.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 6008.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 6387.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 6963.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 7635.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 8009.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 8284.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 8674.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 9125.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 12175.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 12175.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 2,
+      "case": "G2",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3968.5,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 11214.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11215.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G2",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 4997.2,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 12690.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 12691.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G2",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 4094.0,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 4150.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 4429.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 4788.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 5315.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 5741.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 6509.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 6993.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 7166.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 7547.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 7899.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 8150.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 8490.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 8854.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 11139.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11140.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G1",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 3037.8,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6950.7,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 14632.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 18322.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 3,
+      "case": "G1",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2584.0,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6681.3,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6746.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 7087.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 7381.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 7852.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 8222.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 8654.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 8980.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 9470.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 10096.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 10471.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 10736.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 11134.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 11591.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 13835.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 17306.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G1",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2068.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5579.5,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5835.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 6355.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 6478.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 7002.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 7427.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 7944.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 8367.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 8919.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 9550.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 9947.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 10231.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 10598.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 11029.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 14077.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 17364.1,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G1",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2493.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6074.6,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 14217.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 17072.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G2",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3572.4,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3580.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 3821.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 4112.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 4578.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 4978.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 5385.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 5626.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 6130.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 6651.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 6988.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 7223.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 7568.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 7977.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 10223.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 10223.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 4,
+      "case": "G2",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3624.6,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 11696.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11696.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G2",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3316.5,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 10526.1,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 10526.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G2",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5519.8,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5592.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 5877.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 6207.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 6759.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 7201.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 7617.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 8008.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 8580.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 9176.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 9669.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 10056.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 10318.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 10770.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 13471.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 13471.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G1",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2354.4,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 7482.1,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 15070.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 18232.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 5,
+      "case": "G1",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 1960.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6992.9,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 7022.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 7463.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 7818.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 8378.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 8755.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 9198.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 9537.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 10278.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 10868.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 11288.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 11598.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 12016.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 12553.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 16053.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 20451.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G1",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2637.0,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6319.0,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6321.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 6580.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 6908.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 7380.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 7807.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 8148.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 8477.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 9156.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 9783.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 10213.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 10510.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 10873.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 11310.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 14082.0,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 16970.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G1",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2305.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5378.2,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 12263.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 15675.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G2",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3586.0,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3660.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 3942.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 4233.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 4841.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 5258.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 5754.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 6091.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 6991.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 7228.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 7624.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 7847.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 8206.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 8608.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 10863.1,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 10863.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 6,
+      "case": "G2",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [
+        "CONFIRM_DETAILS"
+      ],
+      "events": [
+        {
+          "ms": 0.3,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3322.4,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 11588.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11589.1,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G2",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.5,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3493.3,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 10394.8,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 10395.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G2",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3944.8,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3947.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 4214.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 4478.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 4975.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 5450.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 5853.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 6202.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 6731.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 7324.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 7837.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 8149.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 8569.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 9087.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 11645.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11646.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G1",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2368.8,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6411.8,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 14005.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 17680.4,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 7,
+      "case": "G1",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2446.9,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 7035.1,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 7046.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 7280.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 7587.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 8030.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 8431.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 8911.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 9103.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 9577.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 10028.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 10404.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 10693.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 11152.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 11529.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 13778.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 17823.1,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G1",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 1948.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5099.2,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5126.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 5461.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 5765.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 6264.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 6592.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 7027.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 7320.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 7910.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 8411.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 8777.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 9034.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 9460.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 9863.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 11979.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 15155.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G1",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2305.9,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6080.9,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 13585.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 17568.0,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G2",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 4516.3,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 4776.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 5078.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 5133.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 5607.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 6011.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 6312.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 6687.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 7143.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 7767.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 8177.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 8444.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 8786.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 9269.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 11467.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11467.9,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 8,
+      "case": "G2",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 4146.3,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 12009.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 12009.5,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G2",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 4344.2,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 11603.6,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11604.0,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G2",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3815.6,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 4001.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 4429.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 5052.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 5234.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 5746.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 6213.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 6436.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 7101.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 7771.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 8234.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 8490.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 8891.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 9400.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 11903.2,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11903.6,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G1",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2923.9,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6131.7,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 12932.5,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 17230.3,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 9,
+      "case": "G1",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2546.1,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 7774.0,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 8029.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 8410.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 8480.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 9113.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 9485.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 9883.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 10195.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 10860.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 11445.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 11937.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 12116.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 12496.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 12910.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 15690.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 19243.1,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G1",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2275.2,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5342.5,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 5367.6,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 5606.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 5967.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 6548.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 6798.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 7187.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 7520.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 8019.4,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 8508.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 8878.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 9083.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 9493.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 9880.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 12390.4,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 16541.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G1",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 2135.6,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 6959.1,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 16736.9,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 20879.2,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G2",
+      "path": "after",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.7,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3008.8,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 3238.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 0,
+            "code": "ASSIGN_ROLES"
+          }
+        },
+        {
+          "ms": 3573.0,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 1,
+            "code": "RESEARCH_VENUE"
+          }
+        },
+        {
+          "ms": 3783.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 2,
+            "code": "DEMAND_SURVEY"
+          }
+        },
+        {
+          "ms": 4224.3,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 3,
+            "code": "RECRUIT_NOTICE"
+          }
+        },
+        {
+          "ms": 4574.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 4,
+            "code": "CHECK_RESPONSES"
+          }
+        },
+        {
+          "ms": 5067.8,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 5,
+            "code": "CONFIRM_DETAILS"
+          }
+        },
+        {
+          "ms": 5394.5,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 6,
+            "code": "BOOK_VENUE"
+          }
+        },
+        {
+          "ms": 6052.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 7,
+            "code": "COLLECT_FEES"
+          }
+        },
+        {
+          "ms": 6563.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 8,
+            "code": "PRE_EVENT_NOTICE"
+          }
+        },
+        {
+          "ms": 7010.7,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 9,
+            "code": "EVENT_DAY"
+          }
+        },
+        {
+          "ms": 7226.9,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 10,
+            "code": "SETTLE_EXPENSES"
+          }
+        },
+        {
+          "ms": 7634.1,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 11,
+            "code": "REFUND_FEES"
+          }
+        },
+        {
+          "ms": 8076.2,
+          "kind": "progress",
+          "progress_kind": "generation_step",
+          "status": "running",
+          "step": {
+            "index": 12,
+            "code": "RECORD_FEEDBACK"
+          }
+        },
+        {
+          "ms": 11332.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11333.0,
+          "kind": "end"
+        }
+      ]
+    },
+    {
+      "phase": "measurement",
+      "round": 10,
+      "case": "G2",
+      "path": "before",
+      "error": null,
+      "generation_status": "generated",
+      "preview_codes": [
+        "ASSIGN_ROLES",
+        "RESEARCH_VENUE",
+        "DEMAND_SURVEY",
+        "RECRUIT_NOTICE",
+        "CHECK_RESPONSES",
+        "CONFIRM_DETAILS",
+        "BOOK_VENUE",
+        "COLLECT_FEES",
+        "PRE_EVENT_NOTICE",
+        "EVENT_DAY",
+        "SETTLE_EXPENSES",
+        "REFUND_FEES",
+        "RECORD_FEEDBACK"
+      ],
+      "excluded_codes": [],
+      "events": [
+        {
+          "ms": 0.1,
+          "kind": "progress",
+          "progress_kind": "generation_started",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 4768.0,
+          "kind": "progress",
+          "progress_kind": "generation_writing",
+          "status": "running",
+          "step": null
+        },
+        {
+          "ms": 11643.7,
+          "kind": "progress",
+          "progress_kind": "generation_finished",
+          "status": "completed",
+          "step": null
+        },
+        {
+          "ms": 11644.1,
+          "kind": "end"
+        }
+      ]
+    }
+  ],
+  "finished_at": "2026-11-07T01:40:49+0900"
+}

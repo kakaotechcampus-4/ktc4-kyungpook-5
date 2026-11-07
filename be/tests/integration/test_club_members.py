@@ -2,15 +2,13 @@
 
 import uuid
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 
 from app.core.enums import MemberRole, MemberStatus
 from app.db import session as db_session
-from app.models.clubs import Invitation, Member
+from app.models.clubs import Member
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
 
@@ -60,13 +58,11 @@ async def test_초대한_사람은_이메일로_INVITED로_보인다(
     client: TestClient, app_db: None
 ) -> None:
     headers, club_id = _owner_with_club(client)
-    async with db_session.get_sessionmaker()() as session:
-        owner = await session.scalar(select(Member).where(Member.club_id == club_id))
-        session.add(Invitation(club_id=club_id, email="new-officer@example.com",
-                               role=MemberRole.MANAGER, token_hash=uuid.uuid4().hex,
-                               expires_at=datetime.now(UTC) + timedelta(days=1),
-                               invited_by=owner.id))
-        await session.commit()
+    client.post(
+        f"/api/v1/clubs/{club_id}/invitations",
+        headers=headers,
+        json={"email": "new-officer@example.com", "role": "MANAGER"},
+    )
 
     res = client.get(f"/api/v1/clubs/{club_id}/members", headers=headers)
 

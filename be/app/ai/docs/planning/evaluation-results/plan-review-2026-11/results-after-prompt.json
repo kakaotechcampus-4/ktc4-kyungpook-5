@@ -1,0 +1,164 @@
+[
+  {
+    "id": "survey_removed",
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "DEMAND_SURVEY"
+      ],
+      "must_not_mention_codes": []
+    },
+    "latency_ms": 4059,
+    "error": null,
+    "result": {
+      "outcome": "no_issues",
+      "items": []
+    },
+    "checks": {
+      "outcome_match": false,
+      "mentions_match": false,
+      "kind_match": null
+    },
+    "passed": false
+  },
+  {
+    "id": "book_before_confirm",
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "BOOK_VENUE",
+        "CONFIRM_DETAILS"
+      ],
+      "must_not_mention_codes": []
+    },
+    "latency_ms": 5583,
+    "error": null,
+    "result": {
+      "outcome": "issues",
+      "items": [
+        {
+          "step_codes": [
+            "BOOK_VENUE",
+            "CONFIRM_DETAILS"
+          ],
+          "kind": "order",
+          "message": "장소 예약이 인원·세부 사항 확정보다 앞서도록 바뀌어, 현재 잠정인 참가 인원과 예약 조건이 어긋날 가능성이 걱정돼요. 특히 최종 예약을 확정하는 단계라면 확정된 인원이 전제가 되는지 확인해야 해요.",
+          "suggestion": "가평 펜션 예약을 잠정으로 진행하는 경우라면 최종 확정 시점과 변경 가능 여부를 확인하고, 그렇지 않다면 인원·세부 사항 확정 후 예약하도록 진행해요."
+        }
+      ]
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": true
+  },
+  {
+    "id": "fee_deadline_after_event",
+    "expect": {
+      "outcome": "issues",
+      "must_mention_codes": [
+        "COLLECT_FEES"
+      ],
+      "must_not_mention_codes": [],
+      "expected_kind": "schedule"
+    },
+    "latency_ms": 4584,
+    "error": null,
+    "result": {
+      "outcome": "issues",
+      "items": [
+        {
+          "step_codes": [
+            "COLLECT_FEES",
+            "EVENT_DAY"
+          ],
+          "kind": "schedule",
+          "message": "참가비 수납 마감일을 2026-11-25로 늦춰 행사 종료일인 2026-11-22보다 뒤로 설정했어요. 행사 전에 참가비를 모두 받으려는 계획이었다면 행사 후에도 미납 수납이 가능해지는 점이 걱정돼요.",
+          "suggestion": "행사 후 수납을 의도한 것이 아니라면 행사 전 수납 마감일과 미납 참가자의 행사 참여 기준을 확인해 보세요."
+        }
+      ]
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": true
+    },
+    "passed": true
+  },
+  {
+    "id": "ai_excluded_readded",
+    "expect": {
+      "outcome": "any",
+      "must_mention_codes": [],
+      "must_not_mention_codes": [],
+      "manual_check": "무료 행사에 환불 단계를 다시 넣은 의도를 존중하는 말투인지 확인"
+    },
+    "latency_ms": 2476,
+    "error": null,
+    "result": {
+      "outcome": "no_issues",
+      "items": []
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": true
+  },
+  {
+    "id": "harmless_reorder",
+    "expect": {
+      "outcome": "no_issues",
+      "must_mention_codes": [],
+      "must_not_mention_codes": []
+    },
+    "latency_ms": 1480,
+    "error": null,
+    "result": {
+      "outcome": "no_issues",
+      "items": []
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": true
+  },
+  {
+    "id": "undecided_dates",
+    "expect": {
+      "outcome": "any",
+      "must_mention_codes": [],
+      "must_not_mention_codes": [],
+      "manual_check": "날짜 미정·인원 잠정이라고 분명히 말하는지, 확정 사실처럼 쓰지 않는지 확인"
+    },
+    "latency_ms": 6609,
+    "error": null,
+    "result": {
+      "outcome": "issues",
+      "items": [
+        {
+          "step_codes": [
+            "DEMAND_SURVEY",
+            "CHECK_RESPONSES",
+            "CONFIRM_DETAILS",
+            "BOOK_VENUE"
+          ],
+          "kind": "missing_step",
+          "message": "수요 조사를 빼면, 약 25명이라는 잠정 인원을 행사 전에 별도로 확인하는 단계가 없어져요. 다만 모집 공지와 신청 현황 확인에서 실제 참여 의사를 확인하고, 인원·세부 사항 확정 후 장소를 예약한다면 수요 조사를 생략해도 보완될 수 있어요.",
+          "suggestion": "모집 공지와 신청 현황 확인에서 잠정 인원을 검증한 뒤 그 결과를 반영해 세부 사항을 확정하고 장소를 예약하는지 확인해 보세요."
+        }
+      ]
+    },
+    "checks": {
+      "outcome_match": true,
+      "mentions_match": true,
+      "kind_match": null
+    },
+    "passed": true
+  }
+]

@@ -118,6 +118,13 @@ class ModelFixture:
         self.lookup_error = lookup_error
         self.calls: list[str] = []
 
+    async def decide(self, state: str) -> float:
+        """Jev 대신 판단한다. 조회면 임계값(0.35)보다 높은 확률을 낸다"""
+        self.calls.append("Jev")
+        if self.lookup_error:
+            raise ai.AIRetryableError("raw-sensitive-model-failure")
+        return 0.9 if self.needs_lookup else 0.1
+
     def with_structured_output(self, schema, *, method, include_raw):
         assert method == "json_schema" and include_raw is True
         fixture = self
@@ -125,12 +132,9 @@ class ModelFixture:
         class Structured:
             async def ainvoke(self, messages):
                 fixture.calls.append(schema.__name__)
-                if schema.__name__ == "JudgeOutput":
-                    if fixture.lookup_error:
-                        raise ai.AIRetryableError("raw-sensitive-model-failure")
-                    parsed = schema.model_validate({
-                        "needs_lookup": fixture.needs_lookup, "query": QUESTION,
-                    })
+                if schema.__name__ == "QueryOutput":
+                    # Jev가 조회로 본 발화에만 luna에게 검색어를 받는다
+                    parsed = schema.model_validate({"query": QUESTION})
                 elif schema.__name__ == "TaskExtractionResult":
                     request = json.loads(messages[1].content)
                     assert request["timezone"] == "Asia/Seoul"
@@ -177,6 +181,7 @@ async def test_public_judge_records_keyword_persists_result_and_get_contract(
     # 조회 성공과 아직 없는 독립 추출의 부분 실패를 별도로 고정한다.
     monkeypatch.delattr(ai, "TaskExtractionRequest", raising=False)
     model, embedding = ModelFixture(needs_lookup), EmbeddingFixture()
+    monkeypatch.setattr(nodes, "call_jev", model.decide)
     monkeypatch.setattr(nodes, "get_judge_model", lambda: model)
     monkeypatch.setattr(lookup, "get_assess_model", lambda: model)
     monkeypatch.setattr(llm, "get_embeddings", lambda: embedding)
@@ -204,7 +209,8 @@ async def test_public_judge_records_keyword_persists_result_and_get_contract(
     result = response.json()["data"]
     assert result["status"] == "PARTIAL" and result["meetingId"] == case["meeting"]
     assert result["sources"] == [{"sourceId": case["segment"], "sourceVersion": 1}]
-    assert result["modelVersion"] == "bridge-model-fixture"
+    # 판단 모델은 설정(AI_MODEL)이 아니라 코드에 고정한 Jev 버전이다(#255)
+    assert result["modelVersion"] == "typesafe/jev-1.14"
     if needs_lookup:
         assert (result["route"], result["kind"], result["question"]) == ("RAG", "ANSWER", QUESTION)
         assert result["output"] == ANSWER
@@ -212,13 +218,14 @@ async def test_public_judge_records_keyword_persists_result_and_get_contract(
             "recordId": case["record"], "fileName": case["fileName"],
             "location": ai.SourceLocation(label="2행 · 숙소비").model_dump(mode="json"),
         }]
-        assert model.calls == ["JudgeOutput", "EvidenceAssessment"]
+        assert model.calls == ["Jev", "QueryOutput", "EvidenceAssessment"]
         assert embedding.calls == [[QUESTION]]
     else:
         assert (result["route"], result["kind"]) == ("NONE", "NO_LOOKUP")
         assert result["question"] is None and result["output"] is None
         assert result["citations"] == []
-        assert model.calls == ["JudgeOutput"] and embedding.calls == []
+        # 조회 아닌 말에는 luna를 부르지 않는다
+        assert model.calls == ["Jev"] and embedding.calls == []
     listed = client.get(url, headers=case["headers"], params={"meetingId": case["meeting"]})
     assert listed.status_code == 200 and listed.json()["data"] == [result]
     # GET은 새 DB 세션이다. 결과가 메모리에만 남거나 후보/예약이 자동 생성되면 안 된다.
@@ -259,6 +266,7 @@ async def test_public_extraction_persists_two_review_candidates_independently_of
         lookup_outcome == "rag", suggestions=drafts, lookup_error=lookup_outcome == "error",
     )
     embedding = EmbeddingFixture()
+    monkeypatch.setattr(nodes, "call_jev", model.decide)
     monkeypatch.setattr(nodes, "get_judge_model", lambda: model)
     monkeypatch.setattr(lookup, "get_assess_model", lambda: model)
     monkeypatch.setattr(llm, "get_chat_model", lambda: model)
@@ -288,7 +296,7 @@ async def test_public_extraction_persists_two_review_candidates_independently_of
     evidence = [{"sourceId": case["segment"], "sourceVersion": 1}]
     assert result["sources"] == evidence and result["meetingId"] == case["meeting"]
     assert {"tool": "tasks.extract", "status": "OK", "resultCount": 2} in result["toolCalls"]
-    assert model.calls.count("TaskExtractionResult") == model.calls.count("JudgeOutput") == 1
+    assert model.calls.count("TaskExtractionResult") == model.calls.count("Jev") == 1
     if lookup_outcome == "error":
         assert job["status"] == "FAILED" and result["status"] == "PARTIAL"
         assert (result["route"], result["kind"]) == ("ERROR", "FAILED")

@@ -1,6 +1,6 @@
 # 운영해 · AI 모듈
 
-> **현재 행사계획:** `app.ai.chat_planning`과 `generate_planning_preview`가 조건 대화와 최초 계획 생성을 처리합니다. 제품 BE는 동아리 범위의 실제 검색 port를 주입하고, 사실·출처를 HTTP로 전달하며 마지막 조회도 DB에서 복원합니다(#235, #236). 제품 출처 카드의 FE 연결은 후속입니다. [P1 전달 안내](docs/planning/p1-handoff.md) → [공개 계약](docs/planning/p1-public-contract.md) → [코드 따라가기](docs/planning/walkthrough.md) 순서로 읽습니다.
+> **현재 행사계획:** `app.ai.chat_planning`과 `generate_planning_preview`가 조건 대화와 최초 계획 생성을 처리합니다. 제품 BE는 동아리 범위의 실제 검색 port를 주입하고, 사실·출처를 HTTP로 전달하며 마지막 조회도 DB에서 복원합니다(#235, #236). 제품 FE는 현재 조건과 구분된 참고 카드에서 누적 조회·출처·원본 다운로드를 제공합니다. 격리 DB의 제품 경로를 합성 파일과 고정 모델·임베딩 응답으로 검증했으며, 실제 모델·일반 검색 품질·운영 배포 준비 완료를 뜻하지 않습니다. [P1 전달 안내](docs/planning/p1-handoff.md) → [공개 계약](docs/planning/p1-public-contract.md) → [코드 따라가기](docs/planning/walkthrough.md) 순서로 읽습니다.
 
 AI 팀이 담당하는 BE 내부 모듈입니다. 
 행사 계획·수정, 과거 기록 검색, 운영 중 변경에 대한 대응안 제안, 회의 중 기록 조회를 담당합니다.
@@ -19,6 +19,7 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 - [AI 오류 타입](docs/errors.md): 오류 분류와 모델 호출 오류 변환 기준
 - [기록 색인·검색 평가 기록](docs/retrieval-evaluation.md): 청킹·임베딩 측정값과 관찰
 - [회의 어시스턴트 측정 기록](docs/meeting-evaluation.md): 판단 모델·Whisper·지연 측정값과 관찰
+- [운영 기능 측정 기록](docs/operations-evaluation.md): 운영 Action 본문 초안의 코드 검사 통과·수동 확인·시간
 - [계획 단계 카탈로그](docs/planning/legacy/step-catalog.md): 계획안의 단계·행동 기준 목록
 - [작업 규칙](AGENTS.md): 요구사항 → Issue → 구현 → PR 협업 절차
 - [이전 기록](docs/migration.md): 모듈 이전 내역과 BE 팀 후속 작업
@@ -31,13 +32,14 @@ AI 팀이 담당하는 BE 내부 모듈입니다.
 | 최초 계획 생성 | 채팅의 생성 Tool과 버튼 함수가 `generation/`의 공통 생성 Graph 사용 |
 | 공개 경계 | 루트 `contracts.py`, `facade.py`와 `public_workflow.py`에 구현 |
 | 상태 이어가기 | `state_codec.py`가 대화와 Tool 이력, 권유, 마지막 초안을 JSON으로 변환하고 복원 |
-| 제품 연결 | BE의 권한 검사·실제 검색 port·DB 저장·중복/버전 검사·검색 상세 HTTP/복원 연결. 제품 출처 카드는 FE 후속 |
-| P2 편집과 AI 검토 | [#177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177)에서 협의 중이며 AI 검토 미구현 |
+| 제품 연결 | BE의 권한 검사·실제 검색 port·DB 저장·중복/버전 검사·검색 상세 HTTP/복원과 누적 조회 카드·인증 원본 다운로드 연결. 로컬 격리 환경 검증 범위는 [인계 안내 §10](docs/planning/p1-handoff.md#10-지금-어디까지-확인했나요) 참고 |
+| P2 수정 후 AI 검토 | `app.ai.review_plan_edit`가 수정 내역을 검토해 걱정되는 점을 돌려줌([#177](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/177)). BE·FE 연결 완료, 자동 보완안 적용은 미구현 |
+| 운영 Action 본문 초안 | `app.ai.draft_action_content`가 공지·발송 Action 하나의 본문을 쓰고, 날짜·요일·금액·시각을 입력과 대조해 걸리면 한 번 다시 쓰게 함([#333](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/333), [평가](docs/operations-evaluation.md)). BE 신호·저장(#334)과 FE 표시(#335)는 진행 중 |
 | 운영 Agent | 전체 신호 대기와 운영 흐름은 설계 단계 |
 
 P1은 행사 조건 대화와 최초 생성 요청까지입니다. 단계 제외와 복원, 순서 변경은 P2 범위입니다. 테스트 UI는 `tests/ui/planning/`의 독립 앱이고 제품 `fe/`를 수정하거나 참조하지 않습니다. 이전 고정 추출과 질문 조립 코드는 `features/planning/legacy/`에 보존하며 현재 공개 P1에서 호출하지 않습니다.
 
-현재 이력 한도는 Tool 메시지 포함 60개이며 자동 압축은 없습니다. 한도 안내 정보는 `view.history_usage`로 제공합니다(#194, 제품 전달 계약은 협의 전). 압축 설계는 #195의 후속 작업입니다. #196의 [응답 시간 기준](docs/planning/latency-baseline.md)에 맞춰 반복 관측과 집계를 구현하고 실제 모델 3세션의 본측정 120건과 준비 실행 12건을 기록했습니다. 채팅 생성 성공 p50/p95는 17.066/19.754초, 버튼 생성은 11.828/13.293초였습니다. 실패와 조건 변경의 부가 상태 불일치도 보존했으며 전체 품질이나 완료 시간 보장은 아닙니다. [측정 원본과 해석](docs/planning/evaluation-results/planning-latency-real-2026-10-28/README.md)을 확인합니다.
+현재 이력 한도는 Tool 메시지 포함 60개이며 자동 압축은 없습니다. 한도 안내 정보는 `view.history_usage`로 제공합니다(#194, 제품 전달 계약은 협의 전). 압축 설계는 #195의 후속 작업입니다. #196의 [응답 시간 기준](docs/planning/latency-baseline.md)에 맞춰 반복 관측과 집계를 구현하고 실제 모델 3세션의 본측정 120건과 준비 실행 12건을 기록했습니다. 채팅 생성 성공 p50/p95는 17.066/19.754초, 버튼 생성은 11.828/13.293초였습니다. 실패와 조건 변경의 부가 상태 불일치도 보존했으며 전체 품질이나 완료 시간 보장은 아닙니다. [측정 원본과 해석](docs/planning/evaluation-results/planning-latency-real-2026-10-28/README.md)을 확인합니다. #263에서 모델 호출별 토큰도 기록해 11-03에 기준값을 다시 쟀습니다(채팅 생성 성공 p50 25.462초, 버튼 18.826초, 생성 출력의 약 37%가 추론). 지금 기준값은 [11-03 측정 기록](docs/planning/evaluation-results/planning-latency-tokens-2026-11-03/README.md)입니다. #269에서 대화 모델의 실행 문맥을 입력 맨 끝으로 옮겨(`planning-agent-v8`) 대화 호출에도 입력 캐시가 걸리게 했고, 대화 호출 1번의 p50이 3.25초에서 2.91초로 줄었습니다([11-04 측정 기록](docs/planning/evaluation-results/planning-agent-context-layout-2026-11-04/README.md)). #264에서 생성 모델의 추론 깊이를 `low`로 바꿔 버튼 생성의 생성 호출 p50이 15.39초에서 11.14초로 줄었습니다([추론 깊이 측정](docs/planning/evaluation-results/planning-generation-reasoning-2026-11-04/README.md)). #265에서 대화 모델이 한 응답에 Tool 여러 개를 고르게 해 봤습니다. 인원 변경 요청의 모델 호출이 3번에서 2번, p50이 약 1초 줄었습니다([측정 기록](docs/planning/evaluation-results/planning-parallel-tool-calls-2026-11-04/README.md)). 처음에는 보류 재개 판단이 나빠진 것으로 보여 보류했지만, #274에서 실패는 모호한 문장("날짜는 다시 얘기하자")을 두 설정 모두 "나중에"로 읽은 것이고 분명한 재개와 정정은 같다는 것을 확인해 켰습니다([원인과 재판정](docs/planning/evaluation-results/planning-date-resume-cause-2026-11-04/README.md)). #276에서 생성 모델의 출력 형식이 취소 단계 코드(`CANCEL_*`)를 허용하지 않게 해, 채팅 생성의 계획 검증 통과가 25/30에서 30/30이 됐습니다([측정 기록](docs/planning/evaluation-results/planning-generation-step-codes-2026-11-04/README.md)).
 
 ```text
 be/app/ai/
@@ -49,9 +51,9 @@ be/app/ai/
 ├── errors.py            # AI 내부 오류 타입
 ├── llm.py               # 공통 채팅·임베딩 모델 생성
 ├── features/
-│   ├── planning/        # agent, generation, 공개 실행/상태 변환, legacy (P2 수정 후 검토는 미구현)
+│   ├── planning/        # agent, generation, 공개 실행/상태 변환, legacy (review/: P2 수정 후 검토)
 │   ├── retrieval/       # 기록 색인·검색·근거 구성 (chunking: 청킹, indexing: 색인, nodes: 기록 검색 search_records, memory_port: 개발용 검색 구현)
-│   ├── operations/      # 변경 영향 설명·대응안
+│   ├── operations/      # 운영 상황 확인·제안(nodes), 공지·발송 Action 본문 초안과 코드 검사(action_draft)
 │   └── meeting/         # 회의 발화 판단과 답 (context: 판단 입력, nodes: 판단·결과 구성, lookup: 기록 검색 연결과 카드 문구, questions: 판단 전용 모델의 질문)
 ├── workflow/            # 행사 Agent 실행 흐름·분기·실행 상태
 ├── tools/               # Agent 도구, BE 기능은 주입된 port로 호출
@@ -63,6 +65,7 @@ be/app/ai/
 │   ├── errors.md        # AI 오류 타입과 변환 기준
 │   ├── retrieval-evaluation.md # 기록 색인·검색 측정 기록
 │   ├── meeting-evaluation.md # 회의 판단·음성 인식·지연 측정 기록
+│   ├── operations-evaluation.md # 운영 Action 본문 초안 측정 기록 (원본: operations-evaluation-results/)
 │   ├── requirements.md  # 사용자 경험 중심 AI 기능 요구사항 초안
 │   ├── planning/        # 새 설계·단계별 명세·코드 안내, legacy/에 이전 자료 보관
 │   ├── migration.md     # 파일 대응표·BE 팀 후속 작업
@@ -77,6 +80,13 @@ be/app/ai/
 
 ## 연동 규칙
 
+계획 대화·버튼 생성은 선택적인 `progress=PlanningProgressPort`로 실제 조건 변경·검색·생성
+진행을 알릴 수 있습니다(#266, #279). 결과와 저장 상태는 기존 계약을 유지하며, 생략하면
+기존 모델 호출 방식을 사용합니다. 포트를 전달하면 최종 답변의 텍스트 조각도 전달합니다(#280).
+생성 모델이 초안의 첫 글자를 보낸 순간도 `generation_writing`으로 알립니다(#388). 작성 중 초안에서 단계 하나의 코드를 다 쓸 때마다 위치·코드·고정 이름을 `generation_step`으로 알립니다. 모델이 쓴 문장은 보내지 않습니다(#389).
+BE는 이 포트를 `POST /events/{id}/plan/chat/stream`·`/plan/generate/stream`(SSE)으로 연결했습니다(#284). 제품 FE 행사계획 화면이 진행 줄(진행 중 도는 표시, 완료 초록 체크)과 답변 점진 표시를 보여 줍니다(#285). 끊기면 POST를 다시 보내지 않고 요청 키로 결과만 조회합니다(#342).
+이벤트와 저장 완료의 차이는 [공개 계약](docs/planning/p1-public-contract.md)을 따릅니다.
+
 - BE는 `app.ai`에 공개된 기능과 타입만 사용합니다.
 - AI는 `ports.py`를 통해 주입받은 BE 기능을 사용하며, BE 서비스·ORM·DB를 직접 참조하지 않습니다.
 - AI는 계획과 대응안을 제안합니다. 권한·승인 검증·저장·확정 실행은 BE가 담당합니다.
@@ -88,7 +98,8 @@ be/app/ai/
 
 사용 기술은 Python 3.12, LangGraph, langchain-openai, Pydantic, pydantic-settings입니다.
 모델 연동은 Elice ML API의 OpenAI 호환 API와 `ChatOpenAI`를 기준으로 합니다.
-채팅 모델은 `gpt-5.6-luna`이며 모델명은 `AI_MODEL`로 전달합니다. 회의 판단도 이 모델을 씁니다.
+채팅 모델은 `gpt-5.6-luna`이며 모델명은 `AI_MODEL`로 전달합니다.
+회의 판단은 판단 전용 API Jev(`typesafe/jev-1.14`)로 바꾸고, luna는 Jev가 조회로 본 발화의 검색어만 만듭니다([판단 모델](docs/architecture.md#판단-모델)). Jev는 OpenAI 호환 API가 아니라서 `features/meeting/jev.py`가 httpx로 직접 부릅니다.
 게이트웨이는 모델마다 배포 주소가 달라서, 모델을 바꾸면 `AI_API_BASE_URL`도 그 모델의 주소로 바꿉니다.
 
 임베딩은 `openai/text-embedding-3-small`을 같은 게이트웨이의 별도 배포로 호출합니다.
@@ -101,6 +112,7 @@ be/app/ai/
 유지할 때는 온도 대신 프롬프트와 구조화 출력을 사용합니다.
 
 구조화 출력은 `await ainvoke_structured(messages, Schema)`로, 임베딩은 `await aembed_texts(texts)`로 호출합니다.
+조각을 받는 동안 받은 글자가 필요하면 `astream_structured(..., on_text=콜백, model=스트리밍 모델)`을 씁니다. 글자가 든 조각마다 그 글자를 넘기고, 결과·오류는 `ainvoke_structured`와 같습니다. 행사계획 생성은 첫 호출을 「작성 중」 신호로(#388), 글 속 단계 코드를 작성 중 단계 신호로(#389) 씁니다.
 실패하면 AI 오류 타입으로 올라오며, 변환 기준은 [AI 오류 타입](docs/errors.md)을 따릅니다.
 
 호출 경로는 Responses API(`/v1/responses`)로 고정합니다.
@@ -112,6 +124,12 @@ Agent가 Tool을 사용하려면 이 경로여야 합니다.
 추론 깊이는 호출별로 정합니다. 기본값은 낮추지 않고, 판단이 필요 없는 단순한
 Agent·노드에서만 `build_chat_model(reasoning={"effort": "none"})`으로 줄입니다.
 `none`은 추론을 끄고 나머지 값은 추론을 사용합니다.
+행사계획 생성 모델은 `low`를 씁니다(`generation/model.py`의 `PLAN_REASONING`). 기본값과 같은 실행에서 번갈아 재
+계획 검증 통과와 초안 단계 수가 줄지 않으면서 생성 호출 p50이 15.4초에서 11.1초로 줄어 채택했습니다(#264).
+채팅 생성에서는 처음에 low의 통과가 적었는데, 원인인 취소 단계 코드 실패를 출력 형식에서 없앤 뒤(#276) 다시 재
+통과 수가 같고(30/30) 생성 호출 p50이 18.9초에서 10.7초로 줄어 유지했습니다.
+대화 모델은 값을 보내지 않습니다(공급자 기본값). 대화 호출의 추론은 호출당 p50 13토큰(#263)으로 줄일 여지가 작아
+재지 않고 기본값을 유지했습니다(#264).
 
 환경변수는 다음 항목을 사용하도록 구성합니다.
 
@@ -124,6 +142,8 @@ Agent·노드에서만 `build_chat_model(reasoning={"effort": "none"})`으로 �
 | `AI_EMBEDDING_BASE_URL` | 임베딩 API 기본 주소. 채팅과 다른 배포입니다 |
 | `AI_EMBEDDING_API_KEY` | 임베딩 API 인증 키. 비우면 `AI_API_KEY`를 씁니다 |
 | `AI_EMBEDDING_MODEL` | 사용할 임베딩 모델 |
+| `JEV_BASE_URL` | 회의 판단 API Jev의 배포 주소. 뒤에 `/v1/decisions`를 붙여 부릅니다 |
+| `JEV_API_KEY` | Jev 인증 키. 모델 버전과 임계값은 코드에 고정돼 있어 환경변수로 받지 않습니다 |
 
 설정은 BE 실행 환경에서 전달하며 AI 모듈 전용 `.env`는 자동 로드하지 않습니다.
 의존성 설치와 실행은 BE에서 통합 관리합니다.

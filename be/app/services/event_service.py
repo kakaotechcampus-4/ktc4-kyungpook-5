@@ -16,7 +16,15 @@ from sqlalchemy.orm import selectinload
 
 from app.ai.features.planning.generation.catalog import BY_CODE, PHASE_ORDER
 from app.ai.planning_catalog import PLANNING_STEP_NAMES
-from app.core.enums import ActionStatus, ActionType, EventStatus, StepCode, StepState
+from app.core.enums import (
+    ActionContentSource,
+    ActionContentStatus,
+    ActionStatus,
+    ActionType,
+    EventStatus,
+    StepCode,
+    StepState,
+)
 from app.core.exceptions import (
     ActionNotFound,
     NotEditable,
@@ -27,7 +35,7 @@ from app.models.chat import Conversation
 from app.models.clubs import Member
 from app.models.events import Action, Event, EventCancelTask, Step
 from app.core.exceptions import ApiError
-from app.services import event_rules
+from app.services import event_rules, plan_review_service
 
 _KST = ZoneInfo("Asia/Seoul")
 
@@ -57,7 +65,7 @@ class EventCancelNotAllowed(ApiError):
     status_code = 409
     code = "EVENT_CANCEL_NOT_ALLOWED"
     def __init__(self):
-        super().__init__("계획 중이거나 진행 중인 행사만 취소할 수 있어요.")
+        super().__init__("진행 중인 행사만 취소할 수 있어요.")
 
 class CancelTaskNotFound(ApiError):
     status_code = 404
@@ -75,7 +83,8 @@ async def begin_event_cancellation(session: AsyncSession, *, event_id: str) -> E
     event = await session.scalar(select(Event).where(Event.id == event_id).with_for_update())
     if event is None:
         raise EventCancelNotAllowed()
-    if event.status not in (EventStatus.PLANNING, EventStatus.ON_GOING):
+    # 취소 정리 항목(참가자 안내·예약 취소·환불)은 운영을 시작한 뒤에만 의미가 있다.
+    if event.status != EventStatus.ON_GOING:
         raise EventCancelNotAllowed()
     event.status = EventStatus.CANCELLING
     existing = await session.scalar(select(func.count()).select_from(EventCancelTask).where(EventCancelTask.event_id == event_id))
@@ -93,7 +102,13 @@ async def complete_cancel_task(session: AsyncSession, *, event_id: str, task_id:
     if task is None:
         raise CancelTaskNotFound()
     event = await session.scalar(select(Event).where(Event.id == task.event_id).with_for_update())
-    if event is None or event.id != event_id or event.status != EventStatus.CANCELLING:
+    if event is None or event.id != event_id:
+        raise EventCancelNotAllowed()
+    # 낡은 화면에서 다시 누른 경우다. 서버는 이미 원하는 상태라 오류 없이 그대로 돌려준다.
+    # 마지막 항목이면 행사가 이미 CANCELLED 로 바뀌었으므로 상태 검사보다 먼저 본다.
+    if task.completed_at is not None:
+        return task
+    if event.status != EventStatus.CANCELLING:
         raise EventCancelNotAllowed()
     first_open = await session.scalar(
         select(EventCancelTask.task_order)
@@ -103,9 +118,8 @@ async def complete_cancel_task(session: AsyncSession, *, event_id: str, task_id:
     )
     if first_open is None or task.task_order != first_open:
         raise CancelTaskOutOfOrder()
-    if task.completed_at is None:
-        task.completed_at = datetime.now(UTC)
-        task.completed_by = member.id
+    task.completed_at = datetime.now(UTC)
+    task.completed_by = member.id
     remaining = await session.scalar(select(func.count()).select_from(EventCancelTask).where(EventCancelTask.event_id == event.id, EventCancelTask.completed_at.is_(None)))
     if not remaining:
         event.status = EventStatus.CANCELLED
@@ -189,7 +203,7 @@ async def list_events(
     today = today_kst()
     result = []
     for event in events:
-        states = event_rules.step_states(event.steps)
+        states = event_rules.step_states(event.steps, event_status=event.status)
         current = _current_step(event.steps, states)
         result.append(
             {
@@ -216,7 +230,9 @@ async def _ordered_steps(session: AsyncSession, event_id: str) -> list[Step]:
 async def get_event_detail(session: AsyncSession, *, event: Event) -> dict:
     """L2 헤더. event는 라우터가 권한 확인하며 이미 읽어 둔 행이다."""
     steps = await _ordered_steps(session, event.id)
-    current = _current_step(steps, event_rules.step_states(steps))
+    current = _current_step(
+        steps, event_rules.step_states(steps, event_status=event.status)
+    )
     return {
         **_event_base(event, today_kst()),
         "current_step": (
@@ -227,8 +243,13 @@ async def get_event_detail(session: AsyncSession, *, event: Event) -> dict:
     }
 
 
-async def list_steps(session: AsyncSession, *, event_id: str) -> list[dict]:
-    """행사의 단계를 step_order 순으로, 단계마다 한 일·남은 일을 붙여 돌려준다."""
+async def list_steps(
+    session: AsyncSession, *, event_id: str, event_status: EventStatus
+) -> list[dict]:
+    """행사의 단계를 step_order 순으로, 단계마다 한 일·남은 일을 붙여 돌려준다.
+
+    계획 중 행사는 모든 단계가 TODO다(#336).
+    """
     steps = await _ordered_steps(session, event_id)
     actions = await session.scalars(
         select(Action)
@@ -239,7 +260,7 @@ async def list_steps(session: AsyncSession, *, event_id: str) -> list[dict]:
     for action in actions:
         actions_by_step[action.step_id].append(action)
 
-    states = event_rules.step_states(steps)
+    states = event_rules.step_states(steps, event_status=event_status)
     result = []
     for step in steps:
         step_actions = actions_by_step[step.id]
@@ -291,6 +312,7 @@ def action_out(action: Action, *, member: Member, event_status: EventStatus) -> 
     payload = action.payload if action.type == ActionType.CONFIRMATION else None
     payload = payload or {}
     resolver = action.resolver
+    now = datetime.now(UTC)
     return {
         "id": action.id,
         "type": action.type,
@@ -327,6 +349,21 @@ def action_out(action: Action, *, member: Member, event_status: EventStatus) -> 
         "resolved_choice": payload.get("resolved_choice"),
         "manual_value": payload.get("manual_value"),
         "version": action.version,
+        # 본문 초안 (#334). 멈춘 작성은 응답에서만 FAILED로 보인다(DB는 그대로).
+        "content_status": event_rules.shown_content_status(
+            action.content_status, action.draft_started_at, now
+        ),
+        "content_source": action.content_source,
+        "content_unknowns": list(action.content_unknowns or []),
+        "can_request_draft": event_rules.can_request_draft(
+            event_status=event_status,
+            action_status=action.status,
+            action_type=action.type,
+            content_status=action.content_status,
+            content_source=action.content_source,
+            draft_started_at=action.draft_started_at,
+            now=now,
+        ),
     }
 
 
@@ -438,13 +475,19 @@ async def update_step(
         raise NotEditable()
     if step.version != expected_version:
         raise VersionConflict()
-    if "starts_at" in fields:
+    changed = False
+    if "starts_at" in fields and step.starts_at != starts_at:
         step.starts_at = starts_at
-    if "deadline" in fields:
+        changed = True
+    if "deadline" in fields and step.deadline != deadline:
         step.deadline = deadline
+        changed = True
     event.modified_at = datetime.now(UTC)
     step.version += 1
     await _advance_plan_revision(session, event=event, member_id=member_id)
+    # 검토 버전은 값이 실제로 바뀐 경우에만 올린다(#177). 같은 값 저장은 검토를 낡게 만들지 않는다.
+    if changed:
+        await plan_review_service.bump_plan_revision(session, event.id)
     await session.commit()
     await session.refresh(step, ["actions"])
     return step
@@ -461,7 +504,12 @@ async def update_action(
 
     금액을 고치면 행사 쪽 파생값을 다시 맞춘다(#106 ②). 참가비 수금과 지출
     정산만 Event로 올라가고, 예약 계약금·환급액은 그 Action 안에서만 쓴다.
+
+    본문(content)을 고치면 운영진이 쓴 글(USER)·READY가 된다(#334). 토리가 쓰는 중이어도
+    사람의 수정이 우선이고, 늦게 온 초안은 저장 조건에서 버린다.
     """
+    if "content" in values and not (values["content"] or "").strip():
+        raise ValidationFailed({"content": "본문을 입력해 주세요."})
     event = await session.scalar(select(Event).where(Event.id == action.event_id).with_for_update().execution_options(populate_existing=True))
     locked = await session.scalar(
         select(Action).where(Action.id == action.id)
@@ -476,10 +524,20 @@ async def update_action(
         raise NotEditable()
     if action.version != expected_version:
         raise VersionConflict()
+    changed = any(getattr(action, key) != value for key, value in values.items())
+    if "content" in values and action.content != values["content"]:
+        action.content_source = ActionContentSource.USER
+        action.content_status = ActionContentStatus.READY
+        # 비워 둔 곳은 토리 초안 기준이다. 운영진이 고친 글에는 다시 계산하지 않는다.
+        action.content_unknowns = []
     for key, value in values.items():
         setattr(action, key, value)
     if payload_values:
-        action.payload = {**(action.payload or {}), **payload_values}
+        merged = {**(action.payload or {}), **payload_values}
+        changed = changed or merged != (action.payload or {})
+        action.payload = merged
+    if changed:
+        await plan_review_service.bump_plan_revision(session, action.event_id)
     if "amount" in values and action.step is not None:
         if action.step.code == StepCode.COLLECT_FEES:
             event.fee_per_person = action.amount
@@ -536,6 +594,7 @@ async def replace_plan_steps(
             select(Step).where(Step.event_id == event.id).with_for_update()
         )
     }
+    before = sorted((step.step_order, step.code) for step in existing.values())
     for code, step in existing.items():
         if code not in codes:
             await session.execute(delete(Action).where(Action.step_id == step.id))
@@ -565,6 +624,9 @@ async def replace_plan_steps(
     event.modified_at = datetime.now(UTC)
     if conversation is not None:
         conversation.base_revision += 1
+    # 검토 버전은 구성이나 순서가 실제로 바뀐 경우에만 올린다(#177).
+    if before != [(order, code) for order, code in enumerate(ordered, start=1)]:
+        await plan_review_service.bump_plan_revision(session, event.id)
     await session.commit()
     return list(await session.scalars(
         select(Step).where(Step.event_id == event.id)

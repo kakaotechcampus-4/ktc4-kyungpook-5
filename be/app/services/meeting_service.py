@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import (
-    AgentJobKind, AgentJobStage, AgentJobStatus, JudgeRoute, MeetingStatus,
+    AgentJobKind, AgentJobStage, JudgeRoute, MeetingStatus,
 )
 from app.core.exceptions import ApiError, VersionConflict
 from app.infra.storage import delete_file, save_file
@@ -447,17 +447,36 @@ async def save_stream_transcript(
     session: AsyncSession, *, meeting_id: str, chunk_id: str, job_id: str, text: str,
     start_ms: int, end_ms: int,
 ) -> str | None:
-    """Commit final STT independently of AI. Empty STT is recorded, never invented."""
+    """Commit final STT independently of AI. Empty STT is a gap, never a row."""
     from app.schemas.meetings import TranscriptSegmentOut
 
     meeting = await session.scalar(select(Meeting).where(Meeting.id == meeting_id).with_for_update())
     if meeting is None:
         raise MeetingNotFound()
     job = await agent_job_service.get_job(session, job_id=job_id)
-    empty_transcript = not text.strip()
+    clean_text = text.strip()
+    empty_transcript = not clean_text
+    if empty_transcript:
+        agent_job_service.succeed(
+            session,
+            job,
+            {"audioChunkId": chunk_id, "segmentIds": [], "emptyTranscript": True},
+        )
+        await session.commit()
+        await _broadcast(
+            meeting_id,
+            {
+                "type": "audio.no_transcript",
+                "audioChunkId": chunk_id,
+                "startMs": start_ms,
+                "endMs": end_ms,
+            },
+        )
+        return None
+
     last_seq = await session.scalar(select(func.max(TranscriptSegment.seq)).where(TranscriptSegment.meeting_id == meeting_id))
     segment, _, _ = await _save_segment(
-        session, meeting, seq=(last_seq or 0) + 1, text=text.strip(), is_final=True,
+        session, meeting, seq=(last_seq or 0) + 1, text=clean_text, is_final=True,
         expected_version=None, speaker_label=None, start_ms=start_ms, end_ms=end_ms,
         audio_chunk_id=chunk_id, run_decision=False,
     )
@@ -474,28 +493,31 @@ async def save_stream_transcript(
         created_at=segment.created_at, modified_at=segment.modified_at,
     )
     await _broadcast(meeting_id, {"type": "transcript.final", "meetingId": meeting_id, "cursor": meeting.transcript_cursor, **output.model_dump(mode="json", by_alias=True)})
-    if empty_transcript:
-        await _broadcast(meeting_id, {
-            "type": "audio.no_transcript", "segmentId": segment.id,
-            "startMs": start_ms, "endMs": end_ms,
-        })
-        # An unrecognized voiced interval is evidence of a gap, not AI input.
-        return None
     return segment.id
 
 
 async def process_saved_segment(session: AsyncSession, *, meeting_id: str, segment_id: str) -> None:
-    """Call the live public AI boundary after STT has committed."""
+    """Call the live public AI boundary after STT has committed.
+
+    판단 결과(judgment)는 판단 기록을 커밋한 직후 보내고, 할 일 후보 추출은 그 뒤에 마무리한다.
+    추출이 늦어도 답 카드가 기다리지 않게 하기 위해서다(#249). 이때 작업은 아직 RUNNING이다.
+    처리 실패로 올리는 것은 판단 실패뿐이다. 추출만 실패하면 작업의 기능별 실패와 판단 기록의
+    PARTIAL로 남기고, 회의 듣기와 회의 완료 상태에는 영향을 주지 않는다.
+    """
     meeting = await session.get(Meeting, meeting_id)
     segment = await session.get(TranscriptSegment, segment_id)
     if meeting is None or segment is None:
         raise MeetingNotFound()
     await _broadcast(meeting_id, {"type": "stage", "segmentId": segment.id, "seq": segment.seq, "stage": "JUDGING"})
-    job, decision = await context_service.decide_live_meeting_segment(session, meeting=meeting, segment=segment)
+    judged = await context_service.judge_live_meeting_segment(session, meeting=meeting, segment=segment)
     await session.commit()
-    await _broadcast(meeting_id, _judgment_message(segment, job, decision))
-    if job.status == AgentJobStatus.FAILED:
-        raise RuntimeError("Live context processing failed; persisted job contains safe error details")
+    await _broadcast(meeting_id, _judgment_message(segment, judged.job, judged.decision))
+    # 추출은 판단과 함께 시작해 이미 돌고 있다. 같은 처리 안에서 끝까지 기다리므로
+    # 동시 처리 자리와 회의 종료(end)는 지금처럼 추출까지 기다린다.
+    await context_service.finish_live_meeting_extraction(session, judged)
+    await session.commit()
+    if judged.lookup_failure is not None:
+        raise RuntimeError("Live meeting lookup failed; persisted decision contains safe error details")
 
 
 async def set_stream_status(session: AsyncSession, *, meeting_id: str, status: MeetingStatus) -> None:

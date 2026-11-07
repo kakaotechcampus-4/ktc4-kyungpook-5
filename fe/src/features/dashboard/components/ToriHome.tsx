@@ -60,8 +60,8 @@ export function ToriHome() {
             <p className="text-caption text-mute">
               {me?.clubs.find((club) => club.id === clubId)?.name ?? '운영해'}
             </p>
-            <h1 className="mt-1 text-h1">안녕하세요, 토리예요</h1>
-            <p className="mt-2 text-ink2">회의와 행사 준비를 함께 살펴볼게요.</p>
+            <h1 className="mt-1 text-h1">팀 운영 비서</h1>
+            <p className="mt-2 text-ink2">회의 기록과 자료 검색, 일정·할 일, 행사 준비를 한곳에서.</p>
           </header>
         </div>
       </div>

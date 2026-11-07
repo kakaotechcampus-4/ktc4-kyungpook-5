@@ -11,11 +11,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from app import ai
 from app.core.config import get_settings
 from app.db import session as db_session
 from app.infra.stt import SttError, WhisperStt
 from app.routers import meetings as meetings_router
-from app.services import meeting_service
+from app.services import meeting_ai_service, meeting_service
 from app.models.meetings import MeetingAudioChunk
 
 pytestmark = [pytest.mark.db, pytest.mark.anyio]
@@ -160,10 +161,10 @@ async def test_http_finish_cannot_skip_live_tail(client: TestClient, audio_db: N
 
 
 
-@pytest.mark.parametrize("amplitude, expected_segments", [(0, 0), (2000, 1)])
-async def test_empty_voiced_stt_is_a_restorable_gap_but_silence_has_no_row(
+@pytest.mark.parametrize("amplitude, expected_stt_calls", [(0, 0), (2000, 1)])
+async def test_empty_stt_is_a_gap_without_transcript_row(
     client: TestClient, audio_db: None, monkeypatch: pytest.MonkeyPatch,
-    amplitude: int, expected_segments: int,
+    amplitude: int, expected_stt_calls: int,
 ) -> None:
     stt_calls = []
     ai_calls = []
@@ -197,17 +198,126 @@ async def test_empty_voiced_stt_is_a_restorable_gap_but_silence_has_no_row(
         f"/api/v1/meetings/{meeting}/transcripts",
         headers={"Authorization": f"Bearer {token}"},
     ).json()["data"]
-    assert len(stt_calls) == expected_segments
+    assert len(stt_calls) == expected_stt_calls
     assert ai_calls == []
-    assert saved["cursor"] == expected_segments
-    assert len(saved["items"]) == expected_segments
-    if expected_segments:
-        gap = saved["items"][0]
-        assert gap["text"] == "" and gap["final"] is True
-        assert gap["endMs"] - gap["startMs"] == 300
-        assert gap["decisionJobId"] is None
-        event = next(event for event in events if event["type"] == "transcript.final")
-        assert event["id"] == gap["id"] and event["text"] == ""
-        assert any(event.get("segmentId") == gap["id"] for event in events if event["type"] == "audio.no_transcript")
-    else:
-        assert not any(event["type"] == "transcript.final" for event in events)
+    assert saved == {"cursor": 0, "items": []}
+    assert not any(event["type"] == "transcript.final" for event in events)
+    if expected_stt_calls:
+        assert any(event["type"] == "audio.no_transcript" for event in events)
+
+
+# ── #249: 회의 실패로 세는 것은 판단 실패뿐이다 ───────────────────────────────
+
+
+def _no_lookup(payload: dict) -> SimpleNamespace:
+    return SimpleNamespace(
+        utterance_id=payload["utterance"]["utterance_id"],
+        source_version=payload["utterance"]["version"], route="NONE", kind="NO_LOOKUP",
+        question=None, answer=None, sources=(),
+        trace=SimpleNamespace(model="fixture-boundary", prompt_version="fixture-v1", judge_ms=1480, tool_calls=()),
+    )
+
+
+def _one_utterance_meeting(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> tuple[list[dict], str, dict]:
+    """발화 하나를 보내고 audio.completed까지 받은 이벤트를 돌려준다. AI는 호출한 쪽이 바꿔 둔다."""
+
+    async def transcribe(self, wav: bytes, *, language: str) -> str:
+        return "다음 주 금요일까지 민수가 자료를 정리해 주세요."
+
+    monkeypatch.setattr(WhisperStt, "transcribe", transcribe)
+    token, meeting = account_meeting(client)
+    with client.websocket_connect(f"/api/v1/meetings/{meeting}/stream?token={token}") as ws:
+        ws.send_json({"type": "start", "format": "pcm_s16le", "sampleRate": 16000, "channels": 1})
+        assert ws.receive_json()["type"] == "audio.ready"
+        ws.send_json({"type": "audio", "audioSeq": 1, "startMs": 0, "endMs": 300})
+        ws.send_bytes(voiced_pcm())
+        assert ws.receive_json()["type"] == "audio.accepted"
+        ws.send_json({"type": "end", "lastAudioSeq": 1})
+        events = []
+        for _ in range(20):
+            event = ws.receive_json()
+            events.append(event)
+            if event["type"] == "audio.completed":
+                break
+    return events, meeting, {"Authorization": f"Bearer {token}"}
+
+
+async def test_ws_extraction_only_failure_still_completes_meeting(client: TestClient, audio_db: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def judge(payload):
+        return _no_lookup(payload)
+
+    async def extract(payload):
+        raise RuntimeError("extraction provider unavailable in this test")
+
+    monkeypatch.setattr(meeting_ai_service, "judge", judge)
+    monkeypatch.setattr(meeting_ai_service, "extract", extract)
+    events, meeting, headers = _one_utterance_meeting(client, monkeypatch)
+    judgment = next(event for event in events if event["type"] == "judgment")
+    assert (judgment["route"], judgment["kind"]) == ("NONE", "NO_LOOKUP")
+    assert not any(event.get("code") == "CONTEXT_PROCESSING_FAILED" for event in events)
+    assert (events[-1]["status"], events[-1]["errorCount"]) == ("COMPLETED", 0)
+    assert client.get(f"/api/v1/meetings/{meeting}", headers=headers).json()["data"]["status"] == "COMPLETED"
+    # 추출 실패는 작업의 기능별 실패로 남는다
+    job = client.get(f"/api/v1/agent-jobs/{judgment['jobId']}", headers=headers).json()["data"]
+    assert job["status"] == "FAILED"
+    tools = [feature["tool"] for feature in job["error"]["features"]]
+    assert "tasks.extract" in tools
+    # Event facts lookup runs alongside task extraction for meeting context.
+    assert "event.lookup" in tools
+
+
+async def test_ws_judge_failure_still_fails_meeting(client: TestClient, audio_db: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def judge(payload):
+        raise ai.AITimeoutError("회의 판단이 제한 시간 안에 끝나지 않았습니다")
+
+    async def extract(payload):
+        return []
+
+    monkeypatch.setattr(meeting_ai_service, "judge", judge)
+    monkeypatch.setattr(meeting_ai_service, "extract", extract)
+    events, meeting, headers = _one_utterance_meeting(client, monkeypatch)
+    judgment = next(event for event in events if event["type"] == "judgment")
+    assert (judgment["route"], judgment["kind"]) == ("ERROR", "FAILED")
+    assert any(event.get("code") == "CONTEXT_PROCESSING_FAILED" for event in events)
+    assert (events[-1]["status"], events[-1]["errorCount"]) == ("FAILED", 1)
+    assert client.get(f"/api/v1/meetings/{meeting}", headers=headers).json()["data"]["status"] == "FAILED"
+
+
+async def test_same_meeting_resume_keeps_frame_and_transcript_order(client, audio_db, monkeypatch):
+    async def transcribe(*_, **__): return '복구된 전사'
+    async def decide(*_, **__): return None
+    monkeypatch.setattr(WhisperStt, 'transcribe', transcribe)
+    monkeypatch.setattr(meeting_service, 'process_saved_segment', decide)
+    token, meeting = account_meeting(client)
+    started = client.get(f'/api/v1/meetings/{meeting}', headers={'Authorization': f'Bearer {token}'}).json()['data']['startedAt']
+    received_at = datetime.fromisoformat(started.replace('Z', '+00:00')) + timedelta(seconds=5)
+    monkeypatch.setattr(meetings_router, 'datetime', SimpleNamespace(now=lambda _: received_at))
+    uri = f'/api/v1/meetings/{meeting}/stream?token={token}'
+    first_pcm = voiced_pcm()
+    with client.websocket_connect(uri) as ws:
+        ws.send_json({'type':'start','format':'pcm_s16le','sampleRate':16000,'channels':1})
+        ready = ws.receive_json(); assert ready['type'] == 'audio.ready'
+        ws.send_json({'type':'audio','audioSeq':1,'startMs':0,'endMs':300}); ws.send_bytes(first_pcm)
+        assert ws.receive_json()['audioSeq'] == 1
+    with client.websocket_connect(uri) as ws:
+        ws.send_json({'type':'resume','format':'pcm_s16le','sampleRate':16000,'channels':1,'lastAckSeq':0})
+        resumed = ws.receive_json(); assert resumed['type'] == 'audio.ready' and resumed['lastAudioSeq'] == 1
+        assert resumed['streamOffsetMs'] == ready['streamOffsetMs'] and resumed['endMs'] == 300
+        ws.send_json({'type':'audio','audioSeq':1,'startMs':0,'endMs':300}); ws.send_bytes(first_pcm)
+        assert ws.receive_json()['audioSeq'] == 1
+        ws.send_json({'type':'audio','audioSeq':2,'startMs':300,'endMs':600}); ws.send_bytes(voiced_pcm())
+        assert ws.receive_json()['audioSeq'] == 2
+        ws.send_json({'type':'end','lastAudioSeq':2})
+        events = []
+        for _ in range(20):
+            item = ws.receive_json(); events.append(item)
+            if item['type'] == 'audio.completed': break
+        assert events[-1]['status'] == 'COMPLETED'
+    saved = client.get(f'/api/v1/meetings/{meeting}/transcripts', headers={'Authorization':f'Bearer {token}'}).json()['data']['items']
+    assert len(saved) == 1 and saved[0]['seq'] == 1 and saved[0]['text'] == '복구된 전사'
+    assert saved[0]['endMs'] - saved[0]['startMs'] == 600
+    assert 4000 <= ready['streamOffsetMs'] <= 5000
+    assert saved[0]['startMs'] == ready['streamOffsetMs']
+    async with db_session.get_sessionmaker()() as session:
+        chunks = list(await session.scalars(select(MeetingAudioChunk).where(MeetingAudioChunk.meeting_id == meeting)))
+        assert len(chunks) == 1 and chunks[0].seq == 1

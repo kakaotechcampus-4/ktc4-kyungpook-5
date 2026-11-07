@@ -5,7 +5,7 @@ import json
 from functools import partial
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.ai import AITimeoutError, chat_planning, generate_planning_preview
 from app.ai.features.planning import public_workflow
@@ -23,7 +23,8 @@ def fixed_models(monkeypatch):
     fixture = load_fixture()
 
     async def invoke(messages, **kwargs):
-        latest = messages[-1]
+        # 실행 문맥(시스템 메시지)의 위치와 관계없이 마지막 대화 메시지를 본다(#269 v7/v8 비교).
+        latest = next(m for m in reversed(messages) if not isinstance(m, SystemMessage))
         if isinstance(latest, HumanMessage):
             if '60명' in latest.content:
                 return AIMessage(content='', tool_calls=[dict(id='set-60', name=TOOL_NAME, args=dict(changes=[

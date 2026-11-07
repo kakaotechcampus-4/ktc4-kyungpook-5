@@ -1,2 +1,2 @@
-export { MicControls } from './MicControls'
+export { useMeetingAudio, type AudioPhase } from './useMeetingAudio'
 export type { AudioGap } from './transport'

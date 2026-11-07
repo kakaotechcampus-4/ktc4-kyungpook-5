@@ -1,15 +1,26 @@
-import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardApi } from '@/features/dashboard/api'
 import type { components } from '@/shared/api/schema'
 import { ApiError } from '@/shared/api/types'
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
-import { Textarea } from '@/shared/ui/Input'
+import { ChatComposer } from '@/shared/ui/ChatComposer'
 import { Tori } from '@/shared/ui/Tori'
 
 type Result = components['schemas']['ToriMessageOut']
 type Turn = { id: string; message: string; result: Result }
+type PendingClarification = {
+  turnId: string
+  originalQuestion: string
+  question: string
+  options: string[]
+}
+type QueuedMessage = {
+  message: string
+  clarification: PendingClarification | null
+}
 const formatTime = (value: string | null) =>
   value
     ? new Intl.DateTimeFormat('ko-KR', {
@@ -18,11 +29,56 @@ const formatTime = (value: string | null) =>
         timeStyle: 'short',
       }).format(new Date(value))
     : '시간 미정'
+// 질문 한 번에 보낼 수 있는 글자 수.
+const MAX_QUESTION = 1000
+
 const examples = [
   '지난 회의의 할 일을 확인하고 싶어요',
   '행사 예산 관련 자료를 찾아줘',
   '새 회의를 시작할게요',
 ]
+
+function elapsedLabel(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+}
+
+function ThinkingStatus({ message }: { message: string }) {
+  const [seconds, setSeconds] = useState(0)
+  useEffect(() => {
+    const timer = window.setInterval(() => setSeconds((value) => value + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+  return (
+    <div className="space-y-3 rounded-xl border border-line bg-bg px-4 py-4" role="status">
+      <div className="flex items-start gap-3">
+        <Tori size={36} thinking />
+        <div className="min-w-0 space-y-1">
+          <p className="font-semibold text-ink">토리가 답변을 만들고 있어요</p>
+          <p className="text-caption leading-5 text-ink2">
+            자료와 확정된 할 일을 확인하고 있어요. 답변이 준비되면 바로 보여드릴게요.
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2" aria-hidden>
+        {[0, 1, 2].map((index) => (
+          <span
+            key={index}
+            className="size-[6px] animate-pulse rounded-full bg-blue-300"
+            style={{ animationDelay: `${index * 0.25}s` }}
+          />
+        ))}
+        <span className="text-caption text-mute">확인 중</span>
+      </div>
+      <p className="text-caption tabular-nums text-mute" aria-live="off">
+        {elapsedLabel(seconds)} · 요청을 처리하고 있어요
+      </p>
+      <div className="rounded-lg border border-soft bg-card px-3 py-2">
+        <p className="text-[11px] font-semibold text-mute">확인 중인 질문</p>
+        <p className="mt-1 whitespace-pre-wrap break-words text-caption text-ink2">{message}</p>
+      </div>
+    </div>
+  )
+}
 
 function Reply({ result }: { result: Result }) {
   const [downloadError, setDownloadError] = useState('')
@@ -354,8 +410,13 @@ export function ToriChat({
     options: string[]
   } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [activeQuestion, setActiveQuestion] = useState('')
+  const [queuedQuestions, setQueuedQuestions] = useState<string[]>([])
   const [error, setError] = useState('')
-  const locked = useRef(false)
+  const queue = useRef<QueuedMessage[]>([])
+  const processing = useRef(false)
+  const pendingRef = useRef<PendingClarification | null>(null)
+  const conversationStarted = useRef(false)
   const conversation = useRef<HTMLDivElement>(null)
   const latestReply = useRef<HTMLDivElement>(null)
   const followLatest = useRef(true)
@@ -375,51 +436,72 @@ export function ToriChat({
       setHasUnseenReply(true)
     }
   }, [turns])
-  const send = async (text: string) => {
-    const message = text.trim()
-    if (!clubId || !message || locked.current) return
-    locked.current = true
-    if (turns.length === 0) onConversationStarted?.()
+  pendingRef.current = pending
+
+  const processQueue = async () => {
+    if (!clubId || processing.current) return
+    processing.current = true
     setBusy(true)
-    setError('')
-    setDraft(message)
     try {
-      const result = await dashboardApi.message(clubId, {
-        message,
-        ...(pending
-          ? {
-              clarificationContext: {
-                originalQuestion: pending.originalQuestion,
-                question: pending.question,
-                options: pending.options,
-              },
-            }
-          : {}),
-      })
-      const id = crypto.randomUUID()
-      setTurns((items) => [...items, { id, message, result }])
-      if (pending && result.recordAnswer?.status === 'failed') return
-      setPending(
-        result.clarification
-          ? {
-              turnId: id,
-              originalQuestion: result.clarification.originalQuestion,
-              question: result.clarification.question,
-              options: result.clarification.options ?? [],
-            }
-          : null,
-      )
-      setDraft('')
-    } catch (cause) {
-      setError(
-        cause instanceof ApiError && cause.code === 'AI_MISCONFIGURED'
-          ? '토리 대화 설정을 확인하고 있어요. 잠시 후 다시 시도해 주세요.'
-          : '답변을 가져오지 못했어요. 연결을 확인하고 다시 시도해 주세요.',
-      )
+      while (queue.current.length > 0) {
+        const item = queue.current.shift()
+        if (!item) break
+        setQueuedQuestions(queue.current.map(({ message }) => message))
+        setActiveQuestion(item.message)
+        setError('')
+        try {
+          const result = await dashboardApi.message(clubId, {
+            message: item.message,
+            ...(item.clarification
+              ? {
+                  clarificationContext: {
+                    originalQuestion: item.clarification.originalQuestion,
+                    question: item.clarification.question,
+                    options: item.clarification.options,
+                  },
+                }
+              : {}),
+          })
+          const id = crypto.randomUUID()
+          setTurns((items) => [...items, { id, message: item.message, result }])
+          if (item.clarification && result.recordAnswer?.status === 'failed') continue
+          const nextPending = result.clarification
+            ? {
+                turnId: id,
+                originalQuestion: result.clarification.originalQuestion,
+                question: result.clarification.question,
+                options: result.clarification.options ?? [],
+              }
+            : null
+          pendingRef.current = nextPending
+          setPending(nextPending)
+        } catch (cause) {
+          setError(
+            cause instanceof ApiError && cause.code === 'AI_MISCONFIGURED'
+              ? '토리 대화 설정을 확인하고 있어요. 잠시 후 다시 시도해 주세요.'
+              : '답변을 가져오지 못했어요. 연결을 확인하고 다시 시도해 주세요.',
+          )
+        }
+      }
     } finally {
-      locked.current = false
+      processing.current = false
       setBusy(false)
+      setActiveQuestion('')
+      setQueuedQuestions([])
     }
+  }
+
+  const send = (text: string) => {
+    const message = text.trim()
+    if (!clubId || !message) return
+    if (!conversationStarted.current) {
+      conversationStarted.current = true
+      onConversationStarted?.()
+    }
+    queue.current.push({ message, clarification: pendingRef.current })
+    setQueuedQuestions(queue.current.map(({ message: queuedMessage }) => queuedMessage))
+    setDraft('')
+    void processQueue()
   }
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -430,6 +512,7 @@ export function ToriChat({
       <div className="flex shrink-0 items-start gap-4 border-b border-line pb-5">
         <Tori size={48} />
         <div>
+          <p className="mb-1 text-caption text-ink2">토리가 함께할게요.</p>
           <h2 className="text-h2">무엇을 도와드릴까요?</h2>
           <p className="mt-2 text-caption leading-6 text-ink2">
             자료와 확인된 할 일을 찾고 회의나 행사 계획을 시작해요.
@@ -524,13 +607,8 @@ export function ToriChat({
         </button>
       )}
       {busy && (
-        <div className="space-y-3 pb-4">
-          <p className="ml-auto w-fit max-w-[90%] whitespace-pre-wrap break-words rounded-xl bg-blue-900 px-4 py-3 text-[14px] leading-6 text-white">
-            {draft}
-          </p>
-          <p role="status" className="text-caption text-ink2">
-            토리가 확인하고 있어요…
-          </p>
+        <div className="pb-4">
+          <ThinkingStatus message={activeQuestion} />
         </div>
       )}
       {error && (
@@ -541,18 +619,18 @@ export function ToriChat({
           {error}
         </p>
       )}
-      <form
-        className="shrink-0 space-y-2 rounded-xl border border-soft bg-bg p-4"
-        onSubmit={submit}
-      >
+      {/* 대시보드는 묻고 답을 받는 화면이라 입력 상자가 화면의 주 입력이다. 행사 계획 대화와
+          같은 상자·보내기 버튼·단축키 말풍선을 쓰되, 두 줄 높이의 흰 상자로 띄운다. */}
+      <form className="shrink-0 space-y-2" onSubmit={submit}>
         {pending && (
-          <div className="flex items-center justify-between gap-3 text-caption text-ink2">
+          <div className="flex items-center justify-between gap-3 px-1 text-caption text-ink2">
             <span>이어서 답하기</span>
             <button
               type="button"
               className="text-blue-700 underline"
               disabled={busy}
               onClick={() => {
+                pendingRef.current = null
                 setPending(null)
                 setError('')
               }}
@@ -561,13 +639,14 @@ export function ToriChat({
             </button>
           </div>
         )}
-        <Textarea
-          label="토리에게 질문"
-          className="min-h-[72px] bg-card text-[16px] sm:text-[14px]"
-          rows={2}
-          maxLength={1000}
-          disabled={!clubId || busy}
-          placeholder={clubId ? '궁금한 내용을 입력해 주세요' : '로그인하고 소속을 선택해 주세요'}
+        <ChatComposer
+          tone="raised"
+          minRows={2}
+          maxRows={6}
+          aria-label="토리에게 질문"
+          maxLength={MAX_QUESTION}
+          disabled={!clubId}
+          placeholder={clubId ? '토리에게 물어보세요' : '로그인하고 소속을 선택해 주세요'}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -584,16 +663,24 @@ export function ToriChat({
             event.preventDefault()
             if (!event.repeat) event.currentTarget.form?.requestSubmit()
           }}
+          // 답을 기다리는 동안에도 다음 질문을 받아 차례로 처리한다. 그래서 도는 표시 대신 그대로 둔다.
+          sendLabel={busy ? '질문 추가' : '보내기'}
+          sendDisabled={!clubId || !draft.trim()}
         />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-caption text-mute">
-            Enter로 전송 · Shift+Enter로 줄바꿈
-            <br />
-            대화는 새로고침하면 사라져요.
+        <div className="flex items-start justify-between gap-3 px-1 text-[12px] leading-[18px] text-mute">
+          <p>
+            {queuedQuestions.length > 0
+              ? `질문 ${queuedQuestions.length}개가 순서대로 처리돼요.`
+              : '대화는 새로고침하면 사라져요.'}
           </p>
-          <Button type="submit" disabled={!clubId || busy || !draft.trim()}>
-            {busy ? '확인 중…' : '보내기'}
-          </Button>
+          {/* 글자 수는 한도에 가까워질 때만 보인다. */}
+          {draft.length >= MAX_QUESTION - 200 && (
+            <p
+              className={cn('shrink-0 tabular-nums', draft.length >= MAX_QUESTION && 'text-failed')}
+            >
+              {draft.length} / {MAX_QUESTION}자
+            </p>
+          )}
         </div>
       </form>
     </Card>

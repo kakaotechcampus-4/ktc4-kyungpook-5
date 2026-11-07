@@ -66,6 +66,15 @@ async def test_event_cancel_persists_tasks_and_final_status(client, app_db):
     detail = client.get(f'{EVENTS_URL}/{event_id}', headers=headers).json()['data']
     assert detail['status'] == 'CANCELLED'
 
+async def test_planning_event_cannot_be_cancelled(client, app_db):
+    headers, club_id = owner_with_club(client, 'cancel-planning')
+    event_id = await add_event(club_id, title='계획 행사', status=EventStatus.PLANNING)
+    rejected = client.post(f'{EVENTS_URL}/{event_id}/cancel', headers=headers)
+    assert rejected.status_code == 409
+    assert rejected.json()['error']['code'] == 'EVENT_CANCEL_NOT_ALLOWED'
+    assert client.get(f'{EVENTS_URL}/{event_id}', headers=headers).json()['data']['status'] == 'PLANNING'
+    assert client.get(f'{EVENTS_URL}/{event_id}/cancel/tasks', headers=headers).json()['data'] == []
+
 async def test_event_cancel_tasks_must_be_completed_in_order(client, app_db):
     headers, club_id = owner_with_club(client, 'cancel-order')
     event_id = await add_event(club_id, title='순서 행사', status=EventStatus.ON_GOING)
@@ -74,6 +83,33 @@ async def test_event_cancel_tasks_must_be_completed_in_order(client, app_db):
     out_of_order = client.post(f'{EVENTS_URL}/{event_id}/cancel/tasks/{tasks[1]["id"]}/complete', headers=headers)
     assert out_of_order.status_code == 409
     assert out_of_order.json()['error']['code'] == 'CANCEL_TASK_OUT_OF_ORDER'
+
+async def test_completed_cancel_task_completes_again_without_change(client, app_db):
+    headers, club_id = owner_with_club(client, 'cancel-again')
+    event_id = await add_event(club_id, title='다시 누른 행사', status=EventStatus.ON_GOING)
+    assert client.post(f'{EVENTS_URL}/{event_id}/cancel', headers=headers).status_code == 200
+    tasks = client.get(f'{EVENTS_URL}/{event_id}/cancel/tasks', headers=headers).json()['data']
+    url = f'{EVENTS_URL}/{event_id}/cancel/tasks/{tasks[0]["id"]}/complete'
+    first = client.post(url, headers=headers)
+    assert first.status_code == 200, first.text
+    again = client.post(url, headers=headers)
+    assert again.status_code == 200, again.text
+    assert again.json()['data']['state'] == 'DONE'
+    assert again.json()['data']['completedAt'] == first.json()['data']['completedAt']
+    states = [t['state'] for t in client.get(f'{EVENTS_URL}/{event_id}/cancel/tasks', headers=headers).json()['data']]
+    assert states == ['DONE', 'CURRENT', 'TODO', 'TODO']
+
+async def test_last_cancel_task_completes_again_after_event_cancelled(client, app_db):
+    headers, club_id = owner_with_club(client, 'cancel-last-again')
+    event_id = await add_event(club_id, title='마지막 다시 행사', status=EventStatus.ON_GOING)
+    assert client.post(f'{EVENTS_URL}/{event_id}/cancel', headers=headers).status_code == 200
+    tasks = client.get(f'{EVENTS_URL}/{event_id}/cancel/tasks', headers=headers).json()['data']
+    for task in tasks:
+        assert client.post(f'{EVENTS_URL}/{event_id}/cancel/tasks/{task["id"]}/complete', headers=headers).status_code == 200
+    again = client.post(f'{EVENTS_URL}/{event_id}/cancel/tasks/{tasks[-1]["id"]}/complete', headers=headers)
+    assert again.status_code == 200, again.text
+    assert again.json()['data']['state'] == 'DONE'
+    assert client.get(f'{EVENTS_URL}/{event_id}', headers=headers).json()['data']['status'] == 'CANCELLED'
 
 
 @pytest.fixture
@@ -201,6 +237,64 @@ async def test_단계가_없는_행사는_진행_정보가_비어_있다(
     assert card["stepProgress"] == []
     assert card["dday"] is None
     assert card["pendingApprovalCount"] == 0
+
+
+async def test_계획_중_행사는_목록_상세_단계_어디에도_현재_단계가_없다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(club_id, status=EventStatus.PLANNING)
+    await add_step(event_id, 10, name="사전 수요 조사")
+    await add_step(event_id, 20, name="참가 신청")
+
+    card = client.get(EVENTS_URL, headers=headers, params={"clubId": club_id}).json()[
+        "data"
+    ][0]
+    detail = client.get(f"{EVENTS_URL}/{event_id}", headers=headers).json()["data"]
+    steps = client.get(f"{EVENTS_URL}/{event_id}/steps", headers=headers).json()["data"]
+
+    assert card["currentStepName"] is None
+    assert card["stepProgress"] == [
+        {"stepOrder": 10, "state": "TODO"},
+        {"stepOrder": 20, "state": "TODO"},
+    ]
+    assert detail["currentStep"] is None
+    assert [s["state"] for s in steps] == ["TODO", "TODO"]
+
+
+async def test_목록은_행사마다_자기_상태로_단계를_계산한다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    planning = await add_event(club_id, status=EventStatus.PLANNING, title="계획 중")
+    await add_step(planning, 10, name="계획 단계")
+    operating = await add_event(club_id, status=EventStatus.ON_GOING, title="운영 중")
+    await add_step(operating, 10, name="운영 단계")
+
+    cards = client.get(EVENTS_URL, headers=headers, params={"clubId": club_id}).json()["data"]
+    by_title = {c["title"]: c for c in cards}
+
+    assert by_title["계획 중"]["currentStepName"] is None
+    assert by_title["운영 중"]["currentStepName"] == "운영 단계"
+
+
+async def test_계획_중_행사는_시작하면_첫_단계가_현재_단계가_된다(
+    client: TestClient, app_db: None
+) -> None:
+    headers, club_id = owner_with_club(client)
+    event_id = await add_event(
+        club_id, status=EventStatus.PLANNING, start_date=today_kst() + timedelta(days=30)
+    )
+    first = await add_step(event_id, 10, name="사전 수요 조사")
+    await add_step(event_id, 20)
+
+    before = client.get(f"{EVENTS_URL}/{event_id}", headers=headers).json()["data"]
+    started = client.post(f"{EVENTS_URL}/{event_id}/start", headers=headers, json={})
+    after = client.get(f"{EVENTS_URL}/{event_id}", headers=headers).json()["data"]
+
+    assert before["currentStep"] is None
+    assert started.status_code == 200, started.text
+    assert after["currentStep"] == {"id": first, "stepOrder": 10, "name": "사전 수요 조사"}
 
 
 async def test_인원은_컬럼명이_아닌_headcount로_나간다(

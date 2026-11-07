@@ -1,0 +1,24 @@
+{
+  "reports": [
+    {
+      "type": "real-model-http-db",
+      "kind": "button",
+      "eventId": "evt_miZe1bwwXdMFUoiSpdTYg",
+      "generationPosts": 1,
+      "baseRevision": 2,
+      "planRevision": 2,
+      "stepCount": 12,
+      "observation": "Earlier same E2E script run passed button stream, P2 focus and reload before the separate chat case hit its observer timeout; saved snapshot reconfirmed by GET."
+    },
+    {
+      "type": "real-model-http-db",
+      "kind": "chat",
+      "eventId": "evt_h9p123wOSHcInshwgXhVD",
+      "generationPosts": 1,
+      "baseRevision": 2,
+      "planRevision": 2,
+      "stepCount": 12
+    }
+  ],
+  "browserErrors": []
+}

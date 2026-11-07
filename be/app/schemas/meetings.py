@@ -1,5 +1,9 @@
 """회의 세션·전사 도메인 요청·응답 스키마 (#135)."""
 
+from datetime import date
+
+from pydantic import Field
+
 from app.core.enums import MeetingStatus
 from app.schemas.common import CamelModel, PageMeta, UtcDateTime
 
@@ -49,6 +53,47 @@ class TranscriptListOut(CamelModel):
     # 다음 조회의 afterSeq로 넘길 값.
     cursor: int
     items: list[TranscriptSegmentOut]
+
+
+class MeetingReviewOut(CamelModel):
+    id: str
+    meeting_id: str
+    job_id: str
+    status: str
+    version: int
+    error_code: str | None
+    speakers: list[dict[str, object]]
+    segments: list[dict[str, object]]
+    draft: dict[str, object] | None
+
+
+class SpeakerMemberIn(CamelModel):
+    member_id: str | None = None
+    confirmed: bool = False
+
+
+class SpeakerNamesIn(CamelModel):
+    expected_version: int
+    names: dict[str, str] = Field(default_factory=dict)
+    members: dict[str, SpeakerMemberIn] = Field(default_factory=dict)
+
+
+class ReviewCandidateIn(CamelModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: str | None = None
+    assignee_member_id: str | None = None
+    due_date: date | None = None
+    evidence_segment_ids: list[str] = Field(min_length=1, max_length=100)
+
+
+class ReviewCandidatesIn(CamelModel):
+    expected_version: int
+    client_request_id: str = Field(min_length=1, max_length=100)
+    candidates: list[ReviewCandidateIn] = Field(min_length=1, max_length=100)
+
+
+class ReviewDraftIn(CamelModel):
+    expected_version: int
 
 
 class AudioChunkOut(CamelModel):

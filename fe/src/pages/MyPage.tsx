@@ -1,10 +1,12 @@
 // S2 마이 페이지. 내 정보 · 동아리원 · 동아리 자료 세 탭을 한 화면에서 바꿔 본다.
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { InviteStaffModal } from '@/features/clubs/components/InviteStaffModal'
 import { AddMemberModal } from '@/features/mypage/components/AddMemberModal'
 import { MembersTab } from '@/features/mypage/components/MembersTab'
 import { MyInfoTab } from '@/features/mypage/components/MyInfoTab'
 import { RecordsTab } from '@/features/mypage/components/RecordsTab'
+import { RecordsPanel } from '@/features/records'
 import {
   DEMO_CLUB,
   DEMO_JOIN_REQUESTS,
@@ -19,6 +21,7 @@ import { cn } from '@/shared/lib/cn'
 import { useAuthStore } from '@/shared/auth/store'
 import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
 import { useClubMembers } from '@/features/clubs/hooks'
+import { Card } from '@/shared/ui/Card'
 
 const TABS = ['내 정보', '동아리원', '동아리 자료'] as const
 type Tab = (typeof TABS)[number]
@@ -29,6 +32,10 @@ export default function MyPage() {
   const { user, me, clubId } = useAuthStore()
   const [tab, setTab] = useState<Tab>('내 정보')
   const [addOpen, setAddOpen] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  // 서버가 초대 생성을 회장·임원에게만 허용한다. 스토어는 그 둘만 담으므로
+  // 소속이 골라져 있다는 것 자체가 이미 둘 중 하나라는 뜻이다.
+  const canInvite = !demo && Boolean(clubId)
   const membersQuery = useClubMembers(demo ? null : clubId)
 
   const [members, setMembers] = useState<Member[]>(demo ? DEMO_MEMBERS : [])
@@ -65,7 +72,7 @@ export default function MyPage() {
             onClick={() => setTab(item)}
             aria-current={item === tab}
             className={cn(
-              'rounded-[9px] px-[18px] py-[10px] text-[13px]',
+              'rounded-[9px] px-[18px] py-[10px] text-[13px] transition-colors duration-150 motion-reduce:transition-none',
               item === tab
                 ? 'bg-blue-600 font-bold text-white'
                 : 'font-medium text-ink2 hover:bg-bg',
@@ -80,6 +87,8 @@ export default function MyPage() {
         <MyInfoTab
           profile={profile}
           club={club}
+          clubId={demo ? undefined : (clubId ?? undefined)}
+          canEditClub={user?.role === 'OWNER'}
           linkedAccounts={demo ? 'Google · 카카오' : undefined}
         />
       )}
@@ -100,12 +109,29 @@ export default function MyPage() {
           total={demo ? DEMO_MEMBER_TOTAL : (membersQuery.data?.length ?? 0)}
           onAddClick={() => setAddOpen(true)}
           canAdd={demo}
+          onInviteClick={canInvite ? () => setInviteOpen(true) : undefined}
           onResolveRequest={(id) => setRequests((list) => list.filter((r) => r.id !== id))}
           />
         </>
       )}
 
-      {tab === '동아리 자료' && <RecordsTab records={demo ? DEMO_RECORDS : []} />}
+      {tab === '동아리 자료' && (
+        <>
+          {demo ? (
+            <RecordsTab records={DEMO_RECORDS} />
+          ) : clubId ? (
+            <RecordsPanel key={clubId} clubId={clubId} title="동아리 자료" />
+          ) : (
+            <Card className="p-[20px]">
+              <p className="text-mute">동아리 자료를 보려면 먼저 소속을 선택해 주세요.</p>
+            </Card>
+          )}
+        </>
+      )}
+
+      {!demo && clubId && (
+        <InviteStaffModal open={inviteOpen} clubId={clubId} onClose={() => setInviteOpen(false)} />
+      )}
 
       <AddMemberModal
         open={addOpen}

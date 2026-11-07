@@ -102,3 +102,27 @@ test('action page keeps the server total and falls back to the item count', asyn
   assert.equal(fallbackPage.totalCount, 2)
   assert.deepEqual(Array.from(fallbackPage.items, (item) => item.id), ['action-1', 'action-2'])
 })
+
+test('draft request and content edit send the version the screen saw', async () => {
+  const calls = []
+  const api = setup({
+    apiPost: async (path, body) => {
+      calls.push(['POST', path, body])
+      return { id: 'act 1' }
+    },
+    apiPatch: async (path, body) => {
+      calls.push(['PATCH', path, body])
+      return { id: 'step-1' }
+    },
+  })
+  await api.requestActionDraft({ id: 'act 1', version: 4 })
+  await api.updateActionContent({ id: 'act 1', version: 5 }, '신청: https://forms.gle/a')
+  // 고치기 시작한 때의 version을 따로 넘길 수 있다(그사이 초안이 오면 409)
+  await api.updateActionContent({ id: 'act 1', version: 5 }, '내 글', 3)
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
+    ['POST', '/actions/act%201/draft', { expectedVersion: 4 }],
+    ['PATCH', '/actions/act%201', { expectedVersion: 5, content: '신청: https://forms.gle/a' }],
+    ['PATCH', '/actions/act%201', { expectedVersion: 3, content: '내 글' }],
+  ])
+  assert.throws(() => api.requestActionDraft({ id: 'act 1' }), /다시 불러온 뒤/)
+})

@@ -8,6 +8,7 @@ import type {
   PlanWarning,
   StepPhase,
 } from '@/features/planning/types'
+import type { RecordLookupEntry } from '@/features/planning/recordReferences'
 
 export const FIRST_MESSAGE: ChatMessage = {
   id: 'msg_00',
@@ -51,8 +52,69 @@ export const DEMO_FACTS: PlanFacts = {
 }
 
 // 과거 기록을 봤을 때만 보인다. 무엇을 보고 무엇을 알아냈는지 적는다.
-export const DEMO_REFERENCE =
-  '2025 봄 MT 결과보고 · 28명 · 1인 45,000원 · 가평 ○○펜션. 예비비 130,000원을 잡았는데 172,000원을 썼어요.'
+const reportSource = {
+  recordId: 'demo-report',
+  fileName: '2025 봄 MT 결과보고.pdf',
+  location: { label: '1쪽 · 행사 개요' },
+}
+const ledgerSource = {
+  recordId: 'demo-ledger',
+  fileName: '2025 상반기 장부.xlsx',
+  location: { label: 'MT 정산 시트 · 12~15행' },
+}
+export const DEMO_RECORD_HISTORY: RecordLookupEntry[] = [
+  {
+    revision: 3,
+    lookup: {
+      status: 'available',
+      query: null,
+      reason: null,
+      result: {
+        facts: [
+          {
+            content: '2025 봄 MT는 28명이 참가했고, 1인 참가비는 45,000원이었어요.',
+            sources: [reportSource],
+          },
+        ],
+        notFound: [],
+        conflicts: [],
+      },
+    },
+  },
+  {
+    revision: 2,
+    lookup: {
+      status: 'available',
+      query: null,
+      reason: null,
+      result: {
+        facts: [
+          {
+            content: '예비비는 130,000원을 잡았고, 실제로는 172,000원을 썼어요.',
+            sources: [ledgerSource, { ...reportSource, location: { label: '2쪽 · 정산' } }],
+          },
+        ],
+        notFound: [],
+        conflicts: [],
+      },
+    },
+  },
+  {
+    revision: 1,
+    lookup: {
+      status: 'available',
+      query: null,
+      reason: null,
+      result: {
+        facts: [
+          { content: '작년 봄 MT는 가평에서 1박 2일로 진행했어요.', sources: [reportSource] },
+        ],
+        notFound: [],
+        conflicts: [],
+      },
+    },
+  },
+]
 
 // 계획을 만드는 동안 보이는 조건. 무엇을 근거로 만드는 중인지만 보이고
 // 진행 단계는 보이지 않는다 — AI 호출이 한 번이라 중간을 알 수 없다(#179).

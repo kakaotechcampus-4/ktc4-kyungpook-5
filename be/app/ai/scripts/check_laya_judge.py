@@ -47,9 +47,11 @@ from app.ai.features.meeting.questions import (
 from app.ai.scripts.check_meeting_judge import (
     add_eval_args,
     breakdown,
-    confusion,
     eval_items,
     eval_record,
+    luna_caught,
+    luna_missed,
+    summarize_probabilities,
     threshold_sweep,
 )
 from app.ai.scripts.eval_retrieval import _git
@@ -67,45 +69,6 @@ def _max_rss_mb() -> float:
     """지금까지의 최대 메모리. macOS는 바이트, Linux는 KB로 준다"""
     peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return round(peak / (1e6 if sys.platform == "darwin" else 1e3), 1)
-
-
-def auroc(scores: list[float], truths: list[bool]) -> float | None:
-    """조회할 발화 하나와 아닌 발화 하나를 뽑았을 때 조회할 쪽 확률이 더 높을 비율. 같으면 반으로 센다"""
-    pos = [s for s, t in zip(scores, truths) if t]
-    neg = [s for s, t in zip(scores, truths) if not t]
-    if not pos or not neg:
-        return None
-    wins = sum((p > n) + 0.5 * (p == n) for p in pos for n in neg)
-    return round(wins / (len(pos) * len(neg)), 3)
-
-
-def summarize(records: list[dict]) -> dict:
-    # 둘 다 허용인 문항은 채점하지 않으므로 확률의 순서를 볼 때도 뺀다
-    scored = [r for r in records if not r.get("either")]
-    pos = [r for r in scored if r["truth"]]
-    neg = [r for r in scored if not r["truth"]]
-    return {
-        "items": len(records),
-        **confusion(records),
-        "auroc": auroc([r["p_true"] for r in scored], [r["truth"] for r in scored]),
-        "p_true_mean": {
-            "lookup": round(sum(r["p_true"] for r in pos) / len(pos), 3) if pos else None,
-            "no_lookup": round(sum(r["p_true"] for r in neg) / len(neg), 3) if neg else None,
-        },
-    }
-
-
-def luna_caught(path: Path) -> set[str]:
-    """luna가 조회로 판단한 문항 id. 정답과 맞았는지는 부르는 쪽이 지금 평가 문항의 정답으로 가린다"""
-    return {r["id"] for r in json.loads(path.read_text())["records"] if r.get("pred")}
-
-
-def luna_missed(records: list[dict], caught: set[str], threshold: float | None = None) -> dict:
-    """조회할 발화 중 luna가 잡았는데 Laya가 놓친 것. 둘 다 허용은 채점하지 않으므로 뺀다.
-    threshold를 주면 그 임계값으로 다시 판단한다(임계값 표)"""
-    target = [r for r in records if r["truth"] and not r.get("either") and r["id"] in caught]
-    missed = [r["id"] for r in target if not (r["p_true"] >= threshold if threshold is not None else r["pred"])]
-    return {"missed": f"{len(missed)} / {len(target)}", "ids": missed}
 
 
 def _revision(args, model: str) -> str | None:
@@ -153,8 +116,10 @@ def run(args) -> dict:
         print(f"  {'O' if pred == row['needs_lookup'] else 'X'} {row['id']:6} P={p:.3f}{detail}  {row['heard']}")
 
     caught = luna_caught(args.luna) if args.luna else None
-    sweep_records = [r for r in records if r.get("split") != "holdout"]
-    sweep = threshold_sweep(sweep_records, args.sweep)
+    # 임계값 표는 개발용으로만 만든다. 홀드아웃(holdout·holdout2)은 고른 값을 확인하는 데만 쓴다
+    sweep_records = [r for r in records if r.get("split", "dev") == "dev"]
+    # --split holdout2처럼 개발용이 없으면 표를 만들지 않는다
+    sweep = threshold_sweep(sweep_records, args.sweep) if sweep_records else []
     if caught is not None:
         for row in sweep:
             row["luna_caught_missed"] = luna_missed(sweep_records, caught, row["threshold"])["missed"]
@@ -178,8 +143,8 @@ def run(args) -> dict:
             "repeat": args.repeat,
             "generated_at": datetime.now(MEETING_TIMEZONE).isoformat(timespec="seconds"),
         },
-        "summary": summarize(records),
-        f"by_{key}": {name: summarize([r for r in records if r[key] == name]) for name in groups},
+        "summary": summarize_probabilities(records),
+        f"by_{key}": {name: summarize_probabilities([r for r in records if r[key] == name]) for name in groups},
         **({"luna_caught_missed": {name: luna_missed([r for r in records if r[key] == name], caught) for name in groups}}
            if caught is not None else {}),
         **({"breakdown": {name: breakdown([r for r in records if r["split"] == name]) for name in groups}}
@@ -218,8 +183,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.eval_set and args.set:
         parser.error("--eval-set에는 --set을 함께 쓸 수 없다")
-    if args.holdout and not args.eval_set:
-        parser.error("--holdout은 --eval-set과 함께 쓴다")
+    if (args.holdout or args.split) and not args.eval_set:
+        parser.error("--holdout·--split은 --eval-set과 함께 쓴다")
     if not 0 <= args.threshold <= 1 or not all(0 <= t <= 1 for t in args.sweep):
         parser.error("임계값은 0과 1 사이다")
     args.sweep = tuple(sorted(set(args.sweep)))
