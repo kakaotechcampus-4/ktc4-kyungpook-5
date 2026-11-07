@@ -13,6 +13,7 @@ import { meetingError } from '../errors'
 import {
   clockTime,
   extractionFailed,
+  isCandidateSaved,
   meetingAnswers,
   meetingProcessingSteps,
   meetingView,
@@ -77,6 +78,11 @@ export function MeetingWorkspace({
   const decisions = data.decisions.data ?? EMPTY
   const answers = useMemo(() => meetingAnswers(transcripts, decisions), [transcripts, decisions])
   const heard = transcripts.filter((t) => t.final).length
+  const candidateSavedCount = data.suggestions.filter(isCandidateSaved).length
+  const candidatesPending =
+    data.suggestionsQuery.isPending || data.transcripts.isPending || data.decisions.isPending
+  const candidatesError =
+    data.suggestionsQuery.isError || data.transcripts.isError || data.decisions.isError
   const processingSteps = useMemo(
     () => meetingProcessingSteps({
       transcriptCount: heard,
@@ -88,18 +94,19 @@ export function MeetingWorkspace({
         data.decisions.isError ||
         decisions.some((d) => d.status !== 'STALE' && String(d.kind) === 'FAILED'),
       candidateCount: data.suggestions.length,
-      candidateSavedCount: data.suggestions.filter((suggestion) => suggestion.status === 'ACCEPTED').length,
-      candidatePending: data.suggestionsQuery.isPending,
-      candidateError: data.suggestionsQuery.isError,
+      candidateSavedCount,
+      candidatePending: candidatesPending,
+      candidateError: candidatesError,
       extractionError: extractionFailed(decisions),
     }),
     [
       answers.length,
+      candidateSavedCount,
+      candidatesPending,
+      candidatesError,
       data.decisions.isError,
       data.decisions.isPending,
       data.suggestions,
-      data.suggestionsQuery.isError,
-      data.suggestionsQuery.isPending,
       data.transcripts.isError,
       data.transcripts.isPending,
       decisions,
@@ -197,7 +204,12 @@ export function MeetingWorkspace({
       ? `${clockTime(meeting.startedAt)} – ${clockTime(meeting.endedAt)}`
       : `${clockTime(meeting.startedAt)} 시작`
     : '시작 전'
-  const meta = `${when} · 후보 ${data.suggestions.length}건 · 토리 ${answers.length}번`
+  const candidateSaveMeta = candidatesPending
+    ? '후보 저장 확인 중'
+    : candidatesError
+      ? '후보 저장 확인 실패'
+      : `후보 저장 ${candidateSavedCount}/${data.suggestions.length}건`
+  const meta = `${when} · ${candidateSaveMeta} · 토리 ${answers.length}번`
   const candidates = (
     <CandidatesModal
       open={candidatesOpen}

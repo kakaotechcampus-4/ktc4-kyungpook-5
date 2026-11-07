@@ -3,6 +3,12 @@ import type { components } from '@/shared/api/schema'
 import type { Decision, Job, Meeting, MeetingReview, Suggestion, TranscriptList } from './types'
 const id = encodeURIComponent
 type PageMeta = components['schemas']['PageMeta']
+type SuggestionFields = {
+  title: string
+  description: string
+  dueDate: string | null
+  suggestedAssignee: string | null
+}
 export const meetingsApi = {
   // Pressing start is the recording consent (#113); there is no separate checkbox.
   create: (clubId: string, title: string, eventId: string | null) =>
@@ -45,15 +51,20 @@ export const meetingsApi = {
   patchSuggestion: (
     clubId: string,
     suggestion: Suggestion,
-    values: {
-      title: string
-      description: string
-      dueDate: string | null
-      suggestedAssignee: string | null
-    },
+    values: SuggestionFields,
   ) =>
     apiPatch<Suggestion>(`/clubs/${id(clubId)}/task-suggestions/${id(suggestion.id)}`, {
       expectedVersion: suggestion.version,
       ...values,
     }),
+  acceptSuggestion: async (
+    clubId: string,
+    suggestion: Suggestion,
+    values: SuggestionFields,
+  ): Promise<Suggestion> => {
+    const saved = await meetingsApi.patchSuggestion(clubId, suggestion, values)
+    return apiPost<Suggestion>(`/clubs/${id(clubId)}/task-suggestions/${id(saved.id)}/accept`, {
+      expectedVersion: saved.version,
+    })
+  },
 }

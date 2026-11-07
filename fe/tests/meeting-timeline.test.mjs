@@ -13,7 +13,7 @@ const source = await readFile(
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 })
-const { sourceOf, transcriptTime, visibleDecision, meetingAnswers, toriResults, extractionFailed, meetingProcessingSteps, meetingWhen, clockTime, askedAgo, recordedClock, meetingView } = await import(
+const { sourceOf, transcriptTime, visibleDecision, meetingAnswers, toriResults, extractionFailed, isCandidateSaved, meetingProcessingSteps, meetingWhen, clockTime, askedAgo, recordedClock, meetingView } = await import(
   `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
 )
 
@@ -164,6 +164,42 @@ test('a failed task extraction is told apart from a meeting with no candidates',
   assert.equal(extractionFailed([ok]), false)
   assert.equal(extractionFailed([ok, failed]), true)
   assert.equal(extractionFailed([ok, stale]), false, 'an outdated decision does not count')
+})
+
+test('candidate saves count edited proposals and accepted candidates once each', () => {
+  const suggestions = [
+    { id: 'new', status: 'PROPOSED', version: 1 },
+    { id: 'saved', status: 'PROPOSED', version: 2 },
+    { id: 'confirmed', status: 'ACCEPTED', version: 1 },
+  ]
+  assert.deepEqual(suggestions.map(isCandidateSaved), [false, true, true])
+  const savedCount = () => suggestions.filter(isCandidateSaved).length
+  assert.equal(savedCount(), 2)
+
+  suggestions[0].version += 1
+  assert.equal(savedCount(), 3, 'saving a proposal counts it without accepting or reserving it')
+  assert.equal(suggestions[0].status, 'PROPOSED')
+  suggestions[0].version += 1
+  assert.equal(savedCount(), 3, 'saving again does not create another saved candidate')
+})
+
+test('candidate save status stays unconfirmed while data is pending or failed', () => {
+  const input = {
+    transcriptCount: 0,
+    transcriptPending: false,
+    transcriptError: false,
+    answerCount: 0,
+    answerPending: false,
+    answerError: false,
+    candidateCount: 1,
+    candidateSavedCount: 1,
+    candidatePending: false,
+    candidateError: false,
+    extractionError: false,
+  }
+  assert.equal(meetingProcessingSteps({ ...input, candidatePending: true })[3].state, 'waiting')
+  assert.equal(meetingProcessingSteps({ ...input, candidateError: true })[3].state, 'failed')
+  assert.equal(meetingProcessingSteps(input)[3].state, 'done')
 })
 
 test('meeting processing status keeps failures separate from empty results and saves', () => {

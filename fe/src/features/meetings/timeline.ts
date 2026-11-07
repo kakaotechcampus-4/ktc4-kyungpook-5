@@ -1,4 +1,4 @@
-import type { Decision, Meeting, Transcript } from './types'
+import type { Decision, Meeting, Suggestion, Transcript } from './types'
 import type { AudioPhase } from './audio/useMeetingAudio'
 export function sourceOf(decision: Decision, transcripts: Transcript[]): Transcript | undefined {
   return transcripts.find(
@@ -140,6 +140,13 @@ export function extractionFailed(decisions: Decision[]) {
   )
 }
 
+export function isCandidateSaved(suggestion: Pick<Suggestion, 'status' | 'version'>) {
+  // shortcut: AI 후보는 v1이고 PROPOSED 버전 증가는 저장뿐이다. 다른 수정 경로가 생기면 별도 저장 표식으로 바꾼다.
+  return (
+    suggestion.status === 'ACCEPTED' || (suggestion.status === 'PROPOSED' && suggestion.version > 1)
+  )
+}
+
 export type MeetingProcessingStep = {
   key: 'transcript' | 'answers' | 'candidates' | 'candidate-save'
   label: string
@@ -181,15 +188,18 @@ export function meetingProcessingSteps(input: {
       : input.candidateCount > 0
         ? { state: 'done' as const, detail: `확인할 후보 ${input.candidateCount}건` }
         : { state: 'empty' as const, detail: '추출된 후보가 없어요.' }
-  const candidateSave =
-    input.candidateCount === 0
-      ? { state: 'empty' as const, detail: '저장할 후보가 없어요.' }
-      : input.candidateSavedCount >= input.candidateCount
-        ? { state: 'done' as const, detail: `후보 ${input.candidateSavedCount}건 저장됨` }
-        : {
-            state: 'waiting' as const,
-            detail: `${input.candidateSavedCount}/${input.candidateCount}건 저장됨 · 확인 필요`,
-          }
+  const candidateSave = input.candidatePending
+    ? { state: 'waiting' as const, detail: '후보 저장 상태를 확인하는 중이에요.' }
+    : input.candidateError
+      ? { state: 'failed' as const, detail: '후보 저장 상태를 불러오지 못했어요.' }
+      : input.candidateCount === 0
+        ? { state: 'empty' as const, detail: '저장할 후보가 없어요.' }
+        : input.candidateSavedCount >= input.candidateCount
+          ? { state: 'done' as const, detail: `후보 ${input.candidateSavedCount}건 저장됨` }
+          : {
+              state: 'waiting' as const,
+              detail: `${input.candidateSavedCount}/${input.candidateCount}건 저장됨 · 확인 필요`,
+            }
   return [
     { key: 'transcript', label: '음성 전사', ...transcript },
     { key: 'answers', label: '자료 답변', ...answers },

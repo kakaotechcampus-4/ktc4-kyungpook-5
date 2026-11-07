@@ -17,6 +17,7 @@ import {
   type Recipient,
 } from '../confirmed'
 import { meetingError } from '../errors'
+import { isCandidateSaved } from '../timeline'
 import type { Suggestion } from '../types'
 
 const statusLabels: Record<ConfirmedTask['reminder']['status'], string> = {
@@ -31,11 +32,13 @@ function ReviewFields({
   suggestion,
   existing,
   onSaved,
+  onCandidateError,
 }: {
   clubId: string
   suggestion: Suggestion
   existing?: ConfirmedTask
   onSaved: () => void
+  onCandidateError?: (message: string) => void
 }) {
   const memoHelpId = useId()
   const [kind, setKind] = useState<'TASK' | 'SCHEDULE'>(
@@ -73,18 +76,28 @@ function ReviewFields({
     await client.invalidateQueries({ queryKey: ['confirmed', clubId] })
     onSaved()
   }
+  const candidateFields = {
+    title: title.trim(),
+    description,
+    dueDate: date || null,
+    suggestedAssignee: assignee.trim() || null,
+  }
   const draft = useMutation({
-    mutationFn: () =>
-      meetingsApi.patchSuggestion(clubId, suggestion, {
-        title: title.trim(),
-        description,
-        dueDate: date || null,
-        suggestedAssignee: assignee.trim() || null,
-      }),
+    mutationFn: () => meetingsApi.patchSuggestion(clubId, suggestion, candidateFields),
+    onMutate: () => onCandidateError?.(''),
     onSuccess: async () => {
       setNotice('후보 수정만 저장했습니다. 일정·알림 예약은 생성되지 않았습니다.')
       await refresh()
     },
+  })
+  const accept = useMutation({
+    mutationFn: () => meetingsApi.acceptSuggestion(clubId, suggestion, candidateFields),
+    onMutate: () => onCandidateError?.(''),
+    onError: (error) =>
+      onCandidateError?.(
+        `${suggestion.title}: 후보 확정을 완료하지 못했어요. 후보 수정은 저장됐을 수 있어요. 상태를 확인한 뒤 다시 시도해 주세요. ${meetingError(error)}`,
+      ),
+    onSettled: refresh,
   })
   const save = useMutation({
     mutationFn: (fields: ConfirmedFields) =>
@@ -99,7 +112,7 @@ function ReviewFields({
       await refresh()
     },
   })
-  const busy = save.isPending || draft.isPending
+  const busy = save.isPending || draft.isPending || accept.isPending
   const invalidate = () => {
     setChecked(false)
     setNotice('')
@@ -211,9 +224,12 @@ function ReviewFields({
         여러 줄로 적을 수 있어요. 비워 두어도 저장할 수 있고, 저장 후에도 다시 확인·수정할 수
         있어요.
       </p>
-      {!existing && (
-        <details className="rounded-lg border border-line p-3 text-caption">
-          <summary>추출 후보만 수정</summary>
+      {!existing && suggestion.status === 'PROPOSED' && (
+        <div className="rounded-lg border border-line p-3 text-caption">
+          <p className="font-bold">후보만 저장</p>
+          <p className="mt-1 text-ink2">
+            위 내용·담당자 이름·메모와 후보 날짜를 저장해요. 일정·알림 예약은 별도로 확인해요.
+          </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Input
               label="후보 날짜 (정확한 시각 아님)"
@@ -230,7 +246,21 @@ function ReviewFields({
           >
             후보만 저장
           </Button>
-        </details>
+          <Button
+            className="mt-3 ml-2"
+            variant="secondary"
+            disabled={busy || !title.trim()}
+            onClick={() => accept.mutate()}
+          >
+            알림 없이 후보 확정
+          </Button>
+          <p className="mt-2 text-ink2">후보 확정은 일정·알림 예약을 만들지 않아요.</p>
+        </div>
+      )}
+      {!existing && suggestion.status === 'ACCEPTED' && (
+        <p className="text-caption text-ink2">
+          후보를 확정했어요. 여기서 바꾼 내용은 확인 후 저장하는 일정·알림 예약에 적용돼요.
+        </p>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-caption font-bold">
@@ -396,6 +426,7 @@ export function CandidatesModal({
   // undefined until the user toggles: the first candidate starts open even though the
   // modal is mounted before the candidates load.
   const [openId, setOpenId] = useState<string | null | undefined>(undefined)
+  const [candidateError, setCandidateError] = useState('')
   const shownId = openId === undefined ? suggestions[0]?.id : openId
   return (
     <Modal
@@ -413,8 +444,20 @@ export function CandidatesModal({
       width={600}
     >
       {!suggestions.length && <p className="text-mute">회의에서 나온 일정·할 일이 없어요.</p>}
+      {candidateError && (
+        <p role="alert" className="text-failed">
+          {candidateError}
+        </p>
+      )}
       {suggestions.map((s) => {
-        const saved = confirmed.data?.some((item) => item.suggestionId === s.id)
+        const confirmedTask = confirmed.data?.find((item) => item.suggestionId === s.id)
+        const reservationLabel =
+          confirmedTask?.status === 'CANCELLED'
+            ? '항목 취소됨'
+            : confirmedTask?.reminder.status === 'CANCELLED' ||
+                confirmedTask?.reminder.status === 'FAILED'
+              ? statusLabels[confirmedTask.reminder.status]
+              : '일정·알림 예약됨'
         const expanded = shownId === s.id
         return (
           <section key={`${s.id}:${s.version}`} className="rounded-[12px] border border-line bg-bg">
@@ -426,19 +469,43 @@ export function CandidatesModal({
             >
               <Chip>{s.kind === 'SCHEDULE' ? '일정' : '할 일'}</Chip>
               <span className="min-w-0 flex-1 break-words font-bold">{s.title}</span>
+              {isCandidateSaved(s) && (
+                <Chip size="sm" tone="done">
+                  {s.status === 'ACCEPTED' ? '후보 확정됨' : '후보 저장됨'}
+                </Chip>
+              )}
               <span className="text-caption text-ink2">
-                {saved ? '저장함' : expanded ? '접기' : '펼쳐서 확인 ›'}
+                {confirmedTask ? reservationLabel : expanded ? '접기' : '펼쳐서 확인 ›'}
               </span>
             </button>
             {expanded && (
               <div className="border-t border-line bg-card px-4 py-4">
-                {saved ? (
+                {confirmed.isPending ? (
+                  <p role="status" className="text-ink2">
+                    일정·알림 예약 상태를 확인하는 중이에요.
+                  </p>
+                ) : confirmed.isError ? (
+                  <div role="alert" className="space-y-2">
+                    <p className="text-failed">
+                      일정·알림 예약 상태를 불러오지 못했어요. 다시 확인한 뒤 저장해 주세요.
+                    </p>
+                    <Button variant="secondary" onClick={() => void confirmed.refetch()}>
+                      다시 확인
+                    </Button>
+                  </div>
+                ) : confirmedTask ? (
                   <p className="text-ink2">
-                    저장했어요. 바꾸거나 취소하려면 회의 첫 화면 아래 &lsquo;저장한 일정·알림
-                    예약&rsquo;을 열어 주세요.
+                    {reservationLabel}. 알림 상태: {statusLabels[confirmedTask.reminder.status]}.
+                    회의 첫 화면 아래 &lsquo;저장한 일정·알림 예약&rsquo;에서 자세한 상태를 확인해
+                    주세요.
                   </p>
                 ) : (
-                  <ReviewFields clubId={clubId} suggestion={s} onSaved={onSaved} />
+                  <ReviewFields
+                    clubId={clubId}
+                    suggestion={s}
+                    onSaved={onSaved}
+                    onCandidateError={setCandidateError}
+                  />
                 )}
               </div>
             )}
@@ -507,6 +574,7 @@ export function ConfirmedTasks({
         >
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-h3">{item.title}</h3>
+            {item.status === 'CANCELLED' && <Chip>항목 취소됨</Chip>}
             <Chip tone={item.reminder.status === 'FAILED' ? 'failed' : 'neutral'}>
               {statusLabels[item.reminder.status]}
             </Chip>
@@ -529,6 +597,11 @@ export function ConfirmedTasks({
             <p className="mt-2 text-caption text-mute">
               Push 서비스가 {item.reminder.acceptedCount}건을 접수했습니다. 실제 기기 표시는 수신
               기기에서 확인해 주세요.
+              {item.reminder.failedCount > 0 && (
+                <span className="block text-failed">
+                  일부 발송 실패: {item.reminder.failedCount}건. 구독 상태를 확인해 주세요.
+                </span>
+              )}
             </p>
           )}
           {item.reminder.status === 'FAILED' && (
@@ -549,7 +622,7 @@ export function ConfirmedTasks({
                 disabled={cancel.isPending}
                 onClick={() => cancel.mutate(item)}
               >
-                예약 취소
+                항목·예약 취소
               </Button>
             </div>
           )}
