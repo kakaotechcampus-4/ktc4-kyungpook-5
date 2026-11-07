@@ -305,6 +305,23 @@ test('a newly detected cross-tab login aborts the current mutation before sendin
   assert.equal(env.store.getState().user, null)
 })
 
+test('an old successful save cannot start a second mutation under a newer account', async () => {
+  const gate = defer()
+  const env = setup({ request: async (config) => {
+    if (config.url === '/save') await gate.promise
+    return ok(config, { id: 'candidate', version: 2 })
+  } })
+  const chain = env.client.apiPatch('/save', { title: 'old account' })
+    .then((saved) => env.client.apiPost('/accept', { expectedVersion: saved.version }))
+  env.storage.set(accessKey, 'other-tab-access')
+  env.storage.set(refreshKey, 'other-tab-refresh')
+  gate.resolve()
+  await assert.rejects(chain, /로그인 상태가 변경/)
+  assert.equal(env.calls.length, 1)
+  assert.equal(env.store.getState().token, 'other-tab-access')
+  assert.equal(env.store.getState().me, null)
+})
+
 test('/me still populates after token rotation but an older account response cannot replace a new login', async () => {
   const stale = defer()
   const env = setup({ request: async (config) => {
@@ -319,7 +336,7 @@ test('/me still populates after token rotation but an older account response can
   const load = other.hooks.useMe().queryFn()
   other.store.getState().setSession({ accessToken: 'other', refreshToken: 'other-refresh' })
   stale.resolve()
-  await load
+  await assert.rejects(load, /로그인 상태가 변경/)
   assert.equal(other.store.getState().token, 'other')
   assert.equal(other.store.getState().me, null)
 })
@@ -365,6 +382,24 @@ test('an opened stream read failure is not replayed', async () => {
   assert.equal(env.refreshes.length, 0)
 })
 
+test('an opened stream stops delivering old-session events when the account changes', async () => {
+  let requests = 0
+  const events = []
+  const env = setup({ fetch: async () => {
+    requests += 1
+    return new Response('event: progress\ndata: {"old":1}\n\nevent: done\ndata: {"old":2}\n\n')
+  } })
+  await assert.rejects(env.client.apiPostStream('/plan/chat/stream', {}, {
+    onEvent: (event) => {
+      events.push(event)
+      env.store.getState().setSession({ accessToken: 'other', refreshToken: 'other-refresh' })
+    },
+  }), /로그인 상태가 변경/)
+  assert.equal(events.length, 1)
+  assert.equal(requests, 1)
+  assert.equal(env.refreshes.length, 0)
+})
+
 test('logout after access expiry revokes the rotated refresh token and clears the local session', async () => {
   const env = setup({ request: async (config) => {
     if (config.headers.Authorization === 'Bearer access-old') throw denied(config)
@@ -383,7 +418,7 @@ test('a pending logout or login cannot clear or replace a newer session', async 
   const logout = env.hooks.useLogout().mutationFn()
   env.store.getState().setSession({ accessToken: 'other', refreshToken: 'other-refresh' })
   logoutGate.resolve()
-  await logout
+  await assert.rejects(logout, /로그인 상태가 변경/)
   assert.equal(env.store.getState().token, 'other')
 
   const loginGate = defer()

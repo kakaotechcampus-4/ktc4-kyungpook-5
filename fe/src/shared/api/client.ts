@@ -10,7 +10,7 @@ export { setAccessToken } from '@/shared/auth/tokens'
 
 export function getAccessToken(): string | null {
   syncSessionFromStorage()
-  return getStoredAccessToken()
+  return useAuthStore.getState().token
 }
 
 export function getApiBaseUrl(): string {
@@ -40,9 +40,13 @@ async function refreshSession(sessionId: number, accessToken: string): Promise<v
   syncSessionFromStorage()
   if (useAuthStore.getState().sessionId !== sessionId) throw new Error('로그인 상태가 변경되었습니다.')
   // 늦게 도착한 같은 세션의 401은 이미 회전한 토큰을 재사용한다.
-  if (getAccessToken() !== accessToken) return
+  if (useAuthStore.getState().token !== accessToken) return
   if (refreshing?.sessionId === sessionId) return refreshing.promise
   const refreshToken = getRefreshToken()
+  if (getStoredAccessToken() !== accessToken) {
+    syncSessionFromStorage()
+    throw new Error('로그인 상태가 변경되었습니다.')
+  }
   if (!refreshToken) {
     clearSession(sessionId)
     throw new ApiError({ code: 'UNAUTHORIZED', message: '다시 로그인해 주세요.' })
@@ -75,18 +79,22 @@ const http = axios.create({ baseURL: BASE_URL })
 http.interceptors.request.use((config) => {
   const authConfig = config as AuthRequest
   if (syncSessionFromStorage()) throw new Error('로그인 상태가 변경되었습니다. 다시 확인해 주세요.')
-  const sessionId = useAuthStore.getState().sessionId
+  const { sessionId, token } = useAuthStore.getState()
   if (authConfig.sessionId !== undefined && authConfig.sessionId !== sessionId) {
     throw new Error('로그인 상태가 변경되었습니다.')
   }
-  const token = getAccessToken()
   authConfig.sessionId = sessionId
   authConfig.accessToken = token
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 }, (error: unknown) => { throw error }, { synchronous: true })
 
-http.interceptors.response.use(undefined, async (error: unknown) => {
+http.interceptors.response.use((response) => {
+  syncSessionFromStorage()
+  const config = response.config as AuthRequest
+  if (config.sessionId !== useAuthStore.getState().sessionId) throw new Error('로그인 상태가 변경되었습니다.')
+  return response
+}, async (error: unknown) => {
   if (!axios.isAxiosError(error) || error.response?.status !== 401 || !error.config) throw error
   const config = error.config as AuthRequest
   if (!canRefresh(config.url ?? '') || !config.accessToken || config.sessionId === undefined) throw error
@@ -164,8 +172,7 @@ export async function apiPostStream(
     'Content-Type': 'application/json',
     Accept: 'text/event-stream',
   }
-  const sessionId = useAuthStore.getState().sessionId
-  const token = getAccessToken()
+  const { sessionId, token } = useAuthStore.getState()
   if (token) headers.Authorization = `Bearer ${token}`
   if (options.idempotencyKey) headers['Idempotency-Key'] = options.idempotencyKey
   const send = () => fetch(`${BASE_URL}${path}`, {
@@ -179,10 +186,12 @@ export async function apiPostStream(
   if (res.status === 401 && token && canRefresh(path)) {
     await refreshSession(sessionId, token)
     if (useAuthStore.getState().sessionId !== sessionId) throw new Error('로그인 상태가 변경되었습니다.')
-    headers.Authorization = `Bearer ${getAccessToken()}`
+    headers.Authorization = `Bearer ${useAuthStore.getState().token}`
     res = await send()
     if (res.status === 401) clearSession(sessionId)
   }
+  syncSessionFromStorage()
+  if (useAuthStore.getState().sessionId !== sessionId) throw new Error('로그인 상태가 변경되었습니다.')
   if (!res.ok || !res.body) {
     const errorBody = await res
       .json()
@@ -191,16 +200,31 @@ export async function apiPostStream(
     if (errorBody) throw new ApiError(errorBody)
     throw new Error(`스트림 요청 실패 (HTTP ${res.status})`)
   }
-  const parser = createSseParser(options.onEvent)
+  const assertCurrentSession = () => {
+    syncSessionFromStorage()
+    if (useAuthStore.getState().sessionId !== sessionId) throw new Error('로그인 상태가 변경되었습니다.')
+  }
+  const parser = createSseParser((event) => {
+    assertCurrentSession()
+    options.onEvent(event)
+  })
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
-  for (;;) {
-    const { value, done } = await reader.read()
-    if (done) break
-    parser.push(decoder.decode(value, { stream: true }))
+  try {
+    for (;;) {
+      const { value, done } = await reader.read()
+      assertCurrentSession()
+      if (done) break
+      parser.push(decoder.decode(value, { stream: true }))
+    }
+    parser.push(decoder.decode())
+    parser.end()
+  } catch (error) {
+    await reader.cancel?.().catch(() => undefined)
+    throw error
+  } finally {
+    reader.releaseLock?.()
   }
-  parser.push(decoder.decode())
-  parser.end()
 }
 
 // multipart/form-data 업로드(POST /records). Content-Type(boundary 포함)은 axios가 자동 설정한다.
