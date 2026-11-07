@@ -33,6 +33,11 @@ export function LoginForm() {
       <Card className="mt-[26px] flex w-[400px] max-w-full flex-col gap-[16px] px-[28px] py-[28px]">
         <h2 className="text-h3">들어갈 팀·조직 선택</h2>
         <p className="break-all text-[12px] text-mute">{me.email}</p>
+        {params.get('next') === '/clubs/join' && (
+          <Link to="/clubs/join" className="text-center text-[13px] font-bold text-blue-700 underline">
+            받은 운영진 초대 이어서 수락하기
+          </Link>
+        )}
         {me.clubs.length ? (
           <div className="flex flex-col gap-[9px]">
             {me.clubs.map((club) => (

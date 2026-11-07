@@ -3,6 +3,7 @@
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import ClubCategory, InvitationStatus, MemberRole, MemberStatus, SERVICE_ROLES
@@ -112,7 +113,7 @@ async def accept_invitation(
 ) -> Member:
     token_hash = hash_token(token)
     invitation = await session.scalar(
-        select(Invitation).where(Invitation.token_hash == token_hash)
+        select(Invitation).where(Invitation.token_hash == token_hash).with_for_update()
     )
     if invitation is None:
         raise ValidationFailed({"token": "유효하지 않은 초대입니다."})
@@ -123,26 +124,25 @@ async def accept_invitation(
     if invitation.role not in SERVICE_ROLES:
         raise ValidationFailed({"role": "일반 동아리원 초대는 서비스에서 사용할 수 없습니다. 회장·임원 초대를 요청해 주세요."})
 
-    existing = await session.scalar(
-        select(Member).where(
-            Member.club_id == invitation.club_id, Member.account_id == account.id
+    member = await session.scalar(
+        insert(Member)
+        .values(
+            club_id=invitation.club_id,
+            account_id=account.id,
+            name=account.email.split("@")[0],
+            role=invitation.role,
+            status=MemberStatus.ACTIVE,
         )
+        .on_conflict_do_nothing(constraint="uq_members_club_account")
+        .returning(Member)
     )
-    if existing is not None:
+    if member is None:
         raise ValidationFailed({"token": "이미 동아리에 속해 있습니다."})
 
-    member = Member(
-        club_id=invitation.club_id,
-        account_id=account.id,
-        name=account.email.split("@")[0],
-        role=invitation.role,
-        status=MemberStatus.ACTIVE,
-    )
-    session.add(member)
-
-    invitation.status = InvitationStatus.ACCEPTED
-    invitation.accepted_by = account.id
-    invitation.accepted_at = datetime.now(UTC)
+    # 첫 사용 기록을 보존하고 만료 전까지 다른 계정의 참여를 받는다.
+    if invitation.accepted_at is None:
+        invitation.accepted_by = account.id
+        invitation.accepted_at = datetime.now(UTC)
 
     await session.commit()
     return member
@@ -193,6 +193,7 @@ async def list_members(session: AsyncSession, *, club_id: str) -> list[dict]:
         select(Invitation).where(
             Invitation.club_id == club_id,
             Invitation.status == InvitationStatus.PENDING,
+            Invitation.accepted_at.is_(None),
             Invitation.expires_at >= datetime.now(UTC),
         )
     )

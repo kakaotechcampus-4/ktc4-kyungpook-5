@@ -1,12 +1,10 @@
-// 임원 초대. 메일을 보내지 않고 초대 코드를 만들어 보여준다 — 만든 사람이 직접 전한다.
-//
-// 코드는 응답에 한 번만 나오고 서버에는 해시만 남는다. 창을 닫으면 다시 볼 수 없으므로
-// 닫기 전에 복사하라고 분명히 적는다.
+// 임원 초대 링크는 만든 사람이 직접 전한다. 원문은 생성할 때 한 번만 받을 수 있다.
 //
 // 역할은 임원(MANAGER)으로 고정한다. 회장은 한 명이어야 한다 — 서버는 아직
 // OWNER 초대도 받으므로, 이 화면에서만 막혀 있다는 점을 알고 있어야 한다.
 import { useState } from 'react'
 import { clubErrorMessage, useCreateInvitation } from '@/features/clubs/hooks'
+import type { InvitationCreateResult } from '@/features/clubs/types'
 import { copyText } from '@/shared/lib/clipboard'
 import { toast } from '@/shared/lib/toast'
 import { Field } from '@/shared/ui/AuthShell'
@@ -24,12 +22,15 @@ interface InviteStaffModalProps {
 export function InviteStaffModal({ open, clubId, onClose }: InviteStaffModalProps) {
   const create = useCreateInvitation()
   const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
+  const [invitation, setInvitation] = useState<InvitationCreateResult | null>(null)
   const [error, setError] = useState('')
+  const link = invitation
+    ? new URL(`/clubs/join#${encodeURIComponent(invitation.token)}`, window.location.origin).href
+    : ''
 
   const close = () => {
     setEmail('')
-    setCode('')
+    setInvitation(null)
     setError('')
     onClose()
   }
@@ -39,7 +40,7 @@ export function InviteStaffModal({ open, clubId, onClose }: InviteStaffModalProp
     setError('')
     try {
       const result = await create.mutateAsync({ clubId, email: email.trim(), role: 'MANAGER' })
-      setCode(result.token)
+      setInvitation(result)
     } catch (cause) {
       setError(clubErrorMessage(cause))
     }
@@ -47,9 +48,9 @@ export function InviteStaffModal({ open, clubId, onClose }: InviteStaffModalProp
 
   const copy = async () => {
     toast.show(
-      (await copyText(code))
-        ? { kind: 'done', title: '초대 코드를 복사했어요' }
-        : { kind: 'error', title: '복사하지 못했어요', desc: '코드를 직접 선택해 복사해 주세요.' },
+      (await copyText(link))
+        ? { kind: 'done', title: '초대 링크를 복사했어요' }
+        : { kind: 'error', title: '복사하지 못했어요', desc: '링크를 직접 선택해 복사해 주세요.' },
     )
   }
 
@@ -58,16 +59,16 @@ export function InviteStaffModal({ open, clubId, onClose }: InviteStaffModalProp
       open={open}
       onClose={close}
       title="임원 초대"
-      subtitle={code ? '아래 코드를 전해 주세요' : '초대할 사람의 이메일을 적어 주세요'}
+      subtitle={invitation ? '아래 링크를 초대할 운영진에게 전해 주세요' : '초대 기록에 남길 이메일을 적어 주세요'}
       width={520}
-      footerNote={code ? '창을 닫으면 코드를 다시 볼 수 없어요' : undefined}
+      footerNote={invitation ? '창을 닫으면 링크를 다시 볼 수 없어요' : undefined}
       footer={
-        code ? (
+        invitation ? (
           <span className="flex gap-[8px]">
             <Button variant="secondary" onClick={close}>
               닫기
             </Button>
-            <Button onClick={() => void copy()}>코드 복사</Button>
+            <Button onClick={() => void copy()}>링크 복사</Button>
           </span>
         ) : (
           <span className="flex gap-[8px]">
@@ -79,7 +80,7 @@ export function InviteStaffModal({ open, clubId, onClose }: InviteStaffModalProp
               disabled={!email.trim()}
               onClick={() => void submit()}
             >
-              초대 코드 만들기
+              초대 링크 만들기
             </Button>
           </span>
         )
@@ -92,17 +93,23 @@ export function InviteStaffModal({ open, clubId, onClose }: InviteStaffModalProp
           </p>
         )}
 
-        {code ? (
+        {invitation ? (
           <>
             <p
               className="select-all break-all rounded-[12px] bg-bg px-[16px] py-[18px] text-center text-[15px] font-bold"
               role="status"
             >
-              {code}
+              {link}
+            </p>
+            <p className="text-[12px] text-mute">
+              만료{' '}
+              <time dateTime={invitation.expiresAt}>
+                {new Date(invitation.expiresAt).toLocaleString('ko-KR')}
+              </time>
             </p>
             <ToriNote title="전할 때 알아두세요">
-              코드를 가진 사람은 누구나 이 동아리의 임원이 돼요. 초대하려는 사람에게만
-              전해 주세요.
+              만료 전까지 여러 계정이 같은 링크로 임원으로 참여할 수 있어요. 초대하려는
+              사람에게만 전해 주세요.
             </ToriNote>
           </>
         ) : (

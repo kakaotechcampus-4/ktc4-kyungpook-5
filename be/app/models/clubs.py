@@ -86,7 +86,7 @@ class Invitation(IdMixin, TimestampMixin, Base):
     )
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[MemberRole] = mapped_column(enum_column(MemberRole), nullable=False)
-    # 원문을 저장하지 않는다. 메일로만 전달한다.
+    # 원문을 저장하지 않는다. 생성 요청의 응답에만 담아 전달한다.
     token_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[InvitationStatus] = mapped_column(
         enum_column(InvitationStatus), nullable=False, default=InvitationStatus.PENDING
@@ -95,6 +95,7 @@ class Invitation(IdMixin, TimestampMixin, Base):
     invited_by: Mapped[str] = mapped_column(
         String(ID_LENGTH), fk("members.id"), nullable=False
     )
+    # 재사용 가능한 링크에서는 첫 수락만 기록한다.
     accepted_by: Mapped[str | None] = mapped_column(
         String(ID_LENGTH), fk("accounts.id")
     )

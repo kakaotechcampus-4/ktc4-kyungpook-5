@@ -10,7 +10,7 @@ import { Tori } from '@/shared/ui/Tori'
 
 const ACCOUNT: Record<AccountStatus, { label: string; tone: 'done' | 'pending' | 'neutral' }> = {
   JOINED: { label: '계정 있음', tone: 'done' },
-  INVITED: { label: '초대 중지', tone: 'neutral' },
+  INVITED: { label: '초대 대기', tone: 'pending' },
   NONE: { label: '계정 없음', tone: 'neutral' },
 }
 
