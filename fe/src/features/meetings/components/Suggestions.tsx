@@ -9,6 +9,7 @@ import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
 import { meetingsApi } from '../api'
 import {
   confirmedApi,
+  notificationTaskDetail,
   displayTime,
   seoulInput,
   seoulIso,
@@ -568,6 +569,7 @@ export function ConfirmedTasks({
 }) {
   const client = useQueryClient()
   const [editing, setEditing] = useState<string | null>(null)
+  const [dismissedDetailKey, setDismissedDetailKey] = useState<string | null>(null)
   const items = useQuery({
     queryKey: ['confirmed', clubId],
     queryFn: () => confirmedApi.list(clubId),
@@ -575,20 +577,32 @@ export function ConfirmedTasks({
   })
   const linked = useQuery({
     queryKey: ['confirmed-detail', clubId, highlightTaskId],
-    queryFn: () => confirmedApi.get(clubId, highlightTaskId!),
+    queryFn: async () => ({
+      clubId,
+      taskId: highlightTaskId!,
+      task: await confirmedApi.get(clubId, highlightTaskId!),
+    }),
     enabled: !!highlightTaskId,
+    refetchInterval: 10000,
   })
+  const detail = notificationTaskDetail(
+    linked.isError ? undefined : linked.data,
+    clubId,
+    highlightTaskId,
+    dismissedDetailKey,
+  )
+  const linkedTask = detail.task
   // A reminder link opens /meetings?taskId=…; the list sits below the start card.
   useEffect(() => {
-    if (linked.data)
-      document.getElementById(`task-${linked.data.id}`)?.scrollIntoView({ block: 'center' })
-  }, [linked.data])
+    if (linkedTask)
+      document.getElementById(`task-${linkedTask.id}`)?.scrollIntoView({ block: 'center' })
+  }, [linkedTask])
   const cancel = useMutation({
     mutationFn: (item: ConfirmedTask) => confirmedApi.cancel(clubId, item),
     onSuccess: () => client.invalidateQueries({ queryKey: ['confirmed', clubId] }),
   })
   const list = [...(items.data ?? [])]
-  if (linked.data && !list.some((item) => item.id === linked.data.id)) list.unshift(linked.data)
+  if (linkedTask && !list.some((item) => item.id === linkedTask.id)) list.unshift(linkedTask)
   return (
     <section className="space-y-3" aria-label="팀 확정 항목">
       <h2 className="text-h2">저장한 일정·알림 예약</h2>
@@ -618,6 +632,11 @@ export function ConfirmedTasks({
         >
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-h3">{item.title}</h3>
+            {linkedTask?.id === item.id && (
+              <Button size="sm" variant="secondary" onClick={() => setDismissedDetailKey(null)}>
+                알림 상세 보기
+              </Button>
+            )}
             {item.status === 'CANCELLED' && <Chip>항목 취소됨</Chip>}
             <Chip tone={item.reminder.status === 'FAILED' ? 'failed' : 'neutral'}>
               {statusLabels[item.reminder.status]}
@@ -690,6 +709,36 @@ export function ConfirmedTasks({
           )}
         </Card>
       ))}
+      <Modal
+        open={detail.open}
+        onClose={() => setDismissedDetailKey(detail.key)}
+        title={linkedTask?.kind === 'SCHEDULE' ? '알림에서 연 일정' : '알림에서 연 할 일'}
+        footer={
+          <Button variant="secondary" onClick={() => setDismissedDetailKey(detail.key)}>
+            닫기
+          </Button>
+        }
+      >
+        {linkedTask && (
+          <div className="space-y-3">
+            <h3 className="text-h2 break-words">{linkedTask.title}</h3>
+            <p>담당: {linkedTask.assigneeName || '미지정'}</p>
+            <p>
+              {linkedTask.kind === 'TASK' ? '마감' : '일정'}:{' '}
+              {displayTime(linkedTask.dueAt ?? linkedTask.scheduledAt)}
+            </p>
+            <div>
+              <p className="text-caption font-bold">기타 메모</p>
+              <p className="mt-1 whitespace-pre-wrap break-words text-ink2">
+                {linkedTask.description?.trim() || '등록한 메모가 없어요.'}
+              </p>
+            </div>
+            <p>항목 상태: {linkedTask.status === 'CANCELLED' ? '취소됨' : '저장됨'}</p>
+            <p>알림 상태: {statusLabels[linkedTask.reminder.status]}</p>
+            <p>알림 시각: {displayTime(linkedTask.reminder.reminderAt)}</p>
+          </div>
+        )}
+      </Modal>
     </section>
   )
 }

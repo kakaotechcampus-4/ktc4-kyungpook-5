@@ -5,6 +5,17 @@ type Schemas = components['schemas']
 export type Recipient = Schemas['ReminderRecipientOut']
 export type ConfirmedTask = Schemas['ConfirmedTaskOut']
 export type ConfirmedFields = Omit<Schemas['TaskSuggestionConfirmIn'], 'expectedVersion'>
+export function notificationTaskDetail(
+  linked: { clubId: string; taskId: string; task: ConfirmedTask } | undefined,
+  clubId: string,
+  taskId: string | undefined,
+  dismissedKey: string | null,
+) {
+  const key = taskId ? JSON.stringify([clubId, taskId]) : null
+  const task = linked?.clubId === clubId && linked.taskId === taskId && linked.task.id === taskId
+    ? linked.task : null
+  return { key, task, open: !!task && key !== dismissedKey }
+}
 const path = (club: string) => `/clubs/${encodeURIComponent(club)}`
 export const confirmedApi = {
   recipients: (club: string) => apiGet<Recipient[]>(`${path(club)}/reminder-recipients`),
