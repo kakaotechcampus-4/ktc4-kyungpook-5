@@ -53,9 +53,26 @@ export function recordEvidenceBlocks(parseResult: unknown, locationLabel: string
       },
     ]
   })
-  const matching = locationLabel
+  let matching = locationLabel
     ? blocks.filter((block) => block.locationLabel === locationLabel)
     : blocks
+  // 검색 청크의 CSV 범위는 모든 원본 행이 있을 때만 같은 위치로 확정한다.
+  const range = !matching.length && /^([1-9]\d*)~([1-9]\d*)행$/.exec(locationLabel)
+  if (range) {
+    const first = Number(range[1])
+    const last = Number(range[2])
+    if (Number.isSafeInteger(first) && Number.isSafeInteger(last) && first <= last) {
+      const rows = new Set<number>()
+      const ranged = blocks.filter((block) => {
+        const row = /^([1-9]\d*)행$/.exec(block.locationLabel)
+        const number = row ? Number(row[1]) : NaN
+        if (!Number.isSafeInteger(number) || number < first || number > last) return false
+        rows.add(number)
+        return true
+      })
+      if (rows.size === last - first + 1) matching = ranged
+    }
+  }
   return {
     blocks: matching.length ? matching : blocks,
     locationFound: !locationLabel || matching.length > 0,

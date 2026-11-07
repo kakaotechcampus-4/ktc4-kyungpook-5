@@ -98,6 +98,50 @@ test('record context selects real parsed blocks at the cited location', () => {
   })
 })
 
+test('CSV citation ranges select their individual source rows without including other rows', () => {
+  const parseResult = {
+    blocks: Array.from({ length: 7 }, (_, index) => ({
+      text: `${index + 1}행 실제 내용`,
+      location: { label: `${index + 1}행` },
+    })),
+  }
+  const result = recordEvidenceBlocks(parseResult, '2~6행')
+  assert.equal(result.locationFound, true)
+  assert.deepEqual(
+    result.blocks.map((block) => block.locationLabel),
+    ['2행', '3행', '4행', '5행', '6행'],
+  )
+  assert.deepEqual(
+    result.blocks.map((block) => block.text),
+    ['2행 실제 내용', '3행 실제 내용', '4행 실제 내용', '5행 실제 내용', '6행 실제 내용'],
+  )
+})
+
+test('incomplete, ambiguous, and unsafe CSV ranges preserve the current-text fallback', () => {
+  const blocks = [
+    { text: '범위 밖', location: { label: '1행' } },
+    { text: '실제 2행', location: { label: '2행' } },
+    { text: '실제 3행', location: { label: '3행' } },
+    { text: '실제 5행', location: { label: '5행' } },
+    { text: '다른 시트', location: { label: '시트1 · 4행' } },
+  ]
+  for (const label of [
+    '2~5행',
+    '5~2행',
+    '0~2행',
+    '2-3행',
+    '2~3쪽',
+    '시트1 · 2~3행',
+    '2~3행 또는 5행',
+    '1~9007199254740991행',
+    '2~9007199254740992행',
+  ]) {
+    const result = recordEvidenceBlocks({ blocks }, label)
+    assert.equal(result.locationFound, false, label)
+    assert.equal(result.blocks.length, blocks.length, label)
+  }
+})
+
 test('candidate evidence requires the current meeting decision and exact source version', () => {
   const result = candidateEvidence(suggestion, 'meeting', [decision], [transcript])
   assert.deepEqual(result.sources, [transcript])
