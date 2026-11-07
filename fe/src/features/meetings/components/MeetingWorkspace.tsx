@@ -22,6 +22,7 @@ import {
 import { CandidatesModal, ConfirmedTasks } from './Suggestions'
 import { MeetingEnded } from './MeetingEnded'
 import { EndMeetingModal, LeaveMeetingModal } from './MeetingConfirm'
+import type { MeetingEvidenceFocus } from '../evidence'
 const EMPTY: never[] = []
 const SILENCE_MS = 10_000
 // 입력이 사실상 0(음소거·고장)일 때만 알린다. 잡음 억제가 켜진 조용한 방도 0은 아니다.
@@ -58,6 +59,7 @@ export function MeetingWorkspace({
   const [hiddenWarning, setHiddenWarning] = useState<string | null>(null)
   const [candidatesOpen, setCandidatesOpen] = useState(false)
   const [endOpen, setEndOpen] = useState(false)
+  const [evidenceFocus, setEvidenceFocus] = useState<MeetingEvidenceFocus | null>(null)
   const audio = useMeetingAudio({
     meetingId: meetingId ?? '',
     onCompleted: () => setJustEnded(true),
@@ -78,6 +80,20 @@ export function MeetingWorkspace({
   const decisions = data.decisions.data ?? EMPTY
   const answers = useMemo(() => meetingAnswers(transcripts, decisions), [transcripts, decisions])
   const heard = transcripts.filter((t) => t.final).length
+  const currentEvidence =
+    evidenceFocus &&
+    transcripts.some((transcript) =>
+      transcript.final && transcript.sourceId === evidenceFocus.sourceId &&
+      transcript.sourceVersion === evidenceFocus.sourceVersion,
+    ) &&
+    decisions.some((decision) =>
+      decision.id === evidenceFocus.decisionId && decision.meetingId === meetingId &&
+      decision.status !== 'STALE' && decision.sources.some((source) =>
+        source.sourceId === evidenceFocus.sourceId && source.sourceVersion === evidenceFocus.sourceVersion,
+      ),
+    )
+      ? evidenceFocus
+      : null
   const candidateSavedCount = data.suggestions.filter(isCandidateSaved).length
   const candidatesPending =
     data.suggestionsQuery.isPending || data.transcripts.isPending || data.decisions.isPending
@@ -217,6 +233,18 @@ export function MeetingWorkspace({
       clubId={clubId}
       suggestions={data.suggestions}
       onSaved={() => void data.refresh()}
+      activeSuggestionId={evidenceFocus?.suggestionId}
+      evidence={{
+        meetingId: meeting.id,
+        decisions,
+        transcripts,
+        startedAt: meeting.startedAt,
+        onOpen: (target) => {
+          setCandidatesOpen(false)
+          setJustEnded(false)
+          setEvidenceFocus(target)
+        },
+      }}
     />
   )
   if (view === 'ended')
@@ -345,6 +373,25 @@ export function MeetingWorkspace({
   const audioError = audio.phase === 'error' ? audio.error : null
   const banners = (
     <>
+      {evidenceFocus && (
+        <MeetingBanner
+          tone={currentEvidence ? 'info' : 'pending'}
+          action={
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setCandidatesOpen(true)}>
+                후보로 돌아가기
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setEvidenceFocus(null)}>
+                강조 해제
+              </Button>
+            </div>
+          }
+        >
+          {currentEvidence
+            ? `「${evidenceFocus.title}」의 근거 발화를 표시했어요.`
+            : '선택한 근거 발화가 수정되었거나 없어 다시 확인해야 해요.'}
+        </MeetingBanner>
+      )}
       {view === 'paused' && (
         <MeetingBanner tone="pending">! 일시정지한 동안 한 말은 기록되지 않아요.</MeetingBanner>
       )}
@@ -456,6 +503,7 @@ export function MeetingWorkspace({
             startedAt={meeting.startedAt}
             live={live}
             countLabel={ended ? `들은 말 ${heard}개` : undefined}
+            evidenceFocus={currentEvidence}
           />
           <ToriColumn
             className="max-h-[70vh] lg:max-h-none"
@@ -467,6 +515,8 @@ export function MeetingWorkspace({
             loading={data.transcripts.isPending || data.decisions.isPending}
             error={data.transcripts.isError || data.decisions.isError}
             onRefresh={data.refresh}
+            clubId={clubId}
+            evidenceFocus={currentEvidence}
           />
         </div>
       </div>

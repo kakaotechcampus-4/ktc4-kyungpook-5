@@ -31,7 +31,7 @@ function session(savedClubId) {
     require: (name) => {
       if (name === 'zustand') return require('zustand')
       if (name === '@/shared/auth/types') return roleExports
-      if (name === '@/shared/api/client')
+      if (name === '@/shared/auth/tokens')
         return { getAccessToken: () => 'session', setAccessToken() {} }
       throw new Error(`Unexpected module: ${name}`)
     },

@@ -3,31 +3,26 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getMe, login, loginWithKakao, logout, signup, type LoginInput } from '@/features/auth/api'
 import { ApiError } from '@/shared/api/types'
-import { getRefreshToken, useAuthStore } from '@/shared/auth/store'
+import { getRefreshToken, syncSessionFromStorage, useAuthStore } from '@/shared/auth/store'
 import { safeDestination } from './destination'
 
 const ME_KEY = ['auth', 'me'] as const
 
-async function loadMe(token: string | null) {
-  try {
-    const me = await getMe()
-    // 로그아웃한 뒤 도착한 이전 /me 응답은 다음 세션에 반영하지 않는다.
-    if (useAuthStore.getState().token === token) useAuthStore.getState().setMe(me)
-    return me
-  } catch (error) {
-    if (error instanceof ApiError && error.code === 'UNAUTHORIZED') {
-      if (useAuthStore.getState().token === token) useAuthStore.getState().clear()
-    }
-    throw error
-  }
+async function loadMe(sessionId: number) {
+  const me = await getMe()
+  syncSessionFromStorage()
+  // 회전은 같은 로그인이다. 로그아웃·계정 변경 뒤 도착한 응답만 무시한다.
+  if (useAuthStore.getState().sessionId === sessionId) useAuthStore.getState().setMe(me)
+  return me
 }
 
 export function useMe() {
   const token = useAuthStore((state) => state.token)
+  const sessionId = useAuthStore((state) => state.sessionId)
   return useQuery({
-    queryKey: ME_KEY,
+    queryKey: [...ME_KEY, sessionId],
     enabled: Boolean(token),
-    queryFn: () => loadMe(token),
+    queryFn: () => loadMe(sessionId),
     staleTime: 60_000,
     gcTime: 0,
     retry: false,
@@ -37,12 +32,16 @@ export function useMe() {
 async function establishSession(
   queryClient: ReturnType<typeof useQueryClient>,
   tokens: Awaited<ReturnType<typeof login>>,
+  sessionId: number,
 ) {
+  syncSessionFromStorage()
+  if (useAuthStore.getState().sessionId !== sessionId) throw new Error('로그인 상태가 변경되었습니다.')
   queryClient.clear()
   useAuthStore.getState().setSession(tokens)
+  const establishedSessionId = useAuthStore.getState().sessionId
   return queryClient.fetchQuery({
-    queryKey: ME_KEY,
-    queryFn: () => loadMe(tokens.accessToken),
+    queryKey: [...ME_KEY, establishedSessionId],
+    queryFn: () => loadMe(establishedSessionId),
     retry: false,
     staleTime: 60_000,
   })
@@ -51,7 +50,12 @@ async function establishSession(
 export function useKakaoLogin() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (code: string) => establishSession(queryClient, await loginWithKakao(code)),
+    mutationFn: async (code: string) => {
+      useAuthStore.getState().clear()
+      queryClient.clear()
+      const sessionId = useAuthStore.getState().sessionId
+      return establishSession(queryClient, await loginWithKakao(code), sessionId)
+    },
   })
 }
 
@@ -59,7 +63,10 @@ export function useLogin() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (body: LoginInput) => {
-      return establishSession(queryClient, await login(body))
+      useAuthStore.getState().clear()
+      queryClient.clear()
+      const sessionId = useAuthStore.getState().sessionId
+      return establishSession(queryClient, await login(body), sessionId)
     },
   })
 }
@@ -68,12 +75,17 @@ export function useLogout() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async () => {
+      const sessionId = useAuthStore.getState().sessionId
       const refreshToken = getRefreshToken()
-      if (refreshToken) await logout(refreshToken)
-    },
-    onSettled: () => {
-      useAuthStore.getState().clear()
-      queryClient.clear()
+      try {
+        if (refreshToken) await logout(refreshToken)
+      } finally {
+        syncSessionFromStorage()
+        if (useAuthStore.getState().sessionId === sessionId) {
+          useAuthStore.getState().clear()
+          queryClient.clear()
+        }
+      }
     },
   })
 }
@@ -109,6 +121,7 @@ interface NotificationClubResult {
 // Push의 조직 힌트는 /me 소속 확인 후 한 번만 적용한다. URL만으로 권한을 부여하지 않는다.
 export function useNotificationClub(requestedClubId: string | null): NotificationClubResult {
   const token = useAuthStore((state) => state.token)
+  const sessionId = useAuthStore((state) => state.sessionId)
   const me = useAuthStore((state) => state.me)
   const selectClub = useAuthStore((state) => state.selectClub)
   const handled = useRef(new Map<string, NotificationClubResult>())
@@ -116,7 +129,7 @@ export function useNotificationClub(requestedClubId: string | null): Notificatio
     identity: string
     result: NotificationClubResult
   } | null>(null)
-  const identity = token && requestedClubId ? JSON.stringify([token, requestedClubId]) : null
+  const identity = token && requestedClubId ? JSON.stringify([sessionId, requestedClubId]) : null
 
   useEffect(() => {
     if (!identity || !requestedClubId || !me) return

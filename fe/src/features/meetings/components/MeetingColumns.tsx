@@ -13,6 +13,8 @@ import {
   type ToriResult,
 } from '../timeline'
 import type { Decision, Transcript } from '../types'
+import { recordCitation, type MeetingEvidenceFocus, type RecordCitation } from '../evidence'
+import { RecordEvidenceModal } from './RecordEvidenceModal'
 
 const str = (value: unknown) => (typeof value === 'string' ? value : '')
 
@@ -24,6 +26,7 @@ export const TranscriptColumn = memo(function TranscriptColumn({
   live,
   countLabel,
   className,
+  evidenceFocus,
 }: {
   transcripts: Transcript[]
   decisions: Decision[]
@@ -31,6 +34,7 @@ export const TranscriptColumn = memo(function TranscriptColumn({
   live: boolean
   countLabel?: string
   className?: string
+  evidenceFocus?: MeetingEvidenceFocus | null
 }) {
   const items = useMemo(
     () => transcripts.filter((t) => t.final).sort((a, b) => b.seq - a.seq),
@@ -48,12 +52,19 @@ export const TranscriptColumn = memo(function TranscriptColumn({
     [decisions, transcripts],
   )
   const scroller = useRef<HTMLDivElement>(null)
+  const focused = useRef<HTMLLIElement>(null)
   // Follow new lines only while the reader is at the bottom.
   const pinned = useRef(true)
   useEffect(() => {
     const element = scroller.current
     if (element && pinned.current) element.scrollTop = 0
   }, [items.length])
+  useEffect(() => {
+    if (!evidenceFocus || !focused.current) return
+    pinned.current = false
+    focused.current.focus({ preventScroll: true })
+    focused.current.scrollIntoView({ block: 'center' })
+  }, [evidenceFocus])
   return (
     <Card className={cn('flex min-h-0 flex-col', className)}>
       <div className="flex items-baseline gap-2 border-b border-line px-6 py-5">
@@ -77,12 +88,19 @@ export const TranscriptColumn = memo(function TranscriptColumn({
         <ol className="space-y-3">
           {items.map((transcript, index) => {
             const text = transcript.text.trim()
+            const highlighted =
+              evidenceFocus?.sourceId === transcript.sourceId &&
+              evidenceFocus.sourceVersion === transcript.sourceVersion
             return (
               <li
                 key={transcript.id}
+                ref={highlighted ? focused : undefined}
+                tabIndex={highlighted ? -1 : undefined}
+                aria-label={highlighted ? '선택한 후보의 근거 발화' : undefined}
                 className={cn(
                   'flex gap-3 border-l-[3px] pl-3',
                   answeredIds.has(transcript.id) ? 'border-blue-400' : 'border-transparent',
+                  highlighted && 'rounded-lg bg-blue-50 ring-2 ring-blue-600 p-3',
                 )}
               >
                 <time className="w-11 shrink-0 pt-px text-caption font-medium text-ink2">
@@ -128,6 +146,8 @@ function AnswerCard({
   isNew,
   onClose,
   onRetry,
+  onOpenSource,
+  evidenceFocus,
 }: {
   item: ToriResult
   startedAt?: string | null
@@ -136,6 +156,8 @@ function AnswerCard({
   isNew: boolean
   onClose?: () => void
   onRetry: () => void
+  onOpenSource?: (citation: RecordCitation) => void
+  evidenceFocus?: MeetingEvidenceFocus | null
 }) {
   const { transcript } = item
   const failed = lookupFailed(item.decision)
@@ -145,10 +167,17 @@ function AnswerCard({
     ongoing ? ` · ${askedAgo(utteranceAt(transcript, startedAt), now)}` : ''
   }`
   const citations = failed ? [] : (item.decision.citations ?? [])
+  const highlighted = evidenceFocus?.decisionId === item.decision.id
+  const card = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (highlighted) card.current?.scrollIntoView({ block: 'nearest' })
+  }, [highlighted, evidenceFocus])
   return (
     <article
+      ref={card}
       className={cn(
         'rounded-[12px] border p-6',
+        highlighted && 'ring-2 ring-blue-600',
         failed
           ? 'border-failed-line bg-card'
           : isNew
@@ -208,21 +237,33 @@ function AnswerCard({
           )}
           {citations.length > 0 && (
             <ul aria-label="답변 출처" className="mt-4 space-y-2">
-              {citations.map((citation, index) => (
-                <li key={index} className="rounded-[10px] bg-card px-4 py-3 text-caption">
-                  <p className="font-medium break-words text-blue-700">
-                    {[
-                      str(citation.fileName) || str(citation.title) || '등록 자료',
-                      str((citation.location as Record<string, unknown> | null)?.label),
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </p>
-                  {str(citation.text) && (
-                    <p className="mt-0.5 break-words text-ink2">“{str(citation.text)}”</p>
-                  )}
-                </li>
-              ))}
+              {citations.map((citation, index) => {
+                const source = recordCitation(citation)
+                return (
+                  <li key={index} className="rounded-[10px] bg-card px-4 py-3 text-caption">
+                    <button
+                      type="button"
+                      disabled={!source || !onOpenSource}
+                      onClick={() => source && onOpenSource?.(source)}
+                      className="text-left font-medium break-words text-blue-700 underline disabled:no-underline disabled:text-ink2"
+                    >
+                      {[
+                        str(citation.fileName) || str(citation.title) || '등록 자료',
+                        str((citation.location as Record<string, unknown> | null)?.label),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                      {source && onOpenSource && <span className="ml-2">원문 보기 ›</span>}
+                    </button>
+                    {!source && (
+                      <p className="mt-1 text-mute">자료 연결 정보가 없어 원문을 열 수 없어요.</p>
+                    )}
+                    {str(citation.text) && (
+                      <p className="mt-0.5 break-words text-ink2">“{str(citation.text)}”</p>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </>
@@ -241,6 +282,8 @@ export const ToriColumn = memo(function ToriColumn({
   error,
   onRefresh,
   className,
+  clubId,
+  evidenceFocus,
 }: {
   transcripts: Transcript[]
   decisions: Decision[]
@@ -252,6 +295,8 @@ export const ToriColumn = memo(function ToriColumn({
   error: boolean
   onRefresh: () => void
   className?: string
+  clubId?: string
+  evidenceFocus?: MeetingEvidenceFocus | null
 }) {
   const items = useMemo(
     () => toriResults(transcripts, decisions, ongoing ? 'arrival' : 'seq'),
@@ -259,6 +304,12 @@ export const ToriColumn = memo(function ToriColumn({
   )
   const [dismissed, setDismissed] = useState<string[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [citation, setCitation] = useState<RecordCitation | null>(null)
+  useEffect(() => {
+    if (!evidenceFocus) return
+    setDismissed((ids) => ids.filter((id) => id !== evidenceFocus.decisionId))
+    setExpanded(evidenceFocus.decisionId)
+  }, [evidenceFocus])
   // Answers already present when the screen opened are not announced as new.
   const seen = useRef<Set<string> | null>(null)
   if (seen.current === null && !loading)
@@ -318,6 +369,8 @@ export const ToriColumn = memo(function ToriColumn({
               ongoing ? () => setDismissed((ids) => [...ids, latest.decision.id]) : undefined
             }
             onRetry={onRefresh}
+            onOpenSource={clubId ? setCitation : undefined}
+            evidenceFocus={evidenceFocus}
           />
         )}
         {rest.length > 0 && (
@@ -362,6 +415,8 @@ export const ToriColumn = memo(function ToriColumn({
                           now={now}
                           isNew={false}
                           onRetry={onRefresh}
+                          onOpenSource={clubId ? setCitation : undefined}
+                          evidenceFocus={evidenceFocus}
                         />
                       </div>
                     )}
@@ -372,6 +427,14 @@ export const ToriColumn = memo(function ToriColumn({
           </section>
         )}
       </div>
+      {clubId && (
+        <RecordEvidenceModal
+          key={citation?.recordId ?? 'closed'}
+          clubId={clubId}
+          citation={citation}
+          onClose={() => setCitation(null)}
+        />
+      )}
     </Card>
   )
 })

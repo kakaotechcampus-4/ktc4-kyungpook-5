@@ -17,8 +17,9 @@ import {
   type Recipient,
 } from '../confirmed'
 import { meetingError } from '../errors'
-import { isCandidateSaved } from '../timeline'
-import type { Suggestion } from '../types'
+import { isCandidateSaved, transcriptTime } from '../timeline'
+import { candidateEvidence, type MeetingEvidenceFocus } from '../evidence'
+import type { Decision, Suggestion, Transcript } from '../types'
 
 const statusLabels: Record<ConfirmedTask['reminder']['status'], string> = {
   PENDING: '예약 대기',
@@ -411,12 +412,22 @@ export function CandidatesModal({
   clubId,
   suggestions,
   onSaved,
+  evidence,
+  activeSuggestionId,
 }: {
   open: boolean
   onClose: () => void
   clubId: string
   suggestions: Suggestion[]
   onSaved: () => void
+  activeSuggestionId?: string
+  evidence?: {
+    meetingId: string
+    decisions: Decision[]
+    transcripts: Transcript[]
+    startedAt?: string | null
+    onOpen: (target: MeetingEvidenceFocus) => void
+  }
 }) {
   const confirmed = useQuery({
     queryKey: ['confirmed', clubId],
@@ -427,7 +438,7 @@ export function CandidatesModal({
   // modal is mounted before the candidates load.
   const [openId, setOpenId] = useState<string | null | undefined>(undefined)
   const [candidateError, setCandidateError] = useState('')
-  const shownId = openId === undefined ? suggestions[0]?.id : openId
+  const shownId = openId === undefined ? (activeSuggestionId ?? suggestions[0]?.id) : openId
   return (
     <Modal
       open={open}
@@ -450,6 +461,9 @@ export function CandidatesModal({
         </p>
       )}
       {suggestions.map((s) => {
+        const source =
+          evidence &&
+          candidateEvidence(s, evidence.meetingId, evidence.decisions, evidence.transcripts)
         const confirmedTask = confirmed.data?.find((item) => item.suggestionId === s.id)
         const reservationLabel =
           confirmedTask?.status === 'CANCELLED'
@@ -480,6 +494,36 @@ export function CandidatesModal({
             </button>
             {expanded && (
               <div className="border-t border-line bg-card px-4 py-4">
+                {source && evidence && (
+                  <div className="mb-4 space-y-2 border-b border-line pb-4">
+                    <h3 className="text-caption font-bold">후보가 나온 말</h3>
+                    {source.message && (
+                      <p className="text-caption text-pending">{source.message}</p>
+                    )}
+                    {source.sources.map((transcript) => (
+                      <div key={transcript.id} className="space-y-1">
+                        <p className="line-clamp-3 whitespace-pre-wrap text-caption text-ink2">
+                          “{transcript.text}”
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() =>
+                            evidence.onOpen({
+                              suggestionId: s.id,
+                              title: s.title,
+                              decisionId: source.decisionId,
+                              sourceId: transcript.sourceId,
+                              sourceVersion: transcript.sourceVersion,
+                            })
+                          }
+                        >
+                          {transcriptTime(transcript, evidence.startedAt)} 근거 발화 보기
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {confirmed.isPending ? (
                   <p role="status" className="text-ink2">
                     일정·알림 예약 상태를 확인하는 중이에요.

@@ -68,6 +68,17 @@ async def test_클럽_기록을_목록으로_받는다(client: TestClient, app_d
     assert body["meta"]["page"] == 1
 
 
+async def test_record_detail_identifies_its_club_and_rejects_outsiders(client: TestClient, app_db: None) -> None:
+    headers, club_id = _owner_with_club(client)
+    record_id = _upload(client, headers, club_id, "RULES", "evidence.csv")
+    detail = client.get(f"/api/v1/records/{record_id}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["data"]["clubId"] == club_id
+    outsider = _login(client, "record-evidence-outsider")
+    denied = client.get(f"/api/v1/records/{record_id}", headers=outsider)
+    assert denied.status_code == 403, denied.text
+
+
 async def test_category로_거를_수_있다(client: TestClient, app_db: None) -> None:
     headers, club_id = _owner_with_club(client)
     _upload(client, headers, club_id, "RULES", "rules.csv")

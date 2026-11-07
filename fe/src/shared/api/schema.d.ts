@@ -3549,6 +3549,8 @@ export interface components {
             } | null;
             /** Createdat */
             createdAt: string;
+            /** Clubid */
+            clubId: string;
             /** Parseresult */
             parseResult: {
                 [key: string]: unknown;

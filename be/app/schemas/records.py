@@ -18,6 +18,7 @@ class RecordOut(CamelModel):
 
 
 class RecordDetailOut(RecordOut):
+    club_id: str
     parse_result: dict[str, Any] | None
     # {reason, params, debugMessage}. 화면 문구는 FE가 reason으로 고른다.
     parse_error: dict[str, Any] | None
