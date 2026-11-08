@@ -3,6 +3,7 @@ from datetime import date
 from typing import Annotated, Literal
 from pydantic import Field, field_validator
 from app.schemas.common import CamelModel
+from app.schemas.events import EventOut
 from app.schemas.records import RecordSearchData, RecordSearchLocation
 from app.schemas.reminders import ConfirmedTaskOut
 
@@ -103,3 +104,30 @@ class ToriMessageOut(CamelModel):
     record_total_count: int | None = None
     tasks: ToriTasks | None = None
     navigation: Literal['/planning', '/meetings'] | None = None
+
+
+class ToriBriefingItem(CamelModel):
+    """브리핑 「오늘 확인할 일」 한 줄. 화면 이동 주소는 FE가 event_id·task_id·meeting_id로 만든다."""
+
+    id: str
+    kind: Literal['deadline', 'approval', 'task']
+    title: str
+    # 어느 행사나 회의에서 온 일인지. "2026 봄 MT | 입금 확인 단계"처럼 화면에 그대로 쓴다.
+    source: str
+    # 한국 날짜. 승인 대기·할 일은 기한이 없으면 null이다.
+    due_date: date | None = None
+    # 같은 행사의 승인 대기가 더 있으면 그 수("외 n건").
+    more_count: int = Field(default=0, ge=0)
+    event_id: str | None = None
+    task_id: str | None = None
+    meeting_id: str | None = None
+    # 이 줄을 토리에게 이어 물을 때 보낼 말. 없으면 「토리에게 묻기」를 띄우지 않는다.
+    ask: str | None = None
+
+
+class ToriBriefingOut(CamelModel):
+    """메인 탭 첫 화면. items는 급한 순서이고, events는 진행 중 → 계획 중 순서다."""
+
+    items: list[ToriBriefingItem]
+    events: list[EventOut]
+

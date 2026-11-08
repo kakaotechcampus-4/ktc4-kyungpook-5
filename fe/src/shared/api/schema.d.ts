@@ -1634,6 +1634,26 @@ export interface paths {
         patch: operations["update_action_api_v1_actions__action_id__patch"];
         trace?: never;
     };
+    "/api/v1/clubs/{club_id}/tori/briefing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Briefing
+         * @description 메인 탭 첫 화면의 오늘 확인할 일과 진행 중·계획 중 행사. 모델을 부르지 않는다.
+         */
+        get: operations["briefing_api_v1_clubs__club_id__tori_briefing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/clubs/{club_id}/tori/messages": {
         parameters: {
             query?: never;
@@ -2506,6 +2526,12 @@ export interface components {
         /** Envelope[TaskSuggestionOut] */
         Envelope_TaskSuggestionOut_: {
             data: components["schemas"]["TaskSuggestionOut"];
+            /** Meta */
+            meta?: null;
+        };
+        /** Envelope[ToriBriefingOut] */
+        Envelope_ToriBriefingOut_: {
+            data: components["schemas"]["ToriBriefingOut"];
             /** Meta */
             meta?: null;
         };
@@ -4046,6 +4072,48 @@ export interface components {
          * @enum {string}
          */
         TaskSuggestionStatus: "PROPOSED" | "ACCEPTED";
+        /**
+         * ToriBriefingItem
+         * @description 브리핑 「오늘 확인할 일」 한 줄. 화면 이동 주소는 FE가 event_id·task_id·meeting_id로 만든다.
+         */
+        ToriBriefingItem: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "deadline" | "approval" | "task";
+            /** Title */
+            title: string;
+            /** Source */
+            source: string;
+            /** Duedate */
+            dueDate?: string | null;
+            /**
+             * Morecount
+             * @default 0
+             */
+            moreCount: number;
+            /** Eventid */
+            eventId?: string | null;
+            /** Taskid */
+            taskId?: string | null;
+            /** Meetingid */
+            meetingId?: string | null;
+            /** Ask */
+            ask?: string | null;
+        };
+        /**
+         * ToriBriefingOut
+         * @description 메인 탭 첫 화면. items는 급한 순서이고, events는 진행 중 → 계획 중 순서다.
+         */
+        ToriBriefingOut: {
+            /** Items */
+            items: components["schemas"]["ToriBriefingItem"][];
+            /** Events */
+            events: components["schemas"]["EventOut"][];
+        };
         /** ToriClarification */
         ToriClarification: {
             /** Originalquestion */
@@ -8021,6 +8089,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_PlannedStepOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    briefing_api_v1_clubs__club_id__tori_briefing_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ToriBriefingOut_"];
                 };
             };
             /** @description Validation Error */

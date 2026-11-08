@@ -18,8 +18,10 @@ from app.models.records import Record
 from app.models.reminders import ConfirmedTask
 from app.schemas.common import Envelope
 from app.schemas.reminders import ConfirmedTaskOut
-from app.schemas.tori import ToriClarification, ToriMessageIn, ToriMessageOut, ToriRecordAnswer
-from app.services import event_service, record_discovery_service
+from app.schemas.tori import (
+    ToriBriefingOut, ToriClarification, ToriMessageIn, ToriMessageOut, ToriRecordAnswer,
+)
+from app.services import event_service, record_discovery_service, tori_briefing_service
 
 router = APIRouter(prefix='/api/v1/clubs/{club_id}/tori', tags=['tori'])
 TZ = ZoneInfo('Asia/Seoul')
@@ -49,6 +51,16 @@ def _clear_clarification_choice(message: str, options: list[str], today: date) -
             return True
         return sum(any(year in option for year in explicit_years) for option in normalized_options) <= 1
     return len(matches) == 1
+
+
+@router.get('/briefing', response_model=Envelope[ToriBriefingOut])
+async def briefing(club_id: str,
+                   _member: Member = Depends(require_member),
+                   account: Account = Depends(get_current_account),
+                   session: AsyncSession = Depends(get_session)) -> Envelope[ToriBriefingOut]:
+    """메인 탭 첫 화면의 오늘 확인할 일과 진행 중·계획 중 행사. 모델을 부르지 않는다."""
+    data = await tori_briefing_service.build_briefing(session, club_id=club_id, account_id=account.id)
+    return Envelope(data=ToriBriefingOut.model_validate(data))
 
 
 @router.post('/messages', response_model=Envelope[ToriMessageOut])

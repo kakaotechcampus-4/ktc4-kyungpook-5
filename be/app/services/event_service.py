@@ -40,14 +40,14 @@ from app.services import event_rules, plan_review_service
 _KST = ZoneInfo("Asia/Seoul")
 
 # M1 「승인 대기」와 같은 기준. 확인 요청은 L2에서 따로 보여서 세지 않는다.
-_PENDING_APPROVAL = (
+PENDING_APPROVAL = (
     Action.status == ActionStatus.PENDING,
     Action.type != ActionType.CONFIRMATION,
 )
 
 # 처리 안 된 것(resolved_at 없음)을 먼저 마감 임박 순으로, 처리된 것은 최근 처리 순으로
 # 둔다. M1 승인 대기와 L2 「처리된 승인」 최근 3건이 같은 정렬 하나로 맞는다.
-_ACTION_ORDER = (
+ACTION_ORDER = (
     Action.resolved_at.desc().nulls_first(),
     Action.due_date.asc().nulls_last(),
     Action.created_at,
@@ -163,7 +163,7 @@ async def _pending_approval_counts(
         return {}
     rows = await session.execute(
         select(Action.event_id, func.count())
-        .where(Action.event_id.in_(event_ids), *_PENDING_APPROVAL)
+        .where(Action.event_id.in_(event_ids), *PENDING_APPROVAL)
         .group_by(Action.event_id)
     )
     return dict(rows.tuples().all())
@@ -254,7 +254,7 @@ async def list_steps(
     actions = await session.scalars(
         select(Action)
         .where(Action.event_id == event_id, Action.step_id.is_not(None))
-        .order_by(*_ACTION_ORDER)
+        .order_by(*ACTION_ORDER)
     )
     actions_by_step: dict[str, list[Action]] = defaultdict(list)
     for action in actions:
@@ -399,7 +399,7 @@ async def list_actions(
         select(Action)
         .where(*conditions)
         .options(selectinload(Action.step), selectinload(Action.resolver))
-        .order_by(*_ACTION_ORDER)
+        .order_by(*ACTION_ORDER)
         .offset((page - 1) * size)
         .limit(size)
     )
