@@ -19,7 +19,7 @@ from app.models.reminders import ConfirmedTask
 from app.schemas.common import Envelope
 from app.schemas.reminders import ConfirmedTaskOut
 from app.schemas.tori import (
-    ToriBriefingOut, ToriClarification, ToriMessageIn, ToriMessageOut, ToriRecordAnswer,
+    ToriBriefingOut, ToriClarification, ToriEventsCard, ToriMessageIn, ToriMessageOut, ToriRecordAnswer,
 )
 from app.services import event_service, record_discovery_service, tori_briefing_service
 
@@ -269,20 +269,17 @@ async def message(club_id: str, body: ToriMessageIn,
     if result.intent == 'event_list':
         status = EventStatus(result.event_status) if result.event_status else None
         events, total = await event_service.list_events(session, club_id=club_id, status=status, page=1, size=20)
-        labels = {'PLANNING': '계획 중', 'ON_GOING': '진행 중', 'COMPLETE': '완료',
-                  'CANCELLING': '취소 중', 'CANCELLED': '취소됨'}
-        label = labels[status.value] if status else '전체'
+        labels = {'PLANNING': '계획 중인', 'ON_GOING': '진행 중인', 'COMPLETE': '끝난',
+                  'CANCELLING': '취소 중인', 'CANCELLED': '취소된'}
+        label = labels[status.value] + ' ' if status else ''
         if not events:
-            reply = f'{label} 행사가 없어요.'
+            reply = f'{label}행사가 없어요.'
+        elif total > len(events):
+            reply = f'{label}행사 {total}개 중 {len(events)}개를 보여드릴게요. 나머지는 행사 화면에서 볼 수 있어요.'
         else:
-            lines = [f'{label} 행사 {total}건이에요.']
-            for event in events:
-                day = event['start_date'].isoformat() if event['start_date'] else '날짜 미정'
-                lines.append(f"• {event['title']} ({labels[event['status'].value]} · {day})")
-            if total > len(events):
-                lines.append(f'처음 {len(events)}건을 보여드렸어요. 전체 목록은 행사 화면에서 확인해 주세요.')
-            reply = '\n'.join(lines)
-        return Envelope(data=ToriMessageOut(intent=result.intent, reply=reply))
+            reply = f'{label}행사 {total}개예요.'
+        card = ToriEventsCard(events=events, total=total) if events else None
+        return Envelope(data=ToriMessageOut(intent=result.intent, reply=reply, card=card))
     if result.intent == 'event_planning':
         return Envelope(data=ToriMessageOut(intent=result.intent, reply='행사 계획 화면으로 이동할 수 있어요.', navigation='/planning'))
     if result.intent == 'meeting':

@@ -4132,6 +4132,22 @@ export interface components {
             /** Options */
             options?: string[];
         };
+        /**
+         * ToriEventsCard
+         * @description 행사 목록 답의 카드. total은 조건에 맞는 전체 수이고 events는 앞에서부터 최대 20건이다.
+         */
+        ToriEventsCard: {
+            /**
+             * Type
+             * @default events
+             * @constant
+             */
+            type: "events";
+            /** Events */
+            events: components["schemas"]["EventOut"][];
+            /** Total */
+            total: number;
+        };
         /** ToriMessageIn */
         ToriMessageIn: {
             /** Message */
@@ -4155,6 +4171,9 @@ export interface components {
             tasks?: components["schemas"]["ToriTasks"] | null;
             /** Navigation */
             navigation?: ("/planning" | "/meetings") | null;
+            card?: components["schemas"]["ToriEventsCard"] | null;
+            /** Suggestions */
+            suggestions?: string[];
         };
         /** ToriRecordAnswer */
         ToriRecordAnswer: {
