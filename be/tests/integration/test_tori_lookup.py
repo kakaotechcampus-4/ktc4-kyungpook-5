@@ -228,3 +228,42 @@ async def test_회의_할_일은_지난_회의와_이름_날짜로_찾는다(cli
 
     missing = ask(target="운영회의")
     assert missing["reply"] == "'운영회의' 회의를 찾지 못했어요." and missing["card"] is None
+
+
+async def test_지원하지_않는_요청은_할_수_있는_곳과_관련_승인을_안내한다(client, events, monkeypatch):
+    def ask(**fields):
+        return _ask(client, events["headers"], events["club"], monkeypatch, ai.ToriIntentResult(**fields))
+
+    send = ask(intent="unsupported", redirect="event_detail")
+    assert send["reply"] == (
+        "발송, 승인, 이체는 제가 바로 하지 않아요. 행사 상세에서 운영진이 승인하면 그때 진행돼요. "
+        "지금 승인을 기다리는 일이 2건 있어요."
+    )
+    assert send["card"]["type"] == "approvals" and send["card"]["groups"][0]["eventId"] == events["spring"]
+    assert send["suggestions"] == ["2026 봄 MT 어디까지 됐어?"]
+
+    reminder = ask(intent="unsupported", redirect="meetings")
+    assert reminder["navigation"] == "/meetings" and reminder["card"] is None
+    assert ask(intent="unsupported", redirect="records")["navigation"] == "/records"
+    assert ask(intent="unsupported", redirect="accounting")["navigation"] == "/accounting"
+
+    other = ask(intent="unsupported")
+    assert other["reply"].startswith("이 질문은 아직 제가 답하기 어려워요.")
+    assert other["suggestions"] == ["확인할 일 전부 보여줘", "승인 기다리는 거 보여줘", "2026 봄 MT 어디까지 됐어?"]
+    assert ask(intent="clarify")["suggestions"] == other["suggestions"]
+
+
+async def test_행사_계획_요청은_한_말을_들고_계획_화면으로_넘긴다(client, app_db, monkeypatch):
+    headers, club_id = owner_with_club(client, "tori-handoff")
+
+    async def classify(_request):
+        return ai.ToriIntentResult(intent="event_planning")
+
+    monkeypatch.setattr(ai, "classify_tori_intent", classify)
+    message = "다음 달에 30명 정도 MT 가려는데 계획 좀 짜줘"
+    data = client.post(f"/api/v1/clubs/{club_id}/tori/messages", headers=headers, json={"message": message}).json()["data"]
+    assert data["card"] == {"type": "handoff", "message": message}
+    assert data["navigation"] == "/planning"
+    # 행사가 없는 동아리에서 되물으면 바로 답이 나오는 말만 권한다.
+    empty = _ask(client, headers, club_id, monkeypatch, ai.ToriIntentResult(intent="clarify"))
+    assert empty["suggestions"] == ["확인할 일 전부 보여줘"]

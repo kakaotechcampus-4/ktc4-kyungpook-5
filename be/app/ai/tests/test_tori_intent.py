@@ -36,6 +36,7 @@ def test_model_failure_propagates(monkeypatch):
     dict(intent='task_list', date_from='2026-11-01', date_to='2026-10-30'),
     dict(intent='event_list', target='봄 MT'),
     dict(intent='event_status', meeting_date='2026-10-30'),
+    dict(intent='clarify', redirect='meetings'),
 ])
 def test_inconsistent_output_is_rejected(data):
     with pytest.raises(ValidationError):
@@ -103,3 +104,28 @@ def test_model_meeting_date_is_kept_only_for_meeting_tasks(monkeypatch):
     monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
     result = asyncio.run(classify_tori_intent(ToriIntentRequest(message='봄 MT 어디까지', reference_date='2026-10-30')))
     assert result.target == '봄 MT' and result.meeting_date is None
+
+
+def test_unsupported_keeps_redirect_and_other_intents_drop_it(monkeypatch):
+    assert ToriIntentResult(intent='unsupported', redirect='event_detail').redirect == 'event_detail'
+
+    async def invoke(_messages, schema):
+        return schema.model_validate({'intent': 'event_list', 'redirect': 'records'})
+    monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
+    result = asyncio.run(classify_tori_intent(ToriIntentRequest(message='행사 목록', reference_date='2026-10-30')))
+    assert result.intent == 'event_list' and result.redirect is None
+
+
+@pytest.mark.parametrize('output', [
+    {'intent': 'meeting_tasks', 'target': '11월 정기 회의', 'kind': 'task'},
+    {'intent': 'briefing', 'date_from': '2026-10-30', 'date_to': '2026-10-30'},
+    {'intent': 'event_status', 'target': '봄 MT', 'scope': 'all'},
+])
+def test_fixed_range_intents_drop_task_list_fields(monkeypatch, output):
+    async def invoke(_messages, schema):
+        return schema.model_validate(output)
+    monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
+    result = asyncio.run(classify_tori_intent(ToriIntentRequest(message='질문', reference_date='2026-10-30')))
+    assert result.intent == output['intent']
+    assert (result.scope, result.kind, result.date_from, result.date_to) == (None, None, None, None)
+    assert result.target == output.get('target')

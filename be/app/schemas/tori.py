@@ -103,7 +103,7 @@ class ToriMessageOut(CamelModel):
     clarification: ToriClarification | None = None
     record_total_count: int | None = None
     tasks: ToriTasks | None = None
-    navigation: Literal['/planning', '/meetings'] | None = None
+    navigation: Literal['/planning', '/meetings', '/records', '/accounting'] | None = None
     # 답 아래에 붙는 카드. 답 종류마다 하나씩이고, 카드가 없는 답은 null이다.
     card: 'ToriCard | None' = None
     # 이 답 다음에 이어서 물어볼 만한 말. 행사·회의를 되물을 때는 후보마다 하나씩이라 최대 5개다.
@@ -210,8 +210,15 @@ class ToriTasksCard(CamelModel):
     has_more: bool
 
 
+class ToriHandoffCard(CamelModel):
+    """행사 계획 요청을 계획 화면으로 넘기는 카드. 조건은 계획 화면이 이 말에서 다시 뽑는다."""
+
+    type: Literal['handoff'] = 'handoff'
+    message: str
+
+
 ToriCard = Annotated[
-    ToriEventsCard | ToriBriefingCard | ToriApprovalsCard | ToriEventStatusCard | ToriTasksCard,
+    ToriEventsCard | ToriBriefingCard | ToriApprovalsCard | ToriEventStatusCard | ToriTasksCard | ToriHandoffCard,
     Field(discriminator='type'),
 ]
 ToriMessageOut.model_rebuild()

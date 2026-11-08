@@ -9,9 +9,9 @@
   {"message": "오늘 뭐 챙겨야 돼?", "intent": "briefing"},
   {"message": "승인 기다리는 거 보여줘", "intent": "approval_list", "target": null},
   {"message": "봄 MT 승인 대기 뭐 남았어?", "intent": "approval_list", "target": "봄 MT"},
-  {"message": "승인 대기 중인 공지 승인해줘", "intent": "unsupported"},
+  {"message": "승인 대기 중인 공지 승인해줘", "intent": "unsupported", "redirect": "event_detail"},
   {"message": "진행 중인 행사 뭐 있어?", "intent": "event_list", "event_status": "ON_GOING"},
-  {"message": "민수의 할 일 보여줘", "intent": "unsupported"},
+  {"message": "민수의 할 일 보여줘", "intent": "unsupported", "redirect": null},
   {"message": "지난주 내 할 일 보여줘", "intent": "task_list", "date_from": "2026-10-19", "date_to": "2026-10-25"},
   {"message": "10월 15일 일정 보여줘", "intent": "task_list", "date_from": "2026-10-15", "date_to": "2026-10-15"},
   {"message": "지난 회의 회의록 찾아줘", "intent": "record_search"},
@@ -20,7 +20,12 @@
   {"message": "예산 자료를 요약해줘", "intent": "record_search"},
   {"message": "이번 주 내 할 일 보여줘", "intent": "task_list", "scope": "self", "kind": "task"},
   {"message": "이번 주 내 일정 보여줘", "intent": "task_list", "scope": "self", "kind": "schedule"},
-  {"message": "새 행사 홍보 문구 만들어줘", "intent": "unsupported"},
-  {"message": "저장된 예산 자료를 수정해줘", "intent": "unsupported"},
-  {"message": "내일 알림을 예약해줘", "intent": "unsupported"}
+  {"message": "새 행사 홍보 문구 만들어줘", "intent": "unsupported", "redirect": null},
+  {"message": "저장된 예산 자료를 수정해줘", "intent": "unsupported", "redirect": "records"},
+  {"message": "내일 알림을 예약해줘", "intent": "unsupported", "redirect": "meetings"},
+  {"message": "MT 참가비 안내 문자 보내줘", "intent": "unsupported", "redirect": "event_detail"},
+  {"message": "버스 계약금 이체해줘", "intent": "unsupported", "redirect": "event_detail"},
+  {"message": "어제 쓴 회식비 3만 원 지출로 기록해줘", "intent": "unsupported", "redirect": "accounting"},
+  {"message": "지난 회의 할 일 마감을 금요일로 바꿔줘", "intent": "unsupported", "redirect": "meetings"},
+  {"message": "다음 달에 30명 정도 MT 가려는데 계획 좀 짜줘", "intent": "event_planning"}
 ]

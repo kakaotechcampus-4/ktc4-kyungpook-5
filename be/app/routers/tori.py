@@ -31,6 +31,17 @@ def _status_ask(title: str) -> str:
     return f'{title} 어디까지 됐어?'
 
 
+async def _starters(session: AsyncSession, club_id: str) -> list[str]:
+    """답하지 못했거나 되물을 때 바로 이어 물을 수 있는 말. 지금 데이터로 답이 나오는 것만 고른다."""
+    suggestions = ['확인할 일 전부 보여줘']
+    if await tori_lookup_service.approval_groups(session, club_id=club_id):
+        suggestions.append(tori_briefing_service.APPROVAL_ASK)
+    ongoing, _ = await event_service.list_events(session, club_id=club_id, status=EventStatus.ON_GOING, page=1, size=1)
+    if ongoing:
+        suggestions.append(_status_ask(ongoing[0]['title']))
+    return suggestions
+
+
 async def _lookup_reply(session: AsyncSession, *, club_id: str, account_id: str,
                         result: ai.ToriIntentResult) -> ToriMessageOut:
     """브리핑·승인 대기·행사 현황·회의 할 일. 모델 없이 DB 조회만 하고 카드로 답한다."""
@@ -381,14 +392,35 @@ async def message(club_id: str, body: ToriMessageIn,
         card = ToriEventsCard(events=events, total=total) if events else None
         return Envelope(data=ToriMessageOut(intent=result.intent, reply=reply, card=card))
     if result.intent == 'event_planning':
-        return Envelope(data=ToriMessageOut(intent=result.intent, reply='행사 계획 화면으로 이동할 수 있어요.', navigation='/planning'))
-    if result.intent == 'meeting':
-        return Envelope(data=ToriMessageOut(intent=result.intent, reply='회의 화면으로 이동할 수 있어요.', navigation='/meetings'))
-    if result.intent == 'self_intro':
         return Envelope(data=ToriMessageOut(
             intent=result.intent,
-            reply=('저는 동아리 운영진과 함께 일하는 친근한 도우미 토리예요. '
-                   '동아리 자료와 확정된 일정·할 일을 찾아보고, 행사 계획이나 회의 화면으로 안내할 수 있어요.'),
-        ))
-    reply = '어떤 자료나 일정, 할 일을 찾을지 조금 더 알려 주세요.' if result.intent == 'clarify' else '아직 이 요청은 처리할 수 없어요. 자료 검색이나 확정된 일정 조회를 요청해 주세요.'
-    return Envelope(data=ToriMessageOut(intent=result.intent, reply=reply))
+            reply='행사 계획은 계획 화면에서 토리와 이어서 정해요. 지금 말씀하신 내용을 들고 넘어갈게요.',
+            card={'type': 'handoff', 'message': body.message}, navigation='/planning'))
+    if result.intent == 'meeting':
+        return Envelope(data=ToriMessageOut(intent=result.intent, reply='회의 화면으로 이동할 수 있어요.', navigation='/meetings'))
+    if result.intent == 'unsupported' and result.redirect == 'event_detail':
+        # 실행은 하지 않고, 사람이 승인하러 갈 곳과 지금 기다리는 승인을 함께 보여 준다.
+        groups = await tori_lookup_service.approval_groups(session, club_id=club_id)
+        total = sum(len(group['actions']) for group in groups)
+        reply = '발송, 승인, 이체는 제가 바로 하지 않아요. 행사 상세에서 운영진이 승인하면 그때 진행돼요.'
+        if total:
+            reply += f' 지금 승인을 기다리는 일이 {total}건 있어요.'
+        return Envelope(data=ToriMessageOut(
+            intent=result.intent, reply=reply,
+            card={'type': 'approvals', 'groups': groups} if groups else None,
+            suggestions=[_status_ask(group['event_title']) for group in groups][:2]))
+    if result.intent == 'unsupported' and result.redirect is not None:
+        reply, navigation = {
+            'meetings': ('할 일 수정과 알림 예약은 제가 바로 하지 않아요. 회의 화면의 확정한 할 일에서 바꿀 수 있어요.', '/meetings'),
+            'records': ('자료 수정과 삭제는 제가 바로 하지 않아요. 자료 화면에서 할 수 있어요.', '/records'),
+            'accounting': ('지출 기록은 제가 바로 하지 않아요. 회계 화면에서 남길 수 있어요.', '/accounting'),
+        }[result.redirect]
+        return Envelope(data=ToriMessageOut(intent=result.intent, reply=reply, navigation=navigation))
+    reply = {
+        'self_intro': ('저는 동아리 운영진과 함께 일하는 친근한 도우미 토리예요. '
+                       '행사 진행 상황, 승인을 기다리는 일, 확정된 할 일을 모아 보여 드리고, '
+                       '동아리 자료에서 지난 기록도 찾아 드려요. 행사 계획은 계획 화면으로 이어 드려요.'),
+        'clarify': '어떤 걸 찾아 드릴까요? 행사 진행 상황, 승인 대기, 할 일, 동아리 자료라면 바로 찾아 드릴 수 있어요.',
+    }.get(result.intent, '이 질문은 아직 제가 답하기 어려워요. 행사 진행 상황, 승인 대기, 할 일, 동아리 자료라면 바로 찾아 드릴 수 있어요.')
+    return Envelope(data=ToriMessageOut(intent=result.intent, reply=reply,
+                                         suggestions=await _starters(session, club_id)))

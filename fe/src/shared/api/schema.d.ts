@@ -4216,6 +4216,19 @@ export interface components {
             /** Total */
             total: number;
         };
+        /**
+         * ToriHandoffCard
+         * @description 행사 계획 요청을 계획 화면으로 넘기는 카드. 조건은 계획 화면이 이 말에서 다시 뽑는다.
+         */
+        ToriHandoffCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "handoff";
+            /** Message */
+            message: string;
+        };
         /** ToriMeetingTask */
         ToriMeetingTask: {
             /** Id */
@@ -4254,9 +4267,9 @@ export interface components {
             recordTotalCount?: number | null;
             tasks?: components["schemas"]["ToriTasks"] | null;
             /** Navigation */
-            navigation?: ("/planning" | "/meetings") | null;
+            navigation?: ("/planning" | "/meetings" | "/records" | "/accounting") | null;
             /** Card */
-            card?: (components["schemas"]["ToriEventsCard"] | components["schemas"]["ToriBriefingCard"] | components["schemas"]["ToriApprovalsCard"] | components["schemas"]["ToriEventStatusCard"] | components["schemas"]["ToriTasksCard"]) | null;
+            card?: (components["schemas"]["ToriEventsCard"] | components["schemas"]["ToriBriefingCard"] | components["schemas"]["ToriApprovalsCard"] | components["schemas"]["ToriEventStatusCard"] | components["schemas"]["ToriTasksCard"] | components["schemas"]["ToriHandoffCard"]) | null;
             /** Suggestions */
             suggestions?: string[];
         };
