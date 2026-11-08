@@ -1,5 +1,5 @@
 // 토리에게 말을 보내는 입력 상자. 입력칸과 보내기 버튼을 한 상자로 묶는다.
-// 행사 계획 대화(PlanChat)와 대시보드 질문(ToriChat)이 같은 모양과 단축키 안내를 쓴다.
+// 행사 계획 대화(PlanChat)와 메인 토리 질문(ToriDesk)이 같은 모양과 단축키 안내를 쓴다.
 // Enter로 보낼지는 쓰는 쪽이 onKeyDown으로 정한다(IME 조합 처리 등).
 import { useId, useLayoutEffect, useRef, type Ref, type TextareaHTMLAttributes } from 'react'
 import { cn } from '@/shared/lib/cn'

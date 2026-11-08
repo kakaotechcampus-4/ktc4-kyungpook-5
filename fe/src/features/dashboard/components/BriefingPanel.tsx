@@ -5,12 +5,20 @@ import { Link } from 'react-router-dom'
 import { cardStepText, showsProgress } from '@/features/events/cardModel'
 import { SegmentBar } from '@/features/events/components/SegmentBar'
 import type { EventSummary } from '@/features/events/types'
-import type { Briefing, BriefingItem, BriefingKind } from '@/features/dashboard/desk'
-import { daysUntil, dueLabel } from '@/features/dashboard/desk'
+import type { BriefingItem, BriefingKind, BriefingState } from '@/features/dashboard/desk'
+import {
+  briefingPath,
+  daysUntil,
+  dueLabel,
+  eventPath,
+  useDeskPath,
+} from '@/features/dashboard/desk'
 import { cn } from '@/shared/lib/cn'
 import { EVENT_STATUS_LABEL, EVENT_STATUS_TONE } from '@/shared/lib/labels'
 import { staggerDelay } from '@/shared/lib/stagger'
+import { Button } from '@/shared/ui/Button'
 import { Chip } from '@/shared/ui/Chip'
+import { Skeleton } from '@/shared/ui/Skeleton'
 import { Tori } from '@/shared/ui/Tori'
 
 const KIND: Record<BriefingKind, { label: string; tone: 'approved' | 'pending' | 'neutral' }> = {
@@ -44,10 +52,11 @@ export function Chevron({ className }: { className?: string }) {
 // 제목은 오늘 확인할 일의 수, 아래 문장은 이 화면에서 토리에게 맡길 수 있는 일을 짧게 알린다.
 const INTRO = '토리가 행사 진행과 할 일을 정리하고, 지난 기록에서 답을 찾아 드려요.'
 
-function headline(items: BriefingItem[]): string {
-  return items.length === 0
-    ? '오늘은 확인할 일이 없어요'
-    : `오늘 확인할 일이 ${items.length}개 있어요`
+function headline(briefing: BriefingState): string {
+  if (briefing.status === 'loading') return '오늘 확인할 일을 모으고 있어요'
+  if (briefing.status === 'error') return '무엇을 도와드릴까요?'
+  const count = briefing.data.items.length
+  return count === 0 ? '오늘은 확인할 일이 없어요' : `오늘 확인할 일이 ${count}개 있어요`
 }
 
 function WhenLabel({ item }: { item: BriefingItem }) {
@@ -60,16 +69,20 @@ function WhenLabel({ item }: { item: BriefingItem }) {
   )
 }
 
-function ItemRow({
+export function ItemRow({
   item,
   index,
   onAsk,
+  className,
 }: {
   item: BriefingItem
   index: number
   onAsk?: (text: string) => void
+  // 카드 안에서는 카드 여백에 맞춘다.
+  className?: string
 }) {
   const kind = KIND[item.kind]
+  const path = useDeskPath()
   return (
     <li
       className="group relative animate-turn-in motion-reduce:animate-none"
@@ -77,8 +90,11 @@ function ItemRow({
     >
       {/* 오른쪽 칸은 「토리에게 묻기」가 올라오는 자리라 너비를 늘 잡아 둔다. 올라와도 제목이 밀리지 않는다. */}
       <Link
-        to={item.href}
-        className="grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-x-[14px] px-[23px] py-[14px] transition-colors group-hover:bg-bg focus-visible:bg-bg focus-visible:outline-none sm:grid-cols-[52px_76px_minmax(0,1fr)_112px]"
+        to={path(briefingPath(item))}
+        className={cn(
+          'grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-x-[14px] px-[23px] py-[14px] transition-colors group-hover:bg-bg focus-visible:bg-bg focus-visible:outline-none sm:grid-cols-[52px_76px_minmax(0,1fr)_112px]',
+          className,
+        )}
       >
         <span className="text-caption font-bold tabular-nums">
           <WhenLabel item={item} />
@@ -123,11 +139,12 @@ function ItemRow({
 }
 
 function EventTile({ event }: { event: EventSummary }) {
+  const path = useDeskPath()
   const states = event.stepProgress.map((step) => step.state)
   const planning = event.status === 'PLANNING'
   return (
     <Link
-      to={`/events/${event.id}?demo`}
+      to={path(eventPath(event.id))}
       className={cn(
         'flex min-w-0 flex-col gap-[10px] rounded-[20px] border bg-card px-[22px] pt-[18px] pb-[19px] transition-colors',
         planning ? 'border-line hover:border-soft' : 'border-blue-200 hover:border-blue-300',
@@ -161,28 +178,56 @@ function EventTile({ event }: { event: EventSummary }) {
   )
 }
 
+// 브리핑을 받아오는 동안 목록 자리를 미리 잡아 둔다. 다 오면 같은 높이에 줄이 들어온다.
+function ItemsLoading() {
+  return (
+    <div role="status" className="overflow-hidden rounded-[24px] border border-line bg-card">
+      <span className="sr-only">확인할 일을 불러오고 있어요</span>
+      <div className="border-b border-line px-[23px] pt-[18px] pb-[14px]">
+        <Skeleton className="h-[20px] w-[96px]" />
+      </div>
+      <ul className="divide-y divide-line">
+        {[0, 1, 2].map((row) => (
+          <li
+            key={row}
+            className="grid grid-cols-[52px_minmax(0,1fr)] items-center gap-x-[14px] px-[23px] py-[14px]"
+          >
+            <Skeleton className="h-[16px] w-[36px]" />
+            <span className="flex flex-col gap-[6px]">
+              <Skeleton className="h-[16px] w-[58%]" />
+              <Skeleton className="h-[13px] w-[34%]" />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export function BriefingPanel({
   briefing,
   children,
   onAsk,
 }: {
-  briefing: Briefing
+  briefing: BriefingState
   // 토리 문장 바로 아래 자리. 대화 전에는 여기에 입력 상자를 둬서 「물어볼 수 있다」가 먼저 보이게 한다.
   children?: ReactNode
   onAsk?: (text: string) => void
 }) {
-  const title = headline(briefing.items)
-  const shown = briefing.items.slice(0, VISIBLE_ITEMS)
-  const hidden = briefing.items.length - shown.length
+  const path = useDeskPath()
+  const items = briefing.status === 'ready' ? briefing.data.items : []
+  const events = briefing.status === 'ready' ? briefing.data.events : []
+  const shown = items.slice(0, VISIBLE_ITEMS)
+  const hidden = items.length - shown.length
   return (
     <section aria-labelledby="briefing-title" className="flex flex-col gap-[32px]">
       {/* 토리 문장 → 입력 상자 → 확인할 일 → 행사. 입력 상자와 아래 목록은 같은 폭·같은 글 시작선을 쓴다. */}
       <div className="flex flex-col gap-[20px]">
         <div className="flex items-center gap-[14px] pl-[2px]">
-          <Tori size={44} />
+          <Tori size={44} thinking={briefing.status === 'loading'} />
           <div className="min-w-0">
             <h1 id="briefing-title" className="text-h1 text-ink">
-              {title}
+              {headline(briefing)}
             </h1>
             <p className="mt-[4px] break-keep text-ink2">{INTRO}</p>
           </div>
@@ -190,11 +235,29 @@ export function BriefingPanel({
         {children}
       </div>
 
-      {briefing.items.length > 0 && (
+      {briefing.status === 'loading' && <ItemsLoading />}
+
+      {/* 브리핑을 못 받아도 질문은 할 수 있다. 무엇이 안 됐는지와 다시 받는 방법만 알린다. */}
+      {briefing.status === 'error' && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-line bg-card px-[23px] py-[16px]"
+        >
+          <p className="break-keep text-caption text-ink2">
+            <span className="font-bold text-ink">확인할 일과 행사를 불러오지 못했어요.</span> 질문은
+            그대로 할 수 있어요.
+          </p>
+          <Button size="sm" variant="secondary" onClick={briefing.retry}>
+            다시 불러오기
+          </Button>
+        </div>
+      )}
+
+      {items.length > 0 && (
         <div className="overflow-hidden rounded-[24px] border border-line bg-card">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line px-[23px] pt-[18px] pb-[14px]">
             <h2 className="text-h3 text-ink">
-              확인할 일 <span className="tabular-nums text-blue-700">{briefing.items.length}</span>
+              확인할 일 <span className="tabular-nums text-blue-700">{items.length}</span>
             </h2>
             <p className="text-label text-mute">3일 안 마감 | 승인 대기 | 내 할 일</p>
           </div>
@@ -221,19 +284,19 @@ export function BriefingPanel({
         </div>
       )}
 
-      {briefing.events.length > 0 && (
+      {events.length > 0 && (
         <div className="flex flex-col gap-[12px]">
           <div className="flex items-baseline justify-between gap-3 px-[2px]">
             <h2 className="text-h3 text-ink">진행 중인 행사</h2>
             <Link
-              to="/events?demo"
+              to={path('/events')}
               className="text-caption font-semibold text-blue-700 underline-offset-4 hover:underline"
             >
               행사 목록
             </Link>
           </div>
           <div className="grid gap-[12px] sm:grid-cols-2 lg:grid-cols-3">
-            {briefing.events.map((event) => (
+            {events.map((event) => (
               <EventTile key={event.id} event={event} />
             ))}
           </div>

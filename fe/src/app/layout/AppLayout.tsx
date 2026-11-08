@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { useMe, useLogout } from '@/features/auth/hooks'
 import { useAuthStore } from '@/shared/auth/store'
 import { useRecordingLock } from '@/shared/lib/recordingLock'
@@ -27,6 +27,12 @@ export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const menuButton = useRef<HTMLButtonElement>(null)
   const showOnboardingGuide = new URLSearchParams(search).has('demo')
+  // 다른 화면으로 가면 맨 위에서 시작한다. 메인 토리 대화처럼 길게 내려간 화면에서 눌러도
+  // 도착한 화면이 중간부터 보이지 않게 한다. 뒤로·앞으로 가기는 브라우저가 자리를 되돌린다.
+  const navigationType = useNavigationType()
+  useEffect(() => {
+    if (navigationType !== 'POP') window.scrollTo(0, 0)
+  }, [pathname, navigationType])
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1024px)')

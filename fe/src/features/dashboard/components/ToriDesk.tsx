@@ -1,17 +1,37 @@
 // 메인 토리 데스크. 첫 화면은 브리핑, 질문을 보내면 브리핑이 위로 접히고 대화가 이어진다.
 // 토리 답은 한 줄 문장과 카드로 나온다. 대화는 서버에 남기지 않아 새로고침하면 사라진다.
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { isSendKey } from '@/features/planning/chatKey'
-import { BriefingPanel } from '@/features/dashboard/components/BriefingPanel'
-import { Reply } from '@/features/dashboard/components/ToriChat'
+import { BriefingPanel, Chevron } from '@/features/dashboard/components/BriefingPanel'
+import { RecordReply } from '@/features/dashboard/components/RecordReply'
 import { ToriCardView } from '@/features/dashboard/components/ToriCards'
-import type { Briefing, ToriDeskReply } from '@/features/dashboard/desk'
+import type { BriefingState, Navigation, ToriDeskReply } from '@/features/dashboard/desk'
+import { useDeskPath } from '@/features/dashboard/desk'
+import type { components } from '@/shared/api/schema'
+import { ApiError } from '@/shared/api/types'
 import { cn } from '@/shared/lib/cn'
 import { ChatComposer } from '@/shared/ui/ChatComposer'
 import { Tori } from '@/shared/ui/Tori'
 
-type Turn = { id: string; message: string; reply: ToriDeskReply }
-type Question = { id: string; message: string }
+type ClarificationContext = components['schemas']['ToriClarificationContext']
+type Turn = Question & { reply: ToriDeskReply }
+// 자료 찾기에서 토리가 되물은 뒤의 질문은 되물은 맥락을 함께 보낸다.
+type Question = { id: string; message: string; clarification: Pending | null }
+type Pending = ClarificationContext & { turnId: string }
+
+export type Respond = (
+  message: string,
+  clarification: ClarificationContext | null,
+) => Promise<ToriDeskReply>
+
+// 토리가 하지 않는 일을 할 수 있는 화면
+const NAVIGATION: Record<Navigation, string> = {
+  '/planning': '계획 화면으로 가기',
+  '/meetings': '회의 화면으로 가기',
+  '/records': '자료 화면으로 가기',
+  '/accounting': '회계 화면으로 가기',
+}
 
 // 지금 주고받는 질문 칸의 최소 높이. 답이 오기 전부터 답 자리를 잡아 두어,
 // 보내는 순간 한 번만 스크롤하고 답이 와도 화면이 움직이지 않는다(아래 입력 상자 높이만큼 뺀다).
@@ -53,20 +73,32 @@ function TypingDots() {
 function ToriTurn({
   reply,
   showSuggestions,
+  answering,
   busy,
   onSuggest,
 }: {
   reply: ToriDeskReply
   showSuggestions: boolean
+  // 이 답이 되물은 질문이고 아직 답하지 않았는지. 선택지를 누를 수 있다.
+  answering: boolean
   busy: boolean
   onSuggest: (text: string) => void
 }) {
+  const path = useDeskPath()
+  const options = reply.clarification?.options ?? []
+  // 되물을 때는 선택지가 이어 물을 말이다. 「전체 요약」은 범위를 좁히지 않고 원래 질문 그대로 답을 받는다.
+  const suggestions = reply.clarification
+    ? [...options, ...(options.some((option) => option.replace(/\s/g, '') === '전체요약') ? [] : ['전체 요약'])]
+    : (reply.suggestions ?? [])
+  const clickable = reply.clarification ? answering : showSuggestions
   return (
     <div className="flex items-start gap-[10px]">
       <Tori size={26} className="mt-[4px]" />
       <div className="flex min-w-0 flex-1 animate-turn-in flex-col items-start gap-[10px] motion-reduce:animate-none">
-        {reply.legacy ? (
-          <Reply result={reply.legacy} />
+        {reply.records ? (
+          <div className={cn(TORI_BUBBLE, 'w-full')}>
+            <RecordReply result={reply.records} />
+          </div>
         ) : (
           <p className={TORI_BUBBLE}>{reply.reply}</p>
         )}
@@ -75,9 +107,18 @@ function ToriTurn({
             <ToriCardView card={reply.card} />
           </div>
         )}
-        {showSuggestions && !!reply.suggestions?.length && (
+        {reply.navigation && (
+          <Link
+            to={path(reply.navigation)}
+            className="flex items-center gap-[6px] rounded-full border border-line bg-card py-[8px] pr-[13px] pl-[15px] text-caption font-bold text-ink transition-colors hover:border-soft hover:bg-bg"
+          >
+            {NAVIGATION[reply.navigation]}
+            <Chevron className="text-mute" />
+          </Link>
+        )}
+        {clickable && suggestions.length > 0 && (
           <div className="flex flex-wrap gap-[8px] pt-[2px]">
-            {reply.suggestions.map((text) => (
+            {suggestions.map((text) => (
               <button
                 key={text}
                 type="button"
@@ -100,9 +141,9 @@ export function ToriDesk({
   starters,
   respond,
 }: {
-  briefing: Briefing
+  briefing: BriefingState
   starters: string[]
-  respond: (message: string) => Promise<ToriDeskReply>
+  respond: Respond
 }) {
   const [draft, setDraft] = useState('')
   const [turns, setTurns] = useState<Turn[]>([])
@@ -111,6 +152,9 @@ export function ToriDesk({
   const [waiting, setWaiting] = useState(0)
   const [error, setError] = useState('')
   const [briefOpen, setBriefOpen] = useState(true)
+  // 토리가 되물어 답을 기다리는 중. 다음 질문에 맥락을 붙인다.
+  const [pending, setPending] = useState<Pending | null>(null)
+  const pendingRef = useRef<Pending | null>(null)
   const queue = useRef<Question[]>([])
   const processing = useRef(false)
   const current = useRef<HTMLDivElement>(null)
@@ -154,10 +198,36 @@ export function ToriDesk({
         setActive(question)
         setError('')
         try {
-          const reply = await respond(question.message)
+          const asked = question.clarification
+          const reply = await respond(
+            question.message,
+            asked
+              ? {
+                  originalQuestion: asked.originalQuestion,
+                  question: asked.question,
+                  options: asked.options,
+                }
+              : null,
+          )
           setTurns((items) => [...items, { ...question, reply }])
-        } catch {
-          setError('답을 가져오지 못했어요. 연결을 확인하고 다시 보내 주세요.')
+          // 되물은 질문에 답했는데 자료 답을 만들지 못했으면, 같은 맥락으로 다시 답할 수 있게 둔다.
+          if (question.clarification && reply.records?.recordAnswer?.status === 'failed') continue
+          const next = reply.clarification
+            ? {
+                turnId: question.id,
+                originalQuestion: reply.clarification.originalQuestion,
+                question: reply.clarification.question,
+                options: reply.clarification.options ?? [],
+              }
+            : null
+          pendingRef.current = next
+          setPending(next)
+        } catch (cause) {
+          setError(
+            cause instanceof ApiError && cause.code === 'AI_MISCONFIGURED'
+              ? '토리 대화 설정을 확인하고 있어요. 잠시 후 다시 보내 주세요.'
+              : '답을 가져오지 못했어요. 연결을 확인하고 다시 보내 주세요.',
+          )
         }
       }
     } finally {
@@ -173,7 +243,7 @@ export function ToriDesk({
     if (!message) return
     if (briefOpen) folding.current = true
     setBriefOpen(false)
-    queue.current.push({ id: crypto.randomUUID(), message })
+    queue.current.push({ id: crypto.randomUUID(), message, clarification: pendingRef.current })
     setWaiting(queue.current.length)
     setDraft('')
     void processQueue()
@@ -243,9 +313,28 @@ export function ToriDesk({
         </div>
       )}
       {docked && (
-        <p className="px-[2px] text-label text-mute">
-          {waiting > 0 ? `질문 ${waiting}개가 순서대로 처리돼요.` : '대화는 새로고침하면 사라져요.'}
-        </p>
+        <div className="flex items-center justify-between gap-3 px-[2px] text-label text-mute">
+          <p>
+            {waiting > 0
+              ? `질문 ${waiting}개가 순서대로 처리돼요.`
+              : pending
+                ? '토리의 질문에 이어서 답하고 있어요.'
+                : '대화는 새로고침하면 사라져요.'}
+          </p>
+          {pending && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                pendingRef.current = null
+                setPending(null)
+              }}
+              className="shrink-0 font-semibold text-blue-700 underline-offset-4 hover:underline disabled:opacity-50"
+            >
+              새 질문하기
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
@@ -268,9 +357,15 @@ export function ToriDesk({
         >
           <Tori size={22} />
           <span className="min-w-0 flex-1 truncate">
-            <span className="font-bold text-ink">확인할 일 {briefing.items.length}개</span>
-            {' | '}진행 중인 행사{' '}
-            {briefing.events.filter((event) => event.status === 'ON_GOING').length}개
+            {briefing.status === 'ready' ? (
+              <>
+                <span className="font-bold text-ink">확인할 일 {briefing.data.items.length}개</span>
+                {' | '}진행 중인 행사{' '}
+                {briefing.data.events.filter((event) => event.status === 'ON_GOING').length}개
+              </>
+            ) : (
+              <span className="font-bold text-ink">오늘 브리핑</span>
+            )}
           </span>
           <span className="flex shrink-0 items-center gap-[4px] font-semibold text-blue-700">
             {briefOpen ? '브리핑 접기' : '브리핑 펼치기'}
@@ -334,6 +429,7 @@ export function ToriDesk({
                     reply={reply}
                     busy={busy}
                     showSuggestions={last && !busy}
+                    answering={!busy && pending?.turnId === item.id}
                     onSuggest={send}
                   />
                 ) : (
