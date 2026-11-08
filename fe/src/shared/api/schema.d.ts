@@ -4072,6 +4072,52 @@ export interface components {
          * @enum {string}
          */
         TaskSuggestionStatus: "PROPOSED" | "ACCEPTED";
+        /** ToriApprovalAction */
+        ToriApprovalAction: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Stepname */
+            stepName?: string | null;
+            /** Duedate */
+            dueDate?: string | null;
+        };
+        /** ToriApprovalGroup */
+        ToriApprovalGroup: {
+            /** Eventid */
+            eventId: string;
+            /** Eventtitle */
+            eventTitle: string;
+            /** Actions */
+            actions: components["schemas"]["ToriApprovalAction"][];
+        };
+        /**
+         * ToriApprovalsCard
+         * @description 승인 대기 카드. 운영 중 행사만, 행사별로 묶는다. 승인은 행사 상세에서 한다.
+         */
+        ToriApprovalsCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "approvals";
+            /** Groups */
+            groups: components["schemas"]["ToriApprovalGroup"][];
+        };
+        /**
+         * ToriBriefingCard
+         * @description 「확인할 일 전부 보여줘」의 카드. 브리핑 API의 items와 같은 줄을 전부 담는다.
+         */
+        ToriBriefingCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "briefing";
+            /** Items */
+            items: components["schemas"]["ToriBriefingItem"][];
+        };
         /**
          * ToriBriefingItem
          * @description 브리핑 「오늘 확인할 일」 한 줄. 화면 이동 주소는 FE가 event_id·task_id·meeting_id로 만든다.
@@ -4133,20 +4179,58 @@ export interface components {
             options?: string[];
         };
         /**
+         * ToriEventStatusCard
+         * @description 행사 현황 카드. 운영 중이 아니면 current_step이 null이고 next_steps가 비어 있다.
+         */
+        ToriEventStatusCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "event_status";
+            event: components["schemas"]["EventOut"];
+            currentStep?: components["schemas"]["ToriStatusStep"] | null;
+            /** Nextsteps */
+            nextSteps: components["schemas"]["ToriStatusStep"][];
+            /** Approvals */
+            approvals: string[];
+            /** Approvalcount */
+            approvalCount: number;
+            /** Budget */
+            budget?: number | null;
+            /** Spent */
+            spent: number;
+        };
+        /**
          * ToriEventsCard
          * @description 행사 목록 답의 카드. total은 조건에 맞는 전체 수이고 events는 앞에서부터 최대 20건이다.
          */
         ToriEventsCard: {
             /**
-             * Type
-             * @default events
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             type: "events";
             /** Events */
             events: components["schemas"]["EventOut"][];
             /** Total */
             total: number;
+        };
+        /** ToriMeetingTask */
+        ToriMeetingTask: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "TASK" | "SCHEDULE";
+            /** Assigneename */
+            assigneeName?: string | null;
+            /** Duedate */
+            dueDate?: string | null;
         };
         /** ToriMessageIn */
         ToriMessageIn: {
@@ -4160,7 +4244,7 @@ export interface components {
              * Intent
              * @enum {string}
              */
-            intent: "record_search" | "task_list" | "event_list" | "event_planning" | "meeting" | "clarify" | "unsupported" | "self_intro";
+            intent: "record_search" | "task_list" | "event_list" | "event_planning" | "meeting" | "clarify" | "unsupported" | "self_intro" | "briefing" | "approval_list" | "event_status" | "meeting_tasks";
             /** Reply */
             reply: string;
             records?: components["schemas"]["RecordSearchData"] | null;
@@ -4171,7 +4255,8 @@ export interface components {
             tasks?: components["schemas"]["ToriTasks"] | null;
             /** Navigation */
             navigation?: ("/planning" | "/meetings") | null;
-            card?: components["schemas"]["ToriEventsCard"] | null;
+            /** Card */
+            card?: (components["schemas"]["ToriEventsCard"] | components["schemas"]["ToriBriefingCard"] | components["schemas"]["ToriApprovalsCard"] | components["schemas"]["ToriEventStatusCard"] | components["schemas"]["ToriTasksCard"]) | null;
             /** Suggestions */
             suggestions?: string[];
         };
@@ -4230,6 +4315,13 @@ export interface components {
             fileName: string;
             location: components["schemas"]["RecordSearchLocation"];
         };
+        /** ToriStatusStep */
+        ToriStatusStep: {
+            /** Name */
+            name: string;
+            /** Duedate */
+            dueDate?: string | null;
+        };
         /** ToriTasks */
         ToriTasks: {
             /** Items */
@@ -4256,6 +4348,25 @@ export interface components {
              * @constant
              */
             timezone: "Asia/Seoul";
+        };
+        /**
+         * ToriTasksCard
+         * @description 회의에서 확정한 할 일·일정 카드.
+         */
+        ToriTasksCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "tasks";
+            /** Title */
+            title: string;
+            /** Meetingid */
+            meetingId: string;
+            /** Tasks */
+            tasks: components["schemas"]["ToriMeetingTask"][];
+            /** Hasmore */
+            hasMore: boolean;
         };
         /** TranscriptListOut */
         TranscriptListOut: {

@@ -21,10 +21,108 @@ from app.schemas.reminders import ConfirmedTaskOut
 from app.schemas.tori import (
     ToriBriefingOut, ToriClarification, ToriEventsCard, ToriMessageIn, ToriMessageOut, ToriRecordAnswer,
 )
-from app.services import event_service, record_discovery_service, tori_briefing_service
+from app.services import event_service, record_discovery_service, tori_briefing_service, tori_lookup_service
 
 router = APIRouter(prefix='/api/v1/clubs/{club_id}/tori', tags=['tori'])
 TZ = ZoneInfo('Asia/Seoul')
+
+
+def _status_ask(title: str) -> str:
+    return f'{title} 어디까지 됐어?'
+
+
+async def _lookup_reply(session: AsyncSession, *, club_id: str, account_id: str,
+                        result: ai.ToriIntentResult) -> ToriMessageOut:
+    """브리핑·승인 대기·행사 현황·회의 할 일. 모델 없이 DB 조회만 하고 카드로 답한다."""
+    intent = result.intent
+    if intent == 'briefing':
+        briefing = await tori_briefing_service.build_briefing(session, club_id=club_id, account_id=account_id)
+        items = briefing['items']
+        if not items:
+            return ToriMessageOut(intent=intent, reply='오늘 확인할 일이 없어요.')
+        suggestions = [tori_briefing_service.APPROVAL_ASK] if any(i['kind'] == 'approval' for i in items) else []
+        return ToriMessageOut(intent=intent, reply=f'오늘 확인할 일 {len(items)}개를 급한 순서로 모았어요.',
+                              card={'type': 'briefing', 'items': items}, suggestions=suggestions)
+
+    if intent in ('event_status', 'approval_list'):
+        event = None
+        if intent == 'event_status' or result.target:
+            found, events = await tori_lookup_service.resolve_event(session, club_id=club_id, target=result.target)
+            if found == 'missing':
+                ongoing, _ = await event_service.list_events(
+                    session, club_id=club_id, status=EventStatus.ON_GOING, page=1, size=20)
+                reply = (f"'{result.target}' 행사를 찾지 못했어요." if result.target
+                         else '진행 중이거나 계획 중인 행사가 없어요.')
+                if ongoing:
+                    reply += ' 진행 중인 행사는 이렇게 있어요.'
+                return ToriMessageOut(
+                    intent=intent, reply=reply,
+                    card={'type': 'events', 'events': ongoing, 'total': len(ongoing)} if ongoing else None)
+            if found == 'choose':
+                # 후보를 버튼으로 보여 주고, 누르면 정확한 행사 이름으로 다시 묻게 한다.
+                ask = _status_ask if intent == 'event_status' else (lambda title: f'{title} 승인 기다리는 거 보여줘')
+                more = len(events) > tori_lookup_service.CHOICE_LIMIT
+                return ToriMessageOut(
+                    intent=intent,
+                    reply=('어느 행사요? 비슷한 이름의 행사가 많아요. 이름을 조금 더 정확히 알려 주세요.' if more
+                           else f'어느 행사요? 맞는 행사가 {len(events)}개 있어요.'),
+                    suggestions=[ask(e.title) for e in events[:tori_lookup_service.CHOICE_LIMIT]])
+            event = events[0]
+        if intent == 'event_status':
+            card = await tori_lookup_service.event_status_card(session, event)
+            reply = {
+                EventStatus.PLANNING: f'{event.title}, 아직 계획 중이에요. 운영을 시작하면 단계 진행을 볼 수 있어요.',
+                EventStatus.COMPLETE: f'{event.title}, 끝난 행사예요.',
+                EventStatus.CANCELLING: f'{event.title}, 취소를 정리하고 있어요.',
+                EventStatus.CANCELLED: f'{event.title}, 취소된 행사예요.',
+            }.get(event.status)
+            if reply is None:
+                current = card['current_step']
+                reply = (f"{event.title}, 지금 {current['name']} 단계를 진행하고 있어요." if current
+                         else f'{event.title}, 모든 단계를 마쳤어요.')
+                if card['approval_count']:
+                    reply += f" 승인을 기다리는 일이 {card['approval_count']}건 있어요."
+            others, _ = await event_service.list_events(
+                session, club_id=club_id, status=EventStatus.ON_GOING, page=1, size=3)
+            suggestions = [tori_briefing_service.APPROVAL_ASK] if card['approval_count'] else []
+            suggestions += [_status_ask(other['title']) for other in others if other['id'] != event.id][:2]
+            return ToriMessageOut(intent=intent, reply=reply, card=card, suggestions=suggestions)
+        groups = await tori_lookup_service.approval_groups(
+            session, club_id=club_id, event_id=event.id if event else None)
+        total = sum(len(group['actions']) for group in groups)
+        where = f'{event.title}에서 ' if event else ''
+        if not total:
+            return ToriMessageOut(intent=intent, reply=f'{where}승인을 기다리는 일이 없어요.')
+        return ToriMessageOut(
+            intent=intent, reply=f'{where}승인을 기다리는 일이 {total}건 있어요. 행사 상세에서 내용을 보고 승인할 수 있어요.',
+            card={'type': 'approvals', 'groups': groups},
+            suggestions=[_status_ask(group['event_title']) for group in groups][:2])
+
+    if intent == 'meeting_tasks':
+        found, meetings = await tori_lookup_service.resolve_meeting(
+            session, club_id=club_id, target=result.target, meeting_date=result.meeting_date)
+        if found == 'missing':
+            if result.target is None and result.meeting_date is None:
+                return ToriMessageOut(intent=intent, reply='아직 끝난 회의가 없어요.')
+            name = result.target or f'{result.meeting_date.month}월 {result.meeting_date.day}일'
+            return ToriMessageOut(intent=intent, reply=f"'{name}' 회의를 찾지 못했어요.")
+        if found == 'choose':
+            return ToriMessageOut(
+                intent=intent, reply=f'어느 회의요? 맞는 회의가 {len(meetings)}개 있어요.',
+                suggestions=[tori_lookup_service.meeting_ask(m) for m in meetings[:tori_lookup_service.CHOICE_LIMIT]])
+        meeting = meetings[0]
+        card = await tori_lookup_service.meeting_tasks_card(session, club_id=club_id, meeting=meeting)
+        label = tori_lookup_service.meeting_label(meeting)
+        if not card['tasks']:
+            return ToriMessageOut(intent=intent, reply=f'{label}에서 확정한 할 일이 없어요. 할 일 후보는 회의 화면에서 확인할 수 있어요.')
+        today = event_service.today_kst()
+        overdue = sum(1 for task in card['tasks']
+                      if task['kind'] == 'TASK' and task['due_date'] and task['due_date'] < today)
+        reply = f"{label}에서 확정한 할 일이 {len(card['tasks'])}{'개 넘게' if card['has_more'] else '개'} 있어요."
+        if overdue:
+            reply += f' 마감이 지난 일이 {overdue}개 있어요.'
+        return ToriMessageOut(intent=intent, reply=reply, card=card)
+    raise ValueError(f'카드 조회 분류가 아닙니다: {intent}')
 
 
 def _clear_clarification_choice(message: str, options: list[str], today: date) -> bool:
@@ -266,6 +364,8 @@ async def message(club_id: str, body: ToriMessageIn,
                  'date_from': result.date_from.isoformat() if result.date_from else None,
                  'date_to': result.date_to.isoformat() if result.date_to else None}
         return Envelope(data=ToriMessageOut(intent=result.intent, reply='요청하신 범위의 확정된 일정과 할 일을 보여드릴게요. 회의나 행사별 구분은 적용되지 않아요.', tasks=tasks))
+    if result.intent in ('briefing', 'approval_list', 'event_status', 'meeting_tasks'):
+        return Envelope(data=await _lookup_reply(session, club_id=club_id, account_id=account.id, result=result))
     if result.intent == 'event_list':
         status = EventStatus(result.event_status) if result.event_status else None
         events, total = await event_service.list_events(session, club_id=club_id, status=status, page=1, size=20)

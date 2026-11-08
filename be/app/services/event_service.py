@@ -169,6 +169,29 @@ async def _pending_approval_counts(
     return dict(rows.tuples().all())
 
 
+async def event_cards(session: AsyncSession, events: Sequence[Event]) -> list[dict]:
+    """L1 카드 모양(EventOut). events는 steps를 미리 불러 둔 행이어야 한다."""
+    pending_counts = await _pending_approval_counts(session, [e.id for e in events])
+
+    today = today_kst()
+    result = []
+    for event in events:
+        states = event_rules.step_states(event.steps, event_status=event.status)
+        current = _current_step(event.steps, states)
+        result.append(
+            {
+                **_event_base(event, today),
+                "current_step_name": current.name if current else None,
+                "step_progress": [
+                    {"step_order": s.step_order, "state": states[s.id]}
+                    for s in event.steps
+                ],
+                "pending_approval_count": pending_counts.get(event.id, 0),
+            }
+        )
+    return result
+
+
 async def list_events(
     session: AsyncSession,
     *,
@@ -198,25 +221,7 @@ async def list_events(
             .limit(size)
         )
     )
-    pending_counts = await _pending_approval_counts(session, [e.id for e in events])
-
-    today = today_kst()
-    result = []
-    for event in events:
-        states = event_rules.step_states(event.steps, event_status=event.status)
-        current = _current_step(event.steps, states)
-        result.append(
-            {
-                **_event_base(event, today),
-                "current_step_name": current.name if current else None,
-                "step_progress": [
-                    {"step_order": s.step_order, "state": states[s.id]}
-                    for s in event.steps
-                ],
-                "pending_approval_count": pending_counts.get(event.id, 0),
-            }
-        )
-    return result, total or 0
+    return await event_cards(session, events), total or 0
 
 
 async def _ordered_steps(session: AsyncSession, event_id: str) -> list[Step]:

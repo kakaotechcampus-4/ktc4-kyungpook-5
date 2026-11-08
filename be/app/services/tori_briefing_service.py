@@ -10,20 +10,19 @@
 
 from collections.abc import Sequence
 from datetime import date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import EventStatus
 from app.models.agent import ContextDecision
-from app.models.events import Action, Event, Step
+from app.models.events import Event, Step
 from app.models.meetings import Meeting
 from app.models.reminders import ConfirmedTask
 from app.models.tasks import TaskSuggestion
-from app.services import event_service
+from app.services import event_service, tori_lookup_service
+from app.services.tori_lookup_service import KST, meeting_label
 
-KST = ZoneInfo("Asia/Seoul")
 DEADLINE_DAYS = 3
 # 배정된 할 일이 아주 많아도 화면 한 번에 쓸 만큼만 읽는다.
 TASK_LIMIT = 50
@@ -32,14 +31,6 @@ APPROVAL_ASK = "승인 기다리는 거 보여줘"
 
 def _kst_date(value: datetime) -> date:
     return value.astimezone(KST).date()
-
-
-def meeting_label(meeting: Meeting) -> str:
-    """화면에 쓰는 회의 이름. 제목이 없으면 "11/5 회의"처럼 날짜로 부른다."""
-    if meeting.title and meeting.title.strip():
-        return meeting.title.strip()
-    day = _kst_date(meeting.started_at or meeting.created_at)
-    return f"{day.month}/{day.day} 회의"
 
 
 async def _deadline_items(session: AsyncSession, club_id: str, today: date) -> list[dict]:
@@ -72,34 +63,20 @@ async def _deadline_items(session: AsyncSession, club_id: str, today: date) -> l
 
 
 async def _approval_items(session: AsyncSession, club_id: str) -> list[dict]:
-    rows = await session.execute(
-        select(Action, Event.title, Step.name)
-        .join(Event, Action.event_id == Event.id)
-        .outerjoin(Step, Action.step_id == Step.id)
-        .where(
-            Event.club_id == club_id,
-            # 승인은 운영 중 행사에서만 받는다(event_rules.is_operating).
-            Event.status == EventStatus.ON_GOING,
-            *event_service.PENDING_APPROVAL,
-        )
-        .order_by(Event.start_date.asc().nulls_last(), Event.id, *event_service.ACTION_ORDER)
-    )
-    groups: dict[str, list[tuple[Action, str, str | None]]] = {}
-    for row in rows.tuples():
-        groups.setdefault(row[0].event_id, []).append(row)
     items = []
-    for event_id, group in groups.items():
+    for group in await tori_lookup_service.approval_groups(session, club_id=club_id):
         # 행사 안에서는 마감이 가까운 행동이 앞에 온다(event_service.ACTION_ORDER).
-        (first, title, step_name), rest = group[0], group[1:]
+        first, *rest = group["actions"]
+        title = group["event_title"]
         items.append(
             {
-                "id": f"approval:{event_id}",
+                "id": f"approval:{group['event_id']}",
                 "kind": "approval",
-                "title": first.title,
-                "source": f"{title} | {step_name} 단계" if step_name else title,
-                "due_date": first.due_date,
+                "title": first["title"],
+                "source": f"{title} | {first['step_name']} 단계" if first["step_name"] else title,
+                "due_date": first["due_date"],
                 "more_count": len(rest),
-                "event_id": event_id,
+                "event_id": group["event_id"],
                 "ask": APPROVAL_ASK,
             }
         )
