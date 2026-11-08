@@ -80,7 +80,7 @@ function ThinkingStatus({ message }: { message: string }) {
   )
 }
 
-function Reply({ result }: { result: Result }) {
+export function Reply({ result }: { result: Result }) {
   const [downloadError, setDownloadError] = useState('')
   const [downloading, setDownloading] = useState<string | null>(null)
   const [sourcesOpen, setSourcesOpen] = useState(false)

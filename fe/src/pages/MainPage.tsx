@@ -1,11 +1,23 @@
 import { Link } from 'react-router-dom'
 import { useMe } from '@/features/auth/hooks'
+import { ToriDesk } from '@/features/dashboard/components/ToriDesk'
 import { ToriHome } from '@/features/dashboard/components/ToriHome'
+import { DEMO_BRIEFING, DEMO_STARTERS, demoRespond } from '@/features/dashboard/demoDesk'
+import { useDemo } from '@/features/events/hooks'
 import { useAuthStore } from '@/shared/auth/store'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 
 export default function MainPage() {
+  // ?demo는 새 메인(브리핑 + 카드 답) 시안이다. 로그인 없이 예시 데이터로 본다.
+  return useDemo() ? (
+    <ToriDesk briefing={DEMO_BRIEFING} starters={DEMO_STARTERS} respond={demoRespond} />
+  ) : (
+    <LiveMainPage />
+  )
+}
+
+function LiveMainPage() {
   const session = useMe()
   const { token, me } = useAuthStore()
   const clubId = useAuthStore((state) => state.clubId)
