@@ -136,6 +136,20 @@ async def _lookup_reply(session: AsyncSession, *, club_id: str, account_id: str,
     raise ValueError(f'카드 조회 분류가 아닙니다: {intent}')
 
 
+def _task_list_reply(result: ai.ToriIntentResult, rows: list[ConfirmedTask], has_more: bool) -> str:
+    """내 할 일 답의 한 줄. 목록은 카드가 보이므로 수와 오늘 마감만 말한다."""
+    label = ('내 ' if result.scope == 'self' else '팀 ') + {
+        'task': '할 일', 'schedule': '일정', 'all': '할 일과 일정'}[result.kind]
+    if not rows:
+        return f'이 기간에 확정한 {label}이 없어요.'
+    reply = f"{label}이 {len(rows)}개{' 넘게' if has_more else ''} 있어요."
+    today = datetime.now(TZ).date()
+    due_today = sum(1 for row in rows if row.kind == 'TASK' and row.due_at and row.due_at.astimezone(TZ).date() == today)
+    if due_today:
+        reply += f' 오늘 마감인 일이 {due_today}개 있어요.'
+    return reply
+
+
 def _clear_clarification_choice(message: str, options: list[str], today: date) -> bool:
     """명시적 선택만 인정한다. 애매한 답을 특정 행사로 좁히지 않는다."""
     if not options:
@@ -374,7 +388,8 @@ async def message(club_id: str, body: ToriMessageIn,
                  'has_more': len(rows) > 20, 'scope': result.scope, 'kind': result.kind,
                  'date_from': result.date_from.isoformat() if result.date_from else None,
                  'date_to': result.date_to.isoformat() if result.date_to else None}
-        return Envelope(data=ToriMessageOut(intent=result.intent, reply='요청하신 범위의 확정된 일정과 할 일을 보여드릴게요. 회의나 행사별 구분은 적용되지 않아요.', tasks=tasks))
+        return Envelope(data=ToriMessageOut(intent=result.intent, reply=_task_list_reply(result, rows[:20], len(rows) > 20),
+                                             tasks=tasks))
     if result.intent in ('briefing', 'approval_list', 'event_status', 'meeting_tasks'):
         return Envelope(data=await _lookup_reply(session, club_id=club_id, account_id=account.id, result=result))
     if result.intent == 'event_list':

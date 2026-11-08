@@ -386,8 +386,10 @@ async def test_토리_본인_확정_할일만_조회하고_소속을_검증한�
     assert result.status_code == 200, result.text
     assert [item['title'] for item in result.json()['data']['tasks']['items']] == [body['title']]
     assert result.json()['data']['tasks']['scope'] == 'self'
+    assert result.json()['data']['reply'].startswith('내 할 일이 1개 있어요.')
     other = client.post(url, headers=case['headers'][1], json={'message':'내 할 일'})
     assert other.status_code == 200 and other.json()['data']['tasks']['items'] == []
+    assert other.json()['data']['reply'] == '이 기간에 확정한 내 할 일이 없어요.'
     assert client.post(url, headers=case['headers'][4], json={'message':'내 할 일'}).status_code == 403
     assert client.post(url, json={'message':'내 할 일'}).status_code == 401
 
