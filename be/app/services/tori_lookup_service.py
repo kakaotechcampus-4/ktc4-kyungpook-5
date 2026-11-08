@@ -41,10 +41,13 @@ def _narrow_by_name(rows: Sequence, key: str, title) -> list:
     정확히 같은 이름을 먼저 보는 이유: "봄 MT"와 "2026 봄 MT"가 함께 있을 때 되묻기 버튼
     "봄 MT 어디까지 됐어?"를 누르면 다시 둘 다 맞아 되묻기가 끝나지 않는다.
     """
-    exact = [row for row in rows if _norm(title(row)) == key]
+    names = [(row, _norm(title(row))) for row in rows]
+    # 제목이 없는 회의는 이름으로 찾을 수 없다. 빈 문자열은 모든 이름 안에 들어 있다고 판정되므로 뺀다.
+    names = [(row, name) for row, name in names if name]
+    exact = [row for row, name in names if name == key]
     if exact:
         return exact
-    return [row for row in rows if key in _norm(title(row)) or _norm(title(row)) in key]
+    return [row for row, name in names if key in name or name in key]
 
 
 async def resolve_event(session: AsyncSession, *, club_id: str, target: str | None) -> tuple[Found, list[Event]]:

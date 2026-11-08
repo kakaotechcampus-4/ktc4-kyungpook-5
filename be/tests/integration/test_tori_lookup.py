@@ -204,6 +204,9 @@ async def test_회의_할_일은_지난_회의와_이름_날짜로_찾는다(cli
         tasks=[("숙소 알아보기", "TASK", None)])
     await _meeting_with_tasks(club_id, member, title="지금 회의", started=_at(0, 0), status=MeetingStatus.RECORDING,
                               tasks=[])
+    # 제목 없는 회의는 이름으로 물었을 때 후보가 되면 안 된다.
+    await _meeting_with_tasks(club_id, member, title=None, started=_at(-10, 19), status=MeetingStatus.COMPLETED,
+                              tasks=[("제목 없는 회의 할 일", "TASK", None)])
 
     def ask(**fields):
         return _ask(client, headers, club_id, monkeypatch, ai.ToriIntentResult(intent="meeting_tasks", **fields))
