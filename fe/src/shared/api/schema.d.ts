@@ -2770,7 +2770,7 @@ export interface components {
          * ExpenseSource
          * @enum {string}
          */
-        ExpenseSource: "MANUAL" | "CSV_IMPORT" | "OCR_IMPORT";
+        ExpenseSource: "MANUAL" | "CSV_IMPORT" | "OCR_IMPORT" | "ACTION";
         /**
          * ExpenseUpdateIn
          * @description 지출 수정 (#213). 보낸 필드만 바꾸고, null을 보내면 그 값을 비운다.
@@ -3651,7 +3651,7 @@ export interface components {
         RecordParseStatus: "QUEUED" | "PARSING" | "NEEDS_REVIEW" | "COMPLETED" | "INDEXED" | "FAILED";
         /** RecordSearchData */
         RecordSearchData: {
-            /** AI가 검색 근거를 읽고 정리한 답변 */
+            /** Answer */
             answer?: string | null;
             /** Items */
             items: components["schemas"]["RecordSearchItem"][];

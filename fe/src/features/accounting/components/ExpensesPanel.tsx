@@ -16,6 +16,7 @@ const SOURCE_LABEL: Record<Expense['source'], string> = {
   MANUAL: '직접 입력',
   CSV_IMPORT: 'CSV 가져오기',
   OCR_IMPORT: '영수 내역 가져오기',
+  ACTION: '송금 완료 기록',
 }
 
 function expenseErrorMessage(error: unknown) {
