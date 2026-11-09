@@ -15,7 +15,12 @@ def test_tori_intro_uses_classifier_and_returns_reply_without_lookup(client, mon
         async def commit(self):
             pass
 
+    async def starters(_session, club_id):
+        assert club_id == 'club-1'
+        return ['확인할 일 전부 보여줘']
+
     monkeypatch.setattr(ai, 'classify_tori_intent', classify)
+    monkeypatch.setattr(tori, '_starters', starters)
     monkeypatch.setattr(deps, 'ensure_member', ensure_member)
     monkeypatch.setitem(client.app.dependency_overrides, tori.require_member, object)
     monkeypatch.setitem(client.app.dependency_overrides, tori.get_current_account, object)
@@ -27,3 +32,4 @@ def test_tori_intro_uses_classifier_and_returns_reply_without_lookup(client, mon
     assert data['intent'] == 'self_intro'
     assert '토리예요' in data['reply']
     assert data['records'] is data['tasks'] is data['navigation'] is None
+    assert data['suggestions'] == ['확인할 일 전부 보여줘']

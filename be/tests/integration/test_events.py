@@ -49,10 +49,27 @@ async def test_tori_event_list_filters_status_and_club(client, app_db, monkeypat
     result = client.post(f'/api/v1/clubs/{club_id}/tori/messages', headers=headers,
                          json={'message': '준비 중인 행사 알려줘'})
     assert result.status_code == 200, result.text
-    reply = result.json()['data']['reply']
-    assert '계획 중 행사 1건' in reply and '준비 행사' in reply
-    assert '진행 행사' not in reply and '다른 소속 행사' not in reply
+    data = result.json()['data']
+    assert data['reply'] == '계획 중인 행사 1개예요.'
+    assert data['card']['type'] == 'events' and data['card']['total'] == 1
+    assert [event['title'] for event in data['card']['events']] == ['준비 행사']
 
+    async def classify_all(_request):
+        return ai.ToriIntentResult(intent='event_list')
+
+    monkeypatch.setattr(ai, 'classify_tori_intent', classify_all)
+    whole = client.post(f'/api/v1/clubs/{club_id}/tori/messages', headers=headers,
+                        json={'message': '행사 뭐 있어?'}).json()['data']
+    assert whole['reply'] == '행사 2개예요.'
+    assert {event['title'] for event in whole['card']['events']} == {'준비 행사', '진행 행사'}
+
+    async def classify_cancelled(_request):
+        return ai.ToriIntentResult(intent='event_list', event_status='CANCELLED')
+
+    monkeypatch.setattr(ai, 'classify_tori_intent', classify_cancelled)
+    empty = client.post(f'/api/v1/clubs/{club_id}/tori/messages', headers=headers,
+                        json={'message': '취소된 행사'}).json()['data']
+    assert empty['reply'] == '취소된 행사가 없어요.' and empty['card'] is None
 async def test_event_cancel_persists_tasks_and_final_status(client, app_db):
     headers, club_id = owner_with_club(client, 'cancel-flow')
     event_id = await add_event(club_id, title='취소 행사', status=EventStatus.ON_GOING)

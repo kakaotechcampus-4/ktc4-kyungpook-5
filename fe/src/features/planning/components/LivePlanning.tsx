@@ -47,6 +47,9 @@ export function LivePlanning() {
   const [params, setParams] = useSearchParams()
   const location = useLocation()
   const failedText = typeof location.state?.failedText === 'string' ? location.state.failedText : ''
+  // 메인 토리에서 계획 요청을 넘겨받은 말. 새 계획 입력창에 넣어 두고, 보내는 건 운영진이 한다.
+  const handoffText =
+    typeof location.state?.handoffText === 'string' ? location.state.handoffText : ''
   // 새 계획은 생성이 끝나며 이 계획 주소로 넘어가 대화 영역이 새로 그려지므로 안내를 여기 둔다.
   const [ready, setReady] = useState<GenerationReady | null>(null)
   const eventId = params.get('eventId')
@@ -126,6 +129,7 @@ export function LivePlanning() {
               )
             }}
             failedText={failedText}
+            handoffText={eventId ? '' : handoffText}
             userId={userId}
             ready={ready?.eventId === eventId ? ready : null}
             onReady={setReady}
@@ -261,6 +265,7 @@ function Conversation({
   eventId,
   onCreated,
   failedText,
+  handoffText,
   userId,
   onBusy,
   ready,
@@ -270,6 +275,7 @@ function Conversation({
   eventId: string | null
   onCreated: (id: string, failedText?: string) => void
   failedText: string
+  handoffText: string
   userId: string | undefined
   onBusy: (busy: boolean) => void
   ready: GenerationReady | null
@@ -592,7 +598,7 @@ function Conversation({
           initialDraft={
             // 결과 확인 화면 뒤에 입력창이 다시 그려진다. 저장되지 않았으면 원래 문장을 되돌리고,
             // 저장된 것으로 확인됐으면 다시 보내지 않게 비운다(#342).
-            live.retryText || (live.settled === 'saved' ? '' : failedText)
+            live.retryText || (live.settled === 'saved' ? '' : failedText) || handoffText
           }
           // 대화 화면에서 확인한 채팅은 입력창이 다시 그려지지 않아 이 값으로 맞춘다(#368).
           draftReset={live.draftReset}

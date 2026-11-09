@@ -106,6 +106,7 @@ async def add_step(
     phase: StepPhase = StepPhase.PREPARATION,
     actor: StepActor = StepActor.MANUAL,
     completed_at: datetime | None = None,
+    deadline: datetime | None = None,
 ) -> str:
     return await _insert(
         Step(
@@ -116,6 +117,7 @@ async def add_step(
             phase=phase,
             actor=actor,
             completed_at=completed_at,
+            deadline=deadline,
         )
     )
 

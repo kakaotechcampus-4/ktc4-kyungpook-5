@@ -13,7 +13,7 @@ async def main():
         try:
             result = await classify_tori_intent(ToriIntentRequest(message=case['message'], reference_date='2026-10-30'))
             actual = result.model_dump(mode='json')
-            ok = all(actual[key] == value for key, value in case.items() if key != 'message')
+            ok = all(actual.get(key) == value for key, value in case.items() if key != 'message')
             print(f"{case['message']}: {'PASS' if ok else 'FAIL'} ({actual['intent']})", flush=True)
             failed += not ok
         except Exception as error:

@@ -1634,6 +1634,26 @@ export interface paths {
         patch: operations["update_action_api_v1_actions__action_id__patch"];
         trace?: never;
     };
+    "/api/v1/clubs/{club_id}/tori/briefing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Briefing
+         * @description 메인 탭 첫 화면의 오늘 확인할 일과 진행 중·계획 중 행사. 모델을 부르지 않는다.
+         */
+        get: operations["briefing_api_v1_clubs__club_id__tori_briefing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/clubs/{club_id}/tori/messages": {
         parameters: {
             query?: never;
@@ -2506,6 +2526,12 @@ export interface components {
         /** Envelope[TaskSuggestionOut] */
         Envelope_TaskSuggestionOut_: {
             data: components["schemas"]["TaskSuggestionOut"];
+            /** Meta */
+            meta?: null;
+        };
+        /** Envelope[ToriBriefingOut] */
+        Envelope_ToriBriefingOut_: {
+            data: components["schemas"]["ToriBriefingOut"];
             /** Meta */
             meta?: null;
         };
@@ -3653,7 +3679,7 @@ export interface components {
         RecordParseStatus: "QUEUED" | "PARSING" | "NEEDS_REVIEW" | "COMPLETED" | "INDEXED" | "FAILED";
         /** RecordSearchData */
         RecordSearchData: {
-            /** AI가 검색 근거를 읽고 정리한 답변 */
+            /** Answer */
             answer?: string | null;
             /** Items */
             items: components["schemas"]["RecordSearchItem"][];
@@ -4048,6 +4074,94 @@ export interface components {
          * @enum {string}
          */
         TaskSuggestionStatus: "PROPOSED" | "ACCEPTED";
+        /** ToriApprovalAction */
+        ToriApprovalAction: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Stepname */
+            stepName?: string | null;
+            /** Duedate */
+            dueDate?: string | null;
+        };
+        /** ToriApprovalGroup */
+        ToriApprovalGroup: {
+            /** Eventid */
+            eventId: string;
+            /** Eventtitle */
+            eventTitle: string;
+            /** Actions */
+            actions: components["schemas"]["ToriApprovalAction"][];
+        };
+        /**
+         * ToriApprovalsCard
+         * @description 승인 대기 카드. 운영 중 행사만, 행사별로 묶는다. 승인은 행사 상세에서 한다.
+         */
+        ToriApprovalsCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "approvals";
+            /** Groups */
+            groups: components["schemas"]["ToriApprovalGroup"][];
+        };
+        /**
+         * ToriBriefingCard
+         * @description 「확인할 일 전부 보여줘」의 카드. 브리핑 API의 items와 같은 줄을 전부 담는다.
+         */
+        ToriBriefingCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "briefing";
+            /** Items */
+            items: components["schemas"]["ToriBriefingItem"][];
+        };
+        /**
+         * ToriBriefingItem
+         * @description 브리핑 「오늘 확인할 일」 한 줄. 화면 이동 주소는 FE가 event_id·task_id·meeting_id로 만든다.
+         */
+        ToriBriefingItem: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "deadline" | "approval" | "task";
+            /** Title */
+            title: string;
+            /** Source */
+            source: string;
+            /** Duedate */
+            dueDate?: string | null;
+            /**
+             * Morecount
+             * @default 0
+             */
+            moreCount: number;
+            /** Eventid */
+            eventId?: string | null;
+            /** Taskid */
+            taskId?: string | null;
+            /** Meetingid */
+            meetingId?: string | null;
+            /** Ask */
+            ask?: string | null;
+        };
+        /**
+         * ToriBriefingOut
+         * @description 메인 탭 첫 화면. items는 급한 순서이고, events는 진행 중 → 계획 중 순서다.
+         */
+        ToriBriefingOut: {
+            /** Items */
+            items: components["schemas"]["ToriBriefingItem"][];
+            /** Events */
+            events: components["schemas"]["EventOut"][];
+        };
         /** ToriClarification */
         ToriClarification: {
             /** Originalquestion */
@@ -4066,6 +4180,73 @@ export interface components {
             /** Options */
             options?: string[];
         };
+        /**
+         * ToriEventStatusCard
+         * @description 행사 현황 카드. 운영 중이 아니면 current_step이 null이고 next_steps가 비어 있다.
+         */
+        ToriEventStatusCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "event_status";
+            event: components["schemas"]["EventOut"];
+            currentStep?: components["schemas"]["ToriStatusStep"] | null;
+            /** Nextsteps */
+            nextSteps: components["schemas"]["ToriStatusStep"][];
+            /** Approvals */
+            approvals: string[];
+            /** Approvalcount */
+            approvalCount: number;
+            /** Budget */
+            budget?: number | null;
+            /** Spent */
+            spent: number;
+        };
+        /**
+         * ToriEventsCard
+         * @description 행사 목록 답의 카드. total은 조건에 맞는 전체 수이고 events는 앞에서부터 최대 20건이다.
+         */
+        ToriEventsCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "events";
+            /** Events */
+            events: components["schemas"]["EventOut"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * ToriHandoffCard
+         * @description 행사 계획 요청을 계획 화면으로 넘기는 카드. 조건은 계획 화면이 이 말에서 다시 뽑는다.
+         */
+        ToriHandoffCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "handoff";
+            /** Message */
+            message: string;
+        };
+        /** ToriMeetingTask */
+        ToriMeetingTask: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "TASK" | "SCHEDULE";
+            /** Assigneename */
+            assigneeName?: string | null;
+            /** Duedate */
+            dueDate?: string | null;
+        };
         /** ToriMessageIn */
         ToriMessageIn: {
             /** Message */
@@ -4078,7 +4259,7 @@ export interface components {
              * Intent
              * @enum {string}
              */
-            intent: "record_search" | "task_list" | "event_list" | "event_planning" | "meeting" | "clarify" | "unsupported" | "self_intro";
+            intent: "record_search" | "task_list" | "event_list" | "event_planning" | "meeting" | "clarify" | "unsupported" | "self_intro" | "briefing" | "approval_list" | "event_status" | "meeting_tasks";
             /** Reply */
             reply: string;
             records?: components["schemas"]["RecordSearchData"] | null;
@@ -4088,7 +4269,11 @@ export interface components {
             recordTotalCount?: number | null;
             tasks?: components["schemas"]["ToriTasks"] | null;
             /** Navigation */
-            navigation?: ("/planning" | "/meetings") | null;
+            navigation?: ("/planning" | "/meetings" | "/records" | "/accounting") | null;
+            /** Card */
+            card?: (components["schemas"]["ToriEventsCard"] | components["schemas"]["ToriBriefingCard"] | components["schemas"]["ToriApprovalsCard"] | components["schemas"]["ToriEventStatusCard"] | components["schemas"]["ToriTasksCard"] | components["schemas"]["ToriHandoffCard"]) | null;
+            /** Suggestions */
+            suggestions?: string[];
         };
         /** ToriRecordAnswer */
         ToriRecordAnswer: {
@@ -4145,6 +4330,13 @@ export interface components {
             fileName: string;
             location: components["schemas"]["RecordSearchLocation"];
         };
+        /** ToriStatusStep */
+        ToriStatusStep: {
+            /** Name */
+            name: string;
+            /** Duedate */
+            dueDate?: string | null;
+        };
         /** ToriTasks */
         ToriTasks: {
             /** Items */
@@ -4171,6 +4363,25 @@ export interface components {
              * @constant
              */
             timezone: "Asia/Seoul";
+        };
+        /**
+         * ToriTasksCard
+         * @description 회의에서 확정한 할 일·일정 카드.
+         */
+        ToriTasksCard: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "tasks";
+            /** Title */
+            title: string;
+            /** Meetingid */
+            meetingId: string;
+            /** Tasks */
+            tasks: components["schemas"]["ToriMeetingTask"][];
+            /** Hasmore */
+            hasMore: boolean;
         };
         /** TranscriptListOut */
         TranscriptListOut: {
@@ -8023,6 +8234,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_PlannedStepOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    briefing_api_v1_clubs__club_id__tori_briefing_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                club_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ToriBriefingOut_"];
                 };
             };
             /** @description Validation Error */

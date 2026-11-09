@@ -1,5 +1,5 @@
 // 토리에게 말을 보내는 입력 상자. 입력칸과 보내기 버튼을 한 상자로 묶는다.
-// 행사 계획 대화(PlanChat)와 대시보드 질문(ToriChat)이 같은 모양과 단축키 안내를 쓴다.
+// 행사 계획 대화(PlanChat)와 메인 토리 질문(ToriDesk)이 같은 모양과 단축키 안내를 쓴다.
 // Enter로 보낼지는 쓰는 쪽이 onKeyDown으로 정한다(IME 조합 처리 등).
 import { useId, useLayoutEffect, useRef, type Ref, type TextareaHTMLAttributes } from 'react'
 import { cn } from '@/shared/lib/cn'
@@ -7,6 +7,8 @@ import { cn } from '@/shared/lib/cn'
 // 한 줄 높이(22px)와 입력칸 위아래 여백(7px씩).
 const LINE = 22
 const PAD = 14
+// pill은 입력칸 위아래 여백이 10px씩이다.
+const PILL_PAD = 20
 
 interface ChatComposerProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string
@@ -16,7 +18,8 @@ interface ChatComposerProps extends TextareaHTMLAttributes<HTMLTextAreaElement> 
   sendDisabled: boolean
   waiting?: boolean
   // inset: 카드 안 아래에 붙는 대화 입력(회색 바탕). raised: 화면의 주 입력(흰 바탕과 옅은 그림자).
-  tone?: 'inset' | 'raised'
+  // pill: 메인 첫 화면처럼 입력 자체가 화면의 중심일 때. 양 끝이 둥글고 글자와 버튼이 한 단계 크다.
+  tone?: 'inset' | 'raised' | 'pill'
   // 처음 높이와 늘어나는 한도(줄 수). 그 뒤로는 상자 안에서 스크롤한다.
   minRows?: number
   maxRows?: number
@@ -37,14 +40,15 @@ export function ChatComposer({
   ...props
 }: ChatComposerProps) {
   const ownRef = useRef<HTMLTextAreaElement>(null)
+  const pad = tone === 'pill' ? PILL_PAD : PAD
   const helpId = useId()
   // 글 길이만큼 늘어나고 maxRows에서 멈춘다.
   useLayoutEffect(() => {
     const input = ownRef.current
     if (!input) return
     input.style.height = 'auto'
-    input.style.height = `${Math.min(input.scrollHeight, LINE * maxRows + PAD)}px`
-  }, [value, maxRows])
+    input.style.height = `${Math.min(input.scrollHeight, LINE * maxRows + pad)}px`
+  }, [value, maxRows, pad])
   const setRef = (node: HTMLTextAreaElement | null) => {
     ownRef.current = node
     if (typeof inputRef === 'function') inputRef(node)
@@ -59,7 +63,10 @@ export function ChatComposer({
           if (event.target === event.currentTarget) ownRef.current?.focus()
         }}
         className={cn(
-          'relative flex cursor-text items-end gap-2 rounded-[14px] border py-[6px] pr-[6px] pl-[15px]',
+          'relative flex cursor-text items-end gap-2 border',
+          tone === 'pill'
+            ? 'rounded-[28px] py-[8px] pr-[8px] pl-[22px]'
+            : 'rounded-[14px] py-[6px] pr-[6px] pl-[15px]',
           'transition-[border-color,background-color,box-shadow] duration-150 motion-reduce:transition-none',
           tone === 'inset'
             ? 'border-soft bg-bg focus-within:border-blue-600 focus-within:bg-card'
@@ -74,12 +81,20 @@ export function ChatComposer({
           value={value}
           disabled={disabled}
           aria-describedby={[helpId, describedBy].filter(Boolean).join(' ')}
-          style={{ minHeight: LINE * minRows + PAD, maxHeight: LINE * maxRows + PAD }}
+          style={{ minHeight: LINE * minRows + pad, maxHeight: LINE * maxRows + pad }}
           // 16px 미만이면 iOS Safari가 입력할 때 화면을 확대한다. 넓은 화면에서는 본문 크기로 둔다.
-          className="min-w-0 flex-1 resize-none bg-transparent py-[7px] text-[16px] leading-[22px] text-ink outline-none placeholder:text-mute disabled:cursor-not-allowed sm:text-body"
+          className={cn(
+            'min-w-0 flex-1 resize-none bg-transparent text-[16px] leading-[22px] text-ink outline-none placeholder:text-mute disabled:cursor-not-allowed',
+            tone === 'pill' ? 'py-[10px]' : 'py-[7px] sm:text-body',
+          )}
           {...props}
         />
-        <SendButton label={sendLabel} disabled={sendDisabled || !!disabled} waiting={waiting} />
+        <SendButton
+          label={sendLabel}
+          disabled={sendDisabled || !!disabled}
+          waiting={waiting}
+          large={tone === 'pill'}
+        />
       </div>
       {/* 단축키는 보내기 버튼 말풍선으로만 보인다. 화면 낭독기는 입력칸 설명으로 듣는다. */}
       <span id={helpId} className="sr-only">
@@ -97,10 +112,12 @@ function SendButton({
   label,
   disabled,
   waiting,
+  large = false,
 }: {
   label: string
   disabled: boolean
   waiting: boolean
+  large?: boolean
 }) {
   return (
     // 말풍선은 상자 위에 뜬다(상자가 기준). 버튼 위에 띄우면 두 줄 상자에서 입력한 글을 가린다.
@@ -111,7 +128,8 @@ function SendButton({
         aria-busy={waiting || undefined}
         disabled={disabled || waiting}
         className={cn(
-          'flex size-[36px] items-center justify-center rounded-full',
+          'flex items-center justify-center rounded-full',
+          large ? 'size-[42px]' : 'size-[36px]',
           'transition-colors duration-150 motion-reduce:transition-none',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600',
           waiting

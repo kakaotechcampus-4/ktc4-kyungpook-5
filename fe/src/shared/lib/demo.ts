@@ -7,7 +7,7 @@ export function demoNavigationPath(pathname: string, search: string, hash = ''):
 }
 
 export function supportsDemoPath(pathname: string): boolean {
-  return ['/planning', '/events', '/mypage'].some(
+  return ['/dashboard', '/planning', '/events', '/mypage'].some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   )
 }
