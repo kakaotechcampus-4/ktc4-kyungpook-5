@@ -2770,7 +2770,7 @@ export interface components {
          * ExpenseSource
          * @enum {string}
          */
-        ExpenseSource: "MANUAL" | "CSV_IMPORT" | "OCR_IMPORT";
+        ExpenseSource: "MANUAL" | "CSV_IMPORT" | "OCR_IMPORT" | "ACTION";
         /**
          * ExpenseUpdateIn
          * @description 지출 수정 (#213). 보낸 필드만 바꾸고, null을 보내면 그 값을 비운다.
@@ -3424,6 +3424,8 @@ export interface components {
         ReceiptImportConfirmIn: {
             /** Expectedversion */
             expectedVersion: number;
+            /** Eventid */
+            eventId?: string | null;
         };
         /** ReceiptImportConfirmOut */
         ReceiptImportConfirmOut: {

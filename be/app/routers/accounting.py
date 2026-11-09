@@ -257,6 +257,7 @@ async def confirm_receipt_import(
         import_id=import_id,
         expected_version=body.expected_version,
         confirmed_by=member.id,
+        event_id=body.event_id,
     )
     return Envelope(
         data=ReceiptImportConfirmOut(

@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { EXPENSE_PAGE_SIZE } from '@/features/accounting/api'
 import { ExpenseForm } from '@/features/accounting/components/ExpenseForm'
+import { eventLabels } from '@/features/accounting/eventLabels'
 import { expenseFormErrorMessage, useDeleteExpense, useExpenses } from '@/features/accounting/hooks'
 import type { Expense } from '@/features/accounting/types'
+import { useEvents } from '@/features/events/hooks'
 import { ApiError } from '@/shared/api/types'
 import { formatCurrency, formatDotDate } from '@/shared/lib/format'
 import { Button } from '@/shared/ui/Button'
@@ -16,6 +18,8 @@ const SOURCE_LABEL: Record<Expense['source'], string> = {
   MANUAL: '직접 입력',
   CSV_IMPORT: 'CSV 가져오기',
   OCR_IMPORT: '영수 내역 가져오기',
+  // 행사 송금 행동을 실행 완료하면 서버가 남긴다 (#348, #367).
+  ACTION: '자동 기록',
 }
 
 function expenseErrorMessage(error: unknown) {
@@ -25,6 +29,19 @@ function expenseErrorMessage(error: unknown) {
       return '이 팀의 지출 내역을 볼 권한이 없어요. 소속을 확인해 주세요.'
   }
   return '지출 내역을 불러오지 못했어요. 연결 상태를 확인한 뒤 다시 시도해 주세요.'
+}
+
+// 행사에 연결되지 않았거나 목록에서 찾지 못한 지출은 빈칸이다. ID를 대신 보이지 않는다.
+function EventCell({ label }: { label: string | undefined }) {
+  return (
+    <td className="max-w-[180px] px-[14px] py-[16px] text-ink2">
+      {label && (
+        <span className="block truncate" title={label}>
+          {label}
+        </span>
+      )}
+    </td>
+  )
 }
 
 export function ExpensesPanel({ clubId }: { clubId: string }) {
@@ -41,6 +58,9 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
   const rows = expenses.data?.data
   const totalCount = expenses.data?.meta?.totalCount ?? rows?.length ?? 0
   const pageCount = Math.max(1, Math.ceil(totalCount / EXPENSE_PAGE_SIZE))
+  // 행사 이름은 이 목록으로만 붙인다. 못 받았거나 받는 중이면 행사 칸만 비고 장부는 그대로 보인다.
+  const events = useEvents()
+  const eventLabelById = useMemo(() => eventLabels(events.data ?? []), [events.data])
 
   return (
     <Card className="overflow-hidden">
@@ -123,7 +143,7 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
       )}
       {rows && rows.length > 0 && (
         <div className="overflow-x-auto border-t border-line">
-          <table className="w-full min-w-[620px] text-left text-[12px]">
+          <table className="w-full min-w-[740px] text-center text-[12px]">
             <caption className="sr-only">선택한 팀의 지출 내역, 최근 지출일 순</caption>
             <thead className="bg-bg text-[11.5px] text-mute">
               <tr>
@@ -134,15 +154,18 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
                   사용처 · 내용
                 </th>
                 <th scope="col" className="px-[14px] py-[12px] font-medium">
+                  행사
+                </th>
+                <th scope="col" className="px-[14px] py-[12px] font-medium">
                   분류
                 </th>
-                <th scope="col" className="px-[14px] py-[12px] text-right font-medium">
+                <th scope="col" className="px-[14px] py-[12px] font-medium">
                   금액
                 </th>
                 <th scope="col" className="px-[22px] py-[12px] font-medium">
                   기록 방식
                 </th>
-                <th scope="col" className="px-[22px] py-[12px] text-right font-medium">
+                <th scope="col" className="px-[22px] py-[12px] font-medium">
                   <span className="sr-only">수정·삭제</span>
                 </th>
               </tr>
@@ -151,7 +174,7 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
               {rows.map((expense, i) =>
                 editingId === expense.id ? (
                   <tr key={expense.id} className="border-t border-line">
-                    <td colSpan={6} className="p-0">
+                    <td colSpan={7} className="p-0 text-left">
                       <ExpenseForm
                         key={expense.version}
                         clubId={clubId}
@@ -179,17 +202,20 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
                         </p>
                       )}
                     </td>
+                    <EventCell
+                      label={expense.eventId ? eventLabelById.get(expense.eventId) : undefined}
+                    />
                     <td className="px-[14px] py-[16px] text-ink2">
                       {expense.category || '미분류'}
                     </td>
-                    <td className="whitespace-nowrap px-[14px] py-[16px] text-right font-bold text-ink">
+                    <td className="whitespace-nowrap px-[14px] py-[16px] font-bold text-ink">
                       {formatCurrency(expense.amount)}
                     </td>
                     <td className="whitespace-nowrap px-[22px] py-[16px] text-mute">
                       {SOURCE_LABEL[expense.source]}
                     </td>
-                    <td className="whitespace-nowrap px-[22px] py-[16px] text-right">
-                      <span className="flex justify-end gap-[6px]">
+                    <td className="whitespace-nowrap px-[22px] py-[16px]">
+                      <span className="flex justify-center gap-[6px]">
                         <Button
                           variant="secondary"
                           size="sm"
