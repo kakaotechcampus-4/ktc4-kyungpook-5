@@ -1,7 +1,7 @@
 import { useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useRecordUploads } from '@/features/records/hooks'
-import { RECORD_STATUS, recordErrorMessage } from '@/features/records/presentation'
+import { recordErrorMessage, recordStatus } from '@/features/records/presentation'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { RecordsPanel } from './RecordsPanel'
@@ -35,7 +35,7 @@ export function MeetingRecordsSummary({ clubId }: { clubId: string }) {
               <ul className="space-y-1">
                 {records.data.data.slice(0, 2).map((record) => (
                   <li key={record.id} className="break-words text-ink2">
-                    {record.fileName} · {record.indexError ? '검색 준비 실패' : RECORD_STATUS[record.parseStatus].label}
+                    {record.fileName} · {record.indexError ? '검색 준비 실패' : recordStatus(record).label}
                   </li>
                 ))}
               </ul>

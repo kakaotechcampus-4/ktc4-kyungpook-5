@@ -1,5 +1,5 @@
 import { ApiError } from '@/shared/api/types'
-import type { RecordCategory, RecordParseStatus } from '@/features/records/types'
+import type { ClubRecord, RecordCategory, RecordParseStatus } from '@/features/records/types'
 
 export const RECORD_CATEGORIES: Array<{ value: RecordCategory; label: string }> = [
   { value: 'RULES', label: '회칙 · 규칙' },
@@ -9,10 +9,13 @@ export const RECORD_CATEGORIES: Array<{ value: RecordCategory; label: string }> 
   { value: 'ETC', label: '기타' },
 ]
 
-export const RECORD_STATUS: Record<
-  RecordParseStatus,
-  { label: string; description: string; tone: 'done' | 'approved' | 'pending' | 'failed' }
-> = {
+interface RecordStatusView {
+  label: string
+  description: string
+  tone: 'neutral' | 'done' | 'approved' | 'pending' | 'failed'
+}
+
+export const RECORD_STATUS: Record<RecordParseStatus, RecordStatusView> = {
   QUEUED: {
     label: '처리 대기',
     description: '자료를 받았어요. 서버에서 처리할 순서를 기다리고 있어요.',
@@ -43,6 +46,25 @@ export const RECORD_STATUS: Record<
     description: '자료를 처리하지 못했어요. 파일을 확인한 뒤 다시 올려 주세요.',
     tone: 'failed',
   },
+}
+
+// 회계에서 지출로 확정한 영수증 사진. 자료함 파서는 PDF·CSV·XLSX만 읽어 이미지는 색인하지 않는다.
+// 사용처·금액은 이미 장부 지출로 남아 있어 검색에 보탤 것도 없다. 그래서 COMPLETED에서 멈춰 있는데,
+// 그대로 보이면 '검색 준비 전'을 영원히 기다리는 것처럼 보인다.
+export function isExpenseEvidence(record: Pick<ClubRecord, 'fileType'>): boolean {
+  return record.fileType === 'IMAGE'
+}
+
+const EXPENSE_EVIDENCE_STATUS: RecordStatusView = {
+  label: '지출 증빙',
+  description: '장부에 지출로 저장한 영수증 사진이에요. 자료 검색에는 쓰지 않아요.',
+  tone: 'neutral',
+}
+
+export function recordStatus(
+  record: Pick<ClubRecord, 'fileType' | 'parseStatus'>,
+): RecordStatusView {
+  return isExpenseEvidence(record) ? EXPENSE_EVIDENCE_STATUS : RECORD_STATUS[record.parseStatus]
 }
 
 export function recordErrorMessage(error: unknown): string {

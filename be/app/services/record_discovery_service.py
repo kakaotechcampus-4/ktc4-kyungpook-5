@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import ai
-from app.core.enums import RecordParseStatus
+from app.core.enums import RecordFileType, RecordParseStatus
 from app.models.records import Record
 from app.services.record_search_port import PostgresRecordSearch
 
@@ -67,8 +67,10 @@ async def search_records(session: AsyncSession, *, club_id: str, query: str,
     lexical = list((await session.scalars(select(Record).where(
         Record.club_id == club_id, filename_match | content_match
     ).order_by(Record.id))).all())
+    # 회계에서 확정한 영수증 사진(IMAGE)은 색인하지 않는 자료다. 'AI 검색 준비 전' 수에서 뺀다.
     counts = dict((await session.execute(select(Record.parse_status, func.count())
-        .where(Record.club_id == club_id).group_by(Record.parse_status))).all())
+        .where(Record.club_id == club_id, Record.file_type != RecordFileType.IMAGE)
+        .group_by(Record.parse_status))).all())
     indexed_count = counts.get(RecordParseStatus.INDEXED, 0)
     unindexed_count = sum(counts.values()) - indexed_count
     # 외부 모델 요청 동안 트랜잭션 연결을 유지하지 않는다.
