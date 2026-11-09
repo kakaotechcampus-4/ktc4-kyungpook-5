@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { EXPENSE_PAGE_SIZE } from '@/features/accounting/api'
 import { ExpenseForm } from '@/features/accounting/components/ExpenseForm'
+import { eventLabels } from '@/features/accounting/eventLabels'
 import { expenseFormErrorMessage, useDeleteExpense, useExpenses } from '@/features/accounting/hooks'
 import type { Expense } from '@/features/accounting/types'
+import { useEvents } from '@/features/events/hooks'
 import { ApiError } from '@/shared/api/types'
 import { formatCurrency, formatDotDate } from '@/shared/lib/format'
 import { Button } from '@/shared/ui/Button'
@@ -29,6 +31,19 @@ function expenseErrorMessage(error: unknown) {
   return '지출 내역을 불러오지 못했어요. 연결 상태를 확인한 뒤 다시 시도해 주세요.'
 }
 
+// 행사에 연결되지 않았거나 목록에서 찾지 못한 지출은 빈칸이다. ID를 대신 보이지 않는다.
+function EventCell({ label }: { label: string | undefined }) {
+  return (
+    <td className="max-w-[180px] px-[14px] py-[16px] text-ink2">
+      {label && (
+        <span className="block truncate" title={label}>
+          {label}
+        </span>
+      )}
+    </td>
+  )
+}
+
 export function ExpensesPanel({ clubId }: { clubId: string }) {
   return <ClubExpensesPanel key={clubId} clubId={clubId} />
 }
@@ -43,6 +58,9 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
   const rows = expenses.data?.data
   const totalCount = expenses.data?.meta?.totalCount ?? rows?.length ?? 0
   const pageCount = Math.max(1, Math.ceil(totalCount / EXPENSE_PAGE_SIZE))
+  // 행사 이름은 이 목록으로만 붙인다. 못 받았거나 받는 중이면 행사 칸만 비고 장부는 그대로 보인다.
+  const events = useEvents()
+  const eventLabelById = useMemo(() => eventLabels(events.data ?? []), [events.data])
 
   return (
     <Card className="overflow-hidden">
@@ -125,7 +143,7 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
       )}
       {rows && rows.length > 0 && (
         <div className="overflow-x-auto border-t border-line">
-          <table className="w-full min-w-[620px] text-left text-[12px]">
+          <table className="w-full min-w-[740px] text-left text-[12px]">
             <caption className="sr-only">선택한 팀의 지출 내역, 최근 지출일 순</caption>
             <thead className="bg-bg text-[11.5px] text-mute">
               <tr>
@@ -134,6 +152,9 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
                 </th>
                 <th scope="col" className="px-[14px] py-[12px] font-medium">
                   사용처 · 내용
+                </th>
+                <th scope="col" className="px-[14px] py-[12px] font-medium">
+                  행사
                 </th>
                 <th scope="col" className="px-[14px] py-[12px] font-medium">
                   분류
@@ -153,7 +174,7 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
               {rows.map((expense, i) =>
                 editingId === expense.id ? (
                   <tr key={expense.id} className="border-t border-line">
-                    <td colSpan={6} className="p-0">
+                    <td colSpan={7} className="p-0">
                       <ExpenseForm
                         key={expense.version}
                         clubId={clubId}
@@ -181,6 +202,9 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
                         </p>
                       )}
                     </td>
+                    <EventCell
+                      label={expense.eventId ? eventLabelById.get(expense.eventId) : undefined}
+                    />
                     <td className="px-[14px] py-[16px] text-ink2">
                       {expense.category || '미분류'}
                     </td>
