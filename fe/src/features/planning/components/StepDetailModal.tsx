@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { useSaveStepDetail } from '@/features/planning/hooks'
 import { planningError } from '@/features/planning/errors'
 import {
+  amountHint,
   amountLabel,
-  DERIVES_TO_EVENT,
   fieldsForAction,
+  showsAmount,
   type ActionPayload,
   type FieldSpec,
   type StepAction,
@@ -211,7 +212,6 @@ function ActionFields({
   onChange: (patch: Partial<Draft['actions'][string]>) => void
 }) {
   const fields = fieldsForAction(action)
-  const derives = DERIVES_TO_EVENT[stepCode]
   const setPayload = (patch: Partial<ActionPayload>) =>
     onChange({ payload: { ...value.payload, ...patch } })
 
@@ -230,9 +230,9 @@ function ActionFields({
         />
       </Field>
 
-      {/* 금액이 없는 유형에는 금액 칸을 그리지 않는다. 서버가 null 로 둔 채 쓰지 않는다 */}
-      {(action.amount !== null || stepCode in DERIVES_TO_EVENT) && (
-        <Field label={amountLabel(stepCode)} hint={derives ?? '원'}>
+      {/* 어떤 행동에 금액 칸을 여는지는 showsAmount 가 정한다(송금은 비어 있어도 연다, #367) */}
+      {showsAmount(action, stepCode) && (
+        <Field label={amountLabel(stepCode)} hint={amountHint(stepCode)}>
           <Input
             type="number"
             min={0}
