@@ -249,7 +249,7 @@ const KIM = { id: 'mbr_02', name: '김지훈', role: 'OWNER' } as const
 // L2 처리 기록. 최근 몇 건과 전체 개수.
 export const DEMO_RESOLVED: Record<string, ActionPage> = {
   evt_9f2c8a: {
-    totalCount: 12,
+    totalCount: 6,
     items: [
       {
         id: 'act_41',
@@ -280,6 +280,37 @@ export const DEMO_RESOLVED: Record<string, ActionPage> = {
         status: 'DENIED',
         resolvedAt: at(-2, '17:02'),
         resolvedBy: PARK,
+      },
+      // 여기부터는 「전체 보기」를 눌러야 보인다.
+      {
+        id: 'act_08',
+        type: 'NOTICE',
+        title: '참가비 납부 안내를 단톡방에 공지',
+        subtitle: null,
+        dueDate: null,
+        status: 'DONE',
+        resolvedAt: at(-2, '10:15'),
+        resolvedBy: KIM,
+      },
+      {
+        id: 'act_07',
+        type: 'TRANSFER',
+        title: '펜션 A 예약금 송금',
+        subtitle: null,
+        dueDate: null,
+        status: 'DONE',
+        resolvedAt: at(-3, '16:48'),
+        resolvedBy: PARK,
+      },
+      {
+        id: 'act_05',
+        type: 'EXTERNAL_SEND',
+        title: '학생회에 장소 대여 문의 발송',
+        subtitle: null,
+        dueDate: null,
+        status: 'DENIED',
+        resolvedAt: at(-4, '13:20'),
+        resolvedBy: KIM,
       },
     ],
   },

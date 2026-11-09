@@ -1,4 +1,6 @@
 // 처리 기록 카드(L2): 승인·거절된 일을 최신순으로. 개수 칩은 전체 건수, 행은 최근 몇 건만 보인다.
+// 「전체 보기」를 누르면 나머지를 받아 그 자리에서 펼친다. 이 카드는 화면 맨 아래라 길어져도 밀리는 것이 없다.
+// 전에는 누를 수 있게 생겼으면서 아무 일도 하지 않는 버튼이었다 — 칩은 12건인데 세 줄뿐이고 나머지를 볼 길이 없었다.
 // 거절한 일도 있어 「처리된 승인」 대신 「처리 기록」이라 부른다. 지난 기록이라 화면 맨 아래에 둔다.
 import type { EventAction } from '@/features/events/types'
 import { cn } from '@/shared/lib/cn'
@@ -12,10 +14,24 @@ interface ResolvedActionListProps {
   actions: EventAction[]
   totalCount: number
   className?: string
+  // 펼친 뒤라 더 보여 줄 것이 없다
+  expanded?: boolean
+  // 없으면 「전체 보기」를 내지 않는다
+  onExpand?: () => void
+  loadingMore?: boolean
 }
 
-export function ResolvedActionList({ actions, totalCount, className }: ResolvedActionListProps) {
+export function ResolvedActionList({
+  actions,
+  totalCount,
+  className,
+  expanded = false,
+  onExpand,
+  loadingMore = false,
+}: ResolvedActionListProps) {
   const empty = actions.length === 0
+  // 받아 둔 줄보다 쌓인 것이 많을 때만 권한다
+  const more = Boolean(onExpand) && !expanded && totalCount > actions.length
   return (
     <Card className={cn('flex flex-col', className)}>
       <div className="flex items-center justify-between px-[26px] pt-[24px] pb-[15px]">
@@ -23,10 +39,14 @@ export function ResolvedActionList({ actions, totalCount, className }: ResolvedA
           <h2 className="text-h2">처리 기록</h2>
           <Chip>{totalCount}건</Chip>
         </div>
-        {/* TODO: 처리 기록 전체 목록 화면이 생기면 연결한다 */}
-        {!empty && (
-          <button type="button" className="text-[12px] font-semibold text-blue-700 hover:underline">
-            전체 보기 ›
+        {!empty && more && (
+          <button
+            type="button"
+            onClick={onExpand}
+            disabled={loadingMore}
+            className="text-[12px] font-semibold text-blue-700 hover:underline disabled:text-mute disabled:no-underline"
+          >
+            {loadingMore ? '불러오는 중…' : `전체 보기 (${totalCount}건) ›`}
           </button>
         )}
       </div>

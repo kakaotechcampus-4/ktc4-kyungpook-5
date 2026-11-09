@@ -67,7 +67,9 @@ export default function EventDetailPage() {
   const stepsQuery = useEventSteps(shownId)
   const steps = stepsQuery.data ?? []
   const currentIndex = steps.findIndex((s) => s.state === 'CURRENT')
-  const resolvedQuery = useResolvedActions(shownId)
+  // 「전체 보기」를 누르면 처리 기록을 전부 받아 그 자리에서 펼친다
+  const [allResolved, setAllResolved] = useState(false)
+  const resolvedQuery = useResolvedActions(shownId, allResolved)
   const resolved = resolvedQuery.data
 
   // 열린 Step 모달의 단계. 단계를 다시 불러오면 순서가 바뀔 수 있어 id로 기억한다. null이면 닫혀 있다.
@@ -356,6 +358,9 @@ export default function EventDetailPage() {
               <ResolvedActionList
                 actions={resolved?.items ?? []}
                 totalCount={resolved?.totalCount ?? 0}
+                expanded={allResolved}
+                onExpand={() => setAllResolved(true)}
+                loadingMore={allResolved && resolvedQuery.isFetching}
               />
             </>
           )}
