@@ -29,6 +29,9 @@ const KIND: Record<BriefingKind, { label: string; tone: 'approved' | 'pending' |
 
 // 목록이 길면 앞의 몇 줄만 두고 나머지는 질문으로 이어 보게 한다.
 const VISIBLE_ITEMS = 3
+// 행사는 한 줄(세 칸)만 둔다. 서버가 진행 중 → 계획 중 순서로 주므로 진행 중인 행사가 먼저 남는다.
+// 나머지는 「행사 목록」에서 본다.
+const VISIBLE_EVENTS = 3
 
 export function Chevron({ className }: { className?: string }) {
   return (
@@ -216,7 +219,7 @@ export function BriefingPanel({
 }) {
   const path = useDeskPath()
   const items = briefing.status === 'ready' ? briefing.data.items : []
-  const events = briefing.status === 'ready' ? briefing.data.events : []
+  const events = briefing.status === 'ready' ? briefing.data.events.slice(0, VISIBLE_EVENTS) : []
   const shown = items.slice(0, VISIBLE_ITEMS)
   const hidden = items.length - shown.length
   return (
