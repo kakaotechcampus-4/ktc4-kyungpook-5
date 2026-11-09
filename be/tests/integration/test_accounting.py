@@ -120,6 +120,91 @@ async def test_CSV_업로드부터_확정까지(client: TestClient, app_db: None
     assert sources == {"CSV_IMPORT"}
 
 
+def _upload_two_row_csv(client: TestClient, headers: dict, club_id: str) -> str:
+    csv_bytes = (
+        b"date,merchant,amount,description\n"
+        b"2026-10-01,Mart A,15000,Snacks\n"
+        b"2026-10-02,Store B,17000,Drinks\n"
+    )
+    upload = client.post(
+        f"/api/v1/clubs/{club_id}/receipt-imports",
+        headers=headers,
+        data={"type": "EXPENSE_CSV"},
+        files={"file": ("expense.csv", csv_bytes, "text/csv")},
+    )
+    assert upload.status_code == 202, upload.text
+    return upload.json()["data"]["id"]
+
+
+async def test_가져오기를_확정할_때_고른_행사가_모든_지출에_연결된다(
+    client: TestClient, app_db: None
+) -> None:
+    access_token, club_id = _owner_with_club(client)
+    headers = {"Authorization": f"Bearer {access_token}"}
+    event = client.post(
+        "/api/v1/events", headers=headers, json={"clubId": club_id, "title": "봄 MT"}
+    )
+    assert event.status_code == 201, event.text
+    event_id = event.json()["data"]["id"]
+    import_id = _upload_two_row_csv(client, headers, club_id)
+
+    confirm = client.post(
+        f"/api/v1/clubs/{club_id}/receipt-imports/{import_id}/confirm",
+        headers=headers,
+        json={"expectedVersion": 1, "eventId": event_id},
+    )
+
+    assert confirm.status_code == 200, confirm.text
+    expense_ids = set(confirm.json()["data"]["expenseIds"])
+    rows = client.get(f"/api/v1/clubs/{club_id}/expenses", headers=headers).json()["data"]
+    assert {row["id"]: row["eventId"] for row in rows} == {i: event_id for i in expense_ids}
+
+
+async def test_가져오기를_행사_없이_확정하면_지출은_행사에_연결되지_않는다(
+    client: TestClient, app_db: None
+) -> None:
+    access_token, club_id = _owner_with_club(client)
+    headers = {"Authorization": f"Bearer {access_token}"}
+    import_id = _upload_two_row_csv(client, headers, club_id)
+
+    confirm = client.post(
+        f"/api/v1/clubs/{club_id}/receipt-imports/{import_id}/confirm",
+        headers=headers,
+        json={"expectedVersion": 1, "eventId": None},
+    )
+
+    assert confirm.status_code == 200, confirm.text
+    rows = client.get(f"/api/v1/clubs/{club_id}/expenses", headers=headers).json()["data"]
+    assert [row["eventId"] for row in rows] == [None, None]
+
+
+async def test_다른_동아리_행사로_확정하면_422이고_지출을_만들지_않는다(
+    client: TestClient, app_db: None
+) -> None:
+    access_token, club_id = _owner_with_club(client)
+    headers = {"Authorization": f"Bearer {access_token}"}
+    other_token, other_club_id = _owner_with_club(client)
+    other_event = client.post(
+        "/api/v1/events",
+        headers={"Authorization": f"Bearer {other_token}"},
+        json={"clubId": other_club_id, "title": "남의 행사"},
+    )
+    assert other_event.status_code == 201, other_event.text
+    import_id = _upload_two_row_csv(client, headers, club_id)
+
+    confirm = client.post(
+        f"/api/v1/clubs/{club_id}/receipt-imports/{import_id}/confirm",
+        headers=headers,
+        json={"expectedVersion": 1, "eventId": other_event.json()["data"]["id"]},
+    )
+
+    assert confirm.status_code == 422, confirm.text
+    assert confirm.json()["error"]["code"] == "VALIDATION_FAILED"
+    assert client.get(f"/api/v1/clubs/{club_id}/expenses", headers=headers).json()["data"] == []
+    detail = client.get(f"/api/v1/clubs/{club_id}/receipt-imports/{import_id}", headers=headers)
+    assert detail.json()["data"]["status"] == "NEEDS_REVIEW"
+
+
 async def test_잘못된_CSV는_FAILED_상태이고_확정을_거부한다(
     client: TestClient, app_db: None
 ) -> None:

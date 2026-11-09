@@ -3450,6 +3450,8 @@ export interface components {
         ReceiptImportConfirmIn: {
             /** Expectedversion */
             expectedVersion: number;
+            /** Eventid */
+            eventId?: string | null;
         };
         /** ReceiptImportConfirmOut */
         ReceiptImportConfirmOut: {
