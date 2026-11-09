@@ -205,6 +205,73 @@ async def test_다른_동아리_행사로_확정하면_422이고_지출을_만�
     assert detail.json()["data"]["status"] == "NEEDS_REVIEW"
 
 
+def _receipt_records(client: TestClient, headers: dict, club_id: str) -> list[dict]:
+    res = client.get(
+        "/api/v1/records", headers=headers, params={"clubId": club_id, "category": "RECEIPT"}
+    )
+    assert res.status_code == 200, res.text
+    return res.json()["data"]
+
+
+async def test_영수증은_확정할_때_자료함에_들어가고_고른_행사에_묶인다(
+    client: TestClient, app_db: None, monkeypatch
+) -> None:
+    async def fake_ocr(request):
+        return ai.ExtractReceiptResult(rows=(ai.ExtractedReceiptRow(spent_at=date(2026, 11, 4), merchant="가게", amount=1000, category=None, description=None),))
+    monkeypatch.setattr(ai, "extract_receipt", fake_ocr)
+    access_token, club_id = _owner_with_club(client)
+    headers = {"Authorization": f"Bearer {access_token}"}
+    event_id = client.post(
+        "/api/v1/events", headers=headers, json={"clubId": club_id, "title": "봄 MT"}
+    ).json()["data"]["id"]
+
+    upload = client.post(
+        f"/api/v1/clubs/{club_id}/receipt-imports",
+        headers=headers,
+        data={"type": "RECEIPT_IMAGE"},
+        files={"file": ("receipt.jpg", b"\xff\xd8\xff\xe0fake", "image/jpeg")},
+    )
+    assert upload.status_code == 202, upload.text
+    assert upload.json()["data"]["status"] == "NEEDS_REVIEW"
+    assert _receipt_records(client, headers, club_id) == []
+
+    confirm = client.post(
+        f"/api/v1/clubs/{club_id}/receipt-imports/{upload.json()['data']['id']}/confirm",
+        headers=headers,
+        json={"expectedVersion": 1, "eventId": event_id},
+    )
+    assert confirm.status_code == 200, confirm.text
+
+    records = _receipt_records(client, headers, club_id)
+    assert [(r["fileName"], r["fileType"]) for r in records] == [("receipt.jpg", "IMAGE")]
+    expense = client.get(f"/api/v1/clubs/{club_id}/expenses", headers=headers).json()["data"][0]
+    assert expense["receiptRecordId"] == records[0]["id"]
+    from app.models.records import Record
+    async with get_sessionmaker()() as session:
+        assert (await session.get(Record, records[0]["id"])).event_id == event_id
+
+
+async def test_확정하지_않거나_읽지_못한_영수증은_자료함에_남지_않는다(
+    client: TestClient, app_db: None, monkeypatch
+) -> None:
+    async def no_receipt(request):
+        return ai.ExtractReceiptResult(rows=())
+    monkeypatch.setattr(ai, "extract_receipt", no_receipt)
+    access_token, club_id = _owner_with_club(client)
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    failed = client.post(
+        f"/api/v1/clubs/{club_id}/receipt-imports",
+        headers=headers,
+        data={"type": "RECEIPT_IMAGE"},
+        files={"file": ("smile.jpg", b"\xff\xd8\xff\xe0fake", "image/jpeg")},
+    )
+    assert failed.json()["data"]["status"] == "FAILED"
+    _upload_two_row_csv(client, headers, club_id)
+
+    assert _receipt_records(client, headers, club_id) == []
+
+
 async def test_잘못된_CSV는_FAILED_상태이고_확정을_거부한다(
     client: TestClient, app_db: None
 ) -> None:
