@@ -25,7 +25,10 @@ export default function EventCancelPage() {
 
   const detailQuery = useEventDetail(eventId)
   const event = detailQuery.data
-  const resolved = useResolvedActions(eventId).data
+  // 「전체 보기」를 누르면 처리 기록을 전부 받아 그 자리에서 펼친다
+  const [allResolved, setAllResolved] = useState(false)
+  const resolvedQuery = useResolvedActions(eventId, allResolved)
+  const resolved = resolvedQuery.data
   const cancelQuery = useCancelTasks(eventId)
   const completeMutation = useCompleteCancelTask()
 
@@ -149,6 +152,9 @@ export default function EventCancelPage() {
           <ResolvedActionList
             actions={resolved?.items ?? []}
             totalCount={resolved?.totalCount ?? 0}
+            expanded={allResolved}
+            onExpand={() => setAllResolved(true)}
+            loadingMore={allResolved && resolvedQuery.isFetching}
           />
         </div>
 

@@ -97,9 +97,13 @@ const resolvedActionsKey = (
   clubId: string | null,
   eventId: string | undefined,
   demo: boolean,
-) => ['events', userId, clubId, eventId, 'actions', 'resolved', demo]
+  all: boolean,
+) => ['events', userId, clubId, eventId, 'actions', 'resolved', demo, all]
 const TODO_QUERY = 'status=PENDING,APPROVED,FAILED&size=100'
 const RESOLVED_QUERY = 'status=APPROVED,DONE,DENIED&excludeType=CONFIRMATION&size=3'
+// 「전체 보기」를 누른 뒤. 처리 기록은 행사 하나가 쌓는 양이라 한 번에 받아도 된다.
+const RESOLVED_ALL_QUERY = 'status=APPROVED,DONE,DENIED&excludeType=CONFIRMATION&size=100'
+const RESOLVED_SHOWN = 3
 
 // 운영 시작 뒤 행사 상세로 넘어가기 전에 그 화면이 기다리는 조회(상세·단계·지금 할 일·처리 기록)를 받아 둔다.
 // 상세 화면은 넷이 모두 오기 전에는 아무것도 그리지 않는다. 하나라도 비면 넘어가는 순간 빈 화면이 보인다.
@@ -125,7 +129,7 @@ export function usePrefetchEventPage() {
         retry: false,
       }),
       client.fetchQuery({
-        queryKey: resolvedActionsKey(userId, clubId, eventId, false),
+        queryKey: resolvedActionsKey(userId, clubId, eventId, false, false),
         queryFn: () => getEventActionPage(eventId, RESOLVED_QUERY),
         retry: false,
       }),
@@ -176,15 +180,23 @@ export function useTodoActions(eventId: string | undefined) {
 const NO_ACTIONS: ActionPage = { items: [], totalCount: 0 }
 
 // L2 처리된 승인: 최근 몇 건 + 전체 개수
-export function useResolvedActions(eventId: string | undefined) {
+// all이면 전부, 아니면 최근 몇 건만. 카드에서 「전체 보기」를 누르면 all로 다시 받는다.
+export function useResolvedActions(eventId: string | undefined, all = false) {
   const demo = useDemo()
   const userId = useAuthStore((state) => state.me?.id)
   const clubId = useAuthStore((state) => state.clubId)
   return useQuery({
-    queryKey: resolvedActionsKey(userId, clubId, eventId, demo),
-    queryFn: async (): Promise<ActionPage> =>
-      demo ? (DEMO_RESOLVED[eventId!] ?? NO_ACTIONS) : getEventActionPage(eventId!, RESOLVED_QUERY),
+    queryKey: resolvedActionsKey(userId, clubId, eventId, demo, all),
+    queryFn: async (): Promise<ActionPage> => {
+      if (!demo) return getEventActionPage(eventId!, all ? RESOLVED_ALL_QUERY : RESOLVED_QUERY)
+      // 데모는 전부 들고 있다. 자르는 일만 여기서 한다.
+      const page = DEMO_RESOLVED[eventId!] ?? NO_ACTIONS
+      return all ? page : { ...page, items: page.items.slice(0, RESOLVED_SHOWN) }
+    },
     enabled: !!eventId && (demo || Boolean(userId && clubId)),
+    // all이 바뀌면 조회 키가 바뀐다. 그대로 두면 상세 화면이 로딩으로 돌아가 통째로 사라진다.
+    // 받아 둔 세 줄을 띄워 둔 채 나머지를 기다린다.
+    placeholderData: (previous) => previous,
   })
 }
 
