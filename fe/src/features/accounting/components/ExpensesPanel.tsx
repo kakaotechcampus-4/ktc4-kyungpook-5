@@ -143,7 +143,7 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
       )}
       {rows && rows.length > 0 && (
         <div className="overflow-x-auto border-t border-line">
-          <table className="w-full min-w-[740px] text-left text-[12px]">
+          <table className="w-full min-w-[740px] text-center text-[12px]">
             <caption className="sr-only">선택한 팀의 지출 내역, 최근 지출일 순</caption>
             <thead className="bg-bg text-[11.5px] text-mute">
               <tr>
@@ -159,13 +159,13 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
                 <th scope="col" className="px-[14px] py-[12px] font-medium">
                   분류
                 </th>
-                <th scope="col" className="px-[14px] py-[12px] text-right font-medium">
+                <th scope="col" className="px-[14px] py-[12px] font-medium">
                   금액
                 </th>
                 <th scope="col" className="px-[22px] py-[12px] font-medium">
                   기록 방식
                 </th>
-                <th scope="col" className="px-[22px] py-[12px] text-right font-medium">
+                <th scope="col" className="px-[22px] py-[12px] font-medium">
                   <span className="sr-only">수정·삭제</span>
                 </th>
               </tr>
@@ -174,7 +174,7 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
               {rows.map((expense, i) =>
                 editingId === expense.id ? (
                   <tr key={expense.id} className="border-t border-line">
-                    <td colSpan={7} className="p-0">
+                    <td colSpan={7} className="p-0 text-left">
                       <ExpenseForm
                         key={expense.version}
                         clubId={clubId}
@@ -208,14 +208,14 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
                     <td className="px-[14px] py-[16px] text-ink2">
                       {expense.category || '미분류'}
                     </td>
-                    <td className="whitespace-nowrap px-[14px] py-[16px] text-right font-bold text-ink">
+                    <td className="whitespace-nowrap px-[14px] py-[16px] font-bold text-ink">
                       {formatCurrency(expense.amount)}
                     </td>
                     <td className="whitespace-nowrap px-[22px] py-[16px] text-mute">
                       {SOURCE_LABEL[expense.source]}
                     </td>
-                    <td className="whitespace-nowrap px-[22px] py-[16px] text-right">
-                      <span className="flex justify-end gap-[6px]">
+                    <td className="whitespace-nowrap px-[22px] py-[16px]">
+                      <span className="flex justify-center gap-[6px]">
                         <Button
                           variant="secondary"
                           size="sm"
