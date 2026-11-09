@@ -1,12 +1,14 @@
 // 지출 직접 입력·수정. CSV·영수증 가져오기와 달리 한 건씩 손으로 적는 경로다.
 // expense 를 받으면 그 건을 고치고, 없으면 새로 등록한다. 밭 구성이 같아 한 폼을 쓴다.
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { eventOptions } from '@/features/accounting/eventLabels'
 import {
   expenseFormErrorMessage,
   useCreateExpense,
   useUpdateExpense,
 } from '@/features/accounting/hooks'
 import type { Expense } from '@/features/accounting/types'
+import { useEvents } from '@/features/events/hooks'
 import { Field } from '@/shared/ui/AuthShell'
 import { Button } from '@/shared/ui/Button'
 import { Input, Textarea } from '@/shared/ui/Input'
@@ -41,6 +43,26 @@ export function ExpenseForm({ clubId, expense, onDone }: ExpenseFormProps) {
   const [merchant, setMerchant] = useState(expense?.merchant ?? '')
   const [category, setCategory] = useState(expense?.category ?? '')
   const [description, setDescription] = useState(expense?.description ?? '')
+  // 행사 연결(선택). 수정 때는 사용자가 이 칸을 건드린 경우에만 보낸다 — 행사 목록을
+  // 못 받아 선택지가 비어 있어도 기존 연결이 지워지지 않게 한다(서버는 안 보낸 필드를 그대로 둔다).
+  const events = useEvents()
+  const options = useMemo(() => eventOptions(events.data ?? []), [events.data])
+  const [eventId, setEventId] = useState(expense?.eventId ?? '')
+  const [eventTouched, setEventTouched] = useState(false)
+  // 송금 행동이 남긴 자동 기록은 그 행사 정산의 일부라 행사를 바꾸지 않는다(#348).
+  const eventLocked = expense?.source === 'ACTION'
+  const eventUnavailable = events.isLoading || events.isError
+  // 연결된 행사가 선택지에 없으면(목록을 받는 중·실패 등) 값을 잃지 않게 한 줄 더 둔다.
+  const linkedMissing = !!expense?.eventId && !options.some((o) => o.id === expense.eventId)
+  const eventHint = eventLocked
+    ? '송금한 행사에 묶인 자동 기록이에요'
+    : events.isLoading
+      ? '행사 목록을 불러오는 중이에요'
+      : events.isError
+        ? expense
+          ? '행사 목록을 못 불러와 기존 연결을 그대로 둬요'
+          : '행사 목록을 못 불러와 연결 없이 등록돼요'
+        : undefined
   const [error, setError] = useState('')
 
   const won = Number(amount)
@@ -69,10 +91,14 @@ export function ExpenseForm({ clubId, expense, onDone }: ExpenseFormProps) {
         // 비운 칸은 null 로 가서 서버가 그 값을 지운다. 그사이 바뀌었으면 409다.
         await update.mutateAsync({
           expenseId: expense.id,
-          body: { ...fields, expectedVersion: expense.version },
+          body: {
+            ...fields,
+            ...(eventTouched ? { eventId: eventId || null } : {}),
+            expectedVersion: expense.version,
+          },
         })
       } else {
-        await create.mutateAsync(fields)
+        await create.mutateAsync({ ...fields, eventId: eventId || null })
       }
       onDone()
     } catch (cause) {
@@ -134,6 +160,27 @@ export function ExpenseForm({ clubId, expense, onDone }: ExpenseFormProps) {
           </Field>
         </div>
       </div>
+      <Field label="행사" hint={eventHint}>
+        <select
+          className="w-full rounded-[11px] border border-soft bg-bg px-[15px] py-[12px] text-[13.5px] text-ink outline-none focus:border-blue-600 focus:bg-card disabled:text-mute"
+          disabled={pending || eventLocked || eventUnavailable}
+          value={eventId}
+          onChange={(event) => {
+            setEventId(event.target.value)
+            setEventTouched(true)
+          }}
+        >
+          <option value="">연결 안 함</option>
+          {linkedMissing && expense?.eventId && (
+            <option value={expense.eventId}>연결된 행사</option>
+          )}
+          {options.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </Field>
       <Field label="내용">
         <Textarea
           placeholder="무엇에 썼는지 적어두면 나중에 찾기 쉬워요"
