@@ -465,6 +465,7 @@ async def confirm_receipt_import(
     import_id: str,
     expected_version: int,
     confirmed_by: str,
+    event_id: str | None = None,
 ) -> tuple[ReceiptImport, list[str]]:
     receipt_import = await session.scalar(select(ReceiptImport).where(
         ReceiptImport.id == import_id, ReceiptImport.club_id == club_id).with_for_update().execution_options(populate_existing=True))
@@ -486,6 +487,10 @@ async def confirm_receipt_import(
         raise ValidationFailed(
             {f"rows[{row_no}]": "금액·날짜를 확인해 주세요." for row_no in blocking_errors}
         )
+    # 확정 화면에서 고른 행사(#367). 지출을 만들기 전에 검사해 남의 행사면 아무것도 남기지 않는다.
+    if event_id is not None:
+        await _ensure_club_event(session, club_id=club_id, event_id=event_id)
+    receipt_import.event_id = event_id
 
     source = (
         ExpenseSource.CSV_IMPORT

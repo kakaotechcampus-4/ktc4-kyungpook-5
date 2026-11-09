@@ -133,6 +133,8 @@ class ReceiptImportDraftIn(CamelModel):
 
 class ReceiptImportConfirmIn(CamelModel):
     expected_version: int
+    # 확정으로 만드는 지출 전부를 이 행사에 연결한다(#367). 비우면 연결하지 않는다.
+    event_id: str | None = None
 
 
 class ReceiptImportConfirmOut(CamelModel):

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useReceiptActions, useReceiptDetail, useReceiptImports, useRetryReceiptImport } from '../hooks'
 import type { ReceiptImport } from '../types'
+import { EventSelectField } from './EventSelectField'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Input } from '@/shared/ui/Input'
@@ -31,6 +32,8 @@ function ReceiptReview({ clubId, item, onDone }: { clubId: string; item: Receipt
   const [checking, setChecking] = useState(false)
   const [latest, setLatest] = useState<ReceiptImport | null>(null)
   const [errors, setErrors] = useState(item.errors)
+  // 확정으로 만드는 지출을 연결할 행사(#367). '' 는 연결 안 함.
+  const [eventId, setEventId] = useState('')
   const actions = useReceiptActions(clubId)
   const busy = actions.draft.isPending || actions.confirm.isPending || checking
   const change = (index: number, field: 'date' | 'merchant' | 'amount' | 'category' | 'description', value: string) => {
@@ -62,7 +65,7 @@ function ReceiptReview({ clubId, item, onDone }: { clubId: string; item: Receipt
       setErrors(saved.errors)
       if (saved.errors.length) { setMessage('검토가 필요한 항목이 있어요. 내용을 다시 확인해 주세요.'); return }
       try {
-        await actions.confirm.mutateAsync({ id: item.id, version: saved.version })
+        await actions.confirm.mutateAsync({ id: item.id, version: saved.version, eventId: eventId || null })
         onDone()
       } catch (error) {
         if (error instanceof ApiError && ['VALIDATION_ERROR', 'VALIDATION_FAILED'].includes(error.code)) { setMessage(validationMessage(error)); setAck(false); return }
@@ -90,6 +93,7 @@ function ReceiptReview({ clubId, item, onDone }: { clubId: string; item: Receipt
         <Input label="내용" value={row.description} onChange={(e) => change(index, 'description', e.target.value)} />
       </fieldset>)}
       {!rows.length && <p role="alert" className="text-failed">읽은 내역이 없어요. 영수증을 다시 확인해 주세요.</p>}
+      {rows.length > 0 && <EventSelectField value={eventId} onChange={setEventId} disabled={busy} failedHint="행사 목록을 못 불러와 연결 없이 저장돼요" />}
       <label className="flex items-start gap-2 text-caption"><input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />내용과 날짜, 금액을 확인했어요.</label>
       {message && <p role="alert" className="text-caption text-failed">{message}</p>}
       {uncertain && <div className="space-y-2"><Button type="button" variant="secondary" disabled={busy} onClick={() => void checkLatest()}>{checking ? '확인 중…' : '서버 상태 다시 확인'}</Button>

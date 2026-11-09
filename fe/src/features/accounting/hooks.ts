@@ -87,6 +87,6 @@ export function useReceiptActions(clubId: string) {
   return {
     upload: useMutation({ mutationFn: (file: File) => uploadReceipt(clubId, file), onSettled: refresh }),
     draft: useMutation({ mutationFn: ({id, body}: {id: string; body: ReceiptDraft}) => saveReceiptDraft(clubId, id, body) }),
-    confirm: useMutation({ mutationFn: ({id, version}: {id: string; version: number}) => confirmReceiptImport(clubId, id, version), onSettled: refresh }),
+    confirm: useMutation({ mutationFn: ({id, version, eventId}: {id: string; version: number; eventId: string | null}) => confirmReceiptImport(clubId, id, version, eventId), onSettled: refresh }),
   }
 }

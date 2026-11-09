@@ -52,6 +52,7 @@ export function getReceiptImport(clubId: string, id: string) {
 export function saveReceiptDraft(clubId: string, id: string, body: ReceiptDraft) {
   return apiPatch<ReceiptImport>(`/clubs/${encodeURIComponent(clubId)}/receipt-imports/${encodeURIComponent(id)}/draft`, body)
 }
-export function confirmReceiptImport(clubId: string, id: string, version: number) {
-  return apiPost<ReceiptConfirm>(`/clubs/${encodeURIComponent(clubId)}/receipt-imports/${encodeURIComponent(id)}/confirm`, { expectedVersion: version })
+// eventId: 확정으로 만드는 지출 전부를 이 행사에 연결한다(#367). null이면 연결하지 않는다.
+export function confirmReceiptImport(clubId: string, id: string, version: number, eventId: string | null) {
+  return apiPost<ReceiptConfirm>(`/clubs/${encodeURIComponent(clubId)}/receipt-imports/${encodeURIComponent(id)}/confirm`, { expectedVersion: version, eventId })
 }
