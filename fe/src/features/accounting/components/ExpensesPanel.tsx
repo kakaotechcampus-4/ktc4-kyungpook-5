@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { EXPENSE_PAGE_SIZE } from '@/features/accounting/api'
 import { ExpenseForm } from '@/features/accounting/components/ExpenseForm'
 import { eventLabels } from '@/features/accounting/eventLabels'
@@ -44,11 +44,21 @@ function EventCell({ label }: { label: string | undefined }) {
   )
 }
 
-export function ExpensesPanel({ clubId }: { clubId: string }) {
-  return <ClubExpensesPanel key={clubId} clubId={clubId} />
+// 방금 만든 지출을 잠깐 강조하는 시간.
+const HIGHLIGHT_MS = 4000
+
+export function ExpensesPanel({
+  clubId,
+  highlightIds = [],
+}: {
+  clubId: string
+  // 영수증 확정 등으로 방금 만든 지출. 보이는 쪽에 있으면 그 행으로 스크롤하고 잠깐 강조한다.
+  highlightIds?: string[]
+}) {
+  return <ClubExpensesPanel key={clubId} clubId={clubId} highlightIds={highlightIds} />
 }
 
-function ClubExpensesPanel({ clubId }: { clubId: string }) {
+function ClubExpensesPanel({ clubId, highlightIds }: { clubId: string; highlightIds: string[] }) {
   const [page, setPage] = useState(1)
   const [adding, setAdding] = useState(false)
   // 고치는 중인 한 건. 등록 폼과 동시에 열지 않는다.
@@ -61,6 +71,24 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
   // 행사 이름은 이 목록으로만 붙인다. 못 받았거나 받는 중이면 행사 칸만 비고 장부는 그대로 보인다.
   const events = useEvents()
   const eventLabelById = useMemo(() => eventLabels(events.data ?? []), [events.data])
+  const [flashIds, setFlashIds] = useState<string[]>([])
+  // 같은 확정 결과로 두 번 스크롤하지 않는다. 장부를 다시 받은 뒤 행이 보이면 그때 한 번 한다.
+  const shownFor = useRef<string[] | null>(null)
+  useEffect(() => {
+    if (!highlightIds.length || !rows || shownFor.current === highlightIds) return
+    const first = rows.find((row) => highlightIds.includes(row.id))
+    if (!first) return
+    shownFor.current = highlightIds
+    setFlashIds(highlightIds)
+    document
+      .querySelector(`[data-expense-id="${first.id}"]`)
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [highlightIds, rows])
+  useEffect(() => {
+    if (!flashIds.length) return
+    const timer = window.setTimeout(() => setFlashIds([]), HIGHLIGHT_MS)
+    return () => window.clearTimeout(timer)
+  }, [flashIds])
 
   return (
     <Card className="overflow-hidden">
@@ -186,7 +214,10 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
                 ) : (
                   <tr
                     key={expense.id}
-                    className="border-t border-line animate-turn-in motion-reduce:animate-none"
+                    data-expense-id={expense.id}
+                    className={`border-t border-line transition-colors duration-700 animate-turn-in motion-reduce:animate-none ${
+                      flashIds.includes(expense.id) ? 'bg-blue-100' : ''
+                    }`}
                     style={{ animationDelay: staggerDelay(i) }}
                   >
                     <td className="whitespace-nowrap px-[22px] py-[16px] text-ink2">
