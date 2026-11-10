@@ -126,6 +126,13 @@ export const TranscriptColumn = memo(function TranscriptColumn({
 
 function KindChip({ item }: { item: ToriResult }) {
   if (lookupFailed(item.decision)) return <Chip tone="failed">찾지 못함</Chip>
+  // 기록 조회는 실패했지만 행사 분류가 되묻는 답을 낸 경우(PARTIAL). kind만 보면 「찾음」이 된다.
+  if (
+    item.decision.toolCalls.some(
+      (call) => call.tool === 'meeting.lookup' && call.status === 'FAILED',
+    )
+  )
+    return <Chip tone="failed">기록 조회 실패</Chip>
   if (item.decision.kind === 'NOT_FOUND') return <Chip>기록에 없음</Chip>
   return <Chip tone="done">찾음</Chip>
 }
