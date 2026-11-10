@@ -1,256 +1,142 @@
-# 운영해 Frontend
-
-React 19 · TypeScript · Vite 6 · Tailwind 4 · TanStack Query 5 · Zustand · axios 기반입니다.
-
-## 로컬 실행
-
-```sh
-cd fe
-npm ci
-cp .env.example .env
-npm run dev
-```
-
-`.env.example`의 `VITE_API_BASE_URL=http://localhost:8000`을 실제 BE 주소로 맞춥니다. 주소는 `/api/v1`을 제외한 origin이며 Vite 프록시는 없습니다. FE/BE를 별도 포트로 실행하면 BE CORS에서 FE origin을 허용해야 합니다. localhost·HTTPS에서 마이크와 Service Worker를 사용할 수 있습니다. 실제 `.env`는 Git 제외입니다.
-
-이번 로컬 병렬 검증은 기존 Docker5173/BE8000을 보존하고 FE5175→BE8001을 사용했습니다. 이 포트는 제품 고정값이 아닙니다.
-
-## 회의 베타
-
-`/login`에서 실제 로그인하고 `/me`가 반환한 소속을 선택합니다. `/meetings`에서 자료와 회의를 준비하고 `/meetings/:meetingId`에서 확정 전사·자료 답/출처·일정/할 일 후보를 확인합니다. 후보의 내용·담당자·정확한 시각·별도 수신 계정을 확인한 뒤 저장·예약합니다. 서버가 권한·조직·버전·예약을 판단합니다.
-
-- 자료의 `COMPLETED`는 파싱 완료, `INDEXED`만 검색 준비 완료입니다. 실제 실패를 fixture로 대체하지 않습니다.
-- 마이크는 WS 서버의 `audio.ready` 이후 켭니다. mono PCM16LE 16kHz 연속 음성을 전송하며 VAD·STT는 서버가 맡습니다. 마지막 음성 전송·`audio.end_ack`·`audio.completed`를 구분합니다.
-- PWA manifest·Service Worker가 있습니다. 사용자가 알림을 허용하고 본인 기기의 Push 구독을 등록합니다. 서버 Push 접수와 기기 시스템 알림 표시는 다릅니다. 알림을 누르면 소속을 확인하고 실제 확정 항목을 다시 조회합니다.
-- 개발 서버에서만 `/meetings?fixture=1`로 명시적 예시를 볼 수 있습니다. 실제 저장·음성·예약·알림은 생성하지 않습니다. 기존 다른 화면의 `?demo` 규칙과 별개입니다.
-- 회원가입·행사/계획/마이페이지 전체의 실연동 완료를 뜻하지 않습니다. 이번 범위는 기존 로그인과 회의 베타 연결입니다.
-
-서버에 실제 STT/AI 모델 설정이 필요합니다. 설정이 없거나 API가 실패하면 오류를 표시합니다. 자동 WS 재접속·모바일 백그라운드 녹음·전체 오프라인 캐시는 이번 범위가 아닙니다.
-
-## 개발 규칙
-
-`pages`는 조립, 통신은 `features`의 hook → api → `shared/api/client`를 사용합니다. features 간 import를 만들지 않습니다. 소속·세션은 기존 shared Zustand를 재사용하고 공통 UI는 `/dev/ui`에서 확인합니다.
-
-```sh
-npm run build
-npm run lint
-node --test tests/*.test.mjs
-node --experimental-transform-types --test src/features/meetings/audio/pcm.test.mjs
-```
-
-## API 타입
-
-생성 파일 `src/shared/api/schema.d.ts`는 손으로 수정하지 않습니다.
-
-```sh
-npm run gen:api-types
-npm run gen:api-types -- /path/to/openapi.json
-OPENAPI_SOURCE=http://127.0.0.1:8001/openapi.json npm run gen:api-types
-```
-
-기본 source는 `http://localhost:8000/openapi.json`입니다. API 응답은 `{data, meta}`, 인증은 opaque Bearer 세션입니다. 에러의 `code`로 화면 문구를 매핑합니다.
-
-자료 API·제약은 [자료 연결](docs/records-integration.md), Push payload와 상태는 [알림 연결](docs/meeting-push-contract.md), 오디오 순서와 마지막 프레임은 [음성 adapter](src/features/meetings/audio/README.md)를 참고합니다.
-
-## 기존 개발 기준 문서
-
 # 운영해 · Frontend
 
-동아리 행사 보조 에이전트 "운영해"의 프론트엔드입니다.
-화면은 대부분 구현돼 있고 서버 연동이 남았습니다. 어느 화면이 어느 API에 붙는지는
-`docs/week10/fe/운영해_FE_연동_기준서.md`를 봅니다.
+동아리 운영진을 위한 AI 행사 보조 서비스 **운영해**의 웹 프론트엔드입니다.
+운영진은 AI 도우미 **토리**와 대화하며 행사를 계획하고, 대면 회의 중에는 토리가 과거 기록에서 찾은 답을 출처와 함께 받습니다.
+토리는 제안만 합니다. 계획 확정, 공지·이체 같은 행동의 승인, 할 일 알림 예약은 운영진이 확인한 뒤에만 일어납니다.
 
-```bash
-npm install
-npm run dev            # http://localhost:5173
-npm run build          # tsc -b && vite build
-npm run lint
-npm run gen:api-types  # BE가 localhost:8000에 떠 있어야 한다
-```
+- 배포: https://unyounghae.kro.kr (PWA 설치 가능)
+- 설계와 구현 상세: [FE 기술 문서](docs/technical-overview.md)
 
-서버 없이 화면만 보려면 주소에 `?demo`를 붙입니다(예: `/planning?demo`).
-붙이지 않으면 빈 상태 화면이 나옵니다.
+## 주요 화면
+
+| 경로 | 화면 | 하는 일 |
+| --- | --- | --- |
+| `/` | 소개 | 서비스 소개. 로그인 상태면 메인으로, 아니면 로그인으로 안내 |
+| `/dashboard` | 메인 | 토리 브리핑(확인할 일, 진행·계획 중인 행사), 토리에게 묻고 카드로 답 받기(자료·할 일·승인 대기·행사 현황·회의 할 일) |
+| `/planning` | 행사 계획 P1·P2 | 토리와 대화해 조건 정하기 → 계획 초안 생성 → 단계·행동 검토·수정 → 운영 시작 |
+| `/events`, `/events/:id`, `/events/:id/cancel` | 행사 목록·상세·취소 | 진행 단계와 지금 할 일, 토리가 쓴 공지·발송 초안 검토·승인, 운영 중 상황 대응, 취소 뒷정리 |
+| `/meetings`, `/meetings/:id` | 회의 | 녹음 중 전사와 토리 답(출처 포함) → 종료 후 화자 확인, 일정·할 일 후보 확인·저장·알림 예약. 기기 알림 켜기 |
+| `/records` | 자료함 | 회칙·장부·결과보고(PDF·CSV·XLSX) 업로드, 처리 상태 확인, 검색 |
+| `/accounting` | 회계 | 영수증 사진으로 지출 등록, 장부 입력·수정, 지출에 행사 연결 |
+| `/mypage` | 마이페이지 | 내 정보, 동아리원 명단·초대, 동아리 정보 수정, 동아리 자료 |
+| `/login`, `/signup`, `/clubs/new`, `/clubs/join` | 인증·동아리 | 회원가입, 이메일·카카오 로그인, 동아리 만들기, 초대 코드로 참여 |
+| `/onboarding` | 체험 | 실제 API 없이 예시 계정으로 회의 → 후보 저장 흐름 체험 |
 
 ## 기술 스택
 
-| 항목 | 선택 | 결정 이유 / 메모 |
+| 영역 | 선택 | 이유 |
 | --- | --- | --- |
-| 프레임워크 | **React** (확정) | SSR·SEO가 필요한 화면이 없어서(로그인 후 대시보드 중심) Next.js 대신 선택 |
-| 빌드 도구 | Vite | React와 세트로 가장 무난한 선택 |
-| 스타일 | **Tailwind** (확정) | — |
-| 언어 | TypeScript | — |
-| 라우팅 | React Router | — |
-| 서버 상태 관리 | **TanStack Query** (확정) | **"컴포넌트에서 fetch 직접 호출 금지, `features/*/hooks.ts`의 훅을 거친다"는 규칙**이 먼저이고 라이브러리는 그 뒤다 |
-| 클라이언트 상태 관리 | **Zustand** (확정) | 전역 상태(로그인 유저 정보 등)는 Zustand로 관리. 화면 로컬 상태는 여전히 `useState` 사용 |
-| HTTP 클라이언트 | axios | — |
-| 린트 · 포맷 | ESLint + Prettier | — |
-| 테스트 | 초기 미적용 | 회비 · 예산 계산 같은 유틸 함수가 생기면 그 시점에 Vitest 도입 |
-| 챗봇 응답 방식 | **동기(스트리밍 미사용)** (확정) | 답변을 한 번에 받아 표시. SSE/스트림 파싱 없이 axios로 단순 요청-응답만 구현하면 됨 |
+| 프레임워크 | React 19 + TypeScript | 로그인 뒤 쓰는 대시보드형 앱이라 SSR·SEO가 필요 없음 |
+| 빌드 | Vite 6 | 빠른 개발 서버, 정적 파일 빌드 |
+| 스타일 | Tailwind CSS 4 | 디자인 토큰을 `src/styles/index.css`의 `@theme`에 모음 |
+| 서버 상태 | TanStack Query 5 | 캐시·재조회·폴링(회의 타임라인, 자료 처리 상태)을 한 방식으로 처리 |
+| 전역 상태 | Zustand 5 | 로그인 세션·선택한 소속, 녹음 중 잠금, 토스트처럼 여러 화면이 함께 보는 상태만 전역에 둠. 화면 상태는 `useState` |
+| HTTP | axios + fetch | 일반 요청은 axios, 응답을 조금씩 읽어야 하는 SSE는 fetch |
+| 라우팅 | React Router 7 | 공통 레이아웃을 중첩 라우트로 공유하고, 녹음 중 화면 이동을 `useBlocker`로 막음 |
+| API 타입 | openapi-typescript | BE OpenAPI에서 `schema.d.ts`를 생성해 요청·응답 타입을 맞춤 |
+| 음성 | Web Audio API(AudioWorklet), WebSocket | 브라우저에서 PCM16 16kHz로 바꿔 서버로 전송 |
+| 알림 | Service Worker + Web Push | PWA 설치, 기기 알림 |
+| 배포 | Docker(멀티 스테이지) + Caddy | 정적 파일 서빙, `/api/*`는 BE로 프록시, HTTPS 자동 발급 |
 
-### ❓ 확인이 필요한 항목 (팀에 질문)
+## 시작하기
 
-- **[확인 필요] FE 배포 위치**: Docker 기반 배포로 방향은 잡았으나, 어느 서버/환경에 올릴지는 아직 미확정입니다.
-- **[확인 필요] 로컬 Docker Compose 구성 시 FE도 포함할지**: 문서에 "Docker Compose로 묶는 것으로 사용(BE, FE 따로??)"라고 물음표로 남아있습니다. FE도 컨테이너로 띄울지, 로컬은 `npm run dev`로만 띄우고 BE/DB만 Compose로 묶을지 확인 필요합니다.
+Node 22를 씁니다(CI·배포 이미지와 같은 버전).
 
-## 반드시 지켜야 할 3가지 규칙
+```bash
+cd fe
+npm ci
+cp .env.example .env
+npm run dev   # http://localhost:5173
+```
 
-1. `pages/`는 조립만 한다. 로직이 생기면 `features/`로 옮긴다.
-2. 컴포넌트에서 `fetch`를 직접 부르지 않는다. `features/*/hooks.ts`를 거친다.
-3. `features/`끼리 import 하지 않는다. 공유가 필요하면 `shared/`로 올린다.
+| 환경변수 | 용도 |
+| --- | --- |
+| `VITE_API_BASE_URL` | BE origin(예: `http://localhost:8000`). `/api/v1`은 빼고 적습니다. Vite 프록시는 없습니다 |
+| `VITE_KAKAO_REST_API_KEY` | 카카오 로그인용 REST API 키. 리디렉션 URI는 `<FE origin>/auth/kakao/callback`이고, 카카오·BE에 등록한 값과 같아야 합니다 |
+
+- BE CORS는 기본으로 `http://localhost:5173`·`http://127.0.0.1:5173`만 허용합니다. FE를 다른 주소로 띄우면 BE 환경변수 `CORS_ORIGINS`에 추가합니다.
+- 마이크와 Service Worker는 localhost나 HTTPS에서만 동작합니다.
+- 저장소 루트에서 `docker compose up`으로 PostgreSQL·BE·FE를 함께 띄울 수도 있습니다. DB 마이그레이션 등 BE 쪽 준비는 [`be/README.md`](../be/README.md)를 봅니다.
+
+## 명령어
+
+```bash
+npm run dev              # 개발 서버
+npm run build            # 타입 검사(tsc -b) + 빌드
+npm run lint             # ESLint
+node --test tests/*.test.mjs src/shared/api/sse.test.mjs   # 단위 테스트(node:test)
+npm run gen:api-types    # BE OpenAPI → src/shared/api/schema.d.ts
+```
+
+- `gen:api-types`의 기본 source는 `http://localhost:8000/openapi.json`입니다. 다른 곳에서 받으려면 `npm run gen:api-types -- <파일 경로나 주소>`나 `OPENAPI_SOURCE=<주소> npm run gen:api-types`를 씁니다.
+- `schema.d.ts`는 생성 파일이라 손으로 고치지 않습니다.
+- 회의 음성 변환 테스트: `node --experimental-transform-types --test src/features/meetings/audio/pcm.test.mjs`
+- `tests/e2e/`는 Playwright로 화면을 돌려 보는 스크립트입니다. `npm install --no-save playwright`가 필요하고, 개발 서버·가짜 API·합성 DB 중 무엇이 필요한지는 파일 머리말에 있습니다.
 
 ## 폴더 구조
 
-```
-fe/
-├── public/                      정적 파일. 빌드 시 그대로 복사됨
-├── src/
-│   ├── main.tsx                 진입점
-│   ├── app/
-│   │   ├── router.tsx           라우트 정의
-│   │   ├── providers.tsx        QueryClient 등 전역 래퍼
-│   │   └── layout/AppLayout.tsx 상단바 + 본문 자리
-│   ├── pages/                   화면 하나당 파일 하나. 조립만 한다
-│   │   ├── LoginPage.tsx  SignupPage.tsx
-│   │   ├── MainPage.tsx                     M1 메인
-│   │   ├── PlanningPage.tsx  PlanStepsPage.tsx    P1 · P2
-│   │   ├── EventListPage.tsx  EventDetailPage.tsx  EventCancelPage.tsx
-│   │   ├── MyPage.tsx                       내 정보 · 동아리원 · 자료
-│   │   ├── DevUiPage.tsx                    /dev/ui — 공용 컴포넌트 모아보기
-│   │   └── NotFoundPage.tsx
-│   ├── features/                실제 코드가 사는 곳
-│   │   ├── auth/                components, mock, types
-│   │   ├── dashboard/           components, hooks, mock, types
-│   │   ├── events/              api, components, hooks, mock, types
-│   │   ├── mypage/              components, mock, types
-│   │   └── planning/            catalogue, components, mock, types
-│   ├── shared/                  여러 feature가 함께 쓰는 것
-│   │   ├── ui/                  Button, Card, Chip, Modal, Toast, Tori, StateScreen …
-│   │   ├── api/
-│   │   │   ├── client.ts        axios를 쓰는 유일한 곳
-│   │   │   ├── models.ts        schema.d.ts의 긴 경로에 이름만 붙인 곳
-│   │   │   ├── schema.d.ts      BE openapi.json에서 생성. 손으로 고치지 않는다
-│   │   │   └── types.ts         공통 응답·에러 타입
-│   │   ├── auth/                로그인 사용자 전역 상태(zustand)
-│   │   └── lib/                 format, labels, cn, dialog, toast, clipboard
-│   └── styles/index.css         디자인 토큰(@theme) + 전역 스타일
-├── .env.example
-├── .prettierrc  .prettierignore  eslint.config.js
-├── index.html  package.json  vite.config.ts
-└── tsconfig.json  tsconfig.app.json  tsconfig.node.json
+```text
+src/
+├── app/            라우터, 전역 Provider, 레이아웃(상단바·사이드 메뉴)
+├── pages/          화면 하나당 파일 하나
+├── features/       도메인별 코드
+│   ├── planning/       행사 계획 P1·P2 (SSE 스트림, 생성 요청 복구)
+│   ├── meetings/       회의 (audio/: 마이크 → PCM → WebSocket)
+│   ├── events/         행사 목록·상세, 행동 초안·승인·실행, 운영 상황 대응
+│   ├── dashboard/      메인 브리핑, 토리 대화(카드 답)
+│   ├── records/        자료 업로드·검색
+│   ├── accounting/     영수증 가져오기, 장부
+│   ├── notifications/  Push 구독, 알림 설정
+│   ├── auth/ clubs/ mypage/ onboarding/ home/
+│   └── <domain>/{types,api,hooks}.ts + components/
+├── shared/
+│   ├── api/        client.ts(HTTP 유일 통로), sse.ts, schema.d.ts(생성), models.ts
+│   ├── auth/       세션·토큰·소속 전역 상태(Zustand)
+│   ├── pwa/        Service Worker 등록
+│   ├── ui/         Button, Card, Modal, Toast, StateScreen, Tori …
+│   └── lib/        labels(enum→문구), format, toast, dialog …
+└── styles/index.css   디자인 토큰 + 전역 스타일
+public/
+├── sw.js                    Push 표시·클릭 처리
+├── meeting-pcm-worklet.js   마이크 입력을 mono로 모으는 AudioWorklet
+├── rnnoise/                 노이즈 억제 wasm(현재 화면에서는 꺼 둠)
+└── manifest.webmanifest
 ```
 
-> `features/`에 `api.ts`·`hooks.ts`가 다 있지는 않습니다. 아직 서버에 붙지 않은
-> feature는 `mock.ts`만 두고, 연동할 때 그 둘을 추가합니다.
+## 개발 규칙
 
-## 데이터가 흐르는 경로 (예: 승인 버튼)
+1. `pages/`는 조립만 합니다. 로직이 생기면 `features/`로 옮깁니다.
+2. 컴포넌트는 `fetch`·axios를 직접 부르지 않습니다. `features/<domain>/hooks.ts` → `api.ts` → `shared/api/client.ts` 순서로 거칩니다.
+3. `features/`끼리 import하지 않습니다. 함께 쓸 것은 `shared/`로 올립니다.
+4. 서버의 enum은 `shared/lib/labels.ts`에서 화면 문구로 바꿉니다. 오류는 서버 `message`를 그대로 띄우지 않고 `code`로 문구를 고릅니다.
+5. 실패를 빈 결과나 예시 데이터로 덮지 않습니다. 처리하지 못한 사실과 다시 할 수 있는 일을 보여 줍니다.
 
-```
-ActionCard.tsx                        버튼 클릭
-  → features/events/hooks.ts          useApproveAction() 호출
-  → features/events/api.ts            approveAction(actionId)
-  → shared/api/client.ts              apiPost('/actions/act_21/approve')
-  → FastAPI
-```
+> 1·3·4번은 아직 지키지 못한 곳이 남아 있습니다. 행사 상세 페이지에 로직이 있고, 메인·계획·회의 등이 다른 feature의 컴포넌트·타입을 가져다 씁니다. 새 코드는 규칙을 따르고, 기존 예외는 고칠 때 `shared/`로 옮깁니다.
 
-> 승인·거절 경로는 아직 BE에 없습니다(#41). 위는 붙을 자리를 보이는 예시입니다.
+### API 규약
 
-## API 관련 (BE와 합의된 사항, FE 구현 시 참고)
+- Base path `/api/v1`, 응답은 `{ data, meta }` 봉투, 오류는 `{ error: { code, message } }`
+- 인증은 `Authorization: Bearer <accessToken>`. 401이 오면 `client.ts`가 refresh를 한 번만 시도합니다.
+- 화면에서 본 버전을 `expectedVersion`·`baseRevision`으로 함께 보냅니다. 그사이 바뀌었으면 서버가 409로 거절하고, 화면은 다시 불러와 확인하게 합니다.
+- 계획 대화·생성 요청에는 `Idempotency-Key`를 붙입니다. 연결이 끊겨도 같은 요청을 다시 보내지 않고 결과만 조회합니다.
 
-- Base path: `/api/v1`
-- 리소스 명명: 복수형 소문자 (`/events`)
-- 응답 포맷: **envelope 방식** (`{ "data": ..., "meta": ... }`) — raw로 안 감쌈
-- 인증: `Authorization: Bearer <token>` 헤더 (OAuth: Google·Kakao)
-- 개인정보 필드(연락처 등)는 서버에서 마스킹되어 내려옴
-- API 문서: FastAPI 자동 생성 Swagger(`http://localhost:8000/docs`)
+## 개발용 보기
 
-> 어느 화면이 어느 API에 붙고 무엇이 아직 없는지는 `docs/week10/fe/운영해_FE_연동_기준서.md`에 있습니다.
-> 행사 계획(P1·P2)의 계약은 `be/app/ai/contracts.py`가 기준입니다.
+| 방법 | 내용 |
+| --- | --- |
+| `?demo` | `/dashboard`, `/planning`, `/events`, `/mypage`에서 서버 없이 예시 데이터로 화면을 봅니다 |
+| `/meetings?fixture=1` | 개발 서버에서만 회의 예시 화면을 봅니다(`&ended=1`이면 종료 화면). 저장·음성·예약·알림은 만들지 않습니다 |
+| `/onboarding` | 예시 계정 체험. 인증·자료·회의 API와 마이크·Push 권한을 쓰지 않습니다. 진행 상태는 localStorage `unyounghae_onboarding_preview_v2`에만 둡니다 |
+| `/dev/ui` | 공용 UI 컴포넌트 모아 보기 |
 
-## API 응답 포맷
+## 배포
 
-### 1. 성공 응답 - 단건 조회
-`GET /api/events/1`
+`develop`을 향한 PR과 `develop` push마다 GitHub Actions(`.github/workflows/deploy.yml`)가 `npm ci → lint → build`로 검증합니다. `develop` push일 때만 이어서 `Dockerfile.prod`로 이미지를 만들어 배포합니다.
+이미지는 Vite 빌드 결과를 Caddy로 서빙하고, `/api/*`는 API 컨테이너로 넘기며, 그 밖의 경로는 `index.html`로 돌려 SPA 라우팅을 처리합니다.
+EC2 반영 절차는 [`deploy/README.md`](../deploy/README.md)를 봅니다.
 
-\```json
-{
-  "data": {
-    "id": 1,
-    "name": "봄 MT",
-    "status": "UPCOMING",
-    "date": "2026-04-05"
-  },
-  "meta": null
-}
-\```
+## 더 읽을 문서
 
-### 2. 성공 응답 - 목록 조회 (페이지네이션)
-`GET /api/events?page=1&size=10`
-
-\```json
-{
-  "data": [
-    { "id": 1, "name": "봄 MT", "status": "UPCOMING", "date": "2026-04-05" },
-    { "id": 2, "name": "가을 체육대회", "status": "ENDED", "date": "2025-10-12" }
-  ],
-  "meta": {
-    "page": 1,
-    "size": 10,
-    "totalCount": 12
-  }
-}
-\```
-
-- `meta`가 없는 응답(단건 조회 등)은 `null`로 내려줌 (필드 자체는 항상 존재)
-- 목록 조회는 `page`, `size`, `totalCount`
-- `status`는 문자열 코드값으로 내려주고, 화면 표기 문구는 FE가 매핑
-
-\```javascript
-// status 예시
-export const STATUS_LABELS: Record<string, string> = {
-  UPCOMING: "예정",
-  ONGOING: "진행중",
-  ENDED: "종료",
-};
-\```
-
-### 3. 에러 응답
-\```json
-{
-  "error": {
-    "code": "EVENT_NOT_FOUND",
-    "message": "해당 행사를 찾을 수 없습니다."
-  }
-}
-\```
-
-- `code`: 문자열 상수. `{도메인}_{문제}` 형태로 네이밍 (예: `EVENT_NOT_FOUND`, `MEMBER_NOT_FOUND`)
-- `message`: 서버 기본 문구(로그/디버깅용), FE는 이 값을 그대로 화면에 띄우지 않고 `code` 기준으로 자체 문구를 매핑
-
-\```javascript
-// 매핑 예시
-export const ERROR_MESSAGES: Record<string, string> = {
-  EVENT_NOT_FOUND: "해당 행사를 찾을 수 없어요.",
-  UNAUTHORIZED: "로그인이 필요해요.",
-  FORBIDDEN: "권한이 없어요.",
-  VALIDATION_ERROR: "입력값을 다시 확인해주세요.",
-};
-
-export const DEFAULT_ERROR_MESSAGE = "일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요.";
-\```
-
-## 환경변수
-
-| 이름 | 용도 | 담당 |
-| --- | --- | --- |
-| `VITE_API_BASE_URL` | API 서버 주소 | 박수겸 |
-
-`.env.example`은 커밋하고, 실제 값이 든 `.env`는 커밋하지 않습니다.
-## 첫 운영진 목업 온보딩
-
-`/` → `/onboarding`에서 목업 로그인이 필요하면 `/onboarding/login`으로 이동합니다. **예시 계정으로 로그인 → 초대된 예시 팀 선택 → 자료 준비 → 회의 만들기·시작 → 자료 답의 출처 → 후보 확인·예시 저장 → 메인의 저장한 할 일** 순서로 체험합니다. 실제 클릭할 대상을 하이라이트하며 안내에 별도 다음 버튼을 두지 않습니다.
-
-안내 끄기/켜기는 진행을 보존하고, **온보딩 초기화**는 목업 로그인부터 다시 시작합니다. 브라우저의 `unyounghae_onboarding_preview_v2`만 사용하며 실제 인증 세션·v1 진행·다른 저장 키를 지우지 않습니다. 토큰이나 입력 비밀번호는 저장하지 않습니다. 예시 계정 정보는 실제 계정이 아닙니다.
-
-체험 메뉴는 `/onboarding/*` 안에서 이동하며 인증·자료·회의·예약 API나 마이크·Push 권한을 사용하지 않습니다. 실제 로그인(`/login`)과 기존 메인(`/dashboard`)·기타 실연동 경로는 보존됩니다. 예시 팀 초대는 이 체험의 시나리오이며 전체 가입 정책을 뜻하지 않습니다. 예시 저장은 실제 일정·예약·알림 발송이 아닙니다.
-
-관련 상태 검사는 `node --test tests/onboarding-state.test.mjs`로 실행합니다.
+- [FE 기술 문서](docs/technical-overview.md): 구조, 기능별 구현, 토리가 자동으로 하는 일, 핵심 기술 결정
+- [BE API Reference](../be/docs/api-reference.md): 도메인별 엔드포인트·권한·공통 규칙
+- [배포 절차](../deploy/README.md): EC2 배포와 운영자 확인 사항
