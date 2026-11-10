@@ -18,9 +18,10 @@ export function MeetingReviewPanel({ review, clubId, onStart, onSubmit, onSaveNa
   const [candidateError, setCandidateError] = useState('')
   const requestId = useRef(crypto.randomUUID())
   const [playing, setPlaying] = useState<string | null>(null)
-  const loaded = useRef<string | null>(null)
+  const loaded = useRef<{ speakers: string; draft: string } | null>(null)
   const errorMessage = saveError || candidateError || (error ? meetingError(error) : null)
-  useEffect(() => { if (!review) return; const key = `${review.id}:${review.version}`; if (loaded.current === key) return; loaded.current = key; setNames(Object.fromEntries(review.speakers.map((speaker) => [speaker.label, speaker.name ?? '']))); setSpeakerMembers(Object.fromEntries(review.speakers.map((speaker) => [speaker.label, speaker.memberId ?? '']))); setSavedVersion(review.speakers.length > 0 && review.speakers.every((speaker) => speaker.confirmed === true) ? review.version : null); setCandidates((review.draft?.tasks ?? []).map((task) => ({ ...task, assigneeMemberId: task.suggestedAssigneeMemberId }))); setSaveError(''); setCandidateError('') }, [review])
+  // 충돌·다른 저장으로 version만 바뀐 새로고침에는 입력을 지키고, 서버 내용이 바뀐 칸만 다시 채운다(#377).
+  useEffect(() => { if (!review) return; const speakers = JSON.stringify(review.speakers); const draft = JSON.stringify(review.draft?.tasks ?? null); const previous = loaded.current; loaded.current = { speakers, draft }; if (previous?.speakers !== speakers) { setNames(Object.fromEntries(review.speakers.map((speaker) => [speaker.label, speaker.name ?? '']))); setSpeakerMembers(Object.fromEntries(review.speakers.map((speaker) => [speaker.label, speaker.memberId ?? '']))); setSavedVersion(review.speakers.length > 0 && review.speakers.every((speaker) => speaker.confirmed === true) ? review.version : null) } else setSavedVersion((saved) => saved === null ? null : review.version); if (previous?.draft !== draft) setCandidates((review.draft?.tasks ?? []).map((task) => ({ ...task, assigneeMemberId: task.suggestedAssigneeMemberId }))) }, [review])
   if (!review) return <Card className="space-y-3 p-5"><h2 className="text-h2">회의 후 화자 확인</h2><p>회의가 끝났습니다. 녹음에서 화자를 나눈 뒤 이름을 확인할 수 있어요.</p><Button onClick={onStart} disabled={busy}>화자분리 검토 시작</Button>{errorMessage && <p role="alert" className="text-failed">{errorMessage}</p>}</Card>
   const ready = review.status === 'NEEDS_REVIEW' || review.status === 'DRAFT_READY'
   const namesSaved = savedVersion === review.version

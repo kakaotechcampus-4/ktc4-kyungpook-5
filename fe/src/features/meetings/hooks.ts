@@ -113,11 +113,11 @@ export function useMeetingData(clubId: string, meetingId: string | undefined) {
     mutationFn: () => meetingsApi.finish(meetingId!),
     onSuccess: refresh,
   })
-  const startReview = useMutation({ mutationFn: () => meetingsApi.review(meetingId!), onSuccess: refresh })
-  const submitReview = useMutation({ mutationFn: () => meetingsApi.submitReview(meetingId!), onSuccess: refresh })
-  const updateReviewSpeakers = useMutation({ mutationFn: (input: { version: number; names: Record<string, string>; members: Record<string, { memberId: string | null; confirmed: boolean }> }) => meetingsApi.updateReviewSpeakers(meetingId!, input.version, input.names, input.members), onSuccess: refresh })
-  const createReviewDraft = useMutation({ mutationFn: (version: number) => meetingsApi.createReviewDraft(meetingId!, version), onSuccess: refresh })
-  const saveReviewCandidates = useMutation({ mutationFn: (input: { version: number; clientRequestId: string; candidates: Array<{ title: string; description: string | null; assigneeMemberId: string | null; dueDate: string | null; evidenceSegmentIds: string[] }> }) => meetingsApi.saveReviewCandidates(meetingId!, input.version, input.clientRequestId, input.candidates), onSuccess: refresh })
+  const startReview = useMutation({ mutationFn: () => meetingsApi.review(meetingId!), onSettled: refresh })
+  const submitReview = useMutation({ mutationFn: () => meetingsApi.submitReview(meetingId!), onSettled: refresh })
+  const updateReviewSpeakers = useMutation({ mutationFn: (input: { version: number; names: Record<string, string>; members: Record<string, { memberId: string | null; confirmed: boolean }> }) => meetingsApi.updateReviewSpeakers(meetingId!, input.version, input.names, input.members), onSettled: refresh })
+  const createReviewDraft = useMutation({ mutationFn: (version: number) => meetingsApi.createReviewDraft(meetingId!, version), onSettled: refresh })
+  const saveReviewCandidates = useMutation({ mutationFn: (input: { version: number; clientRequestId: string; candidates: Array<{ title: string; description: string | null; assigneeMemberId: string | null; dueDate: string | null; evidenceSegmentIds: string[] }> }) => meetingsApi.saveReviewCandidates(meetingId!, input.version, input.clientRequestId, input.candidates), onSettled: refresh })
   return {
     meeting,
     transcripts,
