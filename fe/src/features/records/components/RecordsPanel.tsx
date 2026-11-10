@@ -51,53 +51,59 @@ function RecordStatusRow({
   const status = recordStatus(current)
   const evidence = isExpenseEvidence(current)
 
+  const note =
+    current.parseStatus === 'FAILED'
+      ? parseErrorMessage(detail.data?.parseError ?? null)
+      : current.indexError
+        ? '파일 내용은 읽었지만 검색 준비에 실패했어요. 서버 설정을 확인하거나 다시 시도해 주세요.'
+        : status.description
+
   return (
     <li
-      className="flex flex-col gap-[9px] border-t border-line py-[16px] first:border-0 animate-turn-in motion-reduce:animate-none"
+      className="flex flex-col gap-[16px] border-t border-line py-[20px] first:border-0 first:pt-[12px] animate-turn-in motion-reduce:animate-none"
       style={{ animationDelay: staggerDelay(index) }}
     >
-      <div className="flex flex-wrap items-center justify-between gap-[10px]">
-        <span className="min-w-0 flex-1 break-words text-[13px] font-bold text-ink">
-          {current.fileName}
-        </span>
+      {/* 이름과 상태 칩. 칩은 오른쪽 끝에 붙어 파일 이름 길이와 상관없이 모든 행에서 같은 자리에 온다. */}
+      <div className="flex items-start justify-between gap-[16px]">
+        <div className="flex min-w-0 flex-col gap-[7px]">
+          <span className="min-w-0 break-words text-[14px] font-bold text-ink">
+            {current.fileName}
+          </span>
+          <p className="text-[11px] text-mute">
+            {current.fileType} · {formatFileSize(current.size)} ·{' '}
+            {RECORD_CATEGORIES.find((category) => category.value === current.category)?.label}
+          </p>
+        </div>
         <Chip size="sm" tone={status.tone}>
           {status.label}
         </Chip>
       </div>
-      <p className="text-[11px] text-mute">
-        {current.fileType} · {formatFileSize(current.size)} ·{' '}
-        {RECORD_CATEGORIES.find((category) => category.value === current.category)?.label}
-      </p>
-      <p className="text-[12px] leading-[19px] text-ink2">
-        {current.parseStatus === 'FAILED'
-          ? parseErrorMessage(detail.data?.parseError ?? null)
-          : current.indexError
-            ? '파일 내용은 읽었지만 검색 준비에 실패했어요. 서버 설정을 확인하거나 다시 시도해 주세요.'
-            : status.description}
-      </p>
-      {detail.isError && (
-        <p role="alert" className="text-[12px] text-failed">
-          {recordErrorMessage(detail.error)} 마지막으로 받은 상태를 표시하고 있어요.
-        </p>
-      )}
-      {downloadError && (
-        <p role="alert" className="text-[12px] text-failed">
-          원본 파일을 받지 못했어요. 접근 권한과 파일 상태를 확인해 주세요.
-        </p>
-      )}
-      {retryIndex.isError && (
-        <p role="alert" className="text-[12px] text-failed">
-          {recordErrorMessage(retryIndex.error)} 검색 준비 재시도가 완료되지 않았어요.
-        </p>
-      )}
-      {remove.isError && (
-        <p role="alert" className="text-[12px] text-failed">
-          {recordErrorMessage(remove.error)} 자료를 지우지 못했어요.
-        </p>
-      )}
-      <div className="flex flex-wrap items-center justify-between gap-[8px]">
-        <span className="break-all text-[10px] text-mute">자료 ID · {record.id}</span>
-        <div className="flex flex-wrap gap-[6px]">
+      {/* 상태 설명과 버튼은 한 칸 띄워 아래에 둔다. */}
+      <div className="flex flex-col gap-[10px] sm:flex-row sm:items-center sm:justify-between sm:gap-[24px]">
+        <div className="flex min-w-0 flex-col gap-[6px]">
+          <p className="text-[12px] leading-[18px] text-mute">{note}</p>
+          {detail.isError && (
+            <p role="alert" className="text-[12px] text-failed">
+              {recordErrorMessage(detail.error)} 마지막으로 받은 상태를 표시하고 있어요.
+            </p>
+          )}
+          {downloadError && (
+            <p role="alert" className="text-[12px] text-failed">
+              원본 파일을 받지 못했어요. 접근 권한과 파일 상태를 확인해 주세요.
+            </p>
+          )}
+          {retryIndex.isError && (
+            <p role="alert" className="text-[12px] text-failed">
+              {recordErrorMessage(retryIndex.error)} 검색 준비 재시도가 완료되지 않았어요.
+            </p>
+          )}
+          {remove.isError && (
+            <p role="alert" className="text-[12px] text-failed">
+              {recordErrorMessage(remove.error)} 자료를 지우지 못했어요.
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-[6px] sm:justify-end">
           <Button
             variant="secondary"
             size="sm"
@@ -122,7 +128,8 @@ function RecordStatusRow({
               {retryIndex.isPending ? '검색 준비 중…' : '검색 준비 다시 시도'}
             </Button>
           )}
-          {!evidence && (
+          {/* 검색 준비가 끝났거나 지출 증빙이면 더 바뀔 상태가 없다. */}
+          {current.parseStatus !== 'INDEXED' && !evidence && (
             <Button
               variant="ghost"
               size="sm"
@@ -324,7 +331,7 @@ function ClubRecordsPanel({ clubId, title }: { clubId: string; title: string }) 
           </p>
         )}
         {rows && rows.length > 0 ? (
-          <ul className="mt-[6px]" aria-live="polite">
+          <ul className="mt-[8px]" aria-live="polite">
             {rows.map((record, i) => (
               <RecordStatusRow
                 key={record.id}
