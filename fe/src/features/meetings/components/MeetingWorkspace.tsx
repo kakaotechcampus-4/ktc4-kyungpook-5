@@ -479,7 +479,7 @@ export function MeetingWorkspace({
           }
         >
           {audioError ??
-            '음성 일부를 알아듣지 못했거나, 토리 조회가 실패했거나, 녹음 연결이 끊긴 채 끝났어요. 들은 말과 토리 답은 아래에 남아 있고, 조회가 실패한 말은 토리 칸에 「찾지 못함」으로 표시돼요.'}
+            '음성 일부를 알아듣지 못했거나, 토리 조회가 실패했거나, 녹음 연결이 끊긴 채 끝났어요. 저장된 들은 말과 토리 답은 아래에서 볼 수 있어요.'}
         </MeetingBanner>
       )}
       {ended && extractionFailed(decisions) && (

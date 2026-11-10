@@ -21,7 +21,7 @@ const messages: Record<string, string> = {
   MEETING_NOT_RECORDING: '이미 종료됐거나 처리 중인 회의입니다. 상태를 다시 확인해 주세요.',
   AUDIO_STREAM_ACTIVE: '아직 음성을 받는 중인 회의입니다. 녹음 중인 화면에서 회의를 끝내 주세요.',
   MEETING_REVIEW_CONFLICT:
-    '지금은 화자 확인을 진행할 수 없습니다. 녹음이 저장된 채 정상 종료된 회의인지 새로고침해 확인해 주세요.',
+    '지금은 화자 확인을 진행할 수 없습니다. 다른 곳에서 검토 상태가 바뀌었거나 녹음이 저장되지 않은 회의일 수 있습니다. 새로고침해 확인해 주세요.',
   // 화자분리 실패. 패널의 「다시 시도」 버튼과 겹치지 않게 무엇이 실패했는지만 적는다.
   DIARIZATION_UNAVAILABLE: DIARIZATION_OFF,
   DIARIZATION_NOT_CONFIGURED: DIARIZATION_OFF,
