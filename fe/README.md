@@ -199,23 +199,32 @@ FE는 BE만 호출합니다. AI(`be/app/ai`)는 BE 프로세스 안의 모듈이
 graph LR
     subgraph Browser["브라우저 · React 19 SPA (PWA)"]
         UI["pages / features"]
-        SW["Service Worker"]
     end
 
     subgraph Server["BE · FastAPI"]
-        API["REST · SSE · WebSocket"]
+        REST["REST /api/v1<br/>조회 · 저장 · 승인"]
+        SSE["SSE 스트림<br/>계획 대화 · 생성"]
+        WS["WebSocket<br/>음성 PCM16 16kHz"]
         AI["app.ai<br/>LangGraph · LLM"]
         STT["Whisper STT"]
         DB[("PostgreSQL<br/>+ pgvector")]
+        PUSH["Web Push 발송"]
     end
 
-    UI -->|"REST /api/v1 · axios"| API
-    UI -->|"SSE · fetch 스트림"| API
-    UI -->|"WebSocket · PCM16 16kHz"| API
-    API --> AI
-    API --> STT
-    API --> DB
-    API -->|"Web Push"| SW
+    subgraph Device["기기"]
+        SW["Service Worker<br/>알림 표시"]
+    end
+
+    UI --> REST
+    UI --> SSE
+    UI --> WS
+    REST --> DB
+    SSE --> AI
+    WS --> STT
+    STT --> AI
+    AI --> DB
+    DB --> PUSH
+    PUSH --> SW
 ```
 
 통신 방식을 기능마다 다르게 고른 이유입니다.
