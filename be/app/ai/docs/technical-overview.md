@@ -33,7 +33,7 @@ README 「토리가 알아서 하는 일」 표를 자세히: 기능별로 움�
 
 ### 4.1 행사 계획 Agent
 
-<!-- LangGraph agent ↔ tools 반복(한 턴 도구 최대 3번), 도구 3개(update_event_conditions, search_past_events, generate_event_plan), 생성 그래프 compose_plan → validate_plan(자동 재시도 없음, 실패 이유 반환), 13단계 카탈로그, P2 수정 검토 -->
+<!-- LangGraph agent ↔ tools 반복(한 턴 도구 최대 3번), 도구 4개(update_event_conditions, search_past_events, update_generation_offer, generate_event_plan), 생성 그래프 compose_plan → validate_plan(자동 재시도 없음, 실패 이유 반환), 13단계 카탈로그, P2 수정 검토 -->
 
 ### 4.2 회의 판단
 
