@@ -75,7 +75,7 @@ export function recordErrorMessage(error: unknown): string {
       case 'FORBIDDEN':
         return '선택한 팀의 자료를 조회하거나 올릴 권한이 없어요.'
       case 'RECORD_NOT_FOUND':
-        return '이 자료를 찾을 수 없어요. 자료 ID를 확인해 주세요.'
+        return '이 자료를 찾을 수 없어요. 이미 지워졌을 수 있으니 목록을 다시 불러와 주세요.'
       case 'VALIDATION_FAILED':
         return '파일과 분류를 확인해 주세요. PDF, CSV, XLSX를 올릴 수 있어요.'
     }
