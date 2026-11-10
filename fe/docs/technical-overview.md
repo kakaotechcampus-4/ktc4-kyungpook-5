@@ -1,6 +1,6 @@
 # 운영해 FE 기술 문서 (초안)
 
-> 기준: 2026-11-10, `develop` `3e0f6be`. 화면 사용법은 [README](../README.md), API 목록은 [BE API Reference](../../be/docs/api-reference.md)를 봅니다.
+> 기준: 2026-11-10, `develop` `63b4130`. 화면 사용법은 [README](../README.md), API 목록은 [BE API Reference](../../be/docs/api-reference.md)를 봅니다.
 > 이 문서는 FE가 **무엇을 어떻게 구현했는지**와 **토리(AI)가 자동으로 하는 일이 화면에 어떻게 드러나는지**를 설명합니다.
 
 ## 1. 한눈에 보기
@@ -174,7 +174,7 @@ BE의 OpenAPI 문서에서 `openapi-typescript`로 `src/shared/api/schema.d.ts`�
 
 ## 6. 테스트와 품질
 
-- 단위 테스트 203개(`node --test tests/*.test.mjs`)와 SSE 파서·음성 변환 테스트 9개가 있습니다. 별도 테스트 프레임워크 없이 `node:test`로 돌립니다.
+- 단위 테스트 172개(`node --test tests/*.test.mjs`, 파일 37개)가 있습니다. SSE 파서·음성 변환·서비스 워커 테스트도 이 안에 들어 있습니다. 별도 테스트 프레임워크 없이 `node:test`로 돌립니다.
 - 주로 지키는 규칙
   - 계획: 진행 줄은 실제 결과만, 끊겼을 때 POST 재전송 금지, 결과 조회 3분기, 조건 강조는 바뀐 칸만
   - 회의: 음성 프레임 순서(메타 → binary → end), ack 없으면 완료 불가, 48kHz → 정확히 초당 16,000샘플, 일시정지 시간 제외, 오래된 판단 숨김, 출처는 같은 소속 자료만
