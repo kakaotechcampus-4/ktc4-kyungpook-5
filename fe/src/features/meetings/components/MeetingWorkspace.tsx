@@ -77,7 +77,13 @@ export function MeetingWorkspace({
     setLastSoundAt((previous) => (at - previous > 1000 ? at : previous))
   }, [audio.inputLevel])
   const transcripts = data.transcripts.data?.items ?? EMPTY
-  const decisions = data.decisions.data ?? EMPTY
+  const allDecisions = data.decisions.data ?? EMPTY
+  // 화자 확인에서 후보를 저장하면 서버가 답 없는 ANSWER 판단을 남긴다. 토리 답이 아니라서
+  // 토리 칸·들은 말 표시에서는 빼고, 후보 근거 찾기와 저장 여부 판단에는 원래 목록을 쓴다.
+  const decisions = useMemo(
+    () => allDecisions.filter((d) => d.modelVersion !== 'meeting-review'),
+    [allDecisions],
+  )
   const answers = useMemo(() => meetingAnswers(transcripts, decisions), [transcripts, decisions])
   const heard = transcripts.filter((t) => t.final).length
   const currentEvidence =
@@ -86,7 +92,7 @@ export function MeetingWorkspace({
       transcript.final && transcript.sourceId === evidenceFocus.sourceId &&
       transcript.sourceVersion === evidenceFocus.sourceVersion,
     ) &&
-    decisions.some((decision) =>
+    allDecisions.some((decision) =>
       decision.id === evidenceFocus.decisionId && decision.meetingId === meetingId &&
       decision.status !== 'STALE' && decision.sources.some((source) =>
         source.sourceId === evidenceFocus.sourceId && source.sourceVersion === evidenceFocus.sourceVersion,
@@ -229,7 +235,7 @@ export function MeetingWorkspace({
   // 화자 확인 패널은 회의 직후 화면에만 있다. 회의 기록에서는 남은 일이 있을 때만 배너로 알린다.
   // 후보를 저장하면 서버가 검토 jobId로 판단을 남기므로, 그 판단이 있으면 검토가 끝난 것이다.
   const review = data.review.data
-  const reviewCandidatesSaved = !!review && decisions.some((d) => d.jobId === review.jobId)
+  const reviewCandidatesSaved = !!review && allDecisions.some((d) => d.jobId === review.jobId)
   const reviewBanner: { tone: 'failed' | 'info'; text: string } | null =
     data.review.isError || review?.status === 'FAILED' || review?.status === 'SUBMISSION_UNKNOWN'
       ? {
@@ -256,7 +262,8 @@ export function MeetingWorkspace({
       activeSuggestionId={evidenceFocus?.suggestionId}
       evidence={{
         meetingId: meeting.id,
-        decisions,
+        // 화자 확인에서 저장한 후보의 근거는 그 판단에 있다.
+        decisions: allDecisions,
         transcripts,
         startedAt: meeting.startedAt,
         onOpen: (target) => {
