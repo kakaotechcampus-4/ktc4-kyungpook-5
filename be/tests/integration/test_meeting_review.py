@@ -21,6 +21,28 @@ async def seed(session):
     meeting.status = MeetingStatus.COMPLETED; meeting.ended_at = datetime.now(UTC)
     session.add(TranscriptSegment(meeting_id=meeting.id, seq=1, text='민수가 장소를 예약하자.', is_final=True, version=1, change_seq=1, start_ms=0, end_ms=1000))
     await session.commit(); return member.id, meeting.id
+async def test_start_allows_failed_but_not_recording_meeting(app_db):
+    """COMPLETED·FAILED 모두 ended_at이 찍히는 종료 상태라 검토를 시작할 수 있다(#401).
+    발화 하나의 STT·판단 실패로 회의 전체가 FAILED여도 화자분리는 저장된 오디오를
+    대상으로 돌아 지장이 없다. 아직 끝나지 않은 RECORDING은 그대로 막는다."""
+    factory = db_session.get_sessionmaker()
+    async with factory() as session:
+        club = Club(name='검토 동아리2'); session.add(club); await session.flush()
+        member = Member(club_id=club.id, name='회장', role=MemberRole.OWNER); session.add(member); await session.flush()
+        meeting = await meeting_service.create_meeting(
+            session, club_id=club.id, event_id=None, title='부분 실패 회의',
+            language='ko-KR', recording_consent_confirmed=True, created_by=member.id,
+        )
+        meeting.status = MeetingStatus.FAILED
+        meeting.ended_at = datetime.now(UTC)
+        await session.commit()
+        review = await meeting_review_service.start(session, meeting=meeting, member_id=member.id)
+        assert review.status == 'QUEUED'
+
+        meeting.status = MeetingStatus.RECORDING
+        await session.commit()
+        with pytest.raises(meeting_review_service.ReviewConflict):
+            await meeting_review_service.start(session, meeting=meeting, member_id=member.id)
 async def test_review_state_and_names_restore_without_confirming_tasks(app_db):
     factory = db_session.get_sessionmaker()
     async with factory() as session:

@@ -49,7 +49,11 @@ def _provider_error_code(error: Exception) -> str:
 
 async def start(session: AsyncSession, *, meeting: Meeting, member_id: str) -> MeetingReview:
     locked = await session.scalar(select(Meeting).where(Meeting.id == meeting.id).with_for_update())
-    if locked.status != MeetingStatus.COMPLETED:
+    # COMPLETED·FAILED 모두 ended_at이 찍히는 종료 상태다. 발화 하나의 STT·판단 실패가
+    # 회의 전체를 FAILED로 만들어도(#377) 화자분리는 저장된 오디오 자체를 대상으로
+    # 돌아서 지장이 없다 — 오디오가 한 건도 없는 FAILED는 /review/submit의
+    # assemble_meeting_wav가 이미 ReviewConflict로 안전하게 막는다.
+    if locked.status not in (MeetingStatus.COMPLETED, MeetingStatus.FAILED):
         raise ReviewConflict('종료된 회의만 검토할 수 있어요.')
     existing = await session.scalar(select(MeetingReview).where(MeetingReview.meeting_id == meeting.id))
     if existing is not None:

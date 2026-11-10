@@ -41,3 +41,10 @@ def test_reconstructs_original_timeline_and_zero_fills_gaps():
 def test_rejects_malformed_or_overlapping_chunks(chunks):
     with pytest.raises(ValueError):
         assemble_meeting_wav(chunks, io.BytesIO())
+
+
+def test_no_chunks_raises_korean_message():
+    """발화 전부가 STT 전에 저장 자체를 실패한 FAILED 회의처럼, 오디오가 한 건도
+    없으면 라우터가 그대로 ReviewConflict로 보여줄 한국어 메시지를 낸다."""
+    with pytest.raises(ValueError, match="저장된 회의 음성이 없어요"):
+        assemble_meeting_wav([], io.BytesIO())
