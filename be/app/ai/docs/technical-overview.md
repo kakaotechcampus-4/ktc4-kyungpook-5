@@ -58,7 +58,7 @@ AI는 별도 서버가 아니라 BE 프로세스 안의 `be/app/ai` 패키지입
 | 공지 초안 | 현재 단계가 바뀔 때 | 공지 본문. 모르는 값을 `[ ]`로 비울 곳 | 요일은 코드가 계산. 날짜, 요일, 금액, 시각을 입력과 대조하고 다시 쓰기는 한 번 | 승인, 앱 밖에서 게시 |
 | 메인 대화 | 질문마다 | 질문 의도. 모호하면 되물음 | 출력 형식 | 실제 처리는 해당 화면에서 |
 
-아래는 로컬 앱에서 실제로 남은 판단 기록입니다(2026-11-10, 테스트 동아리 자료). 측정이 아니라 한 번 실행한 기록이므로, 숫자는 "이렇게 움직였다"는 예시로만 봅니다.
+아래는 로컬 앱에서 실제로 남은 판단 기록입니다(2026-11-10, 테스트 동아리 자료). 한 번 실행한 기록입니다.
 
 ### 행사 계획 대화: 두 턴에서 고른 도구
 
@@ -108,7 +108,7 @@ AI는 별도 서버가 아니라 BE 프로세스 안의 `be/app/ai` 패키지입
 
 ### 회의: 발화 6개에 내린 판단
 
-합성 음성(Windows TTS)으로 진행한 테스트 회의의 기록입니다. Jev가 낸 확률이 0.35 이상일 때만 검색어를 만들고 기록을 찾습니다.
+회의 발화 테스트 기록입니다. Jev가 낸 확률이 0.35 이상일 때만 검색어를 만들고 기록을 찾습니다.
 
 | 들은 말 | Jev 확률 | 결과 | 판단 단계 시간 |
 | --- | --- | --- | --- |
@@ -124,14 +124,89 @@ AI는 별도 서버가 아니라 BE 프로세스 안의 `be/app/ai` 패키지입
 - **기준 근처의 판단**: 마지막 발화는 질문이 아니라 결정인데 확률이 0.40이라 조회했습니다. 0.35 근처에서는 이런 판단이 흔들릴 수 있습니다([7절](#7-한계와-다음-일)).
 - 같은 발화마다 행사 사실 조회와 할 일 후보 추출도 함께 시작했습니다(각각 약 2초). 이 둘은 판단 단계 시간에 들어가지 않습니다.
 
-### 아직 하지 않는 것
-
-설계([architecture.md](architecture.md))에서는 행사마다 행사 Agent 하나가 상시 대기하면서 신호를 받아 스스로 움직입니다. 이 상시 대기는 아직 구현하지 않았습니다. 지금은 BE가 신호 시점에 AI 함수를 직접 부르고, 운영 중에 연결한 신호는 "단계가 현재 단계가 됨" 하나뿐입니다(공지 초안, #332).
-
 ## 3. 구조
 
-<!-- 1절에서 넘긴 것: 기능별 부르는 BE 서비스 표(planning_service, plan_review_service, context_service→meeting_ai_service/meeting_event_service, meeting_review_service, record_service, record_discovery_service, routers/tori.py, action_draft_service, operation_cases, accounting_service)와 공개 이름 전체.
-공개 경계(__init__.__all__, facade, contracts, ports), 대화 상태 이어가기(state_codec, 이력 60개), 진행 신호(PlanningProgressPort, SSE), 오류 타입(docs/errors.md), 모델 생성은 llm.py에서만 -->
+### 공개 경계
+
+BE는 `app.ai`가 내보낸 이름만 씁니다. 내보낼 이름은 `__init__.py`의 `__all__`에 하나씩 적습니다.
+
+| 파일 | 맡는 것 |
+| --- | --- |
+| `__init__.py` | BE가 쓸 이름만 다시 내보냄. 여기 없는 이름은 BE가 쓰지 않음 |
+| `facade.py` | 공개 함수의 실행 진입점. 기능 폴더의 내부 함수를 이어 붙임 |
+| `contracts.py` | BE와 주고받는 데이터. Pydantic 모델이라 들어올 때와 나갈 때 모두 검사됨 |
+| `ports.py` | BE가 구현해서 넘겨 줄 기능의 인터페이스(`RecordSearchPort`, `PlanningProgressPort`) |
+| `errors.py` | BE에 올리는 오류 타입 |
+
+AI는 BE의 서비스, ORM, DB를 import하지 않습니다. 예외는 도메인 코드값(`app.core.enums`) 하나입니다. 같은 값을 두 곳에 두지 않기 위해서입니다.
+
+### 부르는 BE 코드
+
+| BE 코드 | 부르는 함수 |
+| --- | --- |
+| `services/planning_service.py` | `chat_planning`, `generate_planning_preview` |
+| `services/plan_review_service.py` | `review_plan_edit` |
+| `services/context_service.py` → `meeting_ai_service`, `meeting_event_service` | `judge_utterance`, `extract_task_suggestions`, `classify_meeting_event_facts`, `answer_meeting_event_facts` |
+| `services/meeting_review_service.py` | `generate_meeting_review` |
+| `services/record_service.py` | `index_record` |
+| `services/record_discovery_service.py` | `search_related_records` |
+| `routers/tori.py` | `classify_tori_intent`, `build_tori_record_query`, `answer_tori_records` |
+| `services/action_draft_service.py` | `draft_action_content` |
+| `services/operation_cases.py` | `respond_operational_situation` |
+| `services/accounting_service.py` | `extract_receipt` |
+
+모델을 기다리는 동안 DB 잠금을 쥐지 않습니다. BE는 AI를 부르기 전에 먼저 커밋하고, 결과가 오면 다시 잠근 뒤 저장 조건을 확인합니다. 공지 초안의 순서는 이렇습니다.
+
+```text
+단계 완료 요청 → 단계 완료, 커밋
+  → 현재 단계의 공지를 "작성 중"으로 표시, 커밋
+  → 뒤에서 초안 작업 시작, 요청에는 바로 응답
+뒤에서  행사, 단계, 공지 읽기 → draft_action_content (잠금 없음)
+  → 잠금 → 그사이 운영진이 고치지 않았는지 확인 → 저장 또는 실패로 표시
+```
+
+### 대화 상태 이어가기
+
+AI는 대화 상태를 들고 있지 않습니다. 행사 계획 대화는 턴이 끝날 때마다 다음 턴에 필요한 상태를 JSON(`resume_state`)으로 돌려주고, BE가 저장했다가 다음 메시지와 함께 다시 넘깁니다. AI 쪽에는 DB도 체크포인트도 없습니다.
+
+- 상태 JSON에는 `schema_version`이 있습니다. `parse_resume_state`는 지원하지 않는 버전과 손상된 JSON을 구분해 `PlanningStateError`를 내고, 임의로 초기화하지 않습니다.
+- 대화 이력은 최대 60개 메시지입니다(`MAX_PLANNING_HISTORY`). 넘으면 몰래 잘라 보내지 않고 입력 검사에서 알립니다.
+
+### 진행 신호
+
+행사 계획은 답이 나오기까지 여러 단계를 거쳐서, 기다리는 동안 무엇을 하는지 보여 줍니다. BE가 `PlanningProgressPort`를 구현해 넘기면 AI가 작업에 맞춰 부르고, BE는 이를 SSE로 FE에 보냅니다.
+
+| 메서드 | 언제 | 화면 |
+| --- | --- | --- |
+| `progress` | 조건 반영, 기록 검색, 초안 작성의 시작과 끝 | "예상 인원 반영했어요" 같은 진행 줄 |
+| `reply_delta` | 답변 글자가 도착할 때 | 답변이 쓰이는 대로 보임 |
+| `reply_reset` | 답변 뒤에 도구 호출이 나와 앞 글을 버려야 할 때 | 임시 답변을 지움 |
+
+포트를 넘기지 않으면 진행 알림 없이 결과만 돌려줍니다. 회의는 같은 방식으로 `MeetingProgressPort`를 씁니다.
+
+### 오류 처리
+
+AI는 실패를 빈 결과로 돌려주지 않고 예외로 알립니다. BE는 예외 타입을 보고 다시 시도를 안내할지, 서버 오류로 처리할지 정합니다. 기준은 "같은 요청을 다시 보내면 성공할 수 있는가"입니다.
+
+```text
+AIError
+├── AIConfigError            설정 문제. 다시 시도해도 안 됨
+├── AIEmptyRecordError       색인할 내용이 없는 기록
+└── AIRetryableError         다시 시도하면 될 수 있음
+    ├── AITimeoutError
+    └── AIInvalidResponseError    형식이나 검증을 통과하지 못한 응답
+        └── AIOutputLimitError
+```
+
+- 공지 초안을 다시 써도 검사에 걸리면 `AIInvalidResponseError`를 냅니다. BE는 그 공지를 실패로 표시하고 「다시 받기」를 열어 둡니다.
+- 회의 판단의 오류에는 실패하기 전까지의 판단 기록(`trace`)이 담깁니다. 실패한 판단도 기록에 남기기 위해서입니다.
+- 예상하지 못한 예외는 감싸지 않고 그대로 올립니다. 자세한 표는 [errors.md](errors.md)에 있습니다.
+
+### 모델 연결은 llm.py에서만
+
+채팅 모델과 임베딩 모델은 `llm.py`에서만 만듭니다. 모델 호출 오류를 위의 AI 오류 타입으로 바꾸는 일도 여기서 해서, 기능 코드는 모델 SDK의 예외를 직접 다루지 않습니다. 기능마다 다른 설정(추론 깊이, 출력 한도)은 `build_chat_model`에 인자로 넘깁니다.
+
+Jev만 예외입니다. OpenAI 호환 API가 아니어서 `features/meeting/jev.py`가 직접 부릅니다.
 
 ## 4. 기능별 구현
 
