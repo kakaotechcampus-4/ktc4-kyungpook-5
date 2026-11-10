@@ -68,7 +68,11 @@ export function useRetryReceiptImport(clubId: string) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => retryReceiptImport(clubId, id),
-    onSettled: () => client.invalidateQueries({ queryKey: ['accounting', clubId, 'receipt-imports'] }),
+    // 목록과 함께 그 영수증의 상세도 다시 받는다. 실패 화면이 남아 있으면 다시 읽는 중인지 알 수 없다.
+    onSettled: (_data, _error, id) => Promise.all([
+      client.invalidateQueries({ queryKey: ['accounting', clubId, 'receipt-imports'] }),
+      client.invalidateQueries({ queryKey: ['accounting', clubId, 'receipt-import', id] }),
+    ]),
   })
 }
 

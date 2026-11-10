@@ -7,7 +7,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import (
@@ -31,10 +31,14 @@ class ReceiptImport(IdMixin, TimestampMixin, Base):
     event_id: Mapped[str | None] = mapped_column(
         String(ID_LENGTH), fk("events.id", ondelete="SET NULL")
     )
-    # 원본 이미지/CSV. 파일 메타데이터는 records에서 공용으로 관리한다.
+    # 확정할 때 만든 자료함 기록(#367). 확정 전에는 null이라 저장하지 않은 영수증이 자료함에 쌓이지 않는다.
     record_id: Mapped[str | None] = mapped_column(
         String(ID_LENGTH), fk("records.id", ondelete="SET NULL")
     )
+    # 올린 원본 파일. 읽기·다시 읽기는 이것을 쓰고, 확정하면 자료함 기록이 같은 파일을 가리킨다.
+    file_name: Mapped[str | None] = mapped_column(String(255))
+    storage_key: Mapped[str | None] = mapped_column(String(512))
+    file_size: Mapped[int | None] = mapped_column(BigInteger)
     type: Mapped[ReceiptImportType] = mapped_column(
         enum_column(ReceiptImportType), nullable=False
     )

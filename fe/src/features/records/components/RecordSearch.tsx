@@ -8,7 +8,7 @@ import {
   highlightParts,
   matchLabel,
   RECORD_CATEGORIES,
-  RECORD_STATUS,
+  recordStatus,
 } from '@/features/records/presentation'
 import type { components } from '@/shared/api/schema'
 import { Button } from '@/shared/ui/Button'
@@ -98,7 +98,7 @@ function SearchResult({ item, query }: { item: Item; query: string }) {
         </Button>
       </div>
       <p className="text-caption text-mute">
-        {[category, item.fileType, formatFileSize(item.size), RECORD_STATUS[item.parseStatus].label]
+        {[category, item.fileType, formatFileSize(item.size), recordStatus(item).label]
           .filter(Boolean)
           .join(' · ')}
         {' · '}

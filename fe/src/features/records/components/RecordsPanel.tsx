@@ -9,10 +9,11 @@ import {
 } from '@/features/records/hooks'
 import {
   formatFileSize,
+  isExpenseEvidence,
   parseErrorMessage,
   RECORD_CATEGORIES,
   recordErrorMessage,
-  RECORD_STATUS,
+  recordStatus,
 } from '@/features/records/presentation'
 import type { ClubRecord, RecordCategory, RecordFilter } from '@/features/records/types'
 import { cn } from '@/shared/lib/cn'
@@ -39,7 +40,7 @@ function RecordStatusRow({
   listUpdatedAt: number
   index: number
 }) {
-  const detail = useRecordDetail(clubId, record.id, record.parseStatus)
+  const detail = useRecordDetail(clubId, record)
   const retryIndex = useRetryRecordIndex(clubId, record.id)
   const remove = useDeleteRecord(clubId)
   const [downloading, setDownloading] = useState(false)
@@ -47,7 +48,8 @@ function RecordStatusRow({
   // 상세와 목록 중 더 최근에 받은 쪽을 보여 준다. 예전에 받아 둔 상세가 새 목록 상태를 덮지 않고,
   // 「상태 다시 확인」·폴링으로 새로 받은 상세는 바로 보인다.
   const current = detail.data && detail.dataUpdatedAt > listUpdatedAt ? detail.data : record
-  const status = RECORD_STATUS[current.parseStatus]
+  const status = recordStatus(current)
+  const evidence = isExpenseEvidence(current)
 
   return (
     <li
@@ -110,7 +112,7 @@ function RecordStatusRow({
           >
             {downloading ? '받는 중…' : '원본 다운로드'}
           </Button>
-          {current.parseStatus === 'COMPLETED' && (
+          {current.parseStatus === 'COMPLETED' && !evidence && (
             <Button
               variant="secondary"
               size="sm"
@@ -120,14 +122,16 @@ function RecordStatusRow({
               {retryIndex.isPending ? '검색 준비 중…' : '검색 준비 다시 시도'}
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={detail.isFetching || retryIndex.isPending}
-            onClick={() => void detail.refetch()}
-          >
-            {detail.isFetching ? '상태 확인 중…' : '상태 다시 확인'}
-          </Button>
+          {!evidence && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={detail.isFetching || retryIndex.isPending}
+              onClick={() => void detail.refetch()}
+            >
+              {detail.isFetching ? '상태 확인 중…' : '상태 다시 확인'}
+            </Button>
+          )}
           {/* 되돌릴 수 없어 파일 이름을 물어보는 문구에 넣는다. 지우면 검색에서도 빠진다. */}
           <Button
             variant="danger"

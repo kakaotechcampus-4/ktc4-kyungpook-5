@@ -219,27 +219,13 @@ async def create_receipt_import(
         if mime_type.lower() != detected:
             raise ValidationFailed({"file": "이미지 형식과 MIME 타입이 일치하지 않습니다."})
     storage_key = await run_in_threadpool(save_file, club_id, file_name, file_bytes)
-    record = Record(
-        club_id=club_id,
-        event_id=event_id,
-        file_name=file_name,
-        file_type=(
-            RecordFileType.CSV
-            if import_type == ReceiptImportType.EXPENSE_CSV
-            else RecordFileType.IMAGE
-        ),
-        category=RecordCategory.RECEIPT,
-        storage_key=storage_key,
-        size=len(file_bytes),
-        parse_status=RecordParseStatus.COMPLETED,
-    )
-    session.add(record)
-    await session.flush()
-
+    # 자료함 기록은 확정할 때 만든다(#367). 여기서는 파일만 보관한다.
     receipt_import = ReceiptImport(
         club_id=club_id,
         event_id=event_id,
-        record_id=record.id,
+        file_name=file_name,
+        storage_key=storage_key,
+        file_size=len(file_bytes),
         type=import_type,
         status=ReceiptImportStatus.PROCESSING,
         created_by=created_by,
@@ -344,7 +330,7 @@ async def retry_receipt_import(session, *, club_id: str, import_id: str, created
         ReceiptImport.id == import_id, ReceiptImport.club_id == club_id).with_for_update().execution_options(populate_existing=True))
     if item is None:
         raise ReceiptImportNotFound()
-    if item.type != ReceiptImportType.RECEIPT_IMAGE or not item.record_id:
+    if item.type != ReceiptImportType.RECEIPT_IMAGE or not item.storage_key:
         raise ImportNotReady()
     if item.status == ReceiptImportStatus.PROCESSING:
         job = await session.get(AgentJob, item.job_id)
@@ -353,10 +339,7 @@ async def retry_receipt_import(session, *, club_id: str, import_id: str, created
         agent_job_service.fail(session, job, {"code": "OCR_TIMEOUT"})
     elif item.status != ReceiptImportStatus.FAILED:
         raise ImportNotReady()
-    record = await session.get(Record, item.record_id)
-    if record is None:
-        raise ReceiptImportNotFound()
-    file_name, storage_key = record.file_name, record.storage_key
+    file_name, storage_key = item.file_name or "upload", item.storage_key
     job = await agent_job_service.create_job(session, club_id=club_id, kind=AgentJobKind.RECEIPT_OCR, created_by=created_by)
     item.job_id, item.status, item.error = job.id, ReceiptImportStatus.PROCESSING, None
     agent_job_service.start(session, job, AgentJobStage.OCR)
@@ -458,6 +441,37 @@ async def update_draft(
     return receipt_import
 
 
+async def _attach_receipt_record(session: AsyncSession, receipt_import: ReceiptImport) -> None:
+    """확정한 영수증 파일을 자료함 기록으로 남긴다(#367). 지출의 근거 파일이 되고, 고른 행사에 묶인다.
+
+    이 변경 전에 올린 가져오기는 업로드 때 이미 기록이 있어 행사만 맞춘다.
+    """
+    if receipt_import.record_id is not None:
+        existing = await session.get(Record, receipt_import.record_id)
+        if existing is not None:
+            existing.event_id = receipt_import.event_id
+        return
+    if receipt_import.storage_key is None:
+        return
+    record = Record(
+        club_id=receipt_import.club_id,
+        event_id=receipt_import.event_id,
+        file_name=receipt_import.file_name or "upload",
+        file_type=(
+            RecordFileType.CSV
+            if receipt_import.type == ReceiptImportType.EXPENSE_CSV
+            else RecordFileType.IMAGE
+        ),
+        category=RecordCategory.RECEIPT,
+        storage_key=receipt_import.storage_key,
+        size=receipt_import.file_size or 0,
+        parse_status=RecordParseStatus.COMPLETED,
+    )
+    session.add(record)
+    await session.flush()
+    receipt_import.record_id = record.id
+
+
 async def confirm_receipt_import(
     session: AsyncSession,
     *,
@@ -491,6 +505,7 @@ async def confirm_receipt_import(
     if event_id is not None:
         await _ensure_club_event(session, club_id=club_id, event_id=event_id)
     receipt_import.event_id = event_id
+    await _attach_receipt_record(session, receipt_import)
 
     source = (
         ExpenseSource.CSV_IMPORT

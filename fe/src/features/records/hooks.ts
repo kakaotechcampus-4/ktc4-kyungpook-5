@@ -8,11 +8,11 @@ import {
   searchRecords,
   uploadRecord,
 } from '@/features/records/api'
-import { RECORD_CATEGORIES } from '@/features/records/presentation'
+import { isExpenseEvidence, RECORD_CATEGORIES } from '@/features/records/presentation'
 import type {
+  ClubRecord,
   RecordCategory,
   RecordFilter,
-  RecordParseStatus,
   UploadRecordInput,
 } from '@/features/records/types'
 import { ApiError } from '@/shared/api/types'
@@ -92,13 +92,19 @@ export function useRetryRecordIndex(clubId: string, recordId: string) {
 
 // 목록 응답에 상태가 이미 있다. 끝난 자료(INDEXED·NEEDS_REVIEW)는 상세를 받지 않아 칩을 바꿀 때 행마다
 // 요청이 나가지 않게 한다. 처리 중이면 상태를 따라가고, FAILED면 실패 사유(parseError)를 받는다.
+// 지출 증빙(영수증 사진)은 색인하지 않아 상태가 바뀌지 않으므로 받지도 따라가지도 않는다.
 // 「상태 다시 확인」의 refetch는 enabled와 상관없이 동작한다.
-export function useRecordDetail(clubId: string, recordId: string, listStatus: RecordParseStatus) {
+export function useRecordDetail(clubId: string, record: ClubRecord) {
+  const recordId = record.id
+  const listStatus = record.parseStatus
   return useQuery({
     queryKey: ['records', clubId, recordId],
     queryFn: () => getRecord(recordId),
     enabled:
-      Boolean(clubId && recordId) && listStatus !== 'INDEXED' && listStatus !== 'NEEDS_REVIEW',
+      Boolean(clubId && recordId) &&
+      listStatus !== 'INDEXED' &&
+      listStatus !== 'NEEDS_REVIEW' &&
+      !isExpenseEvidence(record),
     retry: false,
     // COMPLETED는 파싱 완료다. 서버가 색인을 시작하면 INDEXED까지 이어서 확인한다.
     refetchInterval: (query) => {

@@ -670,3 +670,32 @@ async def test_자료검색_AI추천은_관련_낮으면_빠지고_토리는_그
             session, club_id=club_id, query='양자역학', page=1, size=20
         )
     assert total == 1 and tori_view['items'][0].match_types == ['SEMANTIC']
+
+
+async def test_자료검색_색인_대기_수에서_영수증_사진은_뺀다(client, app_db, monkeypatch, tmp_path):
+    # 회계에서 확정한 영수증 사진은 색인하지 않는 자료라 'AI 검색 준비 전' 수에 넣지 않는다.
+    import app.ai as ai
+    from app.core.config import get_settings
+    from app.core.enums import RecordCategory, RecordFileType, RecordParseStatus
+    from app.models.records import Record
+
+    monkeypatch.setenv('STORAGE_DIR', str(tmp_path))
+    get_settings.cache_clear()
+    async def no_index(_request):
+        raise ai.AIConfigError('fixture')
+    monkeypatch.setattr(ai, 'index_record', no_index)
+    headers, club_id = _owner_with_club(client)
+    response = client.post('/api/v1/records', headers=headers, data={'clubId': club_id},
+                           files={'file': ('간식.csv', '항목,금액\n간식,5000\n'.encode(), 'text/csv')})
+    assert response.status_code == 201
+    async with db_session.get_sessionmaker()() as session:
+        session.add(Record(club_id=club_id, file_name='간식-영수증.jpg', file_type=RecordFileType.IMAGE,
+                           category=RecordCategory.RECEIPT, storage_key='receipt-test', size=10,
+                           parse_status=RecordParseStatus.COMPLETED))
+        await session.commit()
+
+    result = client.get('/api/v1/records/search', headers=headers,
+                        params={'clubId': club_id, 'query': '간식'})
+    assert result.status_code == 200, result.text
+    assert result.json()['meta']['totalCount'] == 2
+    assert result.json()['data']['unindexedCount'] == 1
