@@ -174,7 +174,7 @@ BE의 OpenAPI 문서에서 `openapi-typescript`로 `src/shared/api/schema.d.ts`�
 
 ## 6. 테스트와 품질
 
-- 단위 테스트 172개(`node --test tests/*.test.mjs`, 파일 37개)가 있습니다. SSE 파서·음성 변환·서비스 워커 테스트도 이 안에 들어 있습니다. 별도 테스트 프레임워크 없이 `node:test`로 돌립니다.
+- 단위 테스트 173개가 있습니다(`node --test tests/*.test.mjs src/shared/api/sse.test.mjs`). `tests/`의 37개 파일이 172개, SSE 파서가 1개입니다. 음성 변환·서비스 워커 테스트도 `tests/` 안에 들어 있습니다. 별도 테스트 프레임워크 없이 `node:test`로 돌립니다.
 - 주로 지키는 규칙
   - 계획: 진행 줄은 실제 결과만, 끊겼을 때 POST 재전송 금지, 결과 조회 3분기, 조건 강조는 바뀐 칸만
   - 회의: 음성 프레임 순서(메타 → binary → end), ack 없으면 완료 불가, 48kHz → 정확히 초당 16,000샘플, 일시정지 시간 제외, 오래된 판단 숨김, 출처는 같은 소속 자료만

@@ -10,7 +10,7 @@
 [![배포](https://img.shields.io/badge/배포-unyounghae.kro.kr-2563EB?style=for-the-badge)](https://unyounghae.kro.kr)
 [![PWA](https://img.shields.io/badge/PWA-설치_가능-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](https://unyounghae.kro.kr)
 
-카카오 테크 캠퍼스 4기 · 경북대 5팀 · 2026.09 ~ 2026.11
+카카오 테크 캠퍼스 4기 · 경북대 5팀 · 2026.08 ~ 2026.11
 
 </div>
 
@@ -198,20 +198,24 @@ FE는 BE만 호출합니다. AI(`be/app/ai`)는 BE 프로세스 안의 모듈이
 ```mermaid
 graph LR
     subgraph Browser["브라우저 · React 19 SPA (PWA)"]
-        UI[pages / features]
-        SW[Service Worker]
+        UI["pages / features"]
+        SW["Service Worker"]
     end
 
-    UI -->|REST /api/v1 · axios| BE
-    UI -->|SSE · fetch 스트림| BE
-    UI -->|WebSocket · PCM16 16kHz| BE
-    BE -->|Web Push| SW
-
-    subgraph BE["BE · FastAPI"]
-        AI[app.ai<br/>LangGraph · LLM]
-        STT[Whisper STT]
-        DB[(PostgreSQL<br/>+ pgvector)]
+    subgraph Server["BE · FastAPI"]
+        API["REST · SSE · WebSocket"]
+        AI["app.ai<br/>LangGraph · LLM"]
+        STT["Whisper STT"]
+        DB[("PostgreSQL<br/>+ pgvector")]
     end
+
+    UI -->|"REST /api/v1 · axios"| API
+    UI -->|"SSE · fetch 스트림"| API
+    UI -->|"WebSocket · PCM16 16kHz"| API
+    API --> AI
+    API --> STT
+    API --> DB
+    API -->|"Web Push"| SW
 ```
 
 통신 방식을 기능마다 다르게 고른 이유입니다.
@@ -242,7 +246,7 @@ graph LR
 | **API 타입** | ![openapi-typescript](https://img.shields.io/badge/openapi--typescript-6BA539?style=flat-square&logo=openapiinitiative&logoColor=white) | BE OpenAPI에서 타입을 생성해 요청·응답을 맞춤 |
 | **음성** | ![Web Audio API](https://img.shields.io/badge/Web_Audio_API-FF6B00?style=flat-square) `AudioWorklet` | 브라우저에서 PCM16 16kHz로 변환해 전송 |
 | **알림** | ![PWA](https://img.shields.io/badge/Web_Push-5A0FC8?style=flat-square&logo=pwa&logoColor=white) | PWA 설치, 기기 알림 |
-| **코드 품질** | ![ESLint](https://img.shields.io/badge/ESLint_9-4B32C3?style=flat-square&logo=eslint&logoColor=white) ![Prettier](https://img.shields.io/badge/Prettier_3-F7B93E?style=flat-square&logo=prettier&logoColor=black) ![node:test](https://img.shields.io/badge/node:test-5FA04E?style=flat-square&logo=nodedotjs&logoColor=white) | 별도 테스트 프레임워크 없이 Node 내장 러너로 단위 테스트 172개 |
+| **코드 품질** | ![ESLint](https://img.shields.io/badge/ESLint_9-4B32C3?style=flat-square&logo=eslint&logoColor=white) ![Prettier](https://img.shields.io/badge/Prettier_3-F7B93E?style=flat-square&logo=prettier&logoColor=black) ![node:test](https://img.shields.io/badge/node:test-5FA04E?style=flat-square&logo=nodedotjs&logoColor=white) | 별도 테스트 프레임워크 없이 Node 내장 러너로 단위 테스트 173개 |
 | **배포** | ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white) ![Caddy](https://img.shields.io/badge/Caddy-1F88C0?style=flat-square&logo=caddy&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white) | 멀티 스테이지 빌드, `/api/*` 프록시, HTTPS 자동 발급 |
 
 ---
@@ -330,7 +334,7 @@ npm run dev   # http://localhost:5173
 npm run dev              # 개발 서버
 npm run build            # 타입 검사(tsc -b) + 빌드
 npm run lint             # ESLint
-node --test tests/*.test.mjs src/shared/api/sse.test.mjs   # 단위 테스트 172개 (node:test)
+node --test tests/*.test.mjs src/shared/api/sse.test.mjs   # 단위 테스트 173개 (node:test)
 npm run gen:api-types    # BE OpenAPI → src/shared/api/schema.d.ts
 ```
 
@@ -358,7 +362,6 @@ npm run gen:api-types    # BE OpenAPI → src/shared/api/schema.d.ts
 3. **`features/`끼리 import하지 않습니다.** 함께 쓸 것은 `shared/`로 올립니다.
 4. **서버의 enum은 `shared/lib/labels.ts`에서 문구로 바꿉니다.** 오류는 서버 `message`를 그대로 띄우지 않고 `code`로 문구를 고릅니다.
 5. **실패를 빈 결과나 예시 데이터로 덮지 않습니다.** 처리하지 못한 사실과 다시 할 수 있는 일을 보여 줍니다.
-
 
 ### API 규약
 
