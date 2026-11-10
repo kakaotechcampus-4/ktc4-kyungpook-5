@@ -50,6 +50,7 @@ export function MeetingEnded({
   onSaveReviewCandidates,
   reviewBusy,
   reviewError,
+  reviewCandidatesSaved,
   processingSteps,
 }: {
   summary: string
@@ -68,6 +69,7 @@ export function MeetingEnded({
   onSaveReviewCandidates?: (version: number, requestId: string, candidates: Array<{ title: string; description: string | null; assigneeMemberId: string | null; dueDate: string | null; evidenceSegmentIds: string[] }>) => Promise<unknown>
   reviewBusy?: boolean
   reviewError?: unknown
+  reviewCandidatesSaved?: boolean
   processingSteps: MeetingProcessingStep[]
 }) {
   return (
@@ -162,6 +164,7 @@ export function MeetingEnded({
           onSaveCandidates={onSaveReviewCandidates}
           busy={reviewBusy ?? false}
           error={reviewError}
+          candidatesSaved={reviewCandidatesSaved ?? false}
         />
       )}
     </div>

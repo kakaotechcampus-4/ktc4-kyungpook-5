@@ -77,7 +77,13 @@ export function MeetingWorkspace({
     setLastSoundAt((previous) => (at - previous > 1000 ? at : previous))
   }, [audio.inputLevel])
   const transcripts = data.transcripts.data?.items ?? EMPTY
-  const decisions = data.decisions.data ?? EMPTY
+  const allDecisions = data.decisions.data ?? EMPTY
+  // 화자 확인에서 후보를 저장하면 서버가 답 없는 ANSWER 판단을 남긴다. 토리 답이 아니라서
+  // 토리 칸·들은 말 표시에서는 빼고, 후보 근거 찾기와 저장 여부 판단에는 원래 목록을 쓴다.
+  const decisions = useMemo(
+    () => allDecisions.filter((d) => d.modelVersion !== 'meeting-review'),
+    [allDecisions],
+  )
   const answers = useMemo(() => meetingAnswers(transcripts, decisions), [transcripts, decisions])
   const heard = transcripts.filter((t) => t.final).length
   const currentEvidence =
@@ -86,7 +92,7 @@ export function MeetingWorkspace({
       transcript.final && transcript.sourceId === evidenceFocus.sourceId &&
       transcript.sourceVersion === evidenceFocus.sourceVersion,
     ) &&
-    decisions.some((decision) =>
+    allDecisions.some((decision) =>
       decision.id === evidenceFocus.decisionId && decision.meetingId === meetingId &&
       decision.status !== 'STALE' && decision.sources.some((source) =>
         source.sourceId === evidenceFocus.sourceId && source.sourceVersion === evidenceFocus.sourceVersion,
@@ -226,6 +232,26 @@ export function MeetingWorkspace({
       ? '후보 저장 확인 실패'
       : `후보 저장 ${candidateSavedCount}/${data.suggestions.length}건`
   const meta = `${when} · ${candidateSaveMeta} · 토리 ${answers.length}번`
+  // 화자 확인 패널은 회의 직후 화면에만 있다. 회의 기록에서는 남은 일이 있을 때만 배너로 알린다.
+  // 후보를 저장하면 서버가 검토 jobId로 판단을 남기므로, 그 판단이 있으면 검토가 끝난 것이다.
+  const review = data.review.data
+  const reviewCandidatesSaved = !!review && allDecisions.some((d) => d.jobId === review.jobId)
+  const reviewBanner: { tone: 'failed' | 'info'; text: string } | null =
+    data.review.isError || review?.status === 'FAILED' || review?.status === 'SUBMISSION_UNKNOWN'
+      ? {
+          tone: 'failed',
+          text: '화자분리를 완료하지 못했거나 상태를 확인하지 못했어요. 열어서 이유를 확인해 주세요.',
+        }
+      : review?.status === 'PROCESSING' || review?.status === 'SUBMITTING'
+        ? { tone: 'info', text: '화자분리 결과를 기다리는 중이에요.' }
+        : review?.status === 'QUEUED'
+          ? { tone: 'info', text: '화자분리를 아직 실행하지 않았어요.' }
+          : review && !reviewCandidatesSaved
+            ? { tone: 'info', text: '화자 이름과 할 일 후보를 이어서 확인할 수 있어요.' }
+            : // 들은 말이 없으면 저장된 녹음도 없어 검토를 시작할 수 없다.
+              review === null && heard > 0
+              ? { tone: 'info', text: '녹음에서 화자를 나눠 이름을 확인할 수 있어요.' }
+              : null
   const candidates = (
     <CandidatesModal
       open={candidatesOpen}
@@ -236,7 +262,8 @@ export function MeetingWorkspace({
       activeSuggestionId={evidenceFocus?.suggestionId}
       evidence={{
         meetingId: meeting.id,
-        decisions,
+        // 화자 확인에서 저장한 후보의 근거는 그 판단에 있다.
+        decisions: allDecisions,
         transcripts,
         startedAt: meeting.startedAt,
         onOpen: (target) => {
@@ -258,7 +285,8 @@ export function MeetingWorkspace({
           onRetry={() => void data.refresh()}
           onOpenCandidates={() => setCandidatesOpen(true)}
           onOpenRecord={() => setJustEnded(false)}
-          review={data.review.data}
+          review={review ?? undefined}
+          reviewCandidatesSaved={reviewCandidatesSaved}
           clubId={clubId}
           onStartReview={() => data.startReview.mutate()}
           onSubmitReview={() => data.submitReview.mutate()}
@@ -440,6 +468,19 @@ export function MeetingWorkspace({
       {view === 'failed' && audioError && (
         <MeetingBanner tone="failed" title="마무리하지 못했어요">
           {audioError}
+        </MeetingBanner>
+      )}
+      {view === 'record' && reviewBanner && (
+        <MeetingBanner
+          tone={reviewBanner.tone}
+          title="회의 후 화자 확인"
+          action={
+            <Button size="sm" variant="secondary" onClick={() => setJustEnded(true)}>
+              열기
+            </Button>
+          }
+        >
+          {reviewBanner.text}
         </MeetingBanner>
       )}
       {(view === 'recording' || view === 'paused') &&
