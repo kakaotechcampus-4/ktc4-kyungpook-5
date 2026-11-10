@@ -11,6 +11,10 @@ export function meetingError(error: unknown): string {
       VERSION_CONFLICT: '다른 곳에서 변경됐습니다. 새로고침한 내용을 확인해 주세요.',
       MEETING_NOT_FOUND: '회의를 찾을 수 없습니다. 소속과 회의 주소를 확인해 주세요.',
       MEETING_NOT_RECORDING: '이미 종료됐거나 처리 중인 회의입니다. 상태를 다시 확인해 주세요.',
+      MEETING_REVIEW_CONFLICT:
+        '지금은 화자 확인을 진행할 수 없습니다. 녹음이 저장된 채 정상 종료된 회의인지 새로고침해 확인해 주세요.',
+      IDEMPOTENCY_CONFLICT:
+        '같은 요청이 이미 다른 내용으로 처리됐습니다. 새로고침한 내용을 확인해 주세요.',
     }
     return messages[error.code] ?? `요청을 처리하지 못했습니다. (${error.code})`
   }
