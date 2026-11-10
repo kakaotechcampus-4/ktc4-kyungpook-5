@@ -13,7 +13,37 @@
 
 ## 1. 한눈에 보기
 
-<!-- 구조 그림(FE → BE → app.ai → features → ports), 기능별 호출 경로 표(누가 언제 어떤 공개 함수를 부르나). README 아키텍처 그림보다 한 단계 자세히 -->
+AI는 별도 서버가 아니라 BE 프로세스 안의 `be/app/ai` 패키지입니다. BE 서비스가 `from app import ai`로 공개 함수를 부르고, AI는 BE의 DB나 서비스 코드를 import하지 않습니다. 기록 검색이나 진행 알림처럼 BE 기능이 필요하면 BE가 `ports.py`의 인터페이스를 구현해서 넘겨 줍니다.
+
+<p align="center"><img src="images/overview-structure.png" alt="FE, BE, app.ai, 외부 모델의 관계" width="100%" /></p>
+
+### 언제 불리나
+
+| 화면 | 이럴 때 | AI 함수 |
+| --- | --- | --- |
+| P1 행사 계획 | 메시지를 보내거나 「흐름 만들기」를 누를 때 | `chat_planning`, `generate_planning_preview` |
+| P2 계획 검토 | 고친 계획의 검토를 요청할 때 | `review_plan_edit` |
+| 회의 | 발화 하나가 받아 적힐 때마다 | `judge_utterance` 외 2개 (함께 시작) |
+| 회의 정리 | 회의가 끝난 뒤 | `generate_meeting_review` |
+| 자료함 | 파일을 올리거나 검색할 때 | `index_record`, `search_related_records` |
+| 메인 화면 | 토리에게 말을 걸 때 | `classify_tori_intent` 외 2개 |
+| 행사 운영 | 현재 단계가 바뀔 때, 상황을 물을 때 | `draft_action_content`, `respond_operational_situation` |
+| 회계 | 영수증을 올릴 때 | `extract_receipt` |
+
+부르는 BE 서비스와 공개 이름 전체는 [3절](#3-구조)에 있습니다.
+
+### 그림 읽는 법
+
+4절의 흐름 그림은 색이 **누가 정하는지**를 뜻합니다.
+
+| 색 | 뜻 | 예 |
+| --- | --- | --- |
+| 🟧 주황 | 모델이 판단 | Jev 확률, 도구 선택, 검색어, 본문 작성 |
+| 🟦 파랑 | 코드가 검사 | 0.35 기준, 출처 연결, 숫자 대조, 계획 검증 |
+| 🟩 초록 | 사람이 결정 | 근거 카드 확인, 초안 확정, 공지 승인 |
+| ⬜ 회색 | BE가 처리 | 음성 인식, 청크 검색, 저장 |
+
+점선 알약은 흐름이 멈추거나 사람에게 돌아가는 지점이고, 파란 작은 표시(「한 턴에 최대 3번」, 「한 번만」)는 반복 횟수의 상한입니다. 위의 전체 구조 그림만 예외로, 색이 위치(BE, AI 모듈, 외부 모델)를 뜻합니다.
 
 ## 2. 토리가 스스로 하는 일
 
@@ -27,7 +57,8 @@ README 「토리가 알아서 하는 일」 표를 자세히: 기능별로 움�
 
 ## 3. 구조
 
-<!-- 공개 경계(__init__.__all__, facade, contracts, ports), 대화 상태 이어가기(state_codec, 이력 60개), 진행 신호(PlanningProgressPort, SSE), 오류 타입(docs/errors.md), 모델 생성은 llm.py에서만 -->
+<!-- 1절에서 넘긴 것: 기능별 부르는 BE 서비스 표(planning_service, plan_review_service, context_service→meeting_ai_service/meeting_event_service, meeting_review_service, record_service, record_discovery_service, routers/tori.py, action_draft_service, operation_cases, accounting_service)와 공개 이름 전체.
+공개 경계(__init__.__all__, facade, contracts, ports), 대화 상태 이어가기(state_codec, 이력 60개), 진행 신호(PlanningProgressPort, SSE), 오류 타입(docs/errors.md), 모델 생성은 llm.py에서만 -->
 
 ## 4. 기능별 구현
 
