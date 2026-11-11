@@ -15,12 +15,13 @@ from app.schemas.common import CamelModel, PageMeta, UtcDateTime
 # expenses 컬럼 길이와 같다. 넘치면 DB 오류(500) 대신 422로 돌려준다.
 Merchant = Annotated[str, StringConstraints(max_length=200)]
 ExpenseCategory = Annotated[str, StringConstraints(max_length=50)]
+ExpenseAmount = Annotated[int, Field(ge=-2147483648, le=2147483647)]
 
 
 class ExpenseCreateIn(CamelModel):
     spent_at: UtcDateTime
     merchant: Merchant | None = None
-    amount: int
+    amount: ExpenseAmount
     currency: CurrencyCode = CurrencyCode.KRW
     category: ExpenseCategory | None = None
     description: str | None = None
@@ -36,7 +37,7 @@ class ExpenseUpdateIn(CamelModel):
     expected_version: int = Field(ge=1)
     spent_at: UtcDateTime | None = None
     merchant: Merchant | None = None
-    amount: int | None = None
+    amount: ExpenseAmount | None = None
     currency: CurrencyCode | None = None
     category: ExpenseCategory | None = None
     description: str | None = None
@@ -119,9 +120,9 @@ class ExpenseRowDraftIn(CamelModel):
 
     row_no: int | None = None
     spent_at: UtcDateTime | None = None
-    merchant: str | None = None
-    amount: int | None = None
-    category: str | None = None
+    merchant: Merchant | None = None
+    amount: ExpenseAmount | None = None
+    category: ExpenseCategory | None = None
     description: str | None = None
 
 
@@ -132,6 +133,8 @@ class ReceiptImportDraftIn(CamelModel):
 
 class ReceiptImportConfirmIn(CamelModel):
     expected_version: int
+    # 확정으로 만드는 지출 전부를 이 행사에 연결한다(#367). 비우면 연결하지 않는다.
+    event_id: str | None = None
 
 
 class ReceiptImportConfirmOut(CamelModel):

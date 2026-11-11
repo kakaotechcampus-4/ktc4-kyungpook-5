@@ -3,7 +3,7 @@
 import math
 from collections import defaultdict
 
-from app.ai.scripts.planning_latency_observation import MODEL_STAGES, STAGES
+from app.ai.scripts.planning_latency_observation import MODEL_STAGES, STAGES, USAGE_KEYS
 
 
 def distribution(values) -> dict:
@@ -23,6 +23,42 @@ def distribution(values) -> dict:
         return dict(n=0, p50_ms=None, p95_ms=None, mean_ms=None, max_ms=None)
     return dict(n=len(samples), p50_ms=percentile(.5), p95_ms=percentile(.95),
                 mean_ms=math.fsum(value / len(samples) for value in samples), max_ms=samples[-1])
+
+
+def token_distribution(values) -> dict:
+    """토큰 수 분포. 지연과 같은 R7 규칙을 쓰고 단위만 토큰이다."""
+    result = distribution(values)
+    return dict(n=result['n'], p50=result['p50_ms'], p95=result['p95_ms'], mean=result['mean_ms'], max=result['max_ms'])
+
+
+def share(part_key, whole_key, usages):
+    """합 ÷ 합. 두 값이 모두 있는 호출만 쓴다. 호출별 비율의 평균이 아니다.
+
+    예: 출력 100(추론 90) + 출력 1,000(추론 100) → 190 / 1,100 = 0.173
+    """
+    pairs = [(usage[part_key], usage[whole_key]) for usage in usages
+             if usage[part_key] is not None and usage[whole_key] is not None]
+    whole = sum(value for _, value in pairs)
+    return dict(calls=len(pairs), ratio=sum(value for value, _ in pairs) / whole if whole else None)
+
+
+def summarize_usage(spans):
+    """한 구간의 토큰 집계. 형식 1처럼 토큰 칸이 아예 없으면 None(미관측)이다."""
+    if not any('usage' in span for span in spans):
+        return None
+    usages = [span['usage'] for span in spans if span.get('usage') is not None]
+    missing = defaultdict(int)
+    for span in spans:
+        if span.get('usage') is None:
+            missing[span.get('usage_missing') or 'unobserved'] += 1
+    return dict(
+        observed_calls=len(usages), missing_calls=dict(sorted(missing.items())),
+        per_call={key: token_distribution(usage[key] for usage in usages if usage[key] is not None)
+                  for key in USAGE_KEYS},
+        totals={key: sum(usage[key] for usage in usages if usage[key] is not None) for key in USAGE_KEYS},
+        reasoning_share_of_output=share('reasoning_tokens', 'output_tokens', usages),
+        cached_share_of_input=share('cached_input_tokens', 'input_tokens', usages),
+    )
 
 
 def summarize_group(planned, started, finished) -> dict:
@@ -78,6 +114,8 @@ def summarize_observations(finished):
                     span['stage'] == stage and span['outcome'] == 'running' for span in item['observation']['spans'])),
             error_codes=dict(codes),
         )
+        if stage in MODEL_STAGES:
+            by_stage[stage]['usage'] = summarize_usage(selected)
     return dict(observed_requests=len(observed), unobserved_requests=len(finished) - len(observed),
                 complete=all(item['observation']['complete'] for item in observed),
                 model_call_attempts={stage: sum(item['observation']['model_call_attempts'][stage] for item in observed)

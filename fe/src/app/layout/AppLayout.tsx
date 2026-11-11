@@ -1,26 +1,38 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import { useMe, useLogout } from '@/features/auth/hooks'
 import { useAuthStore } from '@/shared/auth/store'
+import { useRecordingLock } from '@/shared/lib/recordingLock'
 import { Avatar } from '@/shared/ui/Avatar'
 import { Button } from '@/shared/ui/Button'
+import { DemoNotice } from '@/shared/ui/DemoNotice'
 import { Modal } from '@/shared/ui/Modal'
 import { Tori } from '@/shared/ui/Tori'
+import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
 import { WorkspaceNavigation } from './AppNavigation'
 
 // select의 특별 항목. 소속 id와 겹치지 않는 값이면 된다.
 const NEW_CLUB = '__new_club__'
+const JOIN_CLUB = '__join_club__'
 
 export function AppLayout() {
   const navigate = useNavigate()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   useMe()
-  const { me, clubId, selectClub } = useAuthStore()
+  const { me, clubId, user, selectClub } = useAuthStore()
+  const recording = useRecordingLock((state) => state.recording)
   const logout = useLogout()
   const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const menuButton = useRef<HTMLButtonElement>(null)
+  const showOnboardingGuide = new URLSearchParams(search).has('demo')
+  // 다른 화면으로 가면 맨 위에서 시작한다. 메인 토리 대화처럼 길게 내려간 화면에서 눌러도
+  // 도착한 화면이 중간부터 보이지 않게 한다. 뒤로·앞으로 가기는 브라우저가 자리를 되돌린다.
+  const navigationType = useNavigationType()
+  useEffect(() => {
+    if (navigationType !== 'POP') window.scrollTo(0, 0)
+  }, [pathname, navigationType])
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1024px)')
@@ -56,23 +68,37 @@ export function AppLayout() {
         <span className="mb-2 block">선택 소속</span>
         <select
           aria-label="선택 소속"
+          aria-describedby={recording ? 'club-locked' : undefined}
+          disabled={recording}
           value={clubId ?? ''}
           onChange={(event) => {
-            if (event.target.value === NEW_CLUB) {
+            // 소속을 더하는 두 길. 소속 id 와 겹치지 않는 값이라 같은 select 에 둔다.
+            if (event.target.value === NEW_CLUB || event.target.value === JOIN_CLUB) {
               setDrawerOpen(false)
-              navigate('/clubs/new')
+              navigate(event.target.value === NEW_CLUB ? '/clubs/new' : '/clubs/join')
               return
             }
             selectClub(event.target.value)
             setDrawerOpen(false)
             navigate(pathname === '/records' || pathname === '/accounting' ? pathname : '/dashboard')
           }}
-          className="w-full min-w-0 rounded-lg border border-line bg-card px-2 py-2 text-ink2"
+          className="w-full min-w-0 rounded-lg border border-line bg-card px-2 py-2 text-ink2 disabled:opacity-60"
         >
           <option value="" disabled>소속 선택</option>
           {me.clubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}
           <option value={NEW_CLUB}>+ 새 동아리 만들기</option>
+          <option value={JOIN_CLUB}>+ 초대 코드로 참여</option>
         </select>
+        {user && clubId && (
+          <span className="mt-2 block text-[12px] font-medium text-[#aebbd0]" role="status">
+            운영 범위 · {MEMBER_ROLE_LABEL[user.role] ?? '역할 확인 필요'}
+          </span>
+        )}
+        {recording && (
+          <span id="club-locked" className="mt-2 block text-[12px] font-medium text-[#aebbd0]">
+            녹음을 끝낸 뒤 바꿀 수 있어요
+          </span>
+        )}
       </label>
       <Link to="/mypage" onClick={() => setDrawerOpen(false)} className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 text-[#e1e8f1] focus-visible:outline-2 focus-visible:outline-white">
         <Avatar name={me.email} size={30} />
@@ -128,9 +154,11 @@ export function AppLayout() {
           <div className="flex min-h-0 flex-1 flex-col gap-6 pt-8">
               <WorkspaceNavigation dark collapsed={!sidebarOpen} />
               {sidebarOpen && <>
-              <Button size="sm" variant="secondary" onClick={() => navigate('/onboarding')}>
-                처음 사용 가이드 (임시)
-              </Button>
+              {showOnboardingGuide && (
+                <Button size="sm" variant="secondary" onClick={() => navigate('/onboarding')}>
+                  처음 사용 가이드 (예시)
+                </Button>
+              )}
               {account}
               </>}
           </div>
@@ -145,6 +173,7 @@ export function AppLayout() {
           tabIndex={-1}
           className="min-w-0 flex-1 bg-white px-4 pt-16 pb-11 outline-none sm:px-7 lg:px-10 lg:pt-7"
         >
+          <DemoNotice />
           <Outlet />
         </main>
       </div>
@@ -159,16 +188,18 @@ export function AppLayout() {
         <div id="mobile-navigation" className="flex min-h-[calc(100dvh-140px)] flex-col gap-8">
           <NavLink to="/dashboard" onClick={() => setDrawerOpen(false)} className="flex items-center gap-2 font-bold"><Tori size={30} />운영해</NavLink>
           <WorkspaceNavigation onNavigate={() => setDrawerOpen(false)} />
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              setDrawerOpen(false)
-              navigate('/onboarding')
-            }}
-          >
-            처음 사용 가이드 (임시)
-          </Button>
+          {showOnboardingGuide && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setDrawerOpen(false)
+                navigate('/onboarding')
+              }}
+            >
+              처음 사용 가이드 (예시)
+            </Button>
+          )}
           <div className="mt-auto rounded-lg bg-[#172333] p-4">{account}</div>
         </div>
       </Modal>

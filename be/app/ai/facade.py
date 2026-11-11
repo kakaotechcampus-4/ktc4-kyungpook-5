@@ -6,6 +6,7 @@
 """
 
 from .contracts import IndexRecordRequest, IndexRecordResult, RecordDiscoveryRequest
+from .contracts import ExtractReceiptRequest, ExtractReceiptResult
 from .features.meeting.lookup import RecordsLookup
 from .features.meeting.nodes import judge_utterance as judge_meeting_utterance
 from .features.meeting.schemas import (
@@ -14,8 +15,14 @@ from .features.meeting.schemas import (
     MeetingProgressPort,
 )
 from .features.retrieval.indexing import index_record_chunks
-from .ports import RecordSearchPort, RetrievedChunk
-from .contracts import PlanningChatRequest, PlanningPreviewRequest, PlanningPublicResult
+from .ports import RecordSearchPort, RetrievedChunk, PlanningProgressPort
+from .contracts import (
+    PlanEditReviewRequest,
+    PlanEditReviewResult,
+    PlanningChatRequest,
+    PlanningPreviewRequest,
+    PlanningPublicResult,
+)
 
 
 async def index_record(request: IndexRecordRequest) -> IndexRecordResult:
@@ -25,6 +32,13 @@ async def index_record(request: IndexRecordRequest) -> IndexRecordResult:
     읽을 블록이 없으면 AIEmptyRecordError, 임베딩 호출이 실패하면 AI 오류 타입을 올린다.
     """
     return await index_record_chunks(request)
+
+
+async def extract_receipt(request: ExtractReceiptRequest) -> ExtractReceiptResult:
+    """영수증 이미지에서 검토용 지출 행만 제안한다. 저장·확정은 BE 책임이다."""
+    from .features.accounting.receipt_extraction import extract_receipt as extract
+
+    return await extract(request)
 
 
 async def search_related_records(
@@ -59,19 +73,21 @@ async def judge_utterance(
 
 
 async def chat_planning(request: "PlanningChatRequest", *,
-                        records: RecordSearchPort | None = None) -> "PlanningPublicResult":
+                        records: RecordSearchPort | None = None,
+                        progress: PlanningProgressPort | None = None) -> "PlanningPublicResult":
     """P1 한 턴. records가 없으면 검색 Tool은 제공하지 않는다. 저장/권한은 BE 책임.
 
     계약은 팀 협의 전 초안이며 docs/planning/p1-public-contract.md를 따른다.
     """
     from .features.planning.public_workflow import chat
-    return await chat(request, records=records)
+    return await chat(request, records=records, progress=progress)
 
 
-async def generate_planning_preview(request: "PlanningPreviewRequest") -> "PlanningPublicResult":
+async def generate_planning_preview(request: "PlanningPreviewRequest", *,
+                                   progress: PlanningProgressPort | None = None) -> "PlanningPublicResult":
     """P1 버튼 생성. 메시지를 추가하지 않고 기존 검색 근거와 조건으로 초안을 만든다."""
     from .features.planning.public_workflow import generate_preview
-    return await generate_preview(request)
+    return await generate_preview(request, progress=progress)
 
 
 async def extract_task_suggestions(request: "TaskExtractionRequest") -> "TaskExtractionResult":
@@ -84,3 +100,19 @@ async def respond_operational_situation(request: "OperationalSituationRequest") 
     """운영 상황을 확인하거나 후속 제안만 한다. 권한·저장·실행은 BE 책임이다."""
     from .features.operations.nodes import respond_operational_situation as respond
     return await respond(request)
+
+
+async def draft_action_content(request: "ActionDraftRequest") -> "ActionDraftResult":
+    """운영 중 공지·발송 Action 하나의 본문 초안을 쓴다. 저장·상태 변경·호출 시점은 BE 책임이다.
+
+    본문의 날짜·요일·금액·시각을 입력과 대조하고, 걸리면 한 번만 다시 쓰게 한다(#333).
+    다시 써도 걸리면 AIInvalidResponseError를 낸다. 계약은 docs/contracts.md "운영 Action 본문 초안".
+    """
+    from .features.operations.action_draft import draft_action_content as draft
+    return await draft(request)
+
+
+async def review_plan_edit(request: "PlanEditReviewRequest") -> "PlanEditReviewResult":
+    """사용자가 고친 계획을 검토해 걱정되는 점을 0~4개 돌려준다. 저장·확정은 BE 책임."""
+    from .features.planning.review.review import review_plan_edit as review
+    return await review(request)

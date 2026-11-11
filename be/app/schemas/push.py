@@ -15,8 +15,15 @@ def validate_push_endpoint(value: str) -> str:
     """사용자가 준 URL로 내부망에 요청하지 않고 알려진 브라우저 Push 서비스만 쓴다."""
     parsed = urlsplit(value)
     host = (parsed.hostname or "").lower()
+    # Chromium의 레거시 staging Web Push 주소는 이 전송 경로만 허용한다.
+    chromium_staging = (
+        host == "jmt17.google.com"
+        and re.fullmatch(r"/fcm/send/[A-Za-z0-9_:-]+", parsed.path) is not None
+        and not parsed.query
+    )
     allowed = (
         host == "fcm.googleapis.com"
+        or chromium_staging
         or host == "updates.push.services.mozilla.com"
         or host.endswith(".push.services.mozilla.com")
         or host == "web.push.apple.com"

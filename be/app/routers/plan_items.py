@@ -79,7 +79,7 @@ async def update_action(
     sent = set(body.model_fields_set)
     values = {
         key: getattr(body, key)
-        for key in ("title", "subtitle", "amount", "due_date")
+        for key in ("title", "subtitle", "amount", "due_date", "content")
         if key in sent
     }
     # 보낸 키만 덮는다. 모달이 그리지 않는 키를 지우지 않기 위해서다.

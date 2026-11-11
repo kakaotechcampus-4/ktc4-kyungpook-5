@@ -155,7 +155,7 @@ async def create_receipt_import(
     member: Member = Depends(require_club_role(MemberRole.OWNER, MemberRole.MANAGER)),
     session: AsyncSession = Depends(get_session),
 ) -> Envelope[ReceiptImportOut]:
-    content = await file.read()
+    content = await file.read(accounting_service.RECEIPT_MAX_BYTES + 1) if type == ReceiptImportType.RECEIPT_IMAGE else await file.read()
     receipt_import = await accounting_service.create_receipt_import(
         session,
         club_id=club_id,
@@ -163,8 +163,20 @@ async def create_receipt_import(
         import_type=type,
         file_name=file.filename or "upload",
         file_bytes=content,
+        mime_type=file.content_type or "",
         created_by=member.id,
     )
+    return Envelope(data=_import_out(receipt_import))
+
+
+@router.post("/receipt-imports/{import_id}/retry", response_model=Envelope[ReceiptImportOut])
+async def retry_receipt_import(
+    club_id: str, import_id: str,
+    member: Member = Depends(require_club_role(MemberRole.OWNER, MemberRole.MANAGER)),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[ReceiptImportOut]:
+    receipt_import = await accounting_service.retry_receipt_import(
+        session, club_id=club_id, import_id=import_id, created_by=member.id)
     return Envelope(data=_import_out(receipt_import))
 
 
@@ -245,6 +257,7 @@ async def confirm_receipt_import(
         import_id=import_id,
         expected_version=body.expected_version,
         confirmed_by=member.id,
+        event_id=body.event_id,
     )
     return Envelope(
         data=ReceiptImportConfirmOut(

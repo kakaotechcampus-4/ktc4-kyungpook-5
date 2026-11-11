@@ -3,6 +3,7 @@
 모델 호출: ML API에 HTTP 요청
 값이 없어도 import는 성공하고, 실제 호출 시점에 `require_api()`로 확인한다.
 임베딩은 게이트웨이의 별도 엔드포인트라 주소·모델을 따로 받고 `require_embedding()`으로 확인한다.
+회의 판단을 하는 Jev는 같은 게이트웨이의 다른 배포라 `JEV_` 설정으로 따로 받는다(#255).
 """
 
 from functools import lru_cache
@@ -98,3 +99,46 @@ class AISettings(BaseSettings):
 def get_settings() -> AISettings:
     """환경변수에서 읽은 설정 재사용"""
     return AISettings()
+
+
+def jev_decisions_url(base_url: str) -> str:
+    """Jev 판단 API 주소. 모델 상세의 배포 주소 뒤에 /v1/decisions를 붙인다.
+
+    "https://.../abc"와 "https://.../abc/v1/" 모두 "https://.../abc/v1/decisions"가 된다.
+    """
+    base = base_url.strip().rstrip("/")
+    return base + ("/decisions" if base.endswith("/v1") else "/v1/decisions")
+
+
+class JevSettings(BaseSettings):
+    """회의 판단에 쓰는 판단 전용 API Jev의 접속 설정 (#255)
+
+    접속 정보만 환경변수로 받는다. 모델 버전과 임계값은 측정한 값이라
+    features/meeting/context.py에 상수로 고정한다(JEV_MODEL, JEV_THRESHOLD).
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="JEV_", env_file=".env", extra="ignore"
+    )
+
+    # ML API 모델 상세의 배포 주소. /v1까지 넣어도 된다
+    base_url: str = ""
+    # Authorization: Bearer 헤더에 쓸 키. AISettings.api_key와 같은 이유로 SecretStr이다
+    api_key: SecretStr = SecretStr("")
+
+    @property
+    def decisions_url(self) -> str:
+        return jev_decisions_url(self.base_url)
+
+    def require(self) -> None:
+        """Jev 호출 직전에 필수 설정을 확인한다. 값은 노출하지 않는다."""
+        missing = [name for name in ("base_url", "api_key") if not _text(getattr(self, name)).strip()]
+        if missing:
+            shown = ", ".join(f"JEV_{name.upper()}" for name in missing)
+            raise AIConfigError(f"AI 설정이 비어 있습니다: {shown}")
+
+
+@lru_cache(maxsize=1)
+def get_jev_settings() -> JevSettings:
+    """환경변수에서 읽은 Jev 설정 재사용"""
+    return JevSettings()

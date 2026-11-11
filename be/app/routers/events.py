@@ -5,6 +5,7 @@
 """
 
 from fastapi import APIRouter, Depends, Header, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select
@@ -32,17 +33,26 @@ from app.schemas.events import (
     PlanChatIn,
     PlanMessageOut,
     PlanMessageListResponse,
+    PlanRequestOut,
     PlanStepsUpdateIn,
     PlanStepsSnapshotOut,
     PlannedStepOut,
     PlannedStepListResponse,
     PlanGenerateIn,
+    PlanReviewIn,
+    PlanReviewOut,
     PlanScreenOut,
     PlanViewOut,
     StepListResponse,
 )
 from app.schemas.common import Envelope
-from app.services import action_service, event_service, planning_service
+from app.services import (
+    action_service,
+    event_service,
+    plan_review_service,
+    planning_service,
+    planning_stream,
+)
 
 router = APIRouter(prefix="/api/v1/events", tags=["events"])
 
@@ -194,6 +204,67 @@ async def chat_plan(
     return Envelope(data=PlanViewOut.model_validate(view))
 
 
+# SSE 응답 (#266, #284). 본문·Idempotency-Key는 JSON 경로와 같다.
+# 스트림을 열기 전 오류(권한·계획 단계·멱등 충돌·revision 불일치)는 JSON 경로와 같은 4xx다.
+_STREAM_RESPONSES = {
+    200: {
+        "description": (
+            "text/event-stream. event: progress(PlanProgressOut) · reply_delta({text}) · "
+            "reply_reset({}) · done(PlanViewOut, 마지막) · error({code, message}, 마지막). "
+            "15초 동안 이벤트가 없으면 ': heartbeat' 주석 줄."
+        ),
+        "content": {"text/event-stream": {}},
+    }
+}
+_STREAM_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+
+
+@router.post("/{event_id}/plan/chat/stream", response_class=StreamingResponse,
+             responses=_STREAM_RESPONSES)
+async def chat_plan_stream(
+    event_id: str,
+    body: PlanChatIn,
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> StreamingResponse:
+    event, member = await _get_event_for_account(
+        session, event_id=event_id, account=account
+    )
+    _ensure_planning(event)
+    # chat_plan과 같은 이유로 요청 세션을 닫는다. 스트림이 열려 있는 동안 DB 연결을 잡지 않는다.
+    await session.close()
+    turn = await planning_service.open_chat(
+        club_id=event.club_id, event_id=event_id, member_id=member.id,
+        message_id=body.message_id, message_content=body.message,
+        base_revision=body.base_revision, idempotency_key=idempotency_key,
+    )
+    return StreamingResponse(planning_stream.stream(turn), media_type="text/event-stream",
+                             headers=_STREAM_HEADERS)
+
+
+@router.get("/{event_id}/plan/requests/{request_key}", response_model=Envelope[PlanRequestOut])
+async def get_plan_request(
+    event_id: str,
+    request_key: str,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[PlanRequestOut]:
+    """채팅·생성 요청의 처리 결과만 읽는다 (#342). AI를 부르지 않는다.
+
+    응답 도중 연결이 끊기면 FE는 결과를 몰라 새 요청을 잠근다. 이때 보낸 Idempotency-Key로
+    조회해 저장된 응답을 받거나(completed), 기다리거나(processing), 잠금을 푼다(not_saved).
+    같은 사용자가 이 행사에 보낸 요청만 찾는다. 계획 단계가 끝난 행사도 결과는 읽을 수 있다.
+    """
+    event, member = await _get_event_for_account(session, event_id=event_id, account=account)
+    status, body = await planning_service.lookup_request(
+        session, event_id=event.id, member_id=member.id, key=request_key
+    )
+    return Envelope(data=PlanRequestOut(
+        status=status, result=PlanViewOut.model_validate(body) if body is not None else None,
+    ))
+
+
 @router.get("/{event_id}/plan/messages", response_model=PlanMessageListResponse)
 async def list_plan_messages(
     event_id: str,
@@ -248,12 +319,15 @@ async def get_plan_steps_snapshot(
         select(Conversation).where(Conversation.event_id == event_id)
         .order_by(Conversation.created_at.desc()).limit(1)
     )
+    # 잠근 뒤 컬럼을 다시 읽는다. 세션에 올라온 Event는 잠그기 전 값일 수 있다.
+    plan_revision = await session.scalar(select(Event.plan_revision).where(Event.id == event_id))
     rows = await session.scalars(
         select(Step).where(Step.event_id == event_id)
         .options(selectinload(Step.actions)).order_by(Step.step_order)
     )
     return Envelope(data=PlanStepsSnapshotOut(
         base_revision=conversation.base_revision if conversation else 0,
+        plan_revision=plan_revision or 0,
         steps=[PlannedStepOut.model_validate(event_service.planned_step_out(row)) for row in rows],
     ))
 
@@ -300,6 +374,30 @@ async def generate_plan(
     return Envelope(data=PlanViewOut.model_validate(view))
 
 
+@router.post("/{event_id}/plan/generate/stream", response_class=StreamingResponse,
+             responses=_STREAM_RESPONSES)
+async def generate_plan_stream(
+    event_id: str,
+    body: PlanGenerateIn,
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> StreamingResponse:
+    event, member = await _get_event_for_account(
+        session, event_id=event_id, account=account
+    )
+    _ensure_planning(event)
+    await session.close()
+    turn = await planning_service.open_generate(
+        club_id=event.club_id, event_id=event_id, member_id=member.id,
+        base_revision=body.base_revision,
+        use_current_conditions=body.use_current_conditions,
+        idempotency_key=idempotency_key,
+    )
+    return StreamingResponse(planning_stream.stream(turn), media_type="text/event-stream",
+                             headers=_STREAM_HEADERS)
+
+
 @router.get("/{event_id}/plan", response_model=Envelope[PlanScreenOut])
 async def get_plan(
     event_id: str,
@@ -313,6 +411,26 @@ async def get_plan(
         session, club_id=event.club_id, event_id=event_id
     )
     return Envelope(data=PlanScreenOut.model_validate(screen))
+
+
+@router.post("/{event_id}/plan/review", response_model=Envelope[PlanReviewOut])
+async def request_plan_review(
+    event_id: str,
+    body: PlanReviewIn,
+    account: Account = Depends(get_current_account),
+    session: AsyncSession = Depends(get_session),
+) -> Envelope[PlanReviewOut]:
+    """계획 수정 후 AI 검토 (#177). AI 실패는 200 + status FAILED로 돌려준다.
+
+    서비스가 AI 호출 전에 커밋해 이 세션의 트랜잭션을 닫는다.
+    """
+    event, member = await _get_event_for_account(session, event_id=event_id, account=account)
+    if member.role not in WRITER_ROLES:
+        raise Forbidden()
+    review = await plan_review_service.request_review(
+        session, event=event, expected_revision=body.expected_revision
+    )
+    return Envelope(data=PlanReviewOut.model_validate(review))
 
 
 def _parse_statuses(raw: str | None) -> list[ActionStatus] | None:
@@ -371,6 +489,8 @@ async def list_event_steps(
     account: Account = Depends(get_current_account),
     session: AsyncSession = Depends(get_session),
 ) -> StepListResponse:
-    await _get_event_for_account(session, event_id=event_id, account=account)
-    rows = await event_service.list_steps(session, event_id=event_id)
+    event, _ = await _get_event_for_account(session, event_id=event_id, account=account)
+    rows = await event_service.list_steps(
+        session, event_id=event_id, event_status=event.status
+    )
     return StepListResponse.model_validate({"data": rows, "meta": None})

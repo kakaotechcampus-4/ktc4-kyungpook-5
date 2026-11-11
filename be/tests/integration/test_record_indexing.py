@@ -132,3 +132,32 @@ async def test_index_configuration_failure_keeps_parsed_record_and_safe_error(cl
         assert record.parse_status == RecordParseStatus.COMPLETED
         assert record.parse_result["blocks"]
         assert not list(await session.scalars(select(RecordChunk).where(RecordChunk.record_id == saved["id"])))
+
+
+async def test_s3_upload_reload_download_delete_and_scope(client, app_db, monkeypatch):
+    import io
+    import boto3
+    from app.core.config import get_settings
+    objects = {}
+    class FakeS3:
+        def put_object(self, *, Bucket, Key, Body): objects[(Bucket, Key)] = Body
+        def get_object(self, *, Bucket, Key): return {'Body': io.BytesIO(objects[(Bucket, Key)])}
+        def delete_object(self, *, Bucket, Key): objects.pop((Bucket, Key), None)
+    monkeypatch.setenv('STORAGE_BACKEND', 's3')
+    monkeypatch.setenv('S3_BUCKET', 'isolated-test')
+    get_settings.cache_clear()
+    monkeypatch.setattr(boto3, 'client', lambda *args, **kwargs: FakeS3())
+    headers = _owner(client); club_id = _club(client, headers)
+    outsider = _owner(client)
+    record = _upload(client, headers, club_id)
+    record_id = record['id']
+    assert client.get(f'/api/v1/records/{record_id}', headers=headers).status_code == 200
+    assert client.get(f'/api/v1/records/{record_id}/file', headers=outsider).status_code == 403
+    downloaded = client.get(f'/api/v1/records/{record_id}/file', headers=headers)
+    assert downloaded.status_code == 200 and downloaded.content == RULES_CSV and len(objects) == 1
+    assert client.delete(f'/api/v1/records/{record_id}', headers=outsider).status_code == 403
+    assert client.delete(f'/api/v1/records/{record_id}', headers=headers).status_code == 204
+    assert not objects and client.get(f'/api/v1/records/{record_id}', headers=headers).status_code == 404
+    async with db_session.get_sessionmaker()() as session:
+        assert await session.get(Record, record_id) is None
+        assert not list(await session.scalars(select(RecordChunk).where(RecordChunk.record_id == record_id)))

@@ -54,3 +54,18 @@ export const EVENT_STATUS_TONE: Record<string, 'neutral' | 'done' | 'approved' |
   CANCELLING: 'failed',
   CANCELLED: 'neutral',
 }
+
+// 회의 상태. 회의 머리 카드와 지난 회의 목록이 같이 쓴다.
+export const MEETING_STATUS_LABEL: Record<string, string> = {
+  RECORDING: '진행 중',
+  FINALIZING: '마무리하는 중',
+  COMPLETED: '끝남',
+  FAILED: '마무리하지 못함',
+}
+
+export const MEETING_STATUS_TONE: Record<string, 'neutral' | 'failed'> = {
+  RECORDING: 'failed',
+  FINALIZING: 'neutral',
+  COMPLETED: 'neutral',
+  FAILED: 'failed',
+}

@@ -46,12 +46,16 @@ class _Step:
     completed_at: datetime | None
 
 
-def test_처음으로_안_끝난_단계가_현재_단계다() -> None:
+@pytest.mark.parametrize(
+    "status",
+    [EventStatus.ON_GOING, EventStatus.COMPLETE, EventStatus.CANCELLING, EventStatus.CANCELLED],
+)
+def test_처음으로_안_끝난_단계가_현재_단계다(status: EventStatus) -> None:
     done = datetime(2026, 3, 1, tzinfo=UTC)
     steps = [_Step("a", done), _Step("b", None), _Step("c", done), _Step("d", None)]
 
     # 현재 단계 뒤는 completed_at이 있어도 TODO다.
-    assert event_rules.step_states(steps) == {
+    assert event_rules.step_states(steps, event_status=status) == {
         "a": StepState.DONE,
         "b": StepState.CURRENT,
         "c": StepState.TODO,
@@ -62,9 +66,28 @@ def test_처음으로_안_끝난_단계가_현재_단계다() -> None:
 def test_단계가_모두_끝나면_현재_단계가_없다() -> None:
     done = datetime(2026, 3, 1, tzinfo=UTC)
 
-    states = event_rules.step_states([_Step("a", done), _Step("b", done)])
+    states = event_rules.step_states(
+        [_Step("a", done), _Step("b", done)], event_status=EventStatus.ON_GOING
+    )
 
     assert StepState.CURRENT not in states.values()
+
+
+def test_계획_중에는_현재_단계가_없고_모두_TODO다() -> None:
+    # 운영 시작 전에는 단계 진행이 시작되지 않았다(#336). completed_at이 남은 비정상 데이터도 TODO다.
+    done = datetime(2026, 3, 1, tzinfo=UTC)
+    steps = [_Step("a", None), _Step("b", done), _Step("c", None)]
+
+    assert event_rules.step_states(steps, event_status=EventStatus.PLANNING) == {
+        "a": StepState.TODO,
+        "b": StepState.TODO,
+        "c": StepState.TODO,
+    }
+
+
+def test_행사_상태_없이_부르면_TypeError다() -> None:
+    with pytest.raises(TypeError):
+        event_rules.step_states([_Step("a", None)])  # type: ignore[call-arg]
 
 
 def test_dday는_시작일까지_남은_날이고_날짜가_없으면_null이다() -> None:
@@ -131,3 +154,22 @@ def test_canApprove는_처리_API가_받는_조건과_같다() -> None:
         MemberRole.MEMBER, ActionStatus.PENDING, action_type=ActionType.TRANSFER,
         approve_needed=True, event_status=EventStatus.ON_GOING,
     ) is False
+
+
+@pytest.mark.parametrize(
+    ("action_type", "amount", "expected"),
+    [
+        (ActionType.TRANSFER, 30000, True),
+        (ActionType.TRANSFER, None, False),
+        (ActionType.TRANSFER, 0, False),
+        (ActionType.TRANSFER, -1, False),
+        # 지출 정산(EXPENSE)의 금액은 실제 지출이 아니라 예산 한도다.
+        (ActionType.EXPENSE, 50000, False),
+        (ActionType.CONTRACT, 50000, False),
+        (ActionType.NOTICE, 50000, False),
+    ],
+)
+def test_금액이_있는_송금_행동만_지출로_기록한다(
+    action_type: ActionType, amount: int | None, expected: bool
+) -> None:
+    assert event_rules.records_expense(action_type, amount) is expected

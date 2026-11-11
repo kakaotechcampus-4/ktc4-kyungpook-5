@@ -4,6 +4,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from pydantic import ValidationError
 
 from ....contracts import ChatTurn, ContractModel, NonBlankStr
+from ....ports import PlanningProgressPort
 from ..generation.entrypoints import GenerationUpdate, generate_with_context
 from ..generation.offers import same_basis, valid_evidence
 from ..generation.schemas import (
@@ -66,6 +67,7 @@ def plan_messages(messages) -> tuple[ChatTurn, ...]:
 async def generate_event_plan(
     arguments: GenerateEventPlanInput, *, request: PlanningAgentTurnInput, draft: PlanningDraft,
     state: PlanningGenerationState, messages, generate: PlanGenerator,
+    progress: PlanningProgressPort | None = None, operation_id: str | None = None,
 ) -> GenerationUpdate:
     def clarify(reason):
         return GenerationUpdate(generation=state,
@@ -87,4 +89,5 @@ async def generate_event_plan(
         reference_date=request.reference_date, timezone=request.timezone,
         reference_facts=latest_reference_facts(messages))
     return await generate_with_context(shared, state, generate=generate,
-                                       use_current_conditions=arguments.use_current_conditions)
+                                       use_current_conditions=arguments.use_current_conditions,
+                                       progress=progress, operation_id=operation_id)

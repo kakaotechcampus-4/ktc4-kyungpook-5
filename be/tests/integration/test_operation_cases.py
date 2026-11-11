@@ -191,7 +191,10 @@ async def test_migration_preserves_existing_event(client, app_db, alembic_cfg):
     await asyncio.to_thread(command.downgrade, alembic_cfg, '20261103_decision_judge_input')
     try:
         async with db_session.get_sessionmaker()() as session:
-            before = await session.get(Event, event)
+            # 뒤에 붙은 migration의 컬럼은 이 시점에 없으므로 ORM 엔터티 대신 필요한 컬럼만 읽는다.
+            before = (await session.execute(
+                select(Event.title, Event.expected_headcount).where(Event.id == event)
+            )).one()
             assert before.title == '기존 행사' and before.expected_headcount == 24
     finally:
         await asyncio.to_thread(command.upgrade, alembic_cfg, 'head')
@@ -261,3 +264,22 @@ async def test_duplicate_request_rechecks_membership_after_router_check(client, 
     monkeypatch.setattr(action_service, 'lock_operating_event', lock_and_revoke)
     # Router _event already passed while the member was active; service must recheck.
     assert client.post(url(event), headers=headers, json=body).status_code == 403
+
+
+async def test_resolve_response_retry_preserves_first_answer_and_result(client, app_db, fake_ai):
+    headers, club = owner_with_club(client, 'operation-answer-retry')
+    event = await add_event(club)
+    case = client.post(url(event), headers=headers, json={'clientRequestId': 'answer-retry', 'situation': '장소 변경'}).json()['data']
+    action = case['action']
+    action_url = f"/api/v1/actions/{action['id']}/resolve"
+    answer = {'expectedVersion': action['version'], 'choice': 'MANUAL', 'manualValue': '도서관'}
+    assert client.post(action_url, headers=headers, json=answer).status_code == 200
+    assert client.post(action_url, headers=headers, json=answer).status_code == 409
+    path = f"{url(event)}/{case['id']}"
+    saved = client.get(path, headers=headers).json()['data']
+    assert saved['situation'] == '장소 변경' and saved['action']['manualValue'] == '도서관'
+    assert saved['action']['status'] == 'DONE' and saved['resultStatus'] == 'NOT_REQUESTED'
+    result = client.post(path + '/result', headers=headers)
+    assert result.status_code == 200 and result.json()['data']['resultStatus'] == 'READY'
+    assert client.post(path + '/result', headers=headers).json()['data']['result'] == result.json()['data']['result']
+    assert len(fake_ai) == 2

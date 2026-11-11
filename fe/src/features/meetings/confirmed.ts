@@ -1,9 +1,21 @@
 import { apiGet, apiPatch, apiPost } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
+import type { Suggestion } from './types'
 type Schemas = components['schemas']
 export type Recipient = Schemas['ReminderRecipientOut']
 export type ConfirmedTask = Schemas['ConfirmedTaskOut']
 export type ConfirmedFields = Omit<Schemas['TaskSuggestionConfirmIn'], 'expectedVersion'>
+export function notificationTaskDetail(
+  linked: { clubId: string; taskId: string; task: ConfirmedTask } | undefined,
+  clubId: string,
+  taskId: string | undefined,
+  dismissedKey: string | null,
+) {
+  const key = taskId ? JSON.stringify([clubId, taskId]) : null
+  const task = linked?.clubId === clubId && linked.taskId === taskId && linked.task.id === taskId
+    ? linked.task : null
+  return { key, task, open: !!task && key !== dismissedKey }
+}
 const path = (club: string) => `/clubs/${encodeURIComponent(club)}`
 export const confirmedApi = {
   recipients: (club: string) => apiGet<Recipient[]>(`${path(club)}/reminder-recipients`),
@@ -39,4 +51,18 @@ export function displayTime(iso: string | null) {
         timeStyle: 'short',
       }).format(new Date(iso))
     : '미정'
+}
+
+function suggestionDue(suggestion: Suggestion) {
+  const at = suggestion.dueAt ?? suggestion.scheduledAt
+  return at ? displayTime(at) : suggestion.dueDate
+}
+
+export function candidateMeta(suggestion: Suggestion) {
+  return [
+    suggestion.suggestedAssignee ? `담당 ${suggestion.suggestedAssignee}` : '담당 확인 필요',
+    suggestionDue(suggestion),
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }

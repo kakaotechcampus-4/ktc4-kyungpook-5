@@ -1,0 +1,63 @@
+{
+  "reports": [
+    {
+      "type": "fixture",
+      "viewport": {
+        "width": 1440,
+        "height": 800
+      },
+      "overflow": false
+    },
+    {
+      "type": "fixture",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "overflow": false
+    },
+    {
+      "type": "fixture",
+      "viewport": {
+        "width": 1024,
+        "height": 800
+      },
+      "overflow": false
+    },
+    {
+      "type": "fixture",
+      "viewport": {
+        "width": 1023,
+        "height": 800
+      },
+      "overflow": false
+    },
+    {
+      "type": "fixture",
+      "viewport": {
+        "width": 390,
+        "height": 800
+      },
+      "overflow": false
+    },
+    {
+      "type": "fixture",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "overflow": false
+    },
+    {
+      "type": "fixture",
+      "case": "conditions-correction-wait-and-reload",
+      "chatPosts": 1
+    },
+    {
+      "type": "fixture",
+      "case": "server-only-readiness-and-previous-p2-entry",
+      "generationPosts": 0
+    }
+  ],
+  "browserErrors": []
+}

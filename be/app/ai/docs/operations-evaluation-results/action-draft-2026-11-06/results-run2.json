@@ -1,0 +1,286 @@
+{
+  "meta": {
+    "label": "run2",
+    "model": "gpt-5.6-luna",
+    "prompt_version": "action-draft-v1",
+    "commit": "818342d",
+    "run_date": "2026-11-06",
+    "cases": 10
+  },
+  "rows": [
+    {
+      "id": "survey_full",
+      "step": "DEMAND_SURVEY",
+      "action_type": "NOTICE",
+      "missing": [],
+      "elapsed_s": 5.81,
+      "error": null,
+      "check": "first",
+      "attempts": [
+        {
+          "content": "📢 겨울방학 해커톤 참여 의향 조사\n\n일시: 12월 19일(토)~20일(일)\n장소: IT대학 5호관\n참가비: 10,000원\n\n참여를 희망하시는 분은 11월 30일(월)까지 [신청 링크]에서 의향을 남겨 주세요. 수요를 파악하기 위한 조사이며, 최종 모집은 추후 안내드리겠습니다.",
+          "violations": []
+        }
+      ],
+      "unknowns": [
+        "신청 링크"
+      ],
+      "checks": {
+        "placeholder": null,
+        "forbidden_absent": true,
+        "title_not_bracketed": true,
+        "emoji_ok": true
+      }
+    },
+    {
+      "id": "survey_missing",
+      "step": "DEMAND_SURVEY",
+      "action_type": "NOTICE",
+      "missing": [
+        "location",
+        "end_date",
+        "step.deadline",
+        "action.due_date"
+      ],
+      "elapsed_s": 8.49,
+      "error": null,
+      "check": "first",
+      "attempts": [
+        {
+          "content": "📢 새해 해맞이 산행 참여 의사 조사\n\n일시: 2027년 1월 1일(금)\n장소: [장소 미정]\n참가비: 15,000원\n\n참여를 희망하시는 분은 단톡방에 의사를 남겨 주세요.",
+          "violations": []
+        }
+      ],
+      "unknowns": [
+        "장소 미정"
+      ],
+      "checks": {
+        "placeholder": false,
+        "forbidden_absent": true,
+        "title_not_bracketed": true,
+        "emoji_ok": true
+      }
+    },
+    {
+      "id": "recruit_full",
+      "step": "RECRUIT_NOTICE",
+      "action_type": "NOTICE",
+      "missing": [],
+      "elapsed_s": 4.3,
+      "error": null,
+      "check": "first",
+      "attempts": [
+        {
+          "content": "📢 봄 MT 참가자 모집\n\n일시: 3월 27일(토)~28일(일)\n장소: 경주\n참가비: 50,000원\n신청 기한·방법: 3월 19일(금)까지 [신청 방법]으로 신청해주세요.",
+          "violations": []
+        }
+      ],
+      "unknowns": [
+        "신청 방법"
+      ],
+      "checks": {
+        "placeholder": null,
+        "forbidden_absent": true,
+        "title_not_bracketed": true,
+        "emoji_ok": true
+      }
+    },
+    {
+      "id": "recruit_missing",
+      "step": "RECRUIT_NOTICE",
+      "action_type": "NOTICE",
+      "missing": [
+        "location",
+        "end_date",
+        "step.deadline",
+        "action.due_date"
+      ],
+      "elapsed_s": 5.77,
+      "error": null,
+      "check": "first",
+      "attempts": [
+        {
+          "content": "📢 신입생 환영회 참가자 모집\n\n일시: 3월 12일(금)\n장소: [장소 미정]\n참가비: 20,000원\n신청 기한: [마감일]\n신청 방법: [신청 링크]",
+          "violations": []
+        }
+      ],
+      "unknowns": [
+        "장소 미정",
+        "마감일",
+        "신청 링크"
+      ],
+      "checks": {
+        "placeholder": true,
+        "forbidden_absent": true,
+        "title_not_bracketed": true,
+        "emoji_ok": true
+      }
+    },
+    {
+      "id": "responses_full",
+      "step": "CHECK_RESPONSES",
+      "action_type": "NOTICE",
+      "missing": [],
+      "elapsed_s": 4.44,
+      "error": null,
+      "check": "first",
+      "attempts": [
+        {
+          "content": "📢 벚꽃 피크닉 응답 확인 안내\n\n일시: 4월 3일(토)\n장소: 수성못\n참가비: 8,000원\n\n아직 참여 여부를 응답하지 않은 분들은 3월 27일(토)까지 [응답 방법]으로 답변 부탁드립니다.",
+          "violations": []
+        }
+      ],
+      "unknowns": [
+        "응답 방법"
+      ],
+      "checks": {
+        "placeholder": null,
+        "forbidden_absent": true,
+        "title_not_bracketed": true,
+        "emoji_ok": true
+      }
+    },
+    {
+      "id": "responses_missing",
+      "step": "CHECK_RESPONSES",
+      "action_type": "EXTERNAL_SEND",
+      "missing": [
+        "location",
+        "end_date",
+        "step.deadline",
+        "action.due_date",
+        "fee_per_person"
+      ],
+      "elapsed_s": 3.4,
+      "error": null,
+      "check": "first",
+      "attempts": [
+        {
+          "content": "[이름]님, 안녕하세요!\n여름 MT(7월 10일) 참여 의사 응답이 아직 확인되지 않아 연락드립니다.\n참여 가능 여부를 확인하셔서 회신 부탁드립니다. 감사합니다!",
+          "violations": []
+        }
+      ],
+      "unknowns": [
+        "이름"
+      ],
+      "checks": {
+        "placeholder": null,
+        "forbidden_absent": true,
+        "title_not_bracketed": true,
+        "emoji_ok": true
+      }
+    },
+    {
+      "id": "fees_full",
+      "step": "COLLECT_FEES",
+      "action_type": "NOTICE",
+      "missing": [],
+      "elapsed_s": 4.13,
+      "error": null,
+      "check": "first",
+      "attempts": [
+        {
+          "content": "📢 가을 문학 기행 참가비 입금 안내\n\n일시: 10월 24일(토)~25일(일)\n장소: 통영\n참가비: 70,000원\n\n10월 16일(금)까지 아래 계좌로 입금해 주세요.\n계좌: [계좌]",
+          "violations": []
+        }
+      ],
+      "unknowns": [
+        "계좌"
+      ],
+      "checks": {
+        "placeholder": null,
+        "forbidden_absent": true,
+        "title_not_bracketed": true,
+        "emoji_ok": true
+      }
+    },
+    {
+      "id": "fees_missing",
+      "step": "COLLECT_FEES",
+      "action_type": "EXTERNAL_SEND",
+      "missing": [
+        "location",
+        "end_date",
+        "step.deadline",
+        "action.due_date"
+      ],
+      "elapsed_s": 3.62,
+      "error": null,
+      "check": "first",
+      "attempts": [
+        {
+          "content": "[이름]님, 겨울 MT 참가비 40,000원 입금 안내드립니다.\n입금 계좌: [계좌]\n행사는 1월 16일(토)에 진행될 예정이니 확인 후 입금 부탁드립니다.",
+          "violations": []
+        }
+      ],
+      "unknowns": [
+        "이름",
+        "계좌"
+      ],
+      "checks": {
+        "placeholder": null,
+        "forbidden_absent": true,
+        "title_not_bracketed": true,
+        "emoji_ok": true
+      }
+    },
+    {
+      "id": "pre_event_full",
+      "step": "PRE_EVENT_NOTICE",
+      "action_type": "NOTICE",
+      "missing": [],
+      "elapsed_s": 8.98,
+      "error": null,
+      "check": "first",
+      "attempts": [
+        {
+          "content": "📢 별 관측 캠프 사전 안내\n\n일시: 11월 21일(토)~22일(일)\n장소: 영천 보현산\n집결 시간: [집결 시간]\n집결 장소: [집결 장소]\n준비물: [준비물]",
+          "violations": []
+        }
+      ],
+      "unknowns": [
+        "집결 시간",
+        "집결 장소",
+        "준비물"
+      ],
+      "checks": {
+        "placeholder": null,
+        "forbidden_absent": true,
+        "title_not_bracketed": true,
+        "emoji_ok": true
+      }
+    },
+    {
+      "id": "pre_event_missing",
+      "step": "PRE_EVENT_NOTICE",
+      "action_type": "NOTICE",
+      "missing": [
+        "location",
+        "end_date",
+        "step.deadline",
+        "action.due_date",
+        "fee_per_person"
+      ],
+      "elapsed_s": 3.46,
+      "error": null,
+      "check": "first",
+      "attempts": [
+        {
+          "content": "📢 정기 학술 발표회 사전 안내\n\n일시: 12월 11일(금)\n장소: [장소 미정]\n집결 시간: [집결 시간]\n준비물: [준비물]",
+          "violations": []
+        }
+      ],
+      "unknowns": [
+        "장소 미정",
+        "집결 시간",
+        "준비물"
+      ],
+      "checks": {
+        "placeholder": true,
+        "forbidden_absent": true,
+        "title_not_bracketed": true,
+        "emoji_ok": true
+      }
+    }
+  ]
+}

@@ -39,10 +39,17 @@ class Model:
     def __init__(self, answer=None):
         self.answer=answer or composition()
         self.calls=[]
+        self.text_passed=[]
 
-    async def __call__(self, messages, schema):
+    async def __call__(self, messages, schema, *, on_text=None):
         self.calls.append((messages,schema))
+        self.text_passed.append(on_text is not None)
+        # 실패 응답은 글자가 오기 전에 끝난 것으로 본다(시간 초과·연결 실패).
+        # 성공은 실제 모델처럼 계획 JSON을 17글자씩 잘라 넘긴 뒤 돌려준다(#389).
         if isinstance(self.answer,Exception): raise self.answer
+        if on_text is not None:
+            text=self.answer.model_dump_json()
+            for i in range(0,len(text),17): await on_text(text[i:i+17])
         return self.answer
 
 
@@ -69,12 +76,36 @@ def test_generation_uses_catalog_and_keeps_unknown_dates_and_original_draft():
     {"steps":[dict(code="EVENT_DAY",purpose="당일"),dict(code="EVENT_DAY",purpose="중복")]},
     {"excluded_steps":[]},
     {"assumptions":[dict(content="지어낸 기록",fact_ids=["f999"])]},
-    {"steps":[dict(code="CANCEL_RECORD",purpose="취소 단계 혼입")]},
 ])
 def test_invalid_compositions_return_safe_failure(change):
     model=Model(composition(**change))
     result=asyncio.run(run_plan_generation(request(),invoke=model))
     assert result.status=="failed" and result.preview is None and result.model_calls==1
+
+
+def test_generation_model_is_offered_only_the_13_catalog_codes():
+    # #276: StepCode의 CANCEL_* 4개가 형식에 보이면 모델이 "뺀 단계"로 적어 catalog_partition에서 거절됐다.
+    schema=PlanComposition.model_json_schema()
+    catalog=[x.code.value for x in CATALOG]
+    assert schema["$defs"]["ModelStep"]["properties"]["code"]["enum"]==catalog
+    assert schema["$defs"]["ModelExcludedStep"]["properties"]["code"]["enum"]==catalog
+    assert "CANCEL" not in json.dumps(schema)
+
+
+@pytest.mark.parametrize("field",["steps","excluded_steps"])
+def test_cancel_code_from_model_is_an_output_failure_before_plan_validation(field):
+    # 실제 실패(11-04 G1)와 같은 모양: 13단계를 모두 넣고 CANCEL_* 4개를 뺀 단계로 적은 응답.
+    # 지금 형식에서는 계획 검사까지 가지 않고 출력 형식 실패(invalid_output)로 분류된다.
+    data=composition(steps=[dict(code=x.code,purpose="필요") for x in CATALOG]).model_dump(mode="json")
+    cancel=[dict(code=code,reason="현재 취소 조건이 없음") for code in
+            ("CANCEL_NOTIFY_PARTICIPANTS","CANCEL_VENUE","CANCEL_REFUND","CANCEL_RECORD")]
+    if field=="excluded_steps":
+        data["excluded_steps"]=cancel
+    else:
+        data["steps"]=[*data["steps"][:-1],dict(code="CANCEL_RECORD",purpose="취소 단계 혼입")]
+    result=asyncio.run(run_plan_generation(request(),invoke=Model(data)))
+    assert result.status=="failed" and result.preview is None
+    assert "출력 형식" in result.reason
 
 
 def test_real_fact_sources_are_attached_by_code_and_not_written_by_model():

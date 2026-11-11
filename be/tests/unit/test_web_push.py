@@ -28,14 +28,23 @@ def _subscription(endpoint: str = "https://fcm.googleapis.com/fcm/send/device") 
     "https://fcm.googleapis.com.evil.invalid/push",
     "https://user:password@fcm.googleapis.com/push",
     "https://fcm.googleapis.com:8080/push",
+    "https://jmt17.google.com.evil.invalid/fcm/send/a",
+    "https://jmt18.google.com/fcm/send/a",
+    "https://jmt17.google.com/redirect",
+    "https://jmt17.google.com/fcm/send/a?next=https://example.com",
+    "https://jmt17.google.com/fcm/send/a%2F..%2F..",
 ])
 def test_untrusted_push_endpoints_are_rejected(endpoint: str) -> None:
     with pytest.raises(ValidationError):
         PushSubscriptionIn.model_validate(_subscription(endpoint))
 
 
-def test_browser_json_is_accepted_and_bad_keys_are_rejected() -> None:
-    body = _subscription()
+@pytest.mark.parametrize("endpoint", [
+    "https://fcm.googleapis.com/fcm/send/device",
+    "https://jmt17.google.com/fcm/send/identifier:APA91b_test-123",
+])
+def test_browser_json_is_accepted_and_bad_keys_are_rejected(endpoint: str) -> None:
+    body = _subscription(endpoint)
     assert PushSubscriptionIn.model_validate(body).expiration_time is None
     body["keys"]["auth"] = "short"
     with pytest.raises(ValidationError):

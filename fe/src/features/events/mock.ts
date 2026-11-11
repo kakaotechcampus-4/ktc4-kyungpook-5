@@ -1,5 +1,7 @@
 // 시연용 예시 데이터. 주소에 ?demo를 붙였을 때만 화면에 쓴다(실제 화면은 빈 목록에서 시작).
 // 모양은 API 응답과 같게 두고, 날짜는 오늘 기준으로 잡아 D-day가 늘 시안처럼 보이게 한다.
+import { blanksIn } from '@/features/events/actionDraft'
+import { ApiError } from '@/shared/api/types'
 import type {
   ActionPage,
   CancelTask,
@@ -15,6 +17,13 @@ function day(n: number): string {
   const d = new Date()
   d.setDate(d.getDate() + n)
   return d.toLocaleDateString('en-CA')
+}
+
+// 오늘에서 n일 뒤 "5월 3일(일)". 토리 초안 예시 문구에 쓴다.
+function koDay(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
+  return `${d.getMonth() + 1}월 ${d.getDate()}일(${'일월화수목금토'[d.getDay()]})`
 }
 
 // 한국 시각 그날 23:59 마감
@@ -136,13 +145,31 @@ export const DEMO_STEPS: Record<string, EventStep[]> = {
       startsAt: at(-1, '00:00'),
       doneActions: [
         { id: 'act_11', title: '입금 12건을 참가자 명단과 대조했어요.', status: 'DONE' },
-        { id: 'act_12', title: '입금자명이 다른 2건을 확인 요청으로 올렸어요.', status: 'DONE' },
+        { id: 'act_12', title: '입금자명이 명단과 다른 1건을 질문으로 올렸어요.', status: 'DONE' },
         { id: 'act_13', title: '미납자 목록을 5명 → 4명으로 갱신했어요.', status: 'DONE' },
       ],
       remainingActions: [
         {
           id: 'act_21',
           title: '미납자 4명에게 2차 안내 발송',
+          status: 'PENDING',
+          approveNeeded: true,
+        },
+        {
+          id: 'act_27',
+          title: '입금 마감 하루 전 단톡방 공지 올리기',
+          status: 'PENDING',
+          approveNeeded: true,
+        },
+        {
+          id: 'act_28',
+          title: '입금 확인된 28명에게 확인 문자 보내기',
+          status: 'PENDING',
+          approveNeeded: true,
+        },
+        {
+          id: 'act_29',
+          title: '환불 규정 안내 공지 올리기',
           status: 'PENDING',
           approveNeeded: true,
         },
@@ -197,46 +224,7 @@ export const DEMO_EVENT_DETAILS: Record<string, EventDetail> = Object.fromEntrie
   }),
 )
 
-export const DEMO_ACTIONS: Record<string, EventAction[]> = {
-  evt_9f2c8a: [
-    {
-      id: 'act_21',
-      type: 'EXTERNAL_SEND',
-      title: '미납자 4명에게 2차 납부 안내 문자 보내기',
-      subtitle: '대상 4명 · 비용 0원',
-      dueDate: day(2),
-      status: 'PENDING',
-    },
-    {
-      id: 'act_22',
-      type: 'TRANSFER',
-      title: '펜션 계약금 100,000원 이체하고 예약 확정',
-      subtitle: '마감 다음 날부터 환불 불가 · 잔고 2,412,000원',
-      dueDate: day(4),
-      status: 'PENDING',
-    },
-    {
-      id: 'act_23',
-      type: 'EXPENSE',
-      title: '장보기·버스 잔금 등 지출 4건 묶음 승인',
-      subtitle: '합계 182,000원 · 영수증 4건 확인됨',
-      dueDate: day(13),
-      status: 'PENDING',
-    },
-  ],
-  evt_c41d07: [
-    {
-      id: 'act_31',
-      type: 'CONTRACT',
-      title: '공대 7호관 세미나실 1박 2일 대관 신청서 제출',
-      subtitle: '학과 사무실 승인 필요 · 야간 사용 신청 포함',
-      dueDate: day(3),
-      status: 'PENDING',
-    },
-  ],
-}
-
-// L2 확인 요청. 가을 해커톤은 비워 두어 빈 상태를 볼 수 있게 한다.
+// 운영 상황과 무관한 토리 질문. 실제로는 드물지만 「지금 할 일」의 질문 행을 볼 수 있게 하나 둔다.
 export const DEMO_CONFIRMATIONS: Record<string, EventAction[]> = {
   evt_9f2c8a: [
     {
@@ -252,29 +240,16 @@ export const DEMO_CONFIRMATIONS: Record<string, EventAction[]> = {
       ],
       allowManual: true,
     },
-    {
-      id: 'act_32',
-      type: 'CONFIRMATION',
-      title: '어느 행사인지 모르겠습니다',
-      subtitle: '학생회 지원금 500,000원 — 봄 MT에 넣을까요, 공동 회계로 둘까요?',
-      dueDate: null,
-      status: 'PENDING',
-      options: [
-        { key: 'ASSIGN_EVENT', label: '봄 MT에 넣기' },
-        { key: 'ASSIGN_CLUB', label: '공동 회계로' },
-      ],
-      allowManual: true,
-    },
   ],
 }
 
 const PARK = { id: 'mbr_01', name: '박수겸', role: 'MANAGER' } as const
 const KIM = { id: 'mbr_02', name: '김지훈', role: 'OWNER' } as const
 
-// L2 처리된 승인. 최근 몇 건과 전체 개수.
+// L2 처리 기록. 최근 몇 건과 전체 개수.
 export const DEMO_RESOLVED: Record<string, ActionPage> = {
   evt_9f2c8a: {
-    totalCount: 12,
+    totalCount: 6,
     items: [
       {
         id: 'act_41',
@@ -306,6 +281,37 @@ export const DEMO_RESOLVED: Record<string, ActionPage> = {
         resolvedAt: at(-2, '17:02'),
         resolvedBy: PARK,
       },
+      // 여기부터는 「전체 보기」를 눌러야 보인다.
+      {
+        id: 'act_08',
+        type: 'NOTICE',
+        title: '참가비 납부 안내를 단톡방에 공지',
+        subtitle: null,
+        dueDate: null,
+        status: 'DONE',
+        resolvedAt: at(-2, '10:15'),
+        resolvedBy: KIM,
+      },
+      {
+        id: 'act_07',
+        type: 'TRANSFER',
+        title: '펜션 A 예약금 송금',
+        subtitle: null,
+        dueDate: null,
+        status: 'DONE',
+        resolvedAt: at(-3, '16:48'),
+        resolvedBy: PARK,
+      },
+      {
+        id: 'act_05',
+        type: 'EXTERNAL_SEND',
+        title: '학생회에 장소 대여 문의 발송',
+        subtitle: null,
+        dueDate: null,
+        status: 'DENIED',
+        resolvedAt: at(-4, '13:20'),
+        resolvedBy: KIM,
+      },
     ],
   },
   evt_c41d07: {
@@ -328,7 +334,7 @@ export const DEMO_RESOLVED: Record<string, ActionPage> = {
 // Step 모달의 할 일 · 처리된 일. 행사 → 단계 id → Action. 같은 건은 M1 · L2와 id를 맞춘다.
 export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = {
   evt_9f2c8a: {
-    // 4. 모집 공지(완료): L2 처리된 승인의 "모집 공고를 단톡방에 발송"과 같은 건
+    // 4. 모집 공지(완료): L2 처리 기록의 "모집 공고를 단톡방에 발송"과 같은 건
     stp_3: [
       {
         id: 'act_42',
@@ -341,8 +347,10 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
         resolvedBy: KIM,
       },
     ],
-    // 5. 입금 확인(진행 중): 승인 대기는 M1의 act_21과 같은 건
+    // 5. 입금 확인(진행 중)
+    // 토리 초안 상태 다섯 가지를 한 단계에서 볼 수 있게 모았다(#335).
     stp_4: [
+      // 토리 초안 도착(READY + AI). 비워 둔 곳은 본문의 [ ]와 같다.
       {
         id: 'act_21',
         type: 'EXTERNAL_SEND',
@@ -350,7 +358,57 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
         subtitle: '대상 4명 · 비용 0원',
         dueDate: day(2),
         status: 'PENDING',
-        content: '○○○님, 봄 MT 참가비 45,000원이 아직 확인되지 않았습니다.',
+        version: 3,
+        content: `안녕하세요, 봄 MT 준비팀이에요.\n참가비 45,000원이 아직 확인되지 않아 한 번 더 안내드려요.\n입금 계좌: [입금 계좌]\n입금 마감: ${koDay(2)}\n이미 보내셨다면 이 문자는 넘기셔도 돼요.`,
+        contentStatus: 'READY',
+        contentSource: 'AI',
+        contentUnknowns: ['입금 계좌'],
+        canRequestDraft: true,
+      },
+      // 작성 중(DRAFTING). 시연에서는 처음 본 뒤 15초가 지나면 초안이 도착한다.
+      {
+        id: 'act_27',
+        type: 'NOTICE',
+        title: '입금 마감 하루 전 단톡방 공지 올리기',
+        subtitle: '대상 전체 회원 32명',
+        dueDate: day(1),
+        status: 'PENDING',
+        version: 1,
+        content: null,
+        contentStatus: 'DRAFTING',
+        contentSource: null,
+        contentUnknowns: [],
+        canRequestDraft: false,
+      },
+      // 초안을 받지 못함(FAILED). 본문 없이도 검토·승인할 수 있다.
+      {
+        id: 'act_28',
+        type: 'EXTERNAL_SEND',
+        title: '입금 확인된 28명에게 확인 문자 보내기',
+        subtitle: '대상 28명 · 비용 0원',
+        dueDate: day(3),
+        status: 'PENDING',
+        version: 2,
+        content: null,
+        contentStatus: 'FAILED',
+        contentSource: null,
+        contentUnknowns: [],
+        canRequestDraft: true,
+      },
+      // 운영진이 고친 글(READY + USER). 토리가 다시 쓰지 않는다.
+      {
+        id: 'act_29',
+        type: 'NOTICE',
+        title: '환불 규정 안내 공지 올리기',
+        subtitle: '대상 전체 회원 32명',
+        dueDate: day(3),
+        status: 'PENDING',
+        version: 6,
+        content: `📢 봄 MT 환불 규정 안내\n${koDay(4)}까지 취소하면 참가비 45,000원을 모두 돌려드려요.\n그 뒤에는 숙소 위약금 때문에 20,000원만 돌려드릴 수 있어요.\n취소 신청: https://forms.gle/springmt-refund-2026`,
+        contentStatus: 'READY',
+        contentSource: 'USER',
+        contentUnknowns: [],
+        canRequestDraft: false,
       },
       {
         id: 'act_25',
@@ -361,8 +419,13 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
         status: 'APPROVED',
         resolvedAt: at(0, '09:20'),
         resolvedBy: PARK,
+        version: 4,
         content:
           '안녕하세요. 봄 MT 참가 신청이 곧 마감됩니다. 아직 응답하지 않은 분은 신청 여부를 알려주세요.',
+        contentStatus: 'READY',
+        contentSource: 'AI',
+        contentUnknowns: [],
+        canRequestDraft: false,
       },
       {
         id: 'act_26',
@@ -375,9 +438,36 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
         resolvedBy: PARK,
       },
     ],
+    // 6. 사전 안내(예정): 아직 현재 단계가 아니라 초안이 없다(NONE).
+    // 카드에 "이 단계가 시작되면 토리가 초안을 써요"가 보인다.
+    stp_5: [
+      {
+        id: 'act_61',
+        type: 'NOTICE',
+        title: '참가자 사전 안내 공지 올리기',
+        subtitle: '집합 시간 · 준비물 · 비상 연락처',
+        dueDate: day(9),
+        status: 'PENDING',
+        version: 1,
+        content: null,
+        contentStatus: 'NONE',
+        contentSource: null,
+        contentUnknowns: [],
+        canRequestDraft: false,
+      },
+      {
+        id: 'act_62',
+        type: 'TRANSFER',
+        title: '버스 잔금 120,000원 이체',
+        subtitle: '출발 3일 전까지',
+        dueDate: day(8),
+        status: 'PENDING',
+        version: 1,
+      },
+    ],
   },
   evt_c41d07: {
-    // 3. 장소 대관(진행 중): M1의 act_31과 같은 건
+    // 3. 장소 대관(진행 중)
     stp_2: [
       {
         id: 'act_31',
@@ -390,6 +480,102 @@ export const DEMO_STEP_ACTIONS: Record<string, Record<string, EventAction[]>> = 
       },
     ],
   },
+}
+
+// ── 토리 초안 시연(#335) ──
+// 서버 없이 초안 흐름(작성 중 → 도착, 고쳐서 저장, 다시 받기, 저장 중 충돌)을 볼 수 있게
+// 바뀐 값을 메모리에만 둔다. 새로 고치면 처음 상태로 돌아간다.
+const DEMO_DRAFT_MS = 15_000
+const demoChanges = new Map<string, Partial<EventAction>>()
+const draftingSince = new Map<string, number>()
+
+// 작성 중인 Action에 도착할 토리 초안. 시연 데이터의 공지(act_27)·확인 문자(act_28)에 맞춘 문구다.
+function demoDraftFor(action: EventAction): string {
+  if (action.type === 'EXTERNAL_SEND')
+    return `안녕하세요, 봄 MT 준비팀이에요.\n참가비 45,000원 입금을 확인했어요. 고맙습니다!\n집합 시간과 준비물은 [사전 안내 날짜]에 따로 보내 드릴게요.`
+  return `📢 봄 MT 참가비 입금 마감 안내\n참가비 45,000원 입금이 ${koDay(1)} 23:59에 마감돼요.\n입금 계좌: [입금 계좌]\n입금하신 분은 따로 알려 주지 않아도 돼요.`
+}
+
+function demoAction(base: EventAction): EventAction {
+  const action = { ...base, ...demoChanges.get(base.id) }
+  if (action.contentStatus !== 'DRAFTING') return action
+  const since = draftingSince.get(action.id) ?? Date.now()
+  draftingSince.set(action.id, since)
+  if (Date.now() - since < DEMO_DRAFT_MS) return action
+  const content = demoDraftFor(action)
+  const arrived: Partial<EventAction> = {
+    content,
+    contentStatus: 'READY',
+    contentSource: 'AI',
+    contentUnknowns: blanksIn(content),
+    canRequestDraft: true,
+    version: (action.version ?? 0) + 1,
+  }
+  demoChanges.set(action.id, { ...demoChanges.get(action.id), ...arrived })
+  draftingSince.delete(action.id)
+  return { ...action, ...arrived }
+}
+
+export function demoStepActions(eventId: string, stepId: string): EventAction[] {
+  return (DEMO_STEP_ACTIONS[eventId]?.[stepId] ?? []).map((a) => ({ ...demoAction(a), stepId }))
+}
+
+// GET /events/{id}/actions?status=PENDING,APPROVED,FAILED 흉내(L2 지금 할 일)
+export function demoTodoActions(eventId: string): EventAction[] {
+  const stepActions = Object.keys(DEMO_STEP_ACTIONS[eventId] ?? {}).flatMap((stepId) =>
+    demoStepActions(eventId, stepId),
+  )
+  return [...stepActions, ...(DEMO_CONFIRMATIONS[eventId] ?? [])].filter((a) =>
+    ['PENDING', 'APPROVED', 'FAILED'].includes(a.status),
+  )
+}
+
+function currentDemoAction(actionId: string): EventAction {
+  for (const steps of Object.values(DEMO_STEP_ACTIONS))
+    for (const actions of Object.values(steps)) {
+      const found = actions.find((a) => a.id === actionId)
+      if (found) return demoAction(found)
+    }
+  throw new ApiError({ code: 'ACTION_NOT_FOUND', message: '행동을 찾지 못했어요.' })
+}
+
+const conflict = () =>
+  new ApiError({ code: 'VERSION_CONFLICT', message: '다른 변경이 먼저 저장됐어요.' })
+
+// PATCH /actions/{id} 흉내: 고친 글은 USER가 쓴 READY가 되고, 승인된 Action은 승인 대기로 돌아간다
+export function demoSaveContent(actionId: string, content: string, expectedVersion: number | undefined) {
+  const current = currentDemoAction(actionId)
+  if (current.version !== expectedVersion) throw conflict()
+  draftingSince.delete(actionId)
+  demoChanges.set(actionId, {
+    ...demoChanges.get(actionId),
+    content,
+    contentStatus: 'READY',
+    contentSource: 'USER',
+    contentUnknowns: blanksIn(content),
+    canRequestDraft: false,
+    version: (current.version ?? 0) + 1,
+    ...(current.status === 'APPROVED' ? { status: 'PENDING', resolvedAt: null, resolvedBy: null } : {}),
+  })
+}
+
+// POST /actions/{id}/draft 흉내
+export function demoRequestDraft(action: EventAction): EventAction {
+  const current = currentDemoAction(action.id)
+  if (current.version !== action.version) throw conflict()
+  if (!current.canRequestDraft)
+    throw new ApiError({ code: 'DRAFT_NOT_ALLOWED', message: '지금은 초안을 다시 받을 수 없어요.' })
+  const drafting: Partial<EventAction> = {
+    content: null,
+    contentStatus: 'DRAFTING',
+    contentSource: null,
+    contentUnknowns: [],
+    canRequestDraft: false,
+    version: (current.version ?? 0) + 1,
+  }
+  demoChanges.set(action.id, { ...demoChanges.get(action.id), ...drafting })
+  draftingSince.set(action.id, Date.now())
+  return { ...current, ...drafting }
 }
 
 // ── 행사 취소 정리 ──

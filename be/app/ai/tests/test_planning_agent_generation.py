@@ -76,7 +76,7 @@ def test_offer_does_not_generate_and_acceptance_uses_current_offer_and_real_subg
     assert result.generation.preview.trigger.source=="chat" and result.generation.offer is None
     assert result.generation.preview.basis_draft==req.draft and len(model.calls)==1
     assert result.model_calls==2 and result.generation_model_calls==1
-    assert "generated" in seen[-1][0][-1].content
+    assert "generated" in seen[-1][0][-2].content
     assert req.model_dump_json()==before
     assert PlanningAgentTurnResult.model_validate_json(result.model_dump_json())==result
     restored=PlanningAgentTurnInput.model_validate_json(next_request(result,text="고마워").model_dump_json())
@@ -211,7 +211,7 @@ def test_generation_reply_receives_actual_steps_and_manual_step_limits():
     ])
     messages = seen[-1][0]
     instruction = messages[0].content
-    tool_result = json.loads(messages[-1].content)
+    tool_result = json.loads(messages[-2].content)
     assert result.generation_result.status == 'generated'
     assert tool_result['preview']['steps'][0]['actor'] == 'MANUAL'
     assert tool_result['preview']['steps'][0]['actions'] == []

@@ -1,0 +1,111 @@
+{
+  "source": "planning-latency-tokens-2026-11-03 measurement attempts",
+  "stages": {
+    "agent_model": {
+      "calls_with_usage": 180,
+      "calls_with_cache_hit": 0,
+      "reasoning_share_of_output": 0.18624806290535498,
+      "seconds_vs_tokens": {
+        "output_tokens": {
+          "intercept_seconds": 2.480503699364039,
+          "seconds_per_1000_tokens": 10.137149478589965,
+          "r": 0.36409527670333874
+        },
+        "reasoning_tokens": {
+          "intercept_seconds": 3.3108464107957833,
+          "seconds_per_1000_tokens": 8.369142467722321,
+          "r": 0.1409768248699727
+        },
+        "input_tokens": {
+          "intercept_seconds": 2.3201468835640493,
+          "seconds_per_1000_tokens": 0.22082967820746416,
+          "r": 0.20179226842782316
+        }
+      },
+      "by_case": {
+        "C1": {
+          "calls": 30,
+          "seconds_p50": 3.5988740835,
+          "input_tokens_p50": 4418.0,
+          "output_tokens_p50": 113.0,
+          "reasoning_tokens_p50": 55.0,
+          "cached_input_tokens_p50": 0.0
+        },
+        "C2": {
+          "calls": 90,
+          "seconds_p50": 2.955082354,
+          "input_tokens_p50": 4800.0,
+          "output_tokens_p50": 71.0,
+          "reasoning_tokens_p50": 0.0,
+          "cached_input_tokens_p50": 0.0
+        },
+        "G1": {
+          "calls": 60,
+          "seconds_p50": 3.506071938,
+          "input_tokens_p50": 6003.5,
+          "output_tokens_p50": 113.5,
+          "reasoning_tokens_p50": 13.0,
+          "cached_input_tokens_p50": 0.0
+        }
+      }
+    },
+    "generation_model": {
+      "calls_with_usage": 59,
+      "calls_with_cache_hit": 59,
+      "reasoning_share_of_output": 0.3746375565870151,
+      "seconds_vs_tokens": {
+        "output_tokens": {
+          "intercept_seconds": -0.5438667584963248,
+          "seconds_per_1000_tokens": 13.492246090508086,
+          "r": 0.9589193380800677
+        },
+        "reasoning_tokens": {
+          "intercept_seconds": 11.275932674534781,
+          "seconds_per_1000_tokens": 14.680711128466696,
+          "r": 0.9379238860591043
+        },
+        "input_tokens": {
+          "intercept_seconds": 174.25067055172852,
+          "seconds_per_1000_tokens": -75.56399778886494,
+          "r": -0.24233518728779702
+        }
+      },
+      "by_case": {
+        "G1": {
+          "calls": 30,
+          "seconds_p50": 18.2194308545,
+          "input_tokens_p50": 2057.0,
+          "output_tokens_p50": 1398.0,
+          "reasoning_tokens_p50": 516.0,
+          "cached_input_tokens_p50": 2054.0
+        },
+        "G2": {
+          "calls": 29,
+          "seconds_p50": 19.557557499999998,
+          "input_tokens_p50": 2041,
+          "output_tokens_p50": 1463,
+          "reasoning_tokens_p50": 516,
+          "cached_input_tokens_p50": 2038
+        }
+      }
+    }
+  },
+  "button_draft_size": {
+    "baseline_2026_10_28": {
+      "n": 27,
+      "preview_bytes_p50": 5023,
+      "step_count_p50": 13,
+      "action_count_p50": 10,
+      "generation_seconds_p50": 11.822183541000001,
+      "preview_bytes_per_second_p50": 428.3229736491297
+    },
+    "current_2026_11_03": {
+      "n": 24,
+      "preview_bytes_p50": 5059.5,
+      "step_count_p50": 13.0,
+      "action_count_p50": 10.0,
+      "generation_seconds_p50": 18.820274833,
+      "preview_bytes_per_second_p50": 271.7434896951572
+    }
+  }
+}

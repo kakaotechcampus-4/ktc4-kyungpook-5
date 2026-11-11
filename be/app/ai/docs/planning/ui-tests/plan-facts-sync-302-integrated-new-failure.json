@@ -1,0 +1,72 @@
+{
+  "events": [
+    {
+      "at": 166.30000001192093,
+      "frame": 16,
+      "event": "progress",
+      "data": {
+        "operationId": "c-302",
+        "kind": "condition_applied",
+        "status": "completed",
+        "text": "예상 인원 · 참가비 반영했어요",
+        "conditionDraft": {
+          "conditions": {
+            "title": null,
+            "eventType": null,
+            "headcount": 99,
+            "feePerPerson": 0,
+            "startDate": null,
+            "endDate": null,
+            "location": null,
+            "budgetTotal": null
+          },
+          "conditionMeta": {},
+          "deferredTopics": []
+        }
+      }
+    },
+    {
+      "at": 796.5,
+      "frame": 91,
+      "event": "error",
+      "data": {
+        "code": "AI_UNAVAILABLE",
+        "message": "로컬 검증용 실패"
+      }
+    }
+  ],
+  "renders": [
+    {
+      "frame": 16,
+      "at": 170,
+      "url": "",
+      "completedChecks": 1,
+      "lines": [
+        "예상 인원 · 참가비 반영했어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n종류\n아직이에요\n✓\n예상 인원\n99명\n✓\n참가비\n무료\n일정\n아직이에요\n장소\n아직이에요",
+      "flash": [
+        "✓\n예상 인원\n99명",
+        "✓\n참가비\n무료"
+      ],
+      "animation": "fact-flash"
+    },
+    {
+      "frame": 92,
+      "at": 808.5,
+      "url": "?eventId=evt_IF1llafzxwu68SZFSB1u3",
+      "completedChecks": 0,
+      "lines": [
+        "!\n조건 반영을 확인하지 못했어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n종류\n아직이에요\n예상 인원\n아직이에요\n참가비\n아직이에요\n일정\n아직이에요\n장소\n아직이에요",
+      "flash": [],
+      "animation": null
+    }
+  ],
+  "scenario": "new-failure",
+  "codeCommit": "12f73c139d4ece779e25c5c0ba156acf2f46f787",
+  "responseSource": "fixed-sse",
+  "before": "지금까지 정한 것\n행사 이름\n아직이에요\n종류\n아직이에요\n예상 인원\n아직이에요\n참가비\n아직이에요\n일정\n아직이에요\n장소\n아직이에요",
+  "after": "지금까지 정한 것\n행사 이름\n아직이에요\n종류\n아직이에요\n예상 인원\n아직이에요\n참가비\n아직이에요\n일정\n아직이에요\n장소\n아직이에요"
+}

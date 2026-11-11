@@ -1,0 +1,123 @@
+{
+  "events": [
+    {
+      "at": 221.09999999403954,
+      "frame": 21,
+      "event": "progress",
+      "data": {
+        "operationId": "c-302",
+        "kind": "condition_applied",
+        "status": "completed",
+        "text": "예상 인원 · 참가비 반영했어요",
+        "conditionDraft": {
+          "conditions": {
+            "title": null,
+            "eventType": null,
+            "headcount": 99,
+            "feePerPerson": 0,
+            "startDate": null,
+            "endDate": null,
+            "location": null,
+            "budgetTotal": null
+          },
+          "conditionMeta": {},
+          "deferredTopics": []
+        }
+      }
+    },
+    {
+      "at": 851.2000000178814,
+      "frame": 97,
+      "event": "done",
+      "data": {
+        "draft": {
+          "conditions": {
+            "title": null,
+            "eventType": null,
+            "headcount": 99,
+            "feePerPerson": 0,
+            "startDate": null,
+            "endDate": null,
+            "location": null,
+            "budgetTotal": null
+          },
+          "conditionMeta": {},
+          "deferredTopics": []
+        },
+        "warnings": [],
+        "excludedSteps": [],
+        "summary": {
+          "totalSteps": 0,
+          "aiSteps": 0,
+          "approvalSteps": 0,
+          "manualSteps": 0
+        },
+        "historyUsage": {
+          "messageCount": 13,
+          "maxMessages": 60,
+          "nearLimit": false
+        },
+        "baseRevision": 1,
+        "generationReadiness": {
+          "canGenerate": false,
+          "reasons": [
+            "location_unanswered"
+          ]
+        },
+        "lastRecordLookup": null,
+        "planRevision": 3,
+        "review": null,
+        "reply": "인원과 참가비를 반영했어요."
+      }
+    }
+  ],
+  "renders": [
+    {
+      "frame": 22,
+      "at": 225.09999999403954,
+      "url": "",
+      "completedChecks": 1,
+      "lines": [
+        "예상 인원 · 참가비 반영했어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n종류\n아직이에요\n✓\n예상 인원\n99명\n✓\n참가비\n무료\n일정\n아직이에요\n장소\n아직이에요",
+      "flash": [
+        "✓\n예상 인원\n99명",
+        "✓\n참가비\n무료"
+      ],
+      "animation": "fact-flash"
+    },
+    {
+      "frame": 101,
+      "at": 889.5999999940395,
+      "url": "?eventId=evt_nkc1OMCM0JtTGFiEUlHBw",
+      "completedChecks": 1,
+      "lines": [
+        "예상 인원 · 참가비 반영했어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n종류\n아직이에요\n✓\n예상 인원\n99명\n✓\n참가비\n무료\n일정\n아직이에요\n장소\n아직이에요",
+      "flash": [
+        "✓\n예상 인원\n99명",
+        "✓\n참가비\n무료"
+      ],
+      "animation": "fact-flash"
+    },
+    {
+      "frame": 202,
+      "at": 1724,
+      "url": "?eventId=evt_nkc1OMCM0JtTGFiEUlHBw",
+      "completedChecks": 1,
+      "lines": [
+        "예상 인원 · 참가비 반영했어요"
+      ],
+      "panel": "지금까지 정한 것\n행사 이름\n아직이에요\n종류\n아직이에요\n✓\n예상 인원\n99명\n✓\n참가비\n무료\n일정\n아직이에요\n장소\n아직이에요",
+      "flash": [],
+      "animation": null
+    }
+  ],
+  "scenario": "new-fast-done",
+  "codeCommit": "12f73c139d4ece779e25c5c0ba156acf2f46f787",
+  "responseSource": "fixed-sse",
+  "before": "지금까지 정한 것\n행사 이름\n아직이에요\n종류\n아직이에요\n예상 인원\n아직이에요\n참가비\n아직이에요\n일정\n아직이에요\n장소\n아직이에요",
+  "after": "지금까지 정한 것\n행사 이름\n아직이에요\n종류\n아직이에요\n✓\n예상 인원\n99명\n✓\n참가비\n무료\n일정\n아직이에요\n장소\n아직이에요"
+}

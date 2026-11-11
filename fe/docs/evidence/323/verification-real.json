@@ -1,0 +1,14 @@
+{
+  "reports": [
+    {
+      "type": "real-model-http-db",
+      "kind": "button",
+      "eventId": "evt_PPrsrBHEtg5sP2lSZizAH",
+      "generationPosts": 1,
+      "baseRevision": 2,
+      "planRevision": 2,
+      "stepCount": 13
+    }
+  ],
+  "browserErrors": []
+}

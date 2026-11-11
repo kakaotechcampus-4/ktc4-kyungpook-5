@@ -34,9 +34,9 @@ from app.db.base import new_id
 from app.db.session import get_sessionmaker
 from app.models.chat import Conversation, Message
 from app.models.common import IdempotencyKey
-from app.models.events import Action, Event, Step
+from app.models.events import Action, Event, PlanReview, Step
 
-from app.services import event_rules
+from app.services import event_rules, plan_review_service
 from app.services.record_search_port import PostgresRecordSearch
 
 _KST = ZoneInfo("Asia/Seoul")
@@ -99,6 +99,10 @@ def _resume_state(conversation: Conversation) -> "ai.PlanningResumeState | None"
     return ai.parse_resume_state(json.dumps(conversation.resume_state))
 
 
+def _basis_draft(resume_state: "ai.PlanningResumeState | None") -> "ai.PlanningDraft":
+    return resume_state.payload.basis_draft if resume_state is not None else ai.PlanningDraft()
+
+
 def _draft_out(draft: "ai.PlanningDraft") -> dict:
     c = draft.conditions
     return {
@@ -129,6 +133,16 @@ def _draft_out(draft: "ai.PlanningDraft") -> dict:
 def _record_lookup_out(lookup: "ai.RecordLookupResult | None") -> dict | None:
     # 공개 조회 결과만 직렬화한다. 벡터나 내부 Tool 이력은 이 계약에 들어 있지 않다.
     return lookup.model_dump(mode="json") if lookup is not None else None
+
+
+def _record_lookup_history(conversation: Conversation) -> list[dict]:
+    # Existing conversations only have the last snapshot. Do not infer older
+    # lookups from private AI history or assign a made-up search timestamp.
+    if conversation.record_lookup_history:
+        return list(conversation.record_lookup_history)
+    if conversation.last_record_lookup is not None:
+        return [{"revision": 0, "lookup": conversation.last_record_lookup}]
+    return []
 
 
 def _view_out(result: "ai.PlanningPublicResult", *, base_revision: int) -> dict:
@@ -240,6 +254,11 @@ async def _materialize_preview(
         for excl in preview.excluded_steps
     ]
     event.saved_at = datetime.now(UTC)
+    # 생성이 계획을 바꿨으니 버전을 올리고, 생성 직후 모양을 검토 기준으로 남긴다.
+    revision = await plan_review_service.bump_plan_revision(session, event.id)
+    await session.flush()
+    if revision is not None:
+        await plan_review_service.reset_baseline(session, event.id, revision)
 
 
 async def _save_turn(
@@ -252,6 +271,26 @@ async def _save_turn(
     user_message_text: str | None,
 ) -> None:
     conditions = result.view.draft.conditions
+    new_conditions = (
+        conditions.title or event.title,
+        conditions.event_type,
+        conditions.location,
+        conditions.start_date,
+        conditions.end_date,
+        conditions.headcount,
+        conditions.budget_total,
+        conditions.fee_per_person,
+    )
+    conditions_changed = new_conditions != (
+        event.title,
+        event.event_type,
+        event.location,
+        event.start_date,
+        event.end_date,
+        event.expected_headcount,
+        event.budget_total,
+        event.fee_per_person,
+    )
     event.title = conditions.title or event.title
     event.event_type = conditions.event_type
     event.location = conditions.location
@@ -260,11 +299,21 @@ async def _save_turn(
     event.expected_headcount = conditions.headcount
     event.budget_total = conditions.budget_total
     event.fee_per_person = conditions.fee_per_person
+    generation_result = result.view.generation_result
+    generated = generation_result is not None and generation_result.status == "generated"
+    # 같은 턴에 계획이 새로 만들어지면 _materialize_preview가 한 번 올리므로 여기선 건너뛴다.
+    if conditions_changed and not generated:
+        await plan_review_service.bump_plan_revision(session, event.id)
 
     conversation.resume_state = result.next_state.model_dump(mode="json")
     # null은 이번 턴 미조회다. 새 실패/없음은 저장하되 옛 성공을 최신으로 보이지 않는다.
     if result.view.record_lookup is not None:
+        history = _record_lookup_history(conversation)
         conversation.last_record_lookup = _record_lookup_out(result.view.record_lookup)
+        conversation.record_lookup_history = [
+            *history,
+            {"revision": new_base_revision, "lookup": conversation.last_record_lookup},
+        ]
     # AI는 base_revision을 올리지 않고 받은 값을 그대로 돌려준다(p1-handoff.md §4).
     # 버전 증가는 BE 책임이다.
     conversation.base_revision = new_base_revision
@@ -296,8 +345,7 @@ async def _save_turn(
             )
         )
 
-    generation_result = result.view.generation_result
-    if generation_result is not None and generation_result.status == "generated":
+    if generated:
         await _materialize_preview(session, event, generation_result.preview)
 
 
@@ -318,15 +366,44 @@ async def _resolve_idempotency(
     return result
 
 
-async def _save_idempotency_response(record_id: str, *, status_code: int, body: dict) -> None:
-    sessionmaker = get_sessionmaker()
-    async with sessionmaker() as session:
-        record = await session.get(IdempotencyKey, record_id)
-        if record is not None:
-            await idempotency.save_response(
-                session, record, status_code=status_code, body=body
-            )
-            await session.commit()
+# 처리 기록의 endpoint에 실제 행사 ID를 넣는다(#342). 결과 조회가 "이 행사의 요청"만
+# 찾게 하려는 것이다. 스트림 경로도 같은 문자열을 써서 JSON 경로와 키를 공유한다.
+def _chat_endpoint(event_id: str) -> str:
+    return f"POST /events/{event_id}/plan/chat"
+
+
+def _generate_endpoint(event_id: str) -> str:
+    return f"POST /events/{event_id}/plan/generate"
+
+
+async def lookup_request(
+    session: AsyncSession, *, event_id: str, member_id: str, key: str
+) -> tuple[str, dict | None]:
+    """요청 키로 그 요청의 처리 결과만 읽는다(#342). 모델을 다시 실행하지 않는다.
+
+    응답 도중 연결이 끊긴 FE가 "abc 요청은 어떻게 됐나"를 묻는 데 쓴다.
+      COMPLETED            → ("completed", 그때 보낸 응답)
+      PROCESSING, 5분 안    → ("processing", None)  아직 처리 중
+      PROCESSING, 5분 지남  → ("not_saved", None)   처리하던 서버가 사라졌다. 턴 저장과
+                                                    완료 표시가 한 커밋이라 저장되지 않았다
+      기록 없음             → ("not_saved", None)   실패·충돌로 키를 지웠거나 닿지 않았다
+    """
+    record = await session.scalar(
+        select(IdempotencyKey).where(
+            IdempotencyKey.member_id == member_id,
+            IdempotencyKey.endpoint.in_(
+                [_chat_endpoint(event_id), _generate_endpoint(event_id)]
+            ),
+            IdempotencyKey.idempotency_key == key,
+        )
+    )
+    if record is None:
+        return "not_saved", None
+    if record.status == "COMPLETED":
+        return "completed", record.response_body
+    if idempotency.is_stale(record):
+        return "not_saved", None
+    return "processing", None
 
 
 async def _release_idempotency(record_id: str) -> None:
@@ -336,20 +413,61 @@ async def _release_idempotency(record_id: str) -> None:
         await session.commit()
 
 
-async def _run_once(idem: idempotency.IdempotencyResult | None, work) -> dict:
+def _progress_kwargs(progress) -> dict:
+    # JSON 경로는 지금과 똑같이 progress 없이 부른다. AI는 이때 모델 응답을 통째로 받는다.
+    return {} if progress is None else {"progress": progress}
+
+
+class PlanTurn:
+    """스트림을 열기 전 확인(멱등키·revision)을 마친 한 요청 (#266, #284).
+
+    이미 끝난 요청이면 replay에 저장된 응답이 있고, 아니면 run(progress)이 AI 호출과 저장을
+    한다. JSON 경로는 result()로 바로 실행하고, SSE 경로는 run()을 별도 작업으로 돌린다.
+    """
+
+    def __init__(self, *, replay: dict | None = None, run=None) -> None:
+        self.replay = replay
+        self.run = run
+
+    async def result(self) -> dict:
+        if self.replay is not None:
+            return self.replay
+        return await self.run(None)
+
+
+async def _open_turn(
+    idem: idempotency.IdempotencyResult | None, *, prepare, call_ai, user_message_text: str | None,
+) -> PlanTurn:
     """멱등키가 있으면 처리 결과를 저장하고, 실패하면 키를 풀어 같은 키로 다시
     시도할 수 있게 한다. 풀지 않으면 재시도가 처리 중(409)으로 막힌다."""
     if idem is not None and idem.is_replay:
-        return idem.record.response_body
+        return PlanTurn(replay=idem.record.response_body)
+    # 행 잠금·revision 확인은 스트림을 열기 전에 끝낸다. 여기서 나는 VersionConflict 같은
+    # 오류는 SSE 경로에서도 일반 HTTP 오류(4xx)로 응답된다.
     try:
-        out = await work()
+        prepared = await prepare()
     except Exception:
         if idem is not None:
             await _release_idempotency(idem.record.id)
         raise
-    if idem is not None:
-        await _save_idempotency_response(idem.record.id, status_code=200, body=out)
-    return out
+
+    async def run(progress: "ai.PlanningProgressPort | None") -> dict:
+        try:
+            try:
+                result = await call_ai(prepared, progress)
+            except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
+                raise _translate_ai_error(error) from error
+            out = await _finish(
+                prepared, result, user_message_text=user_message_text,
+                idempotency_record_id=idem.record.id if idem is not None else None,
+            )
+        except Exception:
+            if idem is not None:
+                await _release_idempotency(idem.record.id)
+            raise
+        return out
+
+    return PlanTurn(run=run)
 
 
 class _PreparedTurn:
@@ -388,11 +506,7 @@ async def _prepare(
             raise VersionConflict()
 
         resume_state = _resume_state(conversation)
-        draft = (
-            resume_state.payload.basis_draft
-            if resume_state is not None
-            else ai.PlanningDraft()
-        )
+        draft = _basis_draft(resume_state)
         context = {
             "request_id": new_id("req"),
             "club_id": club_id,
@@ -417,7 +531,11 @@ async def _prepare(
 
 
 async def _finish(
-    prepared: _PreparedTurn, result: "ai.PlanningPublicResult", *, user_message_text: str | None
+    prepared: _PreparedTurn,
+    result: "ai.PlanningPublicResult",
+    *,
+    user_message_text: str | None,
+    idempotency_record_id: str | None = None,
 ) -> dict:
     sessionmaker = get_sessionmaker()
     async with sessionmaker() as session:
@@ -451,11 +569,18 @@ async def _finish(
             new_base_revision=new_base_revision, user_message_text=user_message_text,
         )
         out = _view_out(result, base_revision=new_base_revision)
+        if idempotency_record_id is not None:
+            # 턴 저장과 같은 커밋에서 요청 키를 완료로 바꾼다(#342). 따로 커밋하면 그 사이
+            # 서버가 꺼졌을 때 대화는 저장됐는데 키는 처리 중으로 남아, 결과 조회가
+            # 저장된 요청을 "처리 중"이라고 답한다.
+            record = await session.get(IdempotencyKey, idempotency_record_id)
+            if record is not None:
+                await idempotency.save_response(session, record, status_code=200, body=out)
         await session.commit()
     return out
 
 
-async def chat(
+async def open_chat(
     *,
     club_id: str,
     event_id: str,
@@ -464,9 +589,9 @@ async def chat(
     message_content: str,
     base_revision: int,
     idempotency_key: str | None,
-) -> dict:
+) -> PlanTurn:
     sessionmaker = get_sessionmaker()
-    endpoint = "POST /events/{event_id}/plan/chat"
+    endpoint = _chat_endpoint(event_id)
     request_body = json.dumps(
         {"messageId": message_id, "message": message_content, "baseRevision": base_revision},
         sort_keys=True,
@@ -478,7 +603,7 @@ async def chat(
             endpoint=endpoint, request_body=request_body,
         )
 
-    async def work() -> dict:
+    async def prepare() -> _PreparedTurn:
         prepared, _event = await _prepare(
             club_id=club_id, event_id=event_id, member_id=member_id,
             base_revision=base_revision,
@@ -486,19 +611,25 @@ async def chat(
                 **ctx, message=ai.PlanningUserMessage(id=message_id, content=message_content)
             ),
         )
-        try:
-            result = await ai.chat_planning(
-                prepared.request,
-                records=PostgresRecordSearch(club_id=prepared.request.club_id),
-            )
-        except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
-            raise _translate_ai_error(error) from error
-        return await _finish(prepared, result, user_message_text=message_content)
+        return prepared
 
-    return await _run_once(idem, work)
+    async def call_ai(prepared: _PreparedTurn, progress) -> "ai.PlanningPublicResult":
+        return await ai.chat_planning(
+            prepared.request,
+            records=PostgresRecordSearch(club_id=prepared.request.club_id),
+            **_progress_kwargs(progress),
+        )
+
+    return await _open_turn(idem, prepare=prepare, call_ai=call_ai,
+                            user_message_text=message_content)
 
 
-async def generate(
+async def chat(**kwargs) -> dict:
+    """JSON 경로. 스트림 경로와 같은 확인·저장을 거치고 결과만 한 번에 돌려준다."""
+    return await (await open_chat(**kwargs)).result()
+
+
+async def open_generate(
     *,
     club_id: str,
     event_id: str,
@@ -506,9 +637,9 @@ async def generate(
     base_revision: int,
     use_current_conditions: bool,
     idempotency_key: str | None,
-) -> dict:
+) -> PlanTurn:
     sessionmaker = get_sessionmaker()
-    endpoint = "POST /events/{event_id}/plan/generate"
+    endpoint = _generate_endpoint(event_id)
     request_body = json.dumps(
         {"baseRevision": base_revision, "useCurrentConditions": use_current_conditions},
         sort_keys=True,
@@ -520,7 +651,7 @@ async def generate(
             endpoint=endpoint, request_body=request_body,
         )
 
-    async def work() -> dict:
+    async def prepare() -> _PreparedTurn:
         prepared, _event = await _prepare(
             club_id=club_id, event_id=event_id, member_id=member_id,
             base_revision=base_revision,
@@ -528,29 +659,41 @@ async def generate(
                 **ctx, use_current_conditions=use_current_conditions
             ),
         )
-        try:
-            result = await ai.generate_planning_preview(prepared.request)
-        except (ai.PlanningStateError, ai.AIError, PydanticValidationError) as error:
-            raise _translate_ai_error(error) from error
-        return await _finish(prepared, result, user_message_text=None)
+        return prepared
 
-    return await _run_once(idem, work)
+    async def call_ai(prepared: _PreparedTurn, progress) -> "ai.PlanningPublicResult":
+        return await ai.generate_planning_preview(prepared.request, **_progress_kwargs(progress))
+
+    return await _open_turn(idem, prepare=prepare, call_ai=call_ai, user_message_text=None)
+
+
+async def generate(**kwargs) -> dict:
+    return await (await open_generate(**kwargs)).result()
+
+
+async def _latest_conversation(session: AsyncSession, event_id: str) -> Conversation | None:
+    return await session.scalar(
+        select(Conversation)
+        .where(Conversation.event_id == event_id)
+        .order_by(Conversation.created_at.desc())
+        .limit(1)
+    )
+
+
+async def current_draft(session: AsyncSession, event_id: str) -> "ai.PlanningDraft":
+    """최신 대화의 조건 초안. 대화가 없으면 빈 초안."""
+    conversation = await _latest_conversation(session, event_id)
+    return _basis_draft(_resume_state(conversation) if conversation is not None else None)
 
 
 async def get_plan_screen(
     session: AsyncSession, *, club_id: str, event_id: str
 ) -> dict:
     event = await get_event(session, club_id=club_id, event_id=event_id)
-    conversation = await session.scalar(
-        select(Conversation)
-        .where(Conversation.event_id == event.id)
-        .order_by(Conversation.created_at.desc())
-        .limit(1)
-    )
+    # 대화 이력·생성 가능 여부에도 resume_state가 필요해 current_draft 대신 같은 부품을 쓴다.
+    conversation = await _latest_conversation(session, event.id)
     resume_state = _resume_state(conversation) if conversation is not None else None
-    draft = (
-        resume_state.payload.basis_draft if resume_state is not None else ai.PlanningDraft()
-    )
+    draft = _basis_draft(resume_state)
 
     total = await session.scalar(
         select(func.count()).select_from(Step).where(Step.event_id == event.id)
@@ -564,9 +707,11 @@ async def get_plan_screen(
             )
         ).all()
     )
+    review = await session.scalar(select(PlanReview).where(PlanReview.event_id == event.id))
     return {
         "draft": _draft_out(draft),
         "last_record_lookup": conversation.last_record_lookup if conversation is not None else None,
+        "record_lookup_history": _record_lookup_history(conversation) if conversation is not None else [],
         "warnings": [w.get("message", "") for w in (event.plan_warnings or [])],
         # #198 이전에 저장한 행에는 name이 없다 — 스키마가 null로 받는다.
         "excluded_steps": event.plan_excluded_steps or [],
@@ -587,4 +732,7 @@ async def get_plan_screen(
             ai.planning_generation_readiness(draft, resume_state=resume_state).model_dump(mode="json")
             if resume_state is not None else None
         ),
+        "plan_revision": event.plan_revision,
+        # 초안 생성 전에는 검토 행이 없어 null이다.
+        "review": plan_review_service.review_out(review, now=datetime.now(UTC)),
     }

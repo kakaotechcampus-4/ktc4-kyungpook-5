@@ -1,6 +1,13 @@
-// 지출 직접 입력. CSV·영수증 가져오기와 달리 한 건씩 손으로 적는 경로다.
+// 지출 직접 입력·수정. CSV·영수증 가져오기와 달리 한 건씩 손으로 적는 경로다.
+// expense 를 받으면 그 건을 고치고, 없으면 새로 등록한다. 밭 구성이 같아 한 폼을 쓴다.
 import { useState } from 'react'
-import { expenseFormErrorMessage, useCreateExpense } from '@/features/accounting/hooks'
+import { EventSelectField } from '@/features/accounting/components/EventSelectField'
+import {
+  expenseFormErrorMessage,
+  useCreateExpense,
+  useUpdateExpense,
+} from '@/features/accounting/hooks'
+import type { Expense } from '@/features/accounting/types'
 import { Field } from '@/shared/ui/AuthShell'
 import { Button } from '@/shared/ui/Button'
 import { Input, Textarea } from '@/shared/ui/Input'
@@ -15,44 +22,72 @@ function today(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date())
 }
 
+// 서버가 주는 ISO 시각을 <input type="date">가 받는 한국 날짜로 되돌린다.
+function toDateInput(iso: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(iso))
+}
+
 interface ExpenseFormProps {
   clubId: string
+  // 있으면 수정, 없으면 새 등록.
+  expense?: Expense
   onDone: () => void
 }
 
-export function ExpenseForm({ clubId, onDone }: ExpenseFormProps) {
+export function ExpenseForm({ clubId, expense, onDone }: ExpenseFormProps) {
   const create = useCreateExpense(clubId)
-  const [spentAt, setSpentAt] = useState(today)
-  const [amount, setAmount] = useState('')
-  const [merchant, setMerchant] = useState('')
-  const [category, setCategory] = useState('')
-  const [description, setDescription] = useState('')
+  const update = useUpdateExpense(clubId)
+  const [spentAt, setSpentAt] = useState(() => (expense ? toDateInput(expense.spentAt) : today()))
+  const [amount, setAmount] = useState(expense ? String(expense.amount) : '')
+  const [merchant, setMerchant] = useState(expense?.merchant ?? '')
+  const [category, setCategory] = useState(expense?.category ?? '')
+  const [description, setDescription] = useState(expense?.description ?? '')
+  // 행사 연결(선택). 수정 때는 사용자가 이 칸을 건드린 경우에만 보낸다 — 행사 목록을
+  // 못 받아 선택지가 비어 있어도 기존 연결이 지워지지 않게 한다(서버는 안 보낸 필드를 그대로 둔다).
+  const [eventId, setEventId] = useState(expense?.eventId ?? '')
+  const [eventTouched, setEventTouched] = useState(false)
+  // 송금 행동이 남긴 자동 기록은 그 행사 정산의 일부라 행사를 바꾸지 않는다(#348).
+  const eventLocked = expense?.source === 'ACTION'
   const [error, setError] = useState('')
 
   const won = Number(amount)
   const amountValid = Number.isInteger(won) && won > 0
+  const pending = create.isPending || update.isPending
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (create.isPending) return
+    if (pending) return
     if (!spentAt || !amountValid) {
       setError('지출일과 1원 이상의 금액을 확인해 주세요.')
       return
     }
     setError('')
+    const fields = {
+      spentAt: toSpentAt(spentAt),
+      amount: won,
+      // 서버 기본값과 같지만 생성 스키마가 필수로 둔다. 통화 선택은 아직 없다.
+      currency: 'KRW' as const,
+      merchant: merchant.trim() || null,
+      category: category.trim() || null,
+      description: description.trim() || null,
+    }
     try {
-      await create.mutateAsync({
-        spentAt: toSpentAt(spentAt),
-        amount: won,
-        // 서버 기본값과 같지만 생성 스키마가 필수로 둔다. 통화 선택은 아직 없다.
-        currency: 'KRW',
-        merchant: merchant.trim() || null,
-        category: category.trim() || null,
-        description: description.trim() || null,
-      })
+      if (expense) {
+        // 비운 칸은 null 로 가서 서버가 그 값을 지운다. 그사이 바뀌었으면 409다.
+        await update.mutateAsync({
+          expenseId: expense.id,
+          body: {
+            ...fields,
+            ...(eventTouched ? { eventId: eventId || null } : {}),
+            expectedVersion: expense.version,
+          },
+        })
+      } else {
+        await create.mutateAsync({ ...fields, eventId: eventId || null })
+      }
       onDone()
     } catch (cause) {
-      setError(expenseFormErrorMessage(cause))
+      setError(expenseFormErrorMessage(cause, expense ? '수정' : '등록'))
     }
   }
 
@@ -110,6 +145,21 @@ export function ExpenseForm({ clubId, onDone }: ExpenseFormProps) {
           </Field>
         </div>
       </div>
+      <EventSelectField
+        value={eventId}
+        onChange={(next) => {
+          setEventId(next)
+          setEventTouched(true)
+        }}
+        disabled={pending}
+        lockedHint={eventLocked ? '송금한 행사에 묶인 자동 기록이에요' : undefined}
+        failedHint={
+          expense
+            ? '행사 목록을 못 불러와 기존 연결을 그대로 둬요'
+            : '행사 목록을 못 불러와 연결 없이 등록돼요'
+        }
+        linkedEventId={expense?.eventId}
+      />
       <Field label="내용">
         <Textarea
           placeholder="무엇에 썼는지 적어두면 나중에 찾기 쉬워요"
@@ -118,10 +168,10 @@ export function ExpenseForm({ clubId, onDone }: ExpenseFormProps) {
         />
       </Field>
       <div className="flex gap-[8px]">
-        <Button type="submit" disabled={create.isPending || !amountValid}>
-          {create.isPending ? '등록하는 중…' : '등록'}
+        <Button type="submit" loading={pending} disabled={!amountValid}>
+          {expense ? (pending ? '저장하는 중…' : '저장') : pending ? '등록하는 중…' : '등록'}
         </Button>
-        <Button type="button" variant="ghost" disabled={create.isPending} onClick={onDone}>
+        <Button type="button" variant="ghost" disabled={pending} onClick={onDone}>
           취소
         </Button>
       </div>

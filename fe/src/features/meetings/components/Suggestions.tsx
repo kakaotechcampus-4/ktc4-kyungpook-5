@@ -1,13 +1,15 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
+import { Modal } from '@/shared/ui/Modal'
 import { Chip } from '@/shared/ui/Chip'
 import { Input, Textarea } from '@/shared/ui/Input'
 import { MEMBER_ROLE_LABEL } from '@/shared/lib/labels'
 import { meetingsApi } from '../api'
 import {
   confirmedApi,
+  notificationTaskDetail,
   displayTime,
   seoulInput,
   seoulIso,
@@ -16,7 +18,9 @@ import {
   type Recipient,
 } from '../confirmed'
 import { meetingError } from '../errors'
-import type { Suggestion } from '../types'
+import { isCandidateSaved, transcriptTime } from '../timeline'
+import { candidateEvidence, type MeetingEvidenceFocus } from '../evidence'
+import type { Decision, Suggestion, Transcript } from '../types'
 
 const statusLabels: Record<ConfirmedTask['reminder']['status'], string> = {
   PENDING: '예약 대기',
@@ -30,11 +34,13 @@ function ReviewFields({
   suggestion,
   existing,
   onSaved,
+  onCandidateError,
 }: {
   clubId: string
   suggestion: Suggestion
   existing?: ConfirmedTask
   onSaved: () => void
+  onCandidateError?: (message: string) => void
 }) {
   const memoHelpId = useId()
   const [kind, setKind] = useState<'TASK' | 'SCHEDULE'>(
@@ -72,18 +78,28 @@ function ReviewFields({
     await client.invalidateQueries({ queryKey: ['confirmed', clubId] })
     onSaved()
   }
+  const candidateFields = {
+    title: title.trim(),
+    description,
+    dueDate: date || null,
+    suggestedAssignee: assignee.trim() || null,
+  }
   const draft = useMutation({
-    mutationFn: () =>
-      meetingsApi.patchSuggestion(clubId, suggestion, {
-        title: title.trim(),
-        description,
-        dueDate: date || null,
-        suggestedAssignee: assignee.trim() || null,
-      }),
+    mutationFn: () => meetingsApi.patchSuggestion(clubId, suggestion, candidateFields),
+    onMutate: () => onCandidateError?.(''),
     onSuccess: async () => {
       setNotice('후보 수정만 저장했습니다. 일정·알림 예약은 생성되지 않았습니다.')
       await refresh()
     },
+  })
+  const accept = useMutation({
+    mutationFn: () => meetingsApi.acceptSuggestion(clubId, suggestion, candidateFields),
+    onMutate: () => onCandidateError?.(''),
+    onError: (error) =>
+      onCandidateError?.(
+        `${suggestion.title}: 후보 확정을 완료하지 못했어요. 후보 수정은 저장됐을 수 있어요. 상태를 확인한 뒤 다시 시도해 주세요. ${meetingError(error)}`,
+      ),
+    onSettled: refresh,
   })
   const save = useMutation({
     mutationFn: (fields: ConfirmedFields) =>
@@ -98,7 +114,7 @@ function ReviewFields({
       await refresh()
     },
   })
-  const busy = save.isPending || draft.isPending
+  const busy = save.isPending || draft.isPending || accept.isPending
   const invalidate = () => {
     setChecked(false)
     setNotice('')
@@ -210,9 +226,12 @@ function ReviewFields({
         여러 줄로 적을 수 있어요. 비워 두어도 저장할 수 있고, 저장 후에도 다시 확인·수정할 수
         있어요.
       </p>
-      {!existing && (
-        <details className="rounded-lg border border-line p-3 text-caption">
-          <summary>추출 후보만 수정</summary>
+      {!existing && suggestion.status === 'PROPOSED' && (
+        <div className="rounded-lg border border-line p-3 text-caption">
+          <p className="font-bold">후보만 저장</p>
+          <p className="mt-1 text-ink2">
+            위 내용·담당자 이름·메모와 후보 날짜를 저장해요. 일정·알림 예약은 별도로 확인해요.
+          </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Input
               label="후보 날짜 (정확한 시각 아님)"
@@ -229,7 +248,21 @@ function ReviewFields({
           >
             후보만 저장
           </Button>
-        </details>
+          <Button
+            className="mt-3 ml-2"
+            variant="secondary"
+            disabled={busy || !title.trim()}
+            onClick={() => accept.mutate()}
+          >
+            알림 없이 후보 확정
+          </Button>
+          <p className="mt-2 text-ink2">후보 확정은 일정·알림 예약을 만들지 않아요.</p>
+        </div>
+      )}
+      {!existing && suggestion.status === 'ACCEPTED' && (
+        <p className="text-caption text-ink2">
+          후보를 확정했어요. 여기서 바꾼 내용은 확인 후 저장하는 일정·알림 예약에 적용돼요.
+        </p>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-caption font-bold">
@@ -368,55 +401,163 @@ function ReviewFields({
           {notice}
         </p>
       )}
-      <Button type="submit" disabled={!valid || !checked || busy}>
+      <Button type="submit" loading={busy} disabled={!valid || !checked}>
         {busy ? '서버 확인 중…' : existing ? '확인한 내용으로 예약 변경' : '확인 후 저장·예약'}
       </Button>
     </form>
   )
 }
-export function Suggestions({
+export function CandidatesModal({
+  open,
+  onClose,
   clubId,
   suggestions,
   onSaved,
+  evidence,
+  activeSuggestionId,
 }: {
+  open: boolean
+  onClose: () => void
   clubId: string
   suggestions: Suggestion[]
   onSaved: () => void
+  activeSuggestionId?: string
+  evidence?: {
+    meetingId: string
+    decisions: Decision[]
+    transcripts: Transcript[]
+    startedAt?: string | null
+    onOpen: (target: MeetingEvidenceFocus) => void
+  }
 }) {
   const confirmed = useQuery({
     queryKey: ['confirmed', clubId],
     queryFn: () => confirmedApi.list(clubId),
+    enabled: open,
   })
+  // undefined until the user toggles: the first candidate starts open even though the
+  // modal is mounted before the candidates load.
+  const [openId, setOpenId] = useState<string | null | undefined>(undefined)
+  const [candidateError, setCandidateError] = useState('')
+  const shownId = openId === undefined ? (activeSuggestionId ?? suggestions[0]?.id) : openId
   return (
-    <section className="space-y-4" aria-label="일정·할 일 후보">
-      <h2 className="text-h2">
-        확인할 일정·할 일{' '}
-        <span className="text-caption font-medium text-mute">{suggestions.length}건</span>
-      </h2>
-      <p className="text-caption text-ink2">
-        내용과 시각, 실제 수신 계정을 확인한 뒤 저장·예약합니다.
-      </p>
-      {!suggestions.length && (
-        <Card className="p-5 text-mute">
-          아직 확인할 후보가 없습니다. 자료 조회 결과와 별도로 표시됩니다.
-        </Card>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="일정·할 일 후보 확인"
+      chip={<Chip tone="approved">{suggestions.length}건</Chip>}
+      subtitle="후보 저장과 일정·알림 예약을 나눠 확인해요."
+      footerNote="다시 열면 이어서 확인할 수 있어요."
+      footer={
+        <Button variant="secondary" onClick={onClose}>
+          닫기
+        </Button>
+      }
+      width={600}
+    >
+      {!suggestions.length && <p className="text-mute">회의에서 나온 일정·할 일이 없어요.</p>}
+      {candidateError && (
+        <p role="alert" className="text-failed">
+          {candidateError}
+        </p>
       )}
-      {suggestions.map((s) => (
-        <Card key={`${s.id}:${s.version}`} className="min-w-0 p-4 sm:p-5">
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-            <h3 className="min-w-0 flex-1 break-words text-h3 leading-6">{s.title}</h3>
-            <Chip>{s.status === 'ACCEPTED' ? '수락 기록' : '검토 후보'}</Chip>
-          </div>
-          {confirmed.data?.some((item) => item.suggestionId === s.id) ? (
-            <p className="text-ink2">
-              확정 항목이 저장됐습니다. 아래에서 실제 예약 상태와 변경·취소를 확인해 주세요.
-            </p>
-          ) : (
-            <ReviewFields clubId={clubId} suggestion={s} onSaved={onSaved} />
-          )}
-        </Card>
-      ))}
-    </section>
+      {suggestions.map((s) => {
+        const source =
+          evidence &&
+          candidateEvidence(s, evidence.meetingId, evidence.decisions, evidence.transcripts)
+        const confirmedTask = confirmed.data?.find((item) => item.suggestionId === s.id)
+        const reservationLabel =
+          confirmedTask?.status === 'CANCELLED'
+            ? '항목 취소됨'
+            : confirmedTask?.reminder.status === 'CANCELLED' ||
+                confirmedTask?.reminder.status === 'FAILED'
+              ? statusLabels[confirmedTask.reminder.status]
+              : '일정·알림 예약됨'
+        const expanded = shownId === s.id
+        return (
+          <section key={`${s.id}:${s.version}`} className="rounded-[12px] border border-line bg-bg">
+            <button
+              type="button"
+              aria-expanded={expanded}
+              onClick={() => setOpenId(expanded ? null : s.id)}
+              className="flex w-full flex-wrap items-center gap-3 px-4 py-3.5 text-left"
+            >
+              <Chip>{s.kind === 'SCHEDULE' ? '일정' : '할 일'}</Chip>
+              <span className="min-w-0 flex-1 break-words font-bold">{s.title}</span>
+              {isCandidateSaved(s) && (
+                <Chip size="sm" tone="done">
+                  {s.status === 'ACCEPTED' ? '후보 확정됨' : '후보 저장됨'}
+                </Chip>
+              )}
+              <span className="text-caption text-ink2">
+                {confirmedTask ? reservationLabel : expanded ? '접기' : '펼쳐서 확인 ›'}
+              </span>
+            </button>
+            {expanded && (
+              <div className="border-t border-line bg-card px-4 py-4">
+                {source && evidence && (
+                  <div className="mb-4 space-y-2 border-b border-line pb-4">
+                    <h3 className="text-caption font-bold">후보가 나온 말</h3>
+                    {source.message && (
+                      <p className="text-caption text-pending">{source.message}</p>
+                    )}
+                    {source.sources.map((transcript) => (
+                      <div key={transcript.id} className="space-y-1">
+                        <p className="line-clamp-3 whitespace-pre-wrap text-caption text-ink2">
+                          “{transcript.text}”
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() =>
+                            evidence.onOpen({
+                              suggestionId: s.id,
+                              title: s.title,
+                              decisionId: source.decisionId,
+                              sourceId: transcript.sourceId,
+                              sourceVersion: transcript.sourceVersion,
+                            })
+                          }
+                        >
+                          {transcriptTime(transcript, evidence.startedAt)} 근거 발화 보기
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {confirmed.isPending ? (
+                  <p role="status" className="text-ink2">
+                    일정·알림 예약 상태를 확인하는 중이에요.
+                  </p>
+                ) : confirmed.isError ? (
+                  <div role="alert" className="space-y-2">
+                    <p className="text-failed">
+                      일정·알림 예약 상태를 불러오지 못했어요. 다시 확인한 뒤 저장해 주세요.
+                    </p>
+                    <Button variant="secondary" onClick={() => void confirmed.refetch()}>
+                      다시 확인
+                    </Button>
+                  </div>
+                ) : confirmedTask ? (
+                  <p className="text-ink2">
+                    {reservationLabel}. 알림 상태: {statusLabels[confirmedTask.reminder.status]}.
+                    회의 첫 화면 아래 &lsquo;저장한 일정·알림 예약&rsquo;에서 자세한 상태를 확인해
+                    주세요.
+                  </p>
+                ) : (
+                  <ReviewFields
+                    clubId={clubId}
+                    suggestion={s}
+                    onSaved={onSaved}
+                    onCandidateError={setCandidateError}
+                  />
+                )}
+              </div>
+            )}
+          </section>
+        )
+      })}
+    </Modal>
   )
 }
 export function ConfirmedTasks({
@@ -428,6 +569,7 @@ export function ConfirmedTasks({
 }) {
   const client = useQueryClient()
   const [editing, setEditing] = useState<string | null>(null)
+  const [dismissedDetailKey, setDismissedDetailKey] = useState<string | null>(null)
   const items = useQuery({
     queryKey: ['confirmed', clubId],
     queryFn: () => confirmedApi.list(clubId),
@@ -435,15 +577,32 @@ export function ConfirmedTasks({
   })
   const linked = useQuery({
     queryKey: ['confirmed-detail', clubId, highlightTaskId],
-    queryFn: () => confirmedApi.get(clubId, highlightTaskId!),
+    queryFn: async () => ({
+      clubId,
+      taskId: highlightTaskId!,
+      task: await confirmedApi.get(clubId, highlightTaskId!),
+    }),
     enabled: !!highlightTaskId,
+    refetchInterval: 10000,
   })
+  const detail = notificationTaskDetail(
+    linked.isError ? undefined : linked.data,
+    clubId,
+    highlightTaskId,
+    dismissedDetailKey,
+  )
+  const linkedTask = detail.task
+  // A reminder link opens /meetings?taskId=…; the list sits below the start card.
+  useEffect(() => {
+    if (linkedTask)
+      document.getElementById(`task-${linkedTask.id}`)?.scrollIntoView({ block: 'center' })
+  }, [linkedTask])
   const cancel = useMutation({
     mutationFn: (item: ConfirmedTask) => confirmedApi.cancel(clubId, item),
     onSuccess: () => client.invalidateQueries({ queryKey: ['confirmed', clubId] }),
   })
   const list = [...(items.data ?? [])]
-  if (linked.data && !list.some((item) => item.id === linked.data.id)) list.unshift(linked.data)
+  if (linkedTask && !list.some((item) => item.id === linkedTask.id)) list.unshift(linkedTask)
   return (
     <section className="space-y-3" aria-label="팀 확정 항목">
       <h2 className="text-h2">저장한 일정·알림 예약</h2>
@@ -473,6 +632,12 @@ export function ConfirmedTasks({
         >
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-h3">{item.title}</h3>
+            {linkedTask?.id === item.id && (
+              <Button size="sm" variant="secondary" onClick={() => setDismissedDetailKey(null)}>
+                알림 상세 보기
+              </Button>
+            )}
+            {item.status === 'CANCELLED' && <Chip>항목 취소됨</Chip>}
             <Chip tone={item.reminder.status === 'FAILED' ? 'failed' : 'neutral'}>
               {statusLabels[item.reminder.status]}
             </Chip>
@@ -495,6 +660,11 @@ export function ConfirmedTasks({
             <p className="mt-2 text-caption text-mute">
               Push 서비스가 {item.reminder.acceptedCount}건을 접수했습니다. 실제 기기 표시는 수신
               기기에서 확인해 주세요.
+              {item.reminder.failedCount > 0 && (
+                <span className="block text-failed">
+                  일부 발송 실패: {item.reminder.failedCount}건. 구독 상태를 확인해 주세요.
+                </span>
+              )}
             </p>
           )}
           {item.reminder.status === 'FAILED' && (
@@ -515,7 +685,7 @@ export function ConfirmedTasks({
                 disabled={cancel.isPending}
                 onClick={() => cancel.mutate(item)}
               >
-                예약 취소
+                항목·예약 취소
               </Button>
             </div>
           )}
@@ -539,6 +709,36 @@ export function ConfirmedTasks({
           )}
         </Card>
       ))}
+      <Modal
+        open={detail.open}
+        onClose={() => setDismissedDetailKey(detail.key)}
+        title={linkedTask?.kind === 'SCHEDULE' ? '알림에서 연 일정' : '알림에서 연 할 일'}
+        footer={
+          <Button variant="secondary" onClick={() => setDismissedDetailKey(detail.key)}>
+            닫기
+          </Button>
+        }
+      >
+        {linkedTask && (
+          <div className="space-y-3">
+            <h3 className="text-h2 break-words">{linkedTask.title}</h3>
+            <p>담당: {linkedTask.assigneeName || '미지정'}</p>
+            <p>
+              {linkedTask.kind === 'TASK' ? '마감' : '일정'}:{' '}
+              {displayTime(linkedTask.dueAt ?? linkedTask.scheduledAt)}
+            </p>
+            <div>
+              <p className="text-caption font-bold">기타 메모</p>
+              <p className="mt-1 whitespace-pre-wrap break-words text-ink2">
+                {linkedTask.description?.trim() || '등록한 메모가 없어요.'}
+              </p>
+            </div>
+            <p>항목 상태: {linkedTask.status === 'CANCELLED' ? '취소됨' : '저장됨'}</p>
+            <p>알림 상태: {statusLabels[linkedTask.reminder.status]}</p>
+            <p>알림 시각: {displayTime(linkedTask.reminder.reminderAt)}</p>
+          </div>
+        )}
+      </Modal>
     </section>
   )
 }

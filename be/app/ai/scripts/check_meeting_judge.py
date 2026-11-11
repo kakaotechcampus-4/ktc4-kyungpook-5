@@ -5,7 +5,7 @@
 
     cd be && uv run python app/ai/scripts/check_meeting_judge.py \\
         [--set query --set pipeline ...] [--baseline <측정폴더>/results/query_compare_v4.json] [--json 결과.json]
-    cd be && uv run python app/ai/scripts/check_meeting_judge.py --eval-set [--holdout] [--json 결과.json]
+    cd be && uv run python app/ai/scripts/check_meeting_judge.py --eval-set [--holdout | --split holdout2] [--json 결과.json]
     cd be && uv run python app/ai/scripts/check_meeting_judge.py --eval-set --holdout \\
         --env-file <모델별 AI_* 파일> --judge-timeout 60 --json 결과.json   # 회의 뒤 다시 판단할 모델(#117)
 
@@ -14,7 +14,8 @@
    호출당 토큰(입력·캐시·출력)과 판단 1,000회 비용을 문항 묶음별로 낸다.
    --baseline을 주면 측정 폴더에서 같은 프롬프트로 낸 판단·검색어와 발화별로 비교한다.
    --eval-set이면 회의 판단 평가 세트(meeting_judge_set.jsonl, #115)를 쓴다. 개발용만 재고, --holdout을 주면
-   홀드아웃도 재서 따로 낸다. 오답을 묶음별·태그별로 센다.
+   홀드아웃도 재서 따로 낸다. --split을 주면 그 구분만 잰다(두 번째 홀드아웃 holdout2는 이것으로만 잰다).
+   오답을 묶음별·태그별로 센다.
 ② 행사(event)를 넣었을 때와 뺐을 때 검색어가 어떻게 달라지는지 본다. 평가 세트는 회의마다 행사를 이미 넣으므로 건너뛴다.
 
 검색은 부르지 않는다. 검색과 근거 판단은 eval_retrieval.py --queries로 회의 검색어를 넣어 잰다(#72).
@@ -49,7 +50,9 @@ EVAL_DIR = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "eval"
 EVAL_UTTERANCES = EVAL_DIR / "meeting_judge.jsonl"
 EVAL_SET = EVAL_DIR / "meeting_judge_set.jsonl"
 SETS = ("query", "pipeline", "vocative")
-SPLITS = ("dev", "holdout")
+SPLITS = ("dev", "holdout", "holdout2")
+# --holdout이 재는 구분. holdout2(#260)는 --split holdout2로만 잰다. 이전 측정 명령이 같은 문항을 다시 재게 둔다
+HOLDOUT_SPLITS = ("dev", "holdout")
 
 # 평가 문항에는 발화 시각이 없어 회의 날짜 오후 2시부터 10초 간격으로 둔다
 MEETING_START = time(14, 0)
@@ -233,6 +236,46 @@ def threshold_sweep(records: list[dict], thresholds: tuple[float, ...]) -> list[
     return rows
 
 
+def auroc(scores: list[float], truths: list[bool]) -> float | None:
+    """조회할 발화 하나와 아닌 발화 하나를 뽑았을 때 조회할 쪽 확률이 더 높을 비율. 같으면 반으로 센다"""
+    pos = [s for s, t in zip(scores, truths) if t]
+    neg = [s for s, t in zip(scores, truths) if not t]
+    if not pos or not neg:
+        return None
+    wins = sum((p > n) + 0.5 * (p == n) for p in pos for n in neg)
+    return round(wins / (len(pos) * len(neg)), 3)
+
+
+def summarize_probabilities(records: list[dict]) -> dict:
+    """조회 확률(`p_true`)을 내는 판단 전용 모델(Laya·Jev)의 요약. 판단 지표에 AUROC와 평균 확률을 더한다"""
+    # 둘 다 허용인 문항은 채점하지 않으므로 확률의 순서를 볼 때도 뺀다
+    scored = [r for r in records if not r.get("either")]
+    pos = [r for r in scored if r["truth"]]
+    neg = [r for r in scored if not r["truth"]]
+    return {
+        "items": len(records),
+        **confusion(records),
+        "auroc": auroc([r["p_true"] for r in scored], [r["truth"] for r in scored]),
+        "p_true_mean": {
+            "lookup": round(sum(r["p_true"] for r in pos) / len(pos), 3) if pos else None,
+            "no_lookup": round(sum(r["p_true"] for r in neg) / len(neg), 3) if neg else None,
+        },
+    }
+
+
+def luna_caught(path: Path) -> set[str]:
+    """luna가 조회로 판단한 문항 id. 정답과 맞았는지는 부르는 쪽이 지금 평가 문항의 정답으로 가린다"""
+    return {r["id"] for r in json.loads(path.read_text())["records"] if r.get("pred")}
+
+
+def luna_missed(records: list[dict], caught: set[str], threshold: float | None = None) -> dict:
+    """조회할 발화 중 luna가 잡았는데 Laya가 놓친 것. 둘 다 허용은 채점하지 않으므로 뺀다.
+    threshold를 주면 그 임계값으로 다시 판단한다(임계값 표)"""
+    target = [r for r in records if r["truth"] and not r.get("either") and r["id"] in caught]
+    missed = [r["id"] for r in target if not (r["p_true"] >= threshold if threshold is not None else r["pred"])]
+    return {"missed": f"{len(missed)} / {len(target)}", "ids": missed}
+
+
 def breakdown(records: list[dict]) -> dict:
     """묶음별·태그별로 문항 수와 틀린 수를 센다. 무엇을 놓치고 어디서 잘못 끼어드는지 본다.
     둘 다 허용인 문항은 문항 수에만 들어가고 틀린 수에는 들어가지 않는다"""
@@ -298,9 +341,9 @@ def compare(records: list[dict], baseline: Path) -> dict:
 
 
 def eval_items(args) -> tuple[Path, str, tuple[str, ...], list[tuple[dict, JudgeUtteranceRequest]]]:
-    """잴 파일과 나눌 기준(묶음 또는 개발용·홀드아웃)과 문항. luna와 Laya가 같은 인자로 같은 문항을 고른다"""
+    """잴 파일과 나눌 기준(묶음 또는 개발용·홀드아웃)과 문항. luna와 Laya·Jev가 같은 인자로 같은 문항을 고른다"""
     if args.eval_set:
-        groups = SPLITS if args.holdout else ("dev",)
+        groups = tuple(args.split) if args.split else HOLDOUT_SPLITS if args.holdout else ("dev",)
         return EVAL_SET, "split", groups, load_requests(EVAL_SET, splits=groups)
     groups = tuple(args.set or SETS)
     return EVAL_UTTERANCES, "set", groups, load_requests(EVAL_UTTERANCES, sets=groups)
@@ -334,6 +377,10 @@ def add_eval_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--set", action="append", choices=SETS, help="잴 문항 묶음. 여러 번 줄 수 있다. 기본은 전부")
     parser.add_argument("--eval-set", action="store_true", help="회의 판단 평가 세트(#115)를 잰다. 기본은 개발용만")
     parser.add_argument("--holdout", action="store_true", help="평가 세트의 홀드아웃도 잰다. 기록에 남길 측정에서만 켠다")
+    parser.add_argument(
+        "--split", action="append", choices=SPLITS,
+        help="평가 세트에서 이 구분만 잰다. 여러 번 줄 수 있다. 예: --split holdout2. 주면 --holdout 대신 쓴다",
+    )
 
 
 def main() -> int:
@@ -348,8 +395,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.eval_set and (args.set or args.baseline):
         parser.error("--eval-set에는 --set·--baseline을 함께 쓸 수 없다")
-    if args.holdout and not args.eval_set:
-        parser.error("--holdout은 --eval-set과 함께 쓴다")
+    if (args.holdout or args.split) and not args.eval_set:
+        parser.error("--holdout·--split은 --eval-set과 함께 쓴다")
 
     # eval_retrieval은 불러올 때 be/.env를 덮어 읽는다. 테스트가 이 파일을 불러와도 환경을 바꾸지 않게 여기서,
     # --env-file보다 먼저 불러온다. 나중에 불러오면 다른 모델을 재려 해도 be/.env의 모델로 잰다

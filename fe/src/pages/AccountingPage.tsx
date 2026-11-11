@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ExpensesPanel } from '@/features/accounting/components/ExpensesPanel'
+import { ReceiptImports } from '@/features/accounting/components/ReceiptImports'
 import { useMe } from '@/features/auth/hooks'
 import { useAuthStore } from '@/shared/auth/store'
 import { Button } from '@/shared/ui/Button'
@@ -9,6 +11,8 @@ export default function AccountingPage() {
   const meQuery = useMe()
   const { token, me, clubId } = useAuthStore()
   const club = me?.clubs.find((item) => item.id === clubId)
+  // 영수증 확정으로 방금 만든 지출. 장부가 그 행을 강조해 보여 준다.
+  const [justSaved, setJustSaved] = useState<string[]>([])
 
   if (token && meQuery.isPending && !me) {
     return (
@@ -46,7 +50,8 @@ export default function AccountingPage() {
         <h1 className="text-h1 text-ink">회계</h1>
         <p className="text-[13px] text-mute">{club.name}에 저장된 지출 내역을 확인합니다.</p>
       </header>
-      <ExpensesPanel clubId={clubId} />
+      <ReceiptImports key={clubId} clubId={clubId} onConfirmed={setJustSaved} />
+      <ExpensesPanel clubId={clubId} highlightIds={justSaved} />
     </div>
   )
 }

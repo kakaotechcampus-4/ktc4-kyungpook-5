@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from app.ai.errors import AIInvalidResponseError, AIRetryableError
 from app.ai.features.planning.agent.graph import run_planning_agent_turn
-from app.ai.features.planning.agent.nodes import TOOL_NAME, condition_tool_schema
+from app.ai.features.planning.agent.nodes import PERSONA_PROMPT, PROMPT, TOOL_NAME, condition_tool_schema
 from app.ai.features.planning.agent.schemas import PlanningAgentTurnInput
 from app.ai.features.planning.agent.state import PlanningDraft
 from app.ai.features.planning.schemas import PlanningConditions, PlanningMessage
@@ -48,7 +48,7 @@ def test_conversation_only_keeps_draft_and_does_not_mutate_input():
     assert result.executions == ()
     assert result.draft == req.draft
     assert req.model_dump_json() == before
-    assert "25000" in observed[0][0][0].content
+    assert "25000" in observed[0][0][-1].content
 
 
 def test_tool_updates_draft_and_model_reads_tool_result_and_latest_state():
@@ -60,10 +60,10 @@ def test_tool_updates_draft_and_model_reads_tool_result_and_latest_state():
     assert result.draft.conditions.fee_per_person == 30000
     assert result.draft.condition_meta["fee_per_person"].status == "tentative"
     assert result.executions[0].result.status == "applied"
-    tool = observed[1][0][-1]
+    tool = observed[1][0][-2]
     assert isinstance(tool, ToolMessage) and tool.tool_call_id == "c1"
     assert json.loads(tool.content)["draft"]["conditions"]["fee_per_person"] == 30000
-    assert "30000" in observed[1][0][0].content
+    assert "30000" in observed[1][0][-1].content
     assert req.model_dump_json() == before
     assert any(m.content == req.history[-1].content for m in observed[0][0])
 
@@ -73,7 +73,7 @@ def test_bad_arguments_can_be_corrected_by_next_model_call():
         AIMessage(content="", tool_calls=[call("c2")]), AIMessage(content="3만 원으로 잡았어요.")])
     assert [e.result.status for e in result.executions] == ["rejected", "applied"]
     assert result.draft.conditions.fee_per_person == 30000
-    assert "인자 형식" in observed[1][0][-1].content
+    assert "인자 형식" in observed[1][0][-2].content
 
 
 def test_date_conflict_is_returned_to_model_without_changing_draft():
@@ -173,3 +173,29 @@ def test_json_round_trip_keeps_tool_messages_and_schema_is_typed():
     schema = condition_tool_schema()
     assert schema["function"]["name"] == TOOL_NAME
     assert "changes" in schema["function"]["parameters"]["properties"]
+
+
+def test_first_system_message_is_identical_across_turns_and_calls_for_provider_cache():
+    # 공급자 캐시는 첫 시스템 메시지가 조금이라도 다르면 걸리지 않았다(#269).
+    # 메시지 ID·초안이 달라도 맨 앞은 지시문 원문 그대로이고, 바뀌는 문맥은 맨 끝에만 있어야 한다.
+    _, first_turn = run(request(), [AIMessage(content="", tool_calls=[call()]), AIMessage(content="3만 원으로 잡았어요.")])
+    other = request(current_message=PlanningMessage(id="u9", role="user", text="참가비 3만 원이면 어때?"))
+    _, second_turn = run(other, [AIMessage(content="장단점을 함께 볼게요.")])
+    calls = [messages for messages, _ in first_turn + second_turn]
+    assert all(isinstance(m[0], SystemMessage) and m[0].content == PROMPT for m in calls)
+    contexts = [m[-1] for m in calls]
+    assert all(isinstance(m, SystemMessage) and m.content.startswith("현재 실행 문맥(JSON 데이터):\n") for m in contexts)
+    assert "토리" in PERSONA_PROMPT
+    assert all(m.content.endswith(PERSONA_PROMPT) for m in contexts)
+    assert '"current_message_id": "u1"' in contexts[0].content and '"current_message_id": "u9"' in contexts[2].content
+    assert '"fee_per_person": 25000' in contexts[0].content and '"fee_per_person": 30000' in contexts[1].content
+    # 같은 턴 2번째 호출은 1번째 호출의 실행 문맥만 빼고 앞부분을 그대로 이어 쓴다.
+    assert calls[1][:len(calls[0]) - 1] == calls[0][:-1]
+
+
+def test_tool_limit_notice_goes_to_trailing_context_not_first_message():
+    _, observed = run(request(), [AIMessage(content="", tool_calls=[call(f"c{i}", value=30000 + i) for i in range(4)]),
+                                  AIMessage(content="추가 작업은 다음에 이어갈게요.")])
+    messages, allow_tools = observed[-1]
+    assert allow_tools is False and messages[0].content == PROMPT
+    assert messages[-1].content.endswith("이번 턴의 Tool 한도에 도달했습니다. 추가 실행 없이 실제 완료한 결과와 남은 내용을 답하세요.")

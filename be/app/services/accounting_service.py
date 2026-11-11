@@ -1,18 +1,21 @@
 """영수 내역 기록 도메인 오케스트레이션 (#133).
 
-CSV는 결정론적으로 파싱하고, 영수증 이미지는 더미 OCR(services/receipt_ocr_stub.py)로
-초안을 만든다. 이미지 OCR은 agent_jobs 작업으로 기록하지만 실제 작업 큐가 없어
-둘 다 요청 안에서 즉시 처리한다. 나중에 큐로 옮겨도 라우터 계약은 그대로 쓸 수
-있게 서비스 함수 경계를 나눠둔다.
+CSV는 결정론적으로 파싱하고 영수증 이미지는 AI로 검수 초안을 만든다.
+OCR 대기 중에는 DB 잠금을 반환하며, 명시적 확정 전에는 지출을 만들지 않는다.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time, timedelta
+from zoneinfo import ZoneInfo
+from pydantic import ValidationError
+
+from app import ai
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import (
     AgentJobKind,
+    CurrencyCode,
     AgentJobStage,
     ExpenseSource,
     ReceiptImportStatus,
@@ -28,15 +31,28 @@ from app.core.exceptions import (
     ValidationFailed,
     VersionConflict,
 )
-from app.infra.storage import save_file
+from app.infra.storage import delete_file, read_file, save_file
 from starlette.concurrency import run_in_threadpool
 from app.models.accounting import Expense, ReceiptImport, ReceiptImportRow
-from app.models.events import Event
+from app.models.events import Action, Event
+from app.models.agent import AgentJob
 from app.models.records import Record
 from app.schemas.accounting import ExpenseRowDraftIn
 from app.services import agent_job_service
 from app.services.expense_csv_parser import CsvFormatError, parse_expense_csv
-from app.services.receipt_ocr_stub import extract_receipt
+RECEIPT_MAX_BYTES = 10 * 1024 * 1024
+OCR_TIMEOUT = timedelta(minutes=3)
+
+
+def _image_mime(content: bytes) -> str:
+    if content.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if content.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if content.startswith(b"RIFF") and content[8:12] == b"WEBP":
+        return "image/webp"
+    raise ValidationFailed({"file": "JPEG, PNG 또는 WebP 이미지를 선택해 주세요."})
+
 
 
 async def create_expense(
@@ -68,6 +84,36 @@ async def create_expense(
     )
     session.add(expense)
     await session.commit()
+    return expense
+
+
+def add_action_expense(
+    session: AsyncSession,
+    *,
+    action: Action,
+    club_id: str,
+    spent_at: datetime,
+    created_by: str,
+) -> Expense:
+    """완료된 행사 행동의 금액을 지출 내역으로 남긴다 (#348).
+
+    행동 완료와 한 트랜잭션이어야 해서 커밋하지 않는다 — 호출한 쪽이 커밋한다.
+    같은 행동이 두 번 적히는 건 expenses.action_id UNIQUE가 막는다.
+    """
+    expense = Expense(
+        club_id=club_id,
+        event_id=action.event_id,
+        spent_at=spent_at,
+        merchant=None,
+        amount=action.amount,
+        currency=CurrencyCode.KRW,
+        category=None,
+        description=action.title,
+        source=ExpenseSource.ACTION,
+        action_id=action.id,
+        created_by=created_by,
+    )
+    session.add(expense)
     return expense
 
 
@@ -162,29 +208,24 @@ async def create_receipt_import(
     file_name: str,
     file_bytes: bytes,
     created_by: str,
+    mime_type: str = "",
 ) -> ReceiptImport:
+    if import_type == ReceiptImportType.RECEIPT_IMAGE and (not file_bytes or len(file_bytes) > RECEIPT_MAX_BYTES):
+        raise ValidationFailed({"file": "파일은 1바이트 이상 10MB 이하여야 합니다."})
+    if not file_name.strip() or len(file_name) > 255:
+        raise ValidationFailed({"file": "파일 이름을 확인해 주세요."})
+    if import_type == ReceiptImportType.RECEIPT_IMAGE:
+        detected = _image_mime(file_bytes)
+        if mime_type.lower() != detected:
+            raise ValidationFailed({"file": "이미지 형식과 MIME 타입이 일치하지 않습니다."})
     storage_key = await run_in_threadpool(save_file, club_id, file_name, file_bytes)
-    record = Record(
-        club_id=club_id,
-        event_id=event_id,
-        file_name=file_name,
-        file_type=(
-            RecordFileType.CSV
-            if import_type == ReceiptImportType.EXPENSE_CSV
-            else RecordFileType.IMAGE
-        ),
-        category=RecordCategory.RECEIPT,
-        storage_key=storage_key,
-        size=len(file_bytes),
-        parse_status=RecordParseStatus.COMPLETED,
-    )
-    session.add(record)
-    await session.flush()
-
+    # 자료함 기록은 확정할 때 만든다(#367). 여기서는 파일만 보관한다.
     receipt_import = ReceiptImport(
         club_id=club_id,
         event_id=event_id,
-        record_id=record.id,
+        file_name=file_name,
+        storage_key=storage_key,
+        file_size=len(file_bytes),
         type=import_type,
         status=ReceiptImportStatus.PROCESSING,
         created_by=created_by,
@@ -220,31 +261,104 @@ async def create_receipt_import(
             )
     else:
         job = await agent_job_service.create_job(
-            session, club_id=club_id, kind=AgentJobKind.RECEIPT_OCR, created_by=created_by
-        )
+            session, club_id=club_id, kind=AgentJobKind.RECEIPT_OCR, created_by=created_by)
         receipt_import.job_id = job.id
         agent_job_service.start(session, job, AgentJobStage.OCR)
-        extracted_rows = extract_receipt(file_bytes)
-        agent_job_service.succeed(session, job, {"receiptImportId": receipt_import.id})
-        for row_no, extracted in enumerate(extracted_rows, start=1):
-            session.add(
-                ReceiptImportRow(
-                    receipt_import_id=receipt_import.id,
-                    row_no=row_no,
-                    spent_at=extracted.spent_at,
-                    merchant=extracted.merchant,
-                    amount=extracted.amount,
-                    category=extracted.category,
-                    description=extracted.description,
-                    raw_fields=extracted.raw_fields,
-                    field_confidence=extracted.field_confidence or None,
-                )
-            )
+        import_id, job_id = receipt_import.id, job.id
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            await run_in_threadpool(delete_file, storage_key)
+            raise
+        return await _run_receipt_ocr(session, club_id, import_id, job_id, file_name, detected, file_bytes)
 
     receipt_import.status = ReceiptImportStatus.NEEDS_REVIEW
     await session.commit()
     await session.refresh(receipt_import, attribute_names=["rows"])
     return receipt_import
+
+
+async def _run_receipt_ocr(session, club_id, import_id, job_id, file_name, mime_type, content):
+    # AI 호출 전 커밋으로 DB 연결과 잠금을 반환한다.
+    try:
+        if not hasattr(ai, "ExtractReceiptRequest") or not hasattr(ai, "extract_receipt"):
+            raise ai.AIConfigError("receipt extraction unavailable")
+        result = await ai.extract_receipt(ai.ExtractReceiptRequest(
+            file_name=file_name, mime_type=mime_type, image_bytes=content))
+        # Model output must fit the same DB bounds as a user's draft edit.
+        for row in result.rows:
+            ExpenseRowDraftIn(merchant=row.merchant, amount=row.amount, category=row.category)
+        error = None if result.rows else "OCR_NO_READABLE_RECEIPT"
+    except ai.AIConfigError:
+        result, error = None, "OCR_NOT_CONFIGURED"
+    except ai.AIError:
+        result, error = None, "OCR_UNAVAILABLE"
+    except ValidationError:
+        result, error = None, "OCR_INVALID_RESULT"
+    except Exception:
+        result, error = None, "OCR_UNAVAILABLE"
+    item = await session.scalar(select(ReceiptImport).where(
+        ReceiptImport.id == import_id, ReceiptImport.club_id == club_id).with_for_update().execution_options(populate_existing=True))
+    if item is None:
+        raise ReceiptImportNotFound()
+    if item.job_id != job_id or item.status != ReceiptImportStatus.PROCESSING:
+        await session.refresh(item, attribute_names=["rows"])
+        return item
+    job = await session.get(AgentJob, job_id)
+    if error:
+        item.status = ReceiptImportStatus.FAILED
+        item.error = {"reason": error, "message": "영수증을 읽지 못했습니다. 다시 시도해 주세요."}
+        agent_job_service.fail(session, job, {"code": error})
+    else:
+        item.extraction_result = result.model_dump(mode="json")
+        for row_no, row in enumerate(result.rows, 1):
+            spent_at = datetime.combine(row.spent_at, time.min, ZoneInfo("Asia/Seoul")) if row.spent_at else None
+            session.add(ReceiptImportRow(receipt_import_id=item.id, row_no=row_no, spent_at=spent_at,
+                merchant=row.merchant, amount=row.amount, category=row.category, description=row.description,
+                raw_fields=row.model_dump(mode="json")))
+        item.status = ReceiptImportStatus.NEEDS_REVIEW
+        item.error = None
+        agent_job_service.succeed(session, job, {"receiptImportId": item.id})
+    await session.commit()
+    await session.refresh(item, attribute_names=["rows"])
+    return item
+
+
+async def retry_receipt_import(session, *, club_id: str, import_id: str, created_by: str):
+    item = await session.scalar(select(ReceiptImport).where(
+        ReceiptImport.id == import_id, ReceiptImport.club_id == club_id).with_for_update().execution_options(populate_existing=True))
+    if item is None:
+        raise ReceiptImportNotFound()
+    if item.type != ReceiptImportType.RECEIPT_IMAGE or not item.storage_key:
+        raise ImportNotReady()
+    if item.status == ReceiptImportStatus.PROCESSING:
+        job = await session.get(AgentJob, item.job_id)
+        if job is None or job.started_at is None or datetime.now(UTC) - job.started_at < OCR_TIMEOUT:
+            raise ImportNotReady()
+        agent_job_service.fail(session, job, {"code": "OCR_TIMEOUT"})
+    elif item.status != ReceiptImportStatus.FAILED:
+        raise ImportNotReady()
+    file_name, storage_key = item.file_name or "upload", item.storage_key
+    job = await agent_job_service.create_job(session, club_id=club_id, kind=AgentJobKind.RECEIPT_OCR, created_by=created_by)
+    item.job_id, item.status, item.error = job.id, ReceiptImportStatus.PROCESSING, None
+    agent_job_service.start(session, job, AgentJobStage.OCR)
+    job_id = job.id
+    await session.commit()
+    try:
+        content = await run_in_threadpool(read_file, storage_key)
+        mime_type = _image_mime(content)
+    except Exception:
+        item = await session.get(ReceiptImport, import_id)
+        job = await session.get(AgentJob, job_id)
+        if item.job_id == job_id and item.status == ReceiptImportStatus.PROCESSING:
+            item.status = ReceiptImportStatus.FAILED
+            item.error = {"reason": "OCR_SOURCE_UNAVAILABLE", "message": "원본을 읽지 못했습니다."}
+            agent_job_service.fail(session, job, {"code": "OCR_SOURCE_UNAVAILABLE"})
+            await session.commit()
+        await session.refresh(item, attribute_names=["rows"])
+        return item
+    return await _run_receipt_ocr(session, club_id, import_id, job_id, file_name, mime_type, content)
 
 
 async def get_receipt_import(
@@ -283,7 +397,11 @@ async def update_draft(
     expected_version: int,
     row_edits: list[ExpenseRowDraftIn],
 ) -> ReceiptImport:
-    receipt_import = await get_receipt_import(session, club_id=club_id, import_id=import_id)
+    receipt_import = await session.scalar(select(ReceiptImport).where(
+        ReceiptImport.id == import_id, ReceiptImport.club_id == club_id).with_for_update().execution_options(populate_existing=True))
+    if receipt_import is None:
+        raise ReceiptImportNotFound()
+    await session.refresh(receipt_import, attribute_names=["rows"])
     if receipt_import.version != expected_version:
         raise VersionConflict()
     if receipt_import.status != ReceiptImportStatus.NEEDS_REVIEW:
@@ -323,6 +441,37 @@ async def update_draft(
     return receipt_import
 
 
+async def _attach_receipt_record(session: AsyncSession, receipt_import: ReceiptImport) -> None:
+    """확정한 영수증 파일을 자료함 기록으로 남긴다(#367). 지출의 근거 파일이 되고, 고른 행사에 묶인다.
+
+    이 변경 전에 올린 가져오기는 업로드 때 이미 기록이 있어 행사만 맞춘다.
+    """
+    if receipt_import.record_id is not None:
+        existing = await session.get(Record, receipt_import.record_id)
+        if existing is not None:
+            existing.event_id = receipt_import.event_id
+        return
+    if receipt_import.storage_key is None:
+        return
+    record = Record(
+        club_id=receipt_import.club_id,
+        event_id=receipt_import.event_id,
+        file_name=receipt_import.file_name or "upload",
+        file_type=(
+            RecordFileType.CSV
+            if receipt_import.type == ReceiptImportType.EXPENSE_CSV
+            else RecordFileType.IMAGE
+        ),
+        category=RecordCategory.RECEIPT,
+        storage_key=receipt_import.storage_key,
+        size=receipt_import.file_size or 0,
+        parse_status=RecordParseStatus.COMPLETED,
+    )
+    session.add(record)
+    await session.flush()
+    receipt_import.record_id = record.id
+
+
 async def confirm_receipt_import(
     session: AsyncSession,
     *,
@@ -330,8 +479,13 @@ async def confirm_receipt_import(
     import_id: str,
     expected_version: int,
     confirmed_by: str,
+    event_id: str | None = None,
 ) -> tuple[ReceiptImport, list[str]]:
-    receipt_import = await get_receipt_import(session, club_id=club_id, import_id=import_id)
+    receipt_import = await session.scalar(select(ReceiptImport).where(
+        ReceiptImport.id == import_id, ReceiptImport.club_id == club_id).with_for_update().execution_options(populate_existing=True))
+    if receipt_import is None:
+        raise ReceiptImportNotFound()
+    await session.refresh(receipt_import, attribute_names=["rows"])
     if receipt_import.version != expected_version:
         raise VersionConflict()
     if receipt_import.status != ReceiptImportStatus.NEEDS_REVIEW:
@@ -347,6 +501,11 @@ async def confirm_receipt_import(
         raise ValidationFailed(
             {f"rows[{row_no}]": "금액·날짜를 확인해 주세요." for row_no in blocking_errors}
         )
+    # 확정 화면에서 고른 행사(#367). 지출을 만들기 전에 검사해 남의 행사면 아무것도 남기지 않는다.
+    if event_id is not None:
+        await _ensure_club_event(session, club_id=club_id, event_id=event_id)
+    receipt_import.event_id = event_id
+    await _attach_receipt_record(session, receipt_import)
 
     source = (
         ExpenseSource.CSV_IMPORT

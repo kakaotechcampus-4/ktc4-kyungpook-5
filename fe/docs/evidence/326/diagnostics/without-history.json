@@ -1,0 +1,62 @@
+[
+  {
+    "attempt": 1,
+    "status": "generated",
+    "reason": null,
+    "model": "gpt-5.6-luna",
+    "violations": [],
+    "capture_errors": [],
+    "spans": [
+      {
+        "stage": "generation",
+        "outcome": "ok",
+        "failure_code": null
+      },
+      {
+        "stage": "compose_plan",
+        "outcome": "ok",
+        "failure_code": null
+      },
+      {
+        "stage": "generation_model",
+        "outcome": "ok",
+        "failure_code": null
+      },
+      {
+        "stage": "validate_plan",
+        "outcome": "ok",
+        "failure_code": null
+      }
+    ]
+  },
+  {
+    "attempt": 2,
+    "status": "generated",
+    "reason": null,
+    "model": "gpt-5.6-luna",
+    "violations": [],
+    "capture_errors": [],
+    "spans": [
+      {
+        "stage": "generation",
+        "outcome": "ok",
+        "failure_code": null
+      },
+      {
+        "stage": "compose_plan",
+        "outcome": "ok",
+        "failure_code": null
+      },
+      {
+        "stage": "generation_model",
+        "outcome": "ok",
+        "failure_code": null
+      },
+      {
+        "stage": "validate_plan",
+        "outcome": "ok",
+        "failure_code": null
+      }
+    ]
+  }
+]

@@ -74,6 +74,15 @@ async def test_vad_suppresses_stationary_noise_above_energy_threshold() -> None:
     assert vad.flush() is None
 
 
+async def test_vad_ignores_dc_offset_as_voice_energy() -> None:
+    # A microphone DC offset can exceed the old RMS floor while containing no
+    # speech. RMS must be measured around the frame mean.
+    offset = struct.pack("<{}h".format(16000 * 2), *([1200] * (16000 * 2)))
+    vad = PcmVad()
+    assert vad.feed(offset) == []
+    assert vad.flush() is None
+
+
 async def test_vad_suppresses_low_level_noise_and_preserves_short_voiced_tail() -> None:
     rng = random.Random(11)
     samples = [rng.randint(-300, 300) for _ in range(16000)]
@@ -272,6 +281,7 @@ async def test_disconnect_still_finishes_running_decisions() -> None:
 @pytest.mark.parametrize("invalid, code", [
     ([{"type": "websocket.receive", "bytes": pcm(100)}], "AUDIO_METADATA_REQUIRED"),
     ([msg({"type": "audio", "audioSeq": 2, "startMs": 0, "endMs": 100})], "AUDIO_SEQUENCE_GAP"),
+    ([*frame(1, 0, 100), msg({"type": "audio", "audioSeq": 1, "startMs": 100, "endMs": 200})], "AUDIO_SEQUENCE_GAP"),
     ([msg({"type": "audio", "audioSeq": 1, "startMs": 10, "endMs": 110})], "AUDIO_SEQUENCE_GAP"),
     ([msg({"type": "audio", "audioSeq": 1, "startMs": 0, "endMs": 100}), {"type": "websocket.receive", "bytes": pcm(50)}], "AUDIO_SIZE_MISMATCH"),
     ([msg({"type": "end", "lastAudioSeq": 1})], "AUDIO_END_MISMATCH"),
@@ -331,9 +341,160 @@ async def test_whisper_posts_wav_and_reads_nested_gateway_response() -> None:
         assert b'RIFF' in request.content
         assert b'\r\nko\r\n' in request.content
         assert b'\r\nopenai/whisper-large-v3\r\n' in request.content
+        assert b'\r\nverbose_json\r\n' in request.content
+        assert b'\r\nfalse\r\n' in request.content
         return httpx.Response(200, json={"transcript": {"text": " 회의를 시작합니다. "}})
     provider = WhisperStt(url="https://gateway.example/transcriptions", api_key="private-test-key", transport=httpx.MockTransport(respond))
     assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko-KR") == "회의를 시작합니다."
+
+
+async def test_whisper_discards_provider_marked_silence_hallucination() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다.",
+            "segments": [{"text": "감사합니다.", "no_speech_prob": 0.91}],
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
+
+
+async def test_whisper_skips_silent_audio_before_provider_hallucination() -> None:
+    called = False
+
+    def respond(_):
+        nonlocal called
+        called = True
+        return httpx.Response(200, json={"text": "감사합니다."})
+
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(respond),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(1000, 0)), language="ko") == ""
+    assert called is False
+
+
+async def test_whisper_skips_sparse_noise_before_provider_hallucination() -> None:
+    called = False
+
+    def respond(_):
+        nonlocal called
+        called = True
+        return httpx.Response(200, json={"text": "감사합니다."})
+
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(respond),
+    )
+    sparse_noise = pcm(120, 0) + pcm(20, 2000) + pcm(860, 0)
+    assert await provider.transcribe(pcm_to_wav(sparse_noise), language="ko") == ""
+    assert called is False
+
+
+async def test_whisper_accepts_provider_null_no_speech_probability() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "회의를 시작합니다.",
+            "segments": [{"text": "회의를 시작합니다.", "no_speech_prob": None}],
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == "회의를 시작합니다."
+
+
+async def test_whisper_discards_low_confidence_hallucination() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다.",
+            "segments": [{
+                "text": "감사합니다.",
+                "no_speech_prob": None,
+                "avg_logprob": -1.4,
+                "compression_ratio": 3.2,
+            }],
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
+
+
+async def test_whisper_discards_provider_unrecognized_marker() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": " (알아듣지 못했어요) ",
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
+
+
+async def test_whisper_discards_repeated_short_hallucination() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다. 감사합니다. 감사합니다.",
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == ""
+
+
+async def test_whisper_falls_back_for_legacy_gateway_options() -> None:
+    requests = []
+
+    def respond(request):
+        requests.append(request)
+        if len(requests) == 1:
+            return httpx.Response(422, json={"error": "unsupported option"})
+        return httpx.Response(200, json={"text": " 회의 기록 "})
+
+    provider = WhisperStt(
+        url="https://legacy-gateway.example/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(respond),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == "회의 기록"
+    assert len(requests) == 2
+    assert b"verbose_json" in requests[0].content
+    assert b"verbose_json" not in requests[1].content
+
+
+async def test_whisper_keeps_real_speech_when_provider_marks_speech() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다.",
+            "segments": [{
+                "text": "감사합니다.",
+                "no_speech_prob": 0.02,
+                "avg_logprob": -0.2,
+                "compression_ratio": 1.3,
+            }],
+        })),
+    )
+    assert await provider.transcribe(pcm_to_wav(pcm(300)), language="ko") == "감사합니다."
+
+
+async def test_whisper_rejects_malformed_speech_metadata() -> None:
+    provider = WhisperStt(
+        url="https://mlapi.run/v1/audio/transcriptions",
+        api_key="private-test-key",
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, json={
+            "text": "감사합니다.",
+            "segments": [{"text": "감사합니다.", "no_speech_prob": "unknown"}],
+        })),
+    )
+    with pytest.raises(SttError) as error:
+        await provider.transcribe(pcm_to_wav(pcm(300)), language="ko")
+    assert error.value.code == "STT_INVALID_RESPONSE"
 
 
 async def test_whisper_reads_openai_compatible_response() -> None:
@@ -375,3 +536,131 @@ async def test_second_socket_cannot_replace_live_recorder() -> None:
     assert is_recording(first.meeting_id)
     await first.run()
     assert not is_recording(first.meeting_id)
+
+
+async def test_resume_replays_ack_lost_frame_once_and_keeps_tail():
+    meeting_id = str(uuid.uuid4())
+    saved = []
+    async def noop(*_): return None
+    async def transcribe(utterance): saved.append(utterance); return None
+    first = Socket([start(), *frame(1, 0, 100)])
+    await AudioStream(meeting_id=meeting_id, websocket=first, start=noop, resume=noop,
+        transcribe=transcribe, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    assert saved == []
+    resume = msg({'type':'resume', 'format':'pcm_s16le', 'sampleRate':16000, 'channels':1, 'lastAckSeq':0})
+    second = Socket([resume, *frame(1, 0, 100), *frame(2, 100, 300), msg({'type':'end','lastAudioSeq':2})])
+    await AudioStream(meeting_id=meeting_id, websocket=second, start=noop, resume=noop,
+        transcribe=transcribe, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    ready = second.sent[0]
+    assert ready['resumed'] and ready['lastAudioSeq'] == 1 and ready['endMs'] == 100
+    assert len(saved) == 1 and saved[0].start_ms == 0 and saved[0].end_ms == 300
+    assert saved[0].pcm == pcm(100) + pcm(200)
+    assert second.sent[-1]['status'] == 'COMPLETED'
+
+
+async def test_resume_rejects_unknown_state_and_replay_mismatch():
+    async def noop(*_): return None
+    meeting_id = str(uuid.uuid4())
+    resume = msg({'type':'resume', 'format':'pcm_s16le', 'sampleRate':16000, 'channels':1, 'lastAckSeq':0})
+    missing = Socket([resume])
+    await AudioStream(meeting_id=meeting_id, websocket=missing, start=noop, resume=noop,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    assert missing.sent[-1]['code'] == 'AUDIO_RESUME_UNAVAILABLE'
+    first = Socket([start(), *frame(1,0,100)])
+    await AudioStream(meeting_id=meeting_id, websocket=first, start=noop, resume=noop,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    bad = Socket([resume, *frame(1,0,100, amplitude=3000)])
+    await AudioStream(meeting_id=meeting_id, websocket=bad, start=noop, resume=noop,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    assert bad.sent[-1]['code'] == 'AUDIO_REPLAY_MISMATCH' and bad.closed == 1008
+
+
+async def test_resume_permission_failure_leaves_recoverable_state():
+    from app.services.audio_stream_service import AudioProtocolError
+    async def noop(*_): return None
+    async def forbidden(): raise AudioProtocolError('AUDIO_FORBIDDEN', '권한 없음')
+    meeting_id = str(uuid.uuid4())
+    first = Socket([start(), *frame(1,0,100)])
+    await AudioStream(meeting_id=meeting_id, websocket=first, start=noop, resume=noop,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    handshake = msg({'type':'resume','format':'pcm_s16le','sampleRate':16000,'channels':1,'lastAckSeq':1})
+    denied = Socket([handshake])
+    await AudioStream(meeting_id=meeting_id, websocket=denied, start=noop, resume=forbidden,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    assert denied.sent[-1]['code'] == 'AUDIO_FORBIDDEN'
+    allowed = Socket([handshake, msg({'type':'end','lastAudioSeq':1})])
+    await AudioStream(meeting_id=meeting_id, websocket=allowed, start=noop, resume=noop,
+        transcribe=noop, decide=noop, finalize=noop, begin_finalizing=noop).run()
+    assert allowed.sent[0]['resumed'] and allowed.sent[-1]['status'] == 'COMPLETED'
+
+
+async def test_immediate_resume_while_previous_stt_waits_preserves_order_and_errors():
+    from app.services.audio_stream_service import _resume_states
+    release_stt, release_ai, started_stt = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    transcribed, finalized = [], []
+    async def noop(*_): pass
+    async def transcribe(utterance):
+        transcribed.append(utterance.start_ms)
+        if len(transcribed) == 1:
+            started_stt.set()
+            await release_stt.wait()
+        return str(utterance.start_ms)
+    async def decide(segment_id):
+        if segment_id == '0':
+            await release_ai.wait()
+            raise RuntimeError('model failure')
+    async def finalize(success): finalized.append(success)
+    meeting_id = str(uuid.uuid4())
+    def make(socket):
+        return AudioStream(meeting_id=meeting_id, websocket=socket, start=noop,
+            resume=noop, transcribe=transcribe, decide=decide,
+            finalize=finalize, begin_finalizing=noop)
+    first = make(Socket([start(), *utterances(1)]))
+    first_task = asyncio.create_task(first.run())
+    second_task = None
+    try:
+        await asyncio.wait_for(started_stt.wait(), 1)
+        for _ in range(30):
+            if meeting_id in _resume_states: break
+            await asyncio.sleep(0)
+        assert meeting_id in _resume_states and not is_recording(meeting_id)
+        socket = Socket([msg({'type':'resume','format':'pcm_s16le','sampleRate':16000,'channels':1,'lastAckSeq':2}),
+                         *frame(3,900,1200), msg({'type':'end','lastAudioSeq':3})])
+        second_task = asyncio.create_task(make(socket).run())
+        for _ in range(30):
+            if any(e['type']=='audio.end_ack' for e in socket.sent): break
+            await asyncio.sleep(0)
+        assert socket.sent[0]['type'] == 'audio.ready'
+        assert any(e['type']=='audio.end_ack' for e in socket.sent)
+        assert transcribed == [0] and not finalized
+        release_stt.set()
+        for _ in range(30):
+            if len(transcribed) == 2: break
+            await asyncio.sleep(0)
+        assert len(transcribed) == 2 and not finalized
+        assert is_recording(meeting_id)
+        release_ai.set()
+        await asyncio.wait_for(asyncio.gather(first_task, second_task), 1)
+        assert finalized == [False]
+        assert socket.sent[-1]['status'] == 'FAILED'
+        assert socket.sent[-1]['errorCount'] == 1
+        assert any(e.get('code')=='CONTEXT_PROCESSING_FAILED' for e in socket.sent)
+    finally:
+        release_stt.set()
+        release_ai.set()
+        await asyncio.gather(*[t for t in (first_task, second_task) if t], return_exceptions=True)
+
+
+async def test_expired_resume_persists_accepted_tail_and_marks_interrupted():
+    from app.services.audio_stream_service import _resume_states, _forget_resume
+    saved, finalized = [], []
+    async def transcribe(utterance): saved.append(utterance)
+    async def finalize(success): finalized.append(success)
+    audio = stream(Socket([start(), *frame(1,0,300)]), transcribe=transcribe, finalize=finalize)
+    await audio.run()
+    _forget_resume(audio.meeting_id, _resume_states[audio.meeting_id])
+    for _ in range(30):
+        if finalized: break
+        await asyncio.sleep(0)
+    assert saved == [Utterance(pcm(300),0,300)]
+    assert finalized == [False]

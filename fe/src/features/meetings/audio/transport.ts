@@ -21,6 +21,22 @@ interface TransportCallbacks {
   onFailure: (error: Error) => void
 }
 
+// 다시 해도 같은 결과인 서버 거절은 이유와 할 일을 알린다(#377). 나머지는 일반 안내.
+const FATAL_AUDIO_ERRORS: Record<string, string> = {
+  AUDIO_RESUME_UNSUPPORTED: '이 회의의 저장된 전사를 확인하고 새 회의에서 마이크를 시작해 주세요.',
+  STT_NOT_CONFIGURED: '서버의 음성 인식 설정이 없어 녹음할 수 없어요. 관리자에게 알려 주세요.',
+  AUDIO_ALREADY_RECORDING:
+    '다른 화면에서 이 회의를 녹음하고 있어요. 그 화면에서 이어서 진행해 주세요.',
+  AUDIO_FORBIDDEN: '이 회의를 녹음할 권한이 없어요. 소속을 확인해 주세요.',
+  MEETING_NOT_RECORDING: '이미 끝났거나 마무리 중인 회의라 녹음할 수 없어요.',
+  RECORDING_CONSENT_REQUIRED: '녹음 동의를 확인하지 않은 회의예요. 새 회의를 시작해 주세요.',
+}
+
+interface RetainedFrame {
+  metadata: { type: 'audio'; audioSeq: number; startMs: number; endMs: number }
+  frame: ArrayBuffer
+}
+
 export class MeetingAudioTransport {
   private socket: WebSocket | null = null
   private ready = false
@@ -29,8 +45,10 @@ export class MeetingAudioTransport {
   private completed = false
   private disposed = false
   private failed = false
+  private reconnecting = false
   private sentFrames = 0
   private acceptedFrames = 0
+  private readonly retained: RetainedFrame[] = []
   private readonly clock = new PcmFrameClock()
   private readyTimer: ReturnType<typeof setTimeout> | undefined
   private endTimer: ReturnType<typeof setTimeout> | undefined
@@ -79,12 +97,9 @@ export class MeetingAudioTransport {
         }
       }
       this.socket.onmessage = (event) => this.receive(event.data)
-      this.socket.onerror = () =>
-        this.fail(new Error('음성 서버에 연결하지 못했어요. 연결 상태를 확인해 주세요.'))
+      this.socket.onerror = () => this.socket?.close()
       this.socket.onclose = () => {
-        if (!this.disposed && !this.completed && !this.failed) {
-          this.fail(new Error('음성 연결이 끊겼어요. 마지막 전사 완료는 확인되지 않았어요.'))
-        }
+        if (this.ready && !this.disposed && !this.completed && !this.failed && !this.ending) this.scheduleReconnect(url)
       }
     })
   }
@@ -95,18 +110,25 @@ export class MeetingAudioTransport {
       this.ending ||
       this.failed ||
       this.disposed ||
-      this.socket?.readyState !== WebSocket.OPEN
+      this.socket?.readyState !== WebSocket.OPEN && !this.reconnecting
     ) {
       throw new Error('서버가 음성을 받을 수 없는 상태예요. 전송을 멈췄어요.')
     }
     // Never silently drop frames or let a slow connection grow without a bound.
-    if (this.socket.bufferedAmount > 256_000 || this.sentFrames - this.acceptedFrames >= 100) {
+    if (this.socket?.readyState === WebSocket.OPEN && (this.socket.bufferedAmount > 256_000 || this.sentFrames - this.acceptedFrames >= 100)) {
       throw new Error('음성 전송이 밀려 마이크를 멈췄어요. 서버가 받은 전사 결과를 확인해 주세요.')
     }
     const metadata = this.clock.next(frame.byteLength)
     this.sentFrames = metadata.audioSeq
-    this.socket.send(JSON.stringify(metadata))
-    this.socket.send(frame)
+    this.retained.push({ metadata, frame })
+    if (this.retained.length > 100) {
+      this.fail(new Error('연결이 끊긴 동안 음성이 너무 많이 쌓였어요. 저장된 전사를 확인해 주세요.'))
+      return
+    }
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(metadata))
+      this.socket.send(frame)
+    }
     this.publishProgress()
   }
 
@@ -164,7 +186,7 @@ export class MeetingAudioTransport {
     if (!event || typeof event !== 'object') return
     switch (event.type) {
       case 'audio.ready':
-        if (this.ready) return
+        if (this.ready && event.resumed !== true) return
         if (
           (event.sampleRate !== undefined && event.sampleRate !== PCM_SAMPLE_RATE) ||
           (event.channels !== undefined && event.channels !== 1) ||
@@ -176,6 +198,14 @@ export class MeetingAudioTransport {
         this.ready = true
         clearTimeout(this.readyTimer)
         this.resolveReady?.()
+        if (event.resumed === true) {
+          const last = typeof event.lastAudioSeq === 'number' ? event.lastAudioSeq : 0
+          for (const retained of this.retained) {
+            if (retained.metadata.audioSeq <= last) continue
+            this.socket?.send(JSON.stringify(retained.metadata))
+            this.socket?.send(retained.frame)
+          }
+        }
         break
       case 'audio.accepted':
         if (
@@ -185,6 +215,7 @@ export class MeetingAudioTransport {
           event.audioSeq <= this.sentFrames
         ) {
           this.acceptedFrames = event.audioSeq
+          while (this.retained[0]?.metadata.audioSeq <= event.audioSeq) this.retained.shift()
           this.publishProgress()
         }
         break
@@ -250,8 +281,8 @@ export class MeetingAudioTransport {
         }
         this.fail(
           new Error(
-            event.code === 'AUDIO_RESUME_UNSUPPORTED'
-              ? '이 회의의 저장된 전사를 확인하고 새 회의에서 마이크를 시작해 주세요.'
+            typeof event.code === 'string' && Object.hasOwn(FATAL_AUDIO_ERRORS, event.code)
+              ? FATAL_AUDIO_ERRORS[event.code]
               : '서버가 음성을 처리하지 못했어요. 전사 결과를 확인한 뒤 다시 시도해 주세요.',
           ),
         )
@@ -287,6 +318,24 @@ export class MeetingAudioTransport {
     // Browser clients permit 1000 or an application code in 3000–4999.
     this.socket?.close(4000)
     this.callbacks.onFailure(error)
+  }
+
+  private scheduleReconnect(url: URL) {
+    if (this.reconnecting || this.disposed || this.failed) return
+    this.reconnecting = true
+    window.setTimeout(() => {
+      this.reconnecting = false
+      if (this.disposed || this.failed || this.completed || this.ending) return
+      const socket = new WebSocket(url)
+      socket.binaryType = 'arraybuffer'
+      this.socket = socket
+      socket.onopen = () => socket.send(JSON.stringify({ type: 'resume', format: 'pcm_s16le', sampleRate: PCM_SAMPLE_RATE, channels: 1, lastAckSeq: this.acceptedFrames }))
+      socket.onmessage = (event) => this.receive(event.data)
+      socket.onerror = () => socket.close()
+      socket.onclose = () => {
+        if (this.ready && !this.disposed && !this.failed && !this.completed && !this.ending) this.scheduleReconnect(url)
+      }
+    }, 500)
   }
 
   private clearTimers() {

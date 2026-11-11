@@ -2,6 +2,7 @@
 import json
 import re
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -53,12 +54,34 @@ class ToriAssessment(EvidenceAssessment):
 _PROMPT = Path(__file__).with_name('records_prompt.md').read_text(encoding='utf-8')
 
 
-# shortcut: 원문의 숫자 표기만 비교한다. 환산·계산은 검증 가능한 계산기 도입 시 확장한다.
-_NUMBER = re.compile(r'(?<![\d.])(?:₩\s*)?(?:[+\-−]|마이너스|음수|플러스)?\s*(?:₩\s*)?\d[\d,]*(?:\.\d+)?(?![\d.])\s*(?:조|억|만|천|백|십)?\s*(?:원|명|개|건|%|년|월|일)?')
-_KOREAN_NUMBER = re.compile(r'(?<![\d.])(?:[+\-−]|마이너스|음수|플러스)?\s*(?:[영공일이삼사오육칠팔구십백천만억조]+|(?:스물|서른|마흔|쉰|예순|일흔|여든|아흔)(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉)?|스무|한|두|세|네|다섯|여섯|일곱|여덟|아홉|열)\s*(?:원|명|개|건|%|퍼센트|년|월|일)')
-_AMBIGUOUS_AMOUNT = re.compile(r'\(\s*(?:₩\s*)?(?:\d[\d,]*(?:\.\d+)?|[영공일이삼사오육칠팔구십백천만억조]+)\s*(?:조|억|만|천|백|십)?\s*원?\s*\)')
-_YEAR = re.compile(r'(?<!\d)(?:19|20)\d{2}(?!\s*(?:원|명|개|건|%|월|일|만원|억원))(?=년|(?:에서|으로|부터|까지|에는|의|에|은|는|이|가|도|과|와)(?![가-힣])|[_\W]|$)')
+# 숫자 검사: 답변의 금액·인원·날짜 숫자가 인용한 청크 원문에 있는지 코드로 확인한다.
+# 표기만 맞춰 비교하고(쉼표, ₩·\ 표시, 한글 큰 단위), 합산·나눗셈 같은 계산은 하지 않는다.
+#   "45,000원" "45000\" "₩45,000"  → ("45000", "원")
+#   "4만 5천원" "4.5만원"            → ("45000", "원")
+#   "참가 인원: 40"                  → ("40", "")      단위 없음
+_SIGN = r'(?:[+\-−]|마이너스|음수|플러스)'
+# 원 표시는 숫자 앞(₩45,000)과 뒤(45000\) 모두 쓴다. 한글 윈도우는 \를 ₩로 보여 준다.
+_WON_MARK = r'[₩\\]'
+# 원만 지원한다. 외화 표시는 값을 읽지 않고, 원 금액과 같은 값으로 통과하지 않게만 표시한다.
+_FOREIGN_BEFORE = r'(?:US\$|\$|€|¥|£|USD|JPY|EUR|CNY)'
+_FOREIGN_AFTER = r'(?:달러|엔|유로|위안|USD|JPY|EUR|CNY|\$|€|¥|£)'
+_BIG = r'(?:조|억|만|천|백|십)'
+# 큰 단위가 붙은 부분이 이어지면 한 금액이다. 예: "4만 5천", "1억 2천만", "2 백만"
+_AMOUNT = rf'\d[\d,]*(?:\.\d+)?(?![\d.])(?:\s*{_BIG}+(?:\s*\d[\d,]*(?:\.\d+)?\s*{_BIG}+)*)?'
+_NUMBER = re.compile(
+    rf'(?<![\d.])(?P<before>{_WON_MARK}|{_FOREIGN_BEFORE})?\s*(?P<sign>{_SIGN})?\s*'
+    rf'(?P<before2>{_WON_MARK}|{_FOREIGN_BEFORE})?\s*(?P<amount>{_AMOUNT})\s*'
+    rf'(?P<unit>원|명|개|건|%|년|월|일|{_WON_MARK}|{_FOREIGN_AFTER})?')
+# 한글 수사는 단위가 붙을 때만 숫자로 본다("일", "이"는 일반 글자와 겹친다).
+_KOREAN_NUMBER = re.compile(
+    rf'(?<![\d.])(?P<sign>{_SIGN})?\s*(?P<word>[영공일이삼사오육칠팔구십백천만억조]+|'
+    r'(?:스물|서른|마흔|쉰|예순|일흔|여든|아흔)(?:한|두|세|네|다섯|여섯|일곱|여덟|아홉)?|스무|한|두|세|네|다섯|여섯|일곱|여덟|아홉|열)'
+    r'\s*(?P<unit>원|명|개|건|%|퍼센트|년|월|일)')
+_AMBIGUOUS_AMOUNT = re.compile(r'\(\s*(?:[₩\\]\s*)?(?:\d[\d,]*(?:\.\d+)?|[영공일이삼사오육칠팔구십백천만억조]+)\s*(?:조|억|만|천|백|십)?\s*(?:원|₩|\\)?\s*\)')
+_YEAR = re.compile(r'(?<!\d)(?:19|20)\d{2}(?!\s*(?:원|₩|\\|명|개|건|%|월|일|만원|억원))(?=년|(?:에서|으로|부터|까지|에는|의|에|은|는|이|가|도|과|와)(?![가-힣])|[_\W]|$)')
 _YEAR_RANGE = re.compile(r'(?<!\d)((?:19|20)\d{2})(?:\s*년)?\s*(?:부터|에서|~|〜|～|–|—|-)\s*((?:19|20)\d{2})(?!\d)')
+_BIG_VALUE = {'십': 10, '백': 100, '천': 1000, '만': 10**4, '억': 10**8, '조': 10**12}
+_KOREAN_DIGIT = {'영': 0, '공': 0, '일': 1, '이': 2, '삼': 3, '사': 4, '오': 5, '육': 6, '칠': 7, '팔': 8, '구': 9}
 
 
 def _requested_years(text: str) -> set[str]:
@@ -69,23 +92,86 @@ def _requested_years(text: str) -> set[str]:
     return years
 
 
-def _numbers(text: str) -> set[str]:
+def _amount_value(amount: str) -> str:
+    """아라비아 숫자 금액을 값으로 읽는다. 큰 단위 순서가 어긋나면 원래 표기를 그대로 둔다.
+
+    "45,000.00" → "45000", "4만5천" → "45000", "10.5만" → "105000", "1억2천만" → "120000000"
+    """
+    total, last = Decimal(0), None
+    for digits, units in re.findall(r'(\d[\d,]*(?:\.\d+)?)([조억만천백십]*)', amount):
+        scale = 1
+        for unit in units:  # "천만" = 1000 × 10000
+            scale *= _BIG_VALUE[unit]
+        if last is not None and scale >= last:
+            return amount
+        last = scale
+        # 소수는 Decimal로 계산한다. float이면 4.5 × 10000이 44999.99…가 될 수 있다.
+        total += Decimal(digits.replace(',', '')) * scale
+    return format(total.normalize(), 'f')
+
+
+def _korean_value(word: str) -> str:
+    """한자어 수사를 값으로 읽는다. 고유어 수사(한·스무)는 원래 표기 그대로 두어 같은 표기만 맞춘다.
+
+    "십만" → "100000", "이십" → "20", "백만" → "1000000", "한" → "한"
+    """
+    if any(ch not in _KOREAN_DIGIT and ch not in _BIG_VALUE for ch in word):
+        return word
+    total = section = 0
+    digit = None
+    for ch in word:
+        if ch in _KOREAN_DIGIT:
+            if digit is not None:  # "이이"처럼 숫자가 이어지면 수사가 아니다
+                return word
+            digit = _KOREAN_DIGIT[ch]
+        elif ch in '십백천':
+            section += (1 if digit is None else digit) * _BIG_VALUE[ch]
+            digit = None
+        else:
+            total += ((section + (digit or 0)) or 1) * _BIG_VALUE[ch]
+            section, digit = 0, None
+    return str(total + section + (digit or 0))
+
+
+def _sign(sign: str | None) -> str:
+    return '-' if sign in ('-', '−', '마이너스', '음수') else ''
+
+
+def _unit(*marks: str | None) -> str:
+    marks = tuple(mark for mark in marks if mark)
+    if any(re.fullmatch(f'{_FOREIGN_BEFORE}|{_FOREIGN_AFTER}', mark) for mark in marks):
+        return '외화'
+    if any(mark in ('원', '₩', '\\') for mark in marks):
+        return '원'
+    return next(('%' if mark == '퍼센트' else mark for mark in marks), '')
+
+
+def _numbers(text: str) -> set[tuple[str, str]]:
+    """글 속 숫자를 (값, 단위)로 모은다. 단위는 원·명·개·건·%·년·월·일·외화, 없으면 ""."""
     # 일반 단어 '행사명'은 한글 수사 '사명'과 겹치므로 먼저 제외한다.
     text = _AMBIGUOUS_AMOUNT.sub('', text).replace('행사명', '')
-    values = list(_NUMBER.findall(text))
-    for match in _KOREAN_NUMBER.finditer(text):
-        # 아라비아 숫자와 띄어 쓴 단위(예: 10 만원)는 별도 한글 수사가 아니다.
-        before = text[:match.start()].rstrip()
-        if before and (before[-1].isdigit() or before[-1] == '.'):
+    matches = list(_NUMBER.finditer(text))
+    numbers = {(_sign(m['sign']) + _amount_value(re.sub(r'\s', '', m['amount'])),
+                _unit(m['before'], m['before2'], m['unit']))
+               for m in matches}
+    for m in _KOREAN_NUMBER.finditer(text):
+        # 아라비아 숫자 금액 안의 큰 단위(예: 10 만원, 1억 2천만원의 "만원")는 별도 한글 수사가 아니다.
+        before = text[:m.start()].rstrip()
+        if (before and (before[-1].isdigit() or before[-1] == '.')
+                or any(n.start() <= m.start() < n.end() for n in matches)):
             continue
-        values.append(match.group().strip())
-    normalized = set()
-    for value in values:
-        value = re.sub(r'[,\s]', '', value).replace('−', '-').replace('마이너스', '-').replace('음수', '-').replace('플러스', '+')
-        won = '₩' in value
-        value = value.replace('₩', '').removeprefix('+')
-        normalized.add(value + ('원' if won and not value.endswith('원') else ''))
-    return normalized
+        numbers.add((_sign(m['sign']) + _korean_value(m['word']), _unit(m['unit'])))
+    return numbers
+
+
+def _found(claimed: set[tuple[str, str]], evidence: set[tuple[str, str]]) -> bool:
+    """답변의 숫자마다 원문에 같은 값이 있는지 본다. 단위는 양쪽에 다 있을 때만 같아야 한다.
+
+    원문 "금액: 45000"과 답변 "45,000원" → 원문에 단위가 없어 값만 비교 → 통과
+    원문 "45,000원"과 답변 "45,000명"  → 단위가 달라 실패
+    """
+    return all(any(value == v and (unit == u or not unit or not u) for v, u in evidence)
+               for value, unit in claimed)
 
 
 def _supported(item: EvidenceItem, chunks: tuple[RetrievedChunk, ...], years: set[str]) -> bool:
@@ -96,10 +182,10 @@ def _supported(item: EvidenceItem, chunks: tuple[RetrievedChunk, ...], years: se
     text_numbers = _numbers('\n'.join(chunk.text for chunk in cited))
     evidence_years = set(_YEAR.findall(evidence))
     # 문서명 연도만 예외로 허용하고 금액·인원은 본문에서 확인한다.
-    claimed = {number for number in _numbers(item.content)
-               if number.removesuffix('년') not in evidence_years}
+    claimed = {(value, unit) for value, unit in _numbers(item.content)
+               if not (unit in ('', '년') and value in evidence_years)}
     claim_years = set(_YEAR.findall(item.content))
-    return (bool(cited) and not (claimed - text_numbers)
+    return (bool(cited) and _found(claimed, text_numbers)
             and (not years or (bool(years & evidence_years) and claim_years <= years)))
 
 
@@ -165,7 +251,7 @@ async def answer_tori_records(request: ToriRecordAnswerRequest) -> ToriRecordAns
         conflicts = [conflict for conflict in assessment.conflicts
                      if not _AMBIGUOUS_AMOUNT.search(conflict.description)
                      and all(_supported(value, request.chunks, years) for value in conflict.values)
-                     and _numbers(conflict.description) <= _numbers(' '.join(v.content for v in conflict.values))]
+                     and _found(_numbers(conflict.description), _numbers(' '.join(v.content for v in conflict.values)))]
         removed = len(facts) != len(assessment.facts) or len(conflicts) != len(assessment.conflicts)
         not_found = list(assessment.not_found)
         if removed and not not_found:

@@ -18,6 +18,7 @@ class RecordOut(CamelModel):
 
 
 class RecordDetailOut(RecordOut):
+    club_id: str
     parse_result: dict[str, Any] | None
     # {reason, params, debugMessage}. 화면 문구는 FE가 reason으로 고른다.
     parse_error: dict[str, Any] | None
@@ -26,6 +27,13 @@ class RecordDetailOut(RecordOut):
 class RecordListResponse(CamelModel):
     data: list[RecordOut]
     meta: PageMeta
+
+
+class RecordCategoryCountsOut(CamelModel):
+    # 분류 칩 건수. all은 분류 조건 없는 GET /records의 totalCount와 같다.
+    all: int
+    by_category: dict[RecordCategory, int]
+
 
 class RecordSearchLocation(CamelModel):
     label: str
@@ -43,6 +51,7 @@ class RecordSearchItem(RecordOut):
 
 
 class RecordSearchData(CamelModel):
+    answer: str | None = None
     items: list[RecordSearchItem]
     semantic_status: Literal['AVAILABLE', 'UNAVAILABLE', 'NO_INDEXED_RECORDS']
     indexed_count: int

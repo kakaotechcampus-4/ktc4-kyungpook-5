@@ -1,0 +1,172 @@
+{
+  "latency": {
+    "single": {
+      "started": 30,
+      "success": 30,
+      "p50": 7.19,
+      "p95": 10.09,
+      "mean": 7.6,
+      "session_p50": {
+        "session-01": 7.02,
+        "session-02": 7.27,
+        "session-03": 7.3
+      },
+      "agent_calls_per_request": {
+        "3": 30
+      },
+      "agent_call_seconds": {
+        "n": 90,
+        "p50": 2.39,
+        "p95": 3.2
+      },
+      "by_position": [
+        {
+          "position": 1,
+          "n": 30,
+          "seconds_p50": 2.66,
+          "output_tokens_p50": 109.5
+        },
+        {
+          "position": 2,
+          "n": 30,
+          "seconds_p50": 2.37,
+          "output_tokens_p50": 66.0
+        },
+        {
+          "position": 3,
+          "n": 30,
+          "seconds_p50": 2.11,
+          "output_tokens_p50": 31.0
+        }
+      ],
+      "bundled": 0,
+      "patterns": {
+        "update_event_conditions | update_generation_offer": 30
+      }
+    },
+    "multi": {
+      "started": 30,
+      "success": 30,
+      "p50": 6.17,
+      "p95": 7.49,
+      "mean": 6.45,
+      "session_p50": {
+        "session-01": 6.1,
+        "session-02": 6.01,
+        "session-03": 6.22
+      },
+      "agent_calls_per_request": {
+        "2": 30
+      },
+      "agent_call_seconds": {
+        "n": 60,
+        "p50": 3.36,
+        "p95": 4.21
+      },
+      "by_position": [
+        {
+          "position": 1,
+          "n": 30,
+          "seconds_p50": 3.77,
+          "output_tokens_p50": 199.5
+        },
+        {
+          "position": 2,
+          "n": 30,
+          "seconds_p50": 2.27,
+          "output_tokens_p50": 29.0
+        }
+      ],
+      "bundled": 30,
+      "patterns": {
+        "update_event_conditions+update_generation_offer": 30
+      }
+    },
+    "paired": {
+      "n": 30,
+      "median_saving": 1.09,
+      "mean_saving": 1.15,
+      "multi_faster": 26
+    }
+  },
+  "controls": {
+    "paraphrase": {
+      "single": {
+        "started": 3,
+        "passed": 3,
+        "failed_checks": {}
+      },
+      "multi": {
+        "started": 3,
+        "passed": 3,
+        "failed_checks": {}
+      }
+    },
+    "date_defer": {
+      "single": {
+        "started": 3,
+        "passed": 3,
+        "failed_checks": {}
+      },
+      "multi": {
+        "started": 3,
+        "passed": 3,
+        "failed_checks": {}
+      }
+    },
+    "multiple_defer": {
+      "single": {
+        "started": 3,
+        "passed": 3,
+        "failed_checks": {}
+      },
+      "multi": {
+        "started": 3,
+        "passed": 3,
+        "failed_checks": {}
+      }
+    },
+    "context_defer": {
+      "single": {
+        "started": 3,
+        "passed": 3,
+        "failed_checks": {}
+      },
+      "multi": {
+        "started": 3,
+        "passed": 3,
+        "failed_checks": {}
+      }
+    },
+    "date_resume": {
+      "single": {
+        "started": 3,
+        "passed": 3,
+        "failed_checks": {}
+      },
+      "multi": {
+        "started": 3,
+        "passed": 2,
+        "failed_checks": {
+          "topics_match": 1
+        }
+      }
+    }
+  },
+  "date_resume_extra": {
+    "single": {
+      "started": 10,
+      "passed": 8,
+      "failed_checks": {
+        "topics_match": 2
+      }
+    },
+    "multi": {
+      "started": 10,
+      "passed": 5,
+      "failed_checks": {
+        "topics_match": 5
+      }
+    }
+  }
+}

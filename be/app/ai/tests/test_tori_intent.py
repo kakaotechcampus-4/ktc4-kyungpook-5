@@ -34,6 +34,9 @@ def test_model_failure_propagates(monkeypatch):
     dict(intent='unsupported', scope='all'),
     dict(intent='meeting', event_status='PLANNING'),
     dict(intent='task_list', date_from='2026-11-01', date_to='2026-10-30'),
+    dict(intent='event_list', target='봄 MT'),
+    dict(intent='event_status', meeting_date='2026-10-30'),
+    dict(intent='clarify', redirect='meetings'),
 ])
 def test_inconsistent_output_is_rejected(data):
     with pytest.raises(ValidationError):
@@ -49,7 +52,10 @@ def test_event_list_accepts_status():
     assert ToriIntentResult(intent='event_list', event_status='PLANNING').event_status == 'PLANNING'
 
 
-@pytest.mark.parametrize('kind', ['task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported'])
+@pytest.mark.parametrize('kind', [
+    'task_list', 'event_list', 'event_planning', 'meeting', 'clarify', 'unsupported', 'self_intro',
+    'briefing', 'approval_list', 'event_status', 'meeting_tasks',
+])
 def test_model_extra_query_is_ignored_only_for_non_record_intents(monkeypatch, kind):
     async def invoke(_messages, schema):
         return schema(intent=kind, query='모델이 불필요하게 추가한 검색어')
@@ -73,3 +79,53 @@ def test_model_other_field_mismatch_still_rejected(monkeypatch):
     monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
     with pytest.raises(ValidationError):
         asyncio.run(classify_tori_intent(ToriIntentRequest(message='회의', reference_date='2026-10-30')))
+
+
+def test_target_intents_accept_name_from_utterance():
+    assert ToriIntentResult(intent='event_status', target='봄 MT').target == '봄 MT'
+    assert ToriIntentResult(intent='approval_list', target='봄 MT').target == '봄 MT'
+    tasks = ToriIntentResult(intent='meeting_tasks', target='정기 회의', meeting_date='2026-10-15')
+    assert tasks.meeting_date == date(2026, 10, 15)
+    assert ToriIntentResult(intent='meeting_tasks').target is None  # "지난 회의 할 일"
+
+
+@pytest.mark.parametrize('kind', ['briefing', 'event_list', 'meeting', 'unsupported'])
+def test_model_extra_target_is_ignored_where_not_used(monkeypatch, kind):
+    async def invoke(_messages, schema):
+        return schema.model_validate({'intent': kind, 'target': '봄 MT', 'meeting_date': '2026-10-15'})
+    monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
+    result = asyncio.run(classify_tori_intent(ToriIntentRequest(message='봄 MT', reference_date='2026-10-30')))
+    assert result.intent == kind and result.target is None and result.meeting_date is None
+
+
+def test_model_meeting_date_is_kept_only_for_meeting_tasks(monkeypatch):
+    async def invoke(_messages, schema):
+        return schema.model_validate({'intent': 'event_status', 'target': '봄 MT', 'meeting_date': '2026-10-15'})
+    monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
+    result = asyncio.run(classify_tori_intent(ToriIntentRequest(message='봄 MT 어디까지', reference_date='2026-10-30')))
+    assert result.target == '봄 MT' and result.meeting_date is None
+
+
+def test_unsupported_keeps_redirect_and_other_intents_drop_it(monkeypatch):
+    assert ToriIntentResult(intent='unsupported', redirect='event_detail').redirect == 'event_detail'
+
+    async def invoke(_messages, schema):
+        return schema.model_validate({'intent': 'event_list', 'redirect': 'records'})
+    monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
+    result = asyncio.run(classify_tori_intent(ToriIntentRequest(message='행사 목록', reference_date='2026-10-30')))
+    assert result.intent == 'event_list' and result.redirect is None
+
+
+@pytest.mark.parametrize('output', [
+    {'intent': 'meeting_tasks', 'target': '11월 정기 회의', 'kind': 'task'},
+    {'intent': 'briefing', 'date_from': '2026-10-30', 'date_to': '2026-10-30'},
+    {'intent': 'event_status', 'target': '봄 MT', 'scope': 'all'},
+])
+def test_fixed_range_intents_drop_task_list_fields(monkeypatch, output):
+    async def invoke(_messages, schema):
+        return schema.model_validate(output)
+    monkeypatch.setattr(intent, 'ainvoke_structured', invoke)
+    result = asyncio.run(classify_tori_intent(ToriIntentRequest(message='질문', reference_date='2026-10-30')))
+    assert result.intent == output['intent']
+    assert (result.scope, result.kind, result.date_from, result.date_to) == (None, None, None, None)
+    assert result.target == output.get('target')

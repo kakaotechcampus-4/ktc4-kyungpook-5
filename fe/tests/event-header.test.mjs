@@ -24,27 +24,54 @@ await writeFile(output, built.outputFiles[0].contents)
 const { EventHeaderCard } = await import(pathToFileURL(output).href)
 await rm(dir, { recursive: true })
 
-function render(status) {
+function render(status, steps = []) {
   return renderToStaticMarkup(React.createElement(EventHeaderCard, {
     event: { id: 'event-1', title: '행사', status, startDate: null, endDate: null,
       location: null, headcount: null, currentStep: null },
-    steps: [], onSelectStep() {}, onCancelEvent() {}, onViewCancellation() {},
+    steps, onSelectStep() {}, onCancelEvent() {}, onViewCancellation() {},
     onEditPlan() {}, onStartEvent() {}, onCompleteEvent() {},
   }))
 }
 
-test('planning offers actionable plan edit and cancellation', () => {
+// #336 전 서버처럼 계획 중인데도 첫 단계가 CURRENT로 온다.
+const steps = [
+  { id: 's1', stepOrder: 1, name: '사전 수요 조사', state: 'CURRENT', deadline: null },
+  { id: 's2', stepOrder: 2, name: '참가 신청', state: 'TODO', deadline: null },
+]
+
+test('planning header ignores step states', () => {
+  const html = render('PLANNING', steps)
+  assert.doesNotMatch(html, /단계 진행/)
+  assert.doesNotMatch(html, /현재 단계/)
+  assert.doesNotMatch(html, />행사 시작<\/button>/)
+})
+
+test('planning header leads with continuing the plan', () => {
+  const first = render('PLANNING', steps).match(/<button[^>]*>[^<]*<\/button>/)[0]
+  assert.match(first, />계획 이어보기</)
+  assert.match(first, /bg-blue-600/)
+})
+
+test('on-going header keeps progress', () => {
+  const html = render('ON_GOING', steps)
+  assert.match(html, /단계 진행/)
+  assert.match(html, />행사 완료<\/button>/)
+})
+
+// 취소 정리(안내·예약 취소·환불·기록)는 운영을 시작한 뒤에야 할 일이 생긴다(#381).
+// 계획 중에는 「계획 이어보기」만 누를 수 있고 「행사 취소」는 보이지 않는다.
+test('planning offers plan edit without cancellation', () => {
   const html = render('PLANNING')
-  assert.match(html, /<button[^>]*>단계 수정<\/button>/)
-  assert.match(html, /<button[^>]*>행사 취소<\/button>/)
-  const cancelButton = html.match(/<button[^>]*>행사 취소<\/button>/)?.[0]
-  assert.doesNotMatch(cancelButton, /\sdisabled(?:\s|=|>)/)
+  const editButton = html.match(/<button[^>]*>계획 이어보기<\/button>/)?.[0]
+  assert.ok(editButton)
+  assert.doesNotMatch(editButton, /\sdisabled(?:\s|=|>)/)
+  assert.doesNotMatch(html, />행사 취소<\/button>/)
 })
 
 test('in-progress events can cancel but cannot edit the planning structure', () => {
   const html = render('ON_GOING')
   assert.match(html, />행사 취소<\/button>/)
-  assert.doesNotMatch(html, />단계 수정<\/button>/)
+  assert.doesNotMatch(html, />계획 이어보기<\/button>/)
 })
 
 test('cancelled states lead back to cleanup rather than starting cancellation twice', () => {

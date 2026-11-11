@@ -16,7 +16,10 @@ def test_tori_event_list_queries_authorized_club_and_reports_status(monkeypatch)
 
     async def list_events(_session, *, club_id, status, page, size):
         assert (club_id, status, page, size) == ('club-1', EventStatus.PLANNING, 1, 20)
-        return [{'title': '준비 행사', 'status': EventStatus.PLANNING, 'start_date': None}], 1
+        return [{'id': 'evt-1', 'title': '준비 행사', 'status': EventStatus.PLANNING, 'start_date': None,
+                 'end_date': None, 'dday': None, 'location': None, 'headcount': None,
+                 'current_step_name': None, 'step_progress': [], 'pending_approval_count': 0,
+                 'payment': None, 'budget': None}], 1
 
     class Session:
         async def commit(self):
@@ -28,5 +31,6 @@ def test_tori_event_list_queries_authorized_club_and_reports_status(monkeypatch)
     result = asyncio.run(tori.message('club-1', ToriMessageIn(message='준비 중인 행사'),
                                       None, SimpleNamespace(id='account-1'), Session()))
     assert result.data.intent == 'event_list'
-    assert '계획 중 행사 1건' in result.data.reply
-    assert '준비 행사 (계획 중 · 날짜 미정)' in result.data.reply
+    assert result.data.reply == '계획 중인 행사 1개예요.'
+    assert result.data.card.total == 1
+    assert [event.title for event in result.data.card.events] == ['준비 행사']

@@ -2,27 +2,42 @@
 import { useState } from 'react'
 import type { ClubInfo, NotificationSettings, Profile } from '@/features/mypage/types'
 import { Avatar } from '@/shared/ui/Avatar'
+import { ClubEditForm } from '@/features/clubs/components/ClubEditForm'
+import { useClub } from '@/features/clubs/hooks'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 import { Switch } from '@/shared/ui/Switch'
 import { ToriNote } from '@/shared/ui/ToriNote'
+import { useLogout } from '@/features/auth/hooks'
 
 // 누르면 다른 곳으로 가거나 창이 열리는 줄. 오른쪽에 현재 값을 덧붙일 수 있다.
-function LinkRow({ label, value, danger }: { label: string; value?: string; danger?: boolean }) {
+function LinkRow({
+  label,
+  value,
+  danger,
+  disabled = false,
+  onClick,
+}: {
+  label: string
+  value?: string
+  danger?: boolean
+  disabled?: boolean
+  onClick?: () => void
+}) {
   return (
     <button
       type="button"
-      className="flex items-center justify-between border-t border-line px-[26px] py-[15px] text-left first:border-t-0 hover:bg-bg"
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex items-center justify-between border-t border-line px-[26px] py-[15px] text-left first:border-t-0 ${disabled ? 'cursor-not-allowed opacity-60' : 'hover:bg-bg'}`}
     >
       <span className={danger ? 'text-[12.5px] text-mute' : 'text-[12.5px] font-medium text-ink'}>
         {label}
       </span>
       <span className="flex items-center gap-[10px]">
         {value && <span className="text-[11.5px] text-mute">{value}</span>}
-        <span className="text-[12px] text-mute" aria-hidden>
-          ›
-        </span>
+        {!disabled && <span className="text-[12px] text-mute" aria-hidden>›</span>}
       </span>
     </button>
   )
@@ -44,16 +59,27 @@ function Facts({ items }: { items: Array<[string, string]> }) {
 interface MyInfoTabProps {
   profile: Profile
   club: ClubInfo
+  // 소속을 고르지 않았거나 시연 중이면 없다. 그때는 수정 자리를 그리지 않는다.
+  clubId?: string
+  // 서버가 동아리 수정을 회장에게만 허용한다. 임원에게는 버튼을 보이지 않는다.
+  canEditClub?: boolean
   // 연결된 계정. 아직 없으면 비워 둔다.
   linkedAccounts?: string
 }
 
-export function MyInfoTab({ profile, club, linkedAccounts }: MyInfoTabProps) {
-  // TODO(연동): PATCH /me/notifications. 지금은 화면에서만 바뀐다.
-  const [notifications, setNotifications] = useState<NotificationSettings>({
+export function MyInfoTab({
+  profile,
+  club,
+  clubId,
+  canEditClub = false,
+  linkedAccounts,
+}: MyInfoTabProps) {
+  const logout = useLogout()
+  // 베타에서는 알림 설정 API가 없어 현재 값만 표시하고 변경은 막는다.
+  const notifications: NotificationSettings = {
     pendingApproval: true,
     stepDelayed: true,
-  })
+  }
 
   const toggles: Array<[keyof NotificationSettings, string, string]> = [
     ['pendingApproval', '승인 대기 알림', '새 승인 요청이 생기면'],
@@ -74,7 +100,9 @@ export function MyInfoTab({ profile, club, linkedAccounts }: MyInfoTabProps) {
             </div>
             <span className="text-[11.5px] text-mute">{profile.email}</span>
           </div>
-          <Button variant="secondary">프로필 수정</Button>
+          <Button variant="secondary" disabled title="프로필 수정은 베타 범위에 포함되지 않습니다.">
+            프로필 수정 · 베타 제외
+          </Button>
         </Card>
 
         <Card className="flex flex-col gap-[18px] px-[26px] pt-[22px] pb-[24px]">
@@ -87,24 +115,32 @@ export function MyInfoTab({ profile, club, linkedAccounts }: MyInfoTabProps) {
               ['가입일', club.joinedAt],
             ]}
           />
-          <div className="flex gap-[9px] border-t border-line pt-[18px]">
-            <Button variant="soft">동아리 정보 수정</Button>
-            <Button variant="secondary">동아리 나가기</Button>
-          </div>
+          <ClubSettings clubId={clubId} canEdit={canEditClub} />
         </Card>
 
         <Card className="flex flex-col pt-[4px]">
           <h2 className="px-[26px] pt-[18px] pb-[14px] text-h2 text-ink">계정</h2>
-          <LinkRow label="비밀번호 변경" />
-          <LinkRow label="연결된 계정" value={linkedAccounts ?? '없음'} />
-          <LinkRow label="로그아웃" />
-          <LinkRow label="탈퇴" danger />
+          <LinkRow label="비밀번호 변경" value="베타 제외" disabled />
+          <LinkRow label="연결된 계정" value={linkedAccounts ?? '베타 제외'} disabled />
+          <LinkRow
+            label="로그아웃"
+            value={logout.isPending ? '진행 중…' : undefined}
+            disabled={logout.isPending}
+            onClick={() => logout.mutate()}
+          />
+          <LinkRow label="탈퇴" value="베타 제외" danger disabled />
         </Card>
       </div>
 
       <div className="flex w-[300px] shrink-0 flex-col gap-[16px]">
         <Card className="flex flex-col gap-[16px] px-[22px] pt-[20px] pb-[22px]">
-          <h2 className="text-h2 text-ink">알림</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-h2 text-ink">알림</h2>
+            <Chip size="sm">베타 제외</Chip>
+          </div>
+          <p className="text-[11.5px] leading-5 text-mute">
+            알림 설정 변경은 아직 지원하지 않아요. 회의 화면의 이 기기 알림에서 Push 상태를 확인해 주세요.
+          </p>
           {toggles.map(([key, label, desc]) => (
             <div key={key} className="flex items-center justify-between gap-[12px]">
               <span className="flex flex-col gap-[3px]">
@@ -114,7 +150,8 @@ export function MyInfoTab({ profile, club, linkedAccounts }: MyInfoTabProps) {
               <Switch
                 checked={notifications[key]}
                 label={label}
-                onChange={(checked) => setNotifications((s) => ({ ...s, [key]: checked }))}
+                disabled
+                onChange={() => undefined}
               />
             </div>
           ))}
@@ -124,6 +161,44 @@ export function MyInfoTab({ profile, club, linkedAccounts }: MyInfoTabProps) {
           승인 알림을 켜두면 되돌릴 수 없는 일만 골라서 알려드릴게요.
         </ToriNote>
       </div>
+    </div>
+  )
+}
+
+// 동아리 설정 줄. 수정은 현재 값을 받아 와야 열 수 있어 버튼과 폼을 함께 둔다.
+function ClubSettings({ clubId, canEdit }: { clubId?: string; canEdit: boolean }) {
+  const [editing, setEditing] = useState(false)
+  const club = useClub(editing && clubId ? clubId : null)
+
+  if (editing && club.data) {
+    return <ClubEditForm club={club.data} onDone={() => setEditing(false)} />
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-[9px] border-t border-line pt-[18px]">
+      {canEdit && clubId && (
+        <Button
+          variant="soft"
+          loading={editing && club.isPending}
+          onClick={() => setEditing(true)}
+        >
+          동아리 정보 수정
+        </Button>
+      )}
+      {/* 나가기는 서버 경로가 없다. 마지막 회장을 어떻게 할지도 정해지지 않았다(#213) */}
+      <Button variant="secondary" disabled>
+        동아리 나가기
+      </Button>
+      <span className="text-[11.5px] text-mute">
+        {!canEdit && clubId
+          ? '동아리 정보는 회장만 고칠 수 있어요 · 나가기는 준비 중이에요'
+          : '나가기는 준비 중이에요'}
+      </span>
+      {editing && club.isError && (
+        <p role="alert" className="w-full text-[12px] font-bold text-failed">
+          동아리 정보를 불러오지 못했어요. 잠시 뒤 다시 눌러 주세요.
+        </p>
+      )}
     </div>
   )
 }

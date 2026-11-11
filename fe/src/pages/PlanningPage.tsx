@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LivePlanning } from '@/features/planning/components/LivePlanning'
 import { PlanChat } from '@/features/planning/components/PlanChat'
 import { PlanFacts } from '@/features/planning/components/PlanFacts'
+import { PlanningRecordReferences } from '@/features/planning/components/PlanningRecordReferences'
 import { PlanStepper } from '@/features/planning/components/PlanStepper'
 import { PlanSummaryPanel } from '@/features/planning/components/PlanSummaryPanel'
 import { StepFlow } from '@/features/planning/components/StepFlow'
@@ -15,7 +16,7 @@ import {
   DEMO_MESSAGES,
   DEMO_PLAN_META,
   DEMO_PLAN_STEPS,
-  DEMO_REFERENCE,
+  DEMO_RECORD_HISTORY,
   DEMO_SUMMARY,
   DEMO_WARNING,
   EMPTY_SUMMARY,
@@ -94,18 +95,18 @@ function DemoPlanningPage() {
       <PlanStepper current={step} />
 
       {step === 1 ? (
-        <div className="flex flex-col items-start gap-[20px] lg:flex-row">
+        <div className="flex flex-col items-start gap-5 lg:flex-row">
           <PlanChat messages={messages} onSend={send} demo={demo} busy={false} error="" />
-          <div className="w-full lg:w-[320px] lg:shrink-0">
-            <PlanFacts
-              facts={DEMO_FACTS}
-              readiness={demo ? undefined : { canGenerate: false, reasons: [] }}
-              reference={demo ? DEMO_REFERENCE : undefined}
-              unavailable={!demo}
-              onNext={() => {
-                if (demo) setGenerating(true)
-              }}
-            />
+          <div className="flex w-full flex-col gap-4 lg:w-[340px] lg:shrink-0">
+            <PlanFacts facts={DEMO_FACTS}>
+              <p className="text-caption leading-relaxed text-ink2">
+                예시 조건이에요. 초안을 만든 뒤 단계와 일정을 확인할 수 있어요.
+              </p>
+              <Button className="min-h-11 w-full" onClick={() => setGenerating(true)}>
+                이 조건으로 초안 만들기
+              </Button>
+            </PlanFacts>
+            <PlanningRecordReferences entries={DEMO_RECORD_HISTORY} preview />
           </div>
         </div>
       ) : (

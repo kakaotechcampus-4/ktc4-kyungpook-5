@@ -10,6 +10,8 @@ from itertools import count
 from threading import Lock
 from unittest.mock import patch
 
+from langchain_core.callbacks import AsyncCallbackHandler
+from langchain_core.tracers.context import register_configure_hook
 from pydantic import ValidationError
 
 from app.ai.errors import (
@@ -20,8 +22,16 @@ from app.ai.errors import (
 STAGES = ('agent_model', 'generation', 'compose_plan', 'generation_model', 'validate_plan')
 MODEL_STAGES = ('agent_model', 'generation_model')
 OBSERVATION_SCOPE = 'planning_function_wrappers_v1'
+# 1: 구간 시간만. 2: 모델 구간에 토큰 사용량(usage)을 더함(#263). 1도 계속 읽는다.
+OBSERVATION_VERSION = 2
+USAGE_KEYS = ('input_tokens', 'output_tokens', 'reasoning_tokens', 'cached_input_tokens')
+# 토큰이 없는 이유. 구간 결과(outcome)로 정해지며 값을 추정해 채우지 않는다.
+USAGE_MISSING = dict(ok='not_reported', error='no_response', interrupted='not_completed', running='not_completed')
 CURRENT_TRACE = ContextVar('planning_latency_trace', default=None)
 PARENT_SPAN = ContextVar('planning_latency_parent', default=None)
+# 값이 있을 때만 LangChain이 모든 모델 실행에 이 콜백을 붙인다. 기본값 None이면 아무 영향이 없다.
+USAGE_RECORDER = ContextVar('planning_latency_usage_recorder', default=None)
+register_configure_hook(USAGE_RECORDER, inheritable=True)
 INSTALL_LOCK = Lock()
 
 PARENTS = dict(agent_model=None, generation=None, compose_plan='generation',
@@ -49,6 +59,8 @@ class RequestTrace:
     @contextmanager
     def span(self, stage, **details):
         start = self.clock()
+        if stage in MODEL_STAGES:
+            details = dict(details, usage=None)
         item = dict(id=next(self.ids), parent_id=PARENT_SPAN.get(), stage=stage,
                     start_ms=(start - self.origin_ns) / 1_000_000, end_ms=None, duration_ms=None,
                     outcome='running', failure_code=None, error_type=None, **details)
@@ -115,7 +127,13 @@ class RequestTrace:
                     # 요청 종료 시점에는 미완료였으므로 그 이후 시간을 섞지 않는다.
                     item.update(outcome='running', end_ms=None, duration_ms=None, failure_code=None, error_type=None)
                     item.pop('failure_origin_id', None)
-        return dict(version=1, scope=OBSERVATION_SCOPE, spans=spans,
+                    if item['stage'] in MODEL_STAGES:
+                        item['usage'] = None
+        for item in spans:
+            if item['stage'] in MODEL_STAGES:
+                # 출력 한도 초과처럼 응답은 받았지만 실패한 호출은 토큰이 남는다.
+                item['usage_missing'] = None if item['usage'] else USAGE_MISSING[item['outcome']]
+        return dict(version=OBSERVATION_VERSION, scope=OBSERVATION_SCOPE, spans=spans,
                     complete=all(item['outcome'] != 'running' for item in spans),
                     model_call_attempts={stage: sum(item['stage'] == stage for item in spans)
                                          for stage in MODEL_STAGES})
@@ -131,6 +149,56 @@ def capture_request(clock):
     finally:
         PARENT_SPAN.reset(parent_token)
         CURRENT_TRACE.reset(trace_token)
+
+
+def token_usage(response):
+    """LangChain 응답의 usage_metadata에서 토큰 수만 꺼낸다. 본문은 읽지 않는다.
+
+    예: input 139, output 113(그중 reasoning 65), cache_read 0
+      → dict(input_tokens=139, output_tokens=113, reasoning_tokens=65, cached_input_tokens=0)
+    output_tokens는 추론 토큰을 포함한다. 세부 항목을 주지 않으면 그 칸만 None이다.
+    SDK가 안에서 HTTP를 재시도했다면 마지막 성공 응답의 값만 남는다.
+    """
+    try:
+        message = response.generations[0][0].message
+    except (AttributeError, IndexError):
+        return None
+    usage = getattr(message, 'usage_metadata', None)
+    if not usage:
+        return None
+    output_details = usage.get('output_token_details') or {}
+    input_details = usage.get('input_token_details') or {}
+    return dict(input_tokens=usage.get('input_tokens'), output_tokens=usage.get('output_tokens'),
+                reasoning_tokens=output_details.get('reasoning'), cached_input_tokens=input_details.get('cache_read'))
+
+
+def add_usage(previous, current):
+    if previous is None:
+        return current
+    return {key: None if previous[key] is None or current[key] is None else previous[key] + current[key]
+            for key in USAGE_KEYS}
+
+
+class UsageRecorder(AsyncCallbackHandler):
+    """모델 호출이 끝날 때 토큰 수를 지금 열려 있는 모델 구간에 붙인다.
+
+    생성 경로는 원본 응답을 버리고 PlanComposition만 돌려주므로, 감싼 함수가 아니라
+    LangChain 콜백에서 받는다. 같은 task에서 바로 실행돼(run_inline) 구간이 닫히기 전에 기록된다.
+    """
+    run_inline = True
+
+    async def on_llm_end(self, response, **kwargs):
+        trace, span_id = CURRENT_TRACE.get(), PARENT_SPAN.get()
+        if trace is None or span_id is None:
+            return
+        item = next((span for span in trace.spans if span['id'] == span_id), None)
+        # 검색어 정리처럼 모델 구간 밖의 호출은 이번 관측 대상이 아니다.
+        if item is None or item['stage'] not in MODEL_STAGES:
+            return
+        usage = token_usage(response)
+        if usage is not None:
+            # 한 구간에 모델 호출은 하나다. 혹시 여럿이면 버리지 않고 더한다.
+            item['usage'] = add_usage(item['usage'], usage)
 
 
 def model_input(messages):
@@ -166,13 +234,14 @@ def install_observers():
     original_compose, original_validate = generation_graph.compose_plan, generation_graph.validate_plan
 
     @wraps(original_compose)
-    async def compose(state, *, invoke):
+    async def compose(state, *, invoke, **kwargs):
+        # kwargs: 진행 알림용 on_text(#388, #389) 등 관측과 무관한 인자를 그대로 넘긴다.
         trace = CURRENT_TRACE.get()
         if trace is None:
-            return await original_compose(state, invoke=invoke)
+            return await original_compose(state, invoke=invoke, **kwargs)
         with trace.span('compose_plan'):
             # 기본 인자로 이미 묶인 invoke도 여기서 감싸 누락 없이 시도를 센다.
-            return await original_compose(state, invoke=wrap_async(invoke, 'generation_model'))
+            return await original_compose(state, invoke=wrap_async(invoke, 'generation_model'), **kwargs)
 
     @wraps(original_validate)
     def validate(state):
@@ -182,6 +251,7 @@ def install_observers():
         with trace.span('validate_plan'):
             return original_validate(state)
 
+    recorder_token = USAGE_RECORDER.set(UsageRecorder())
     try:
         with ExitStack() as stack:
             stack.enter_context(patch.object(agent_graph, 'call_agent_model', wrap_async(agent_graph.call_agent_model, 'agent_model')))
@@ -191,6 +261,7 @@ def install_observers():
             stack.enter_context(patch.object(generation_graph, 'validate_plan', validate))
             yield
     finally:
+        USAGE_RECORDER.reset(recorder_token)
         INSTALL_LOCK.release()
 
 
@@ -203,8 +274,29 @@ def validate_observation(observation, request_ms, *, allow_pending=False):
     def duration(value):
         return type(value) in (int, float) and math.isfinite(value) and value >= 0
 
+    def count(value):
+        return type(value) is int and value >= 0
+
+    def valid_usage(item):
+        """형식 2의 토큰 칸. 값이 있으면 이유는 비고, 없으면 구간 결과에 맞는 이유가 있어야 한다."""
+        usage, missing = item.get('usage'), item.get('usage_missing')
+        if usage is None:
+            return missing == USAGE_MISSING[item['outcome']] if item['outcome'] != 'not_generated' else False
+        if missing is not None or item['outcome'] == 'running':
+            return False
+        if not isinstance(usage, dict) or set(usage) != set(USAGE_KEYS):
+            return False
+        # 입력·출력은 반드시 있어야 한다. 세부 항목(추론·캐시)만 공급자가 비울 수 있다.
+        if not (count(usage['input_tokens']) and count(usage['output_tokens'])):
+            return False
+        if not all(usage[key] is None or count(usage[key]) for key in ('reasoning_tokens', 'cached_input_tokens')):
+            return False
+        return ((usage['reasoning_tokens'] is None or usage['reasoning_tokens'] <= usage['output_tokens'])
+                and (usage['cached_input_tokens'] is None or usage['cached_input_tokens'] <= usage['input_tokens']))
+
     require(isinstance(observation, dict) and type(observation.get('version')) is int
-            and observation['version'] == 1 and observation.get('scope') == OBSERVATION_SCOPE)
+            and observation['version'] in (1, OBSERVATION_VERSION) and observation.get('scope') == OBSERVATION_SCOPE)
+    with_usage = observation['version'] >= 2
     spans = observation.get('spans')
     require(isinstance(spans, list))
     by_id, siblings = {}, {}
@@ -240,6 +332,8 @@ def validate_observation(observation, request_ms, *, allow_pending=False):
             require(item['stage'] == 'generation' and item['failure_code'] == 'needs_clarification')
         if item['stage'] in MODEL_STAGES:
             require(all(type(item.get(key)) is int and item[key] >= 0 for key in ('input_message_count', 'message_text_chars')))
+            # 형식 1(10-28 기록)은 토큰을 관측하지 않았다. 0으로 보지 않도록 칸 자체가 없어야 한다.
+            require(valid_usage(item) if with_usage else 'usage' not in item and 'usage_missing' not in item)
         by_id[item['id']] = item
     for item in spans:
         if 'failure_origin_id' in item:

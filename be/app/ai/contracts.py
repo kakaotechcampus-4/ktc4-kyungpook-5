@@ -328,6 +328,39 @@ Headcount = Annotated[int, Field(strict=True, ge=1)]
 Won = Annotated[int, Field(strict=True, ge=0)]
 
 
+# 영수증 이미지 추출 계약
+
+class ExtractReceiptRequest(ContractModel):
+    """BE가 검증한 이미지 한 장을 검토용 추출에 넘기는 요청."""
+
+    file_name: NonBlankStr = Field(max_length=255)
+    mime_type: NonBlankStr = Field(max_length=100)
+    image_bytes: bytes = Field(min_length=1)
+
+    @field_validator("mime_type")
+    @classmethod
+    def image_mime_type(cls, value: str) -> str:
+        if not value.lower().startswith("image/"):
+            raise ValueError("이미지 MIME type이 필요합니다")
+        return value
+
+
+class ExtractedReceiptRow(ContractModel):
+    """읽힌 지출 한 건. 근거 없는 값은 None으로 둔다."""
+
+    spent_at: CalendarDate | None
+    merchant: NonBlankStr | None
+    amount: Won | None
+    category: NonBlankStr | None
+    description: NonBlankStr | None
+
+
+class ExtractReceiptResult(ContractModel):
+    """빈 rows는 읽을 수 없음이고, 호출 오류는 AIError로 구분한다."""
+
+    rows: tuple[ExtractedReceiptRow, ...]
+
+
 class PlanningConditions(ContractModel):
     """사용자가 정한 행사 조건의 불변 스냅샷. None은 미정, 0원은 무료다.
 
@@ -739,6 +772,53 @@ class PlanningView(ContractModel):
     # 이전에 저장한 화면 응답은 정보 없음으로 읽는다. 0개라고 추정하지 않는다.
     history_usage: PlanningHistoryUsage | None = None
 
+# 저장하지 않는 일시적인 진행 상태
+class PlanningProgressStep(ContractModel):
+    """작성 중인 초안에서 모델이 고른 단계 하나(#389). 이름은 모델 글이 아니라 카탈로그의 고정 이름이다."""
+
+    index: Annotated[int, Field(strict=True, ge=0)]  # steps 안의 위치. 0부터 차례로 하나씩 온다
+    code: StepCode
+    name: NonBlankStr
+
+    @model_validator(mode="after")
+    def validate_catalog_name(self) -> Self:
+        if self.name != PLANNING_STEP_NAMES.get(self.code):
+            raise ValueError("작성 중 단계 이름이 계획 카탈로그와 다릅니다")
+        return self
+
+
+class PlanningProgress(ContractModel):
+    """한 요청의 임시 작업 상태. 완료는 DB 저장이나 행사 확정을 뜻하지 않는다."""
+
+    operation_id: NonBlankStr
+    kind: Literal["condition_started", "condition_applied", "search_started", "search_finished",
+                  "generation_started", "generation_writing", "generation_step", "generation_finished"]
+    # skipped: 시작한 작업이 보여 줄 결과 없이 끝났다(조건 거절·같은 값). 화면은 그 줄을 지운다.
+    # empty: 작업은 정상으로 끝났지만 찾은 것이 없다(기록 검색 자료 없음). 화면은 실패와 구분해 남긴다.
+    status: Literal["running", "completed", "failed", "skipped", "empty"]
+    text: NonBlankStr
+    # 조건 완료 직후의 검증된 값·잠정 여부. 저장 전 패널에만 쓰고 상태 JSON에는 넣지 않는다.
+    condition_draft: PlanningDraft | None = None
+    # generation_step에만 있는 단계 정보. 검증 전 초안의 단계 코드·고정 이름·위치뿐이다(#389).
+    step: PlanningProgressStep | None = None
+
+    @model_validator(mode="after")
+    def _consistent_progress(self) -> Self:
+        # generation_writing: 같은 생성 작업이 생각을 마치고 초안 글자를 쓰기 시작했다(#388). 아직 진행 중이다.
+        # generation_step: 같은 생성 작업이 단계 하나의 코드를 다 썼다(#389). 생성은 아직 진행 중이다.
+        allowed = ({"running"} if self.kind.endswith("_started") or self.kind in ("generation_writing", "generation_step") else
+                   {"completed", "skipped"} if self.kind == "condition_applied" else
+                   {"completed", "empty", "failed"} if self.kind == "search_finished" else
+                   {"completed", "failed"})
+        if self.status not in allowed:
+            raise ValueError("진행 이벤트 종류와 상태가 다릅니다")
+        if self.condition_draft is not None and (self.kind, self.status) != ("condition_applied", "completed"):
+            raise ValueError("조건 초안은 조건 완료 알림에만 넣을 수 있습니다")
+        if (self.step is not None) != (self.kind == "generation_step"):
+            raise ValueError("단계 정보는 작성 중 단계 알림에만, 그 알림에는 반드시 넣습니다")
+        return self
+
+
 # 화면용 결과와 보관용 상태
 class PlanningPublicResult(ContractModel):
     request_id: NonBlankStr
@@ -753,4 +833,83 @@ class PlanningPublicResult(ContractModel):
         if self.view.history_usage is not None:
             if self.view.history_usage.message_count != len(self.next_state.payload.history):
                 raise ValueError('화면 이력 사용량과 보관 상태의 이력이 다릅니다')
+        return self
+
+
+# 계획 수정 후 검토 (AI-PLAN-07, #177)
+# BE가 생성 직후 스냅샷과 현재 계획을 비교해 채워 보낸다. AI는 이 입력만 근거로 쓴다.
+
+class ReviewAction(ContractModel):
+    type: ActionType
+    title: NonBlankStr
+    amount: int | None = None
+    due_date: date | None = None
+
+
+class ReviewStep(ContractModel):
+    code: StepCode
+    name: NonBlankStr
+    phase: StepPhase
+    actor: StepActor
+    starts_at: datetime | None = None
+    deadline: datetime | None = None
+    actions: tuple[ReviewAction, ...] = ()
+
+
+class ReviewExcludedStep(ContractModel):
+    code: StepCode
+    name: NonBlankStr
+    # AI가 뺀 단계를 사용자가 다시 넣은 경우와 사용자가 뺀 경우를 구분하려고 둔다.
+    excluded_by: Literal["ai", "user"]
+    reason: str | None = None
+
+
+class ScheduleChange(ContractModel):
+    code: StepCode
+    before_starts_at: datetime | None = None
+    before_deadline: datetime | None = None
+    after_starts_at: datetime | None = None
+    after_deadline: datetime | None = None
+
+
+class ActionChange(ContractModel):
+    code: StepCode
+    action_title: NonBlankStr
+    field: Literal["amount", "due_date", "title"]
+    before: str | None = None
+    after: str | None = None
+
+
+class PlanChangeSet(ContractModel):
+    removed_codes: tuple[StepCode, ...] = ()
+    added_codes: tuple[StepCode, ...] = ()
+    moved_codes: tuple[StepCode, ...] = ()
+    schedule_changes: tuple[ScheduleChange, ...] = ()
+    action_changes: tuple[ActionChange, ...] = ()
+
+
+class PlanEditReviewRequest(ContractModel):
+    # 조건·잠정 여부·미룬 주제는 P1 초안 계약을 그대로 쓴다.
+    draft: PlanningDraft
+    today: date
+    included_steps: tuple[ReviewStep, ...]
+    excluded_steps: tuple[ReviewExcludedStep, ...] = ()
+    changes: PlanChangeSet = Field(default_factory=PlanChangeSet)
+
+
+class PlanReviewItem(ContractModel):
+    step_codes: tuple[StepCode, ...] = Field(min_length=1)
+    kind: Literal["missing_step", "order", "schedule", "other"]
+    message: NonBlankStr
+    suggestion: NonBlankStr | None = None
+
+
+class PlanEditReviewResult(ContractModel):
+    outcome: Literal["issues", "no_issues"]
+    items: tuple[PlanReviewItem, ...] = Field(default=(), max_length=4)
+
+    @model_validator(mode="after")
+    def _outcome_matches_items(self) -> Self:
+        if (self.outcome == "issues") != bool(self.items):
+            raise ValueError("issues는 항목이 1개 이상, no_issues는 항목이 없어야 합니다")
         return self

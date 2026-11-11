@@ -124,13 +124,82 @@ async def test_confirmation_retry_stores_one_item_and_one_reminder(client: TestC
 
 
 async def test_accept_alone_does_not_reserve_and_can_then_be_explicitly_confirmed(client: TestClient, case: dict) -> None:
-    accepted = client.post(f"/api/v1/clubs/{case['club']}/task-suggestions/{case['suggestion']}/accept",
-                           headers=case["headers"][0], json={"expectedVersion": 1})
+    url = f"/api/v1/clubs/{case['club']}/task-suggestions/{case['suggestion']}"
+    edited = client.patch(url, headers=case["headers"][1],
+                          json={"expectedVersion": 1, "title": "확인 후 고친 후보"})
+    assert edited.status_code == 200, edited.text
+    accepted = client.post(url + "/accept", headers=case["headers"][1],
+                           json={"expectedVersion": edited.json()["data"]["version"]})
     assert accepted.status_code == 200, accepted.text
+    candidate = accepted.json()["data"]
+    assert candidate["title"] == "확인 후 고친 후보"
+    assert candidate["status"] == "ACCEPTED" and candidate["version"] == 3
+    assert candidate["acceptedAt"] is not None
+    async with db_session.get_sessionmaker()() as session:
+        manager_id = await session.scalar(select(Member.id).where(Member.account_id == case["accounts"][1]))
+        owner_id = await session.scalar(select(Member.id).where(Member.account_id == case["accounts"][0]))
+        assert candidate["acceptedBy"] == manager_id
+        assert await session.scalar(select(func.count()).select_from(TaskReminder).where(TaskReminder.club_id == case["club"])) == 0
     empty = client.get(f"/api/v1/clubs/{case['club']}/confirmed-tasks", headers=case["headers"][0])
     assert empty.json()["data"] == []
-    saved = _confirm(client, case, {**_body(case), "expectedVersion": 2})
+    rejected = client.patch(url, headers=case["headers"][1],
+                            json={"expectedVersion": candidate["version"], "title": "수락 후 변경"})
+    assert rejected.status_code == 409
+    assert rejected.json()["error"]["code"] == "TASK_SUGGESTION_NOT_PROPOSED"
+    saved = _confirm(client, case, {**_body(case), "expectedVersion": candidate["version"]})
     assert saved.status_code == 200, saved.text
+    assert saved.json()["data"]["confirmedBy"] == owner_id
+    assert client.get(url, headers=case["headers"][0]).json()["data"] == candidate
+    async with db_session.get_sessionmaker()() as session:
+        for model in (ConfirmedTask, TaskReminder):
+            assert await session.scalar(select(func.count()).select_from(model).where(model.club_id == case["club"])) == 1
+
+
+async def test_candidate_only_save_persists_before_explicit_reservation(client: TestClient, case: dict) -> None:
+    base = f"/api/v1/clubs/{case['club']}/task-suggestions"
+    url = f"{base}/{case['suggestion']}"
+    headers = case["headers"][0]
+    initial = client.get(url, headers=headers)
+    assert initial.status_code == 200, initial.text
+    assert initial.json()["data"]["status"] == "PROPOSED"
+    assert initial.json()["data"]["version"] == 1
+
+    fields = {"title": "검토한 발표 자료 준비", "description": "검토 후 후보만 저장",
+              "suggestedAssignee": "대표", "dueDate": None}
+    saved = client.patch(url, headers=headers, json={"expectedVersion": 1, **fields})
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["data"]["version"] == 2
+    persisted = client.get(url, headers=headers)
+    assert persisted.status_code == 200, persisted.text
+    candidate = persisted.json()["data"]
+    assert candidate["status"] == "PROPOSED" and candidate["version"] == 2
+    assert all(candidate[field] == value for field, value in fields.items())
+    assert candidate["acceptedBy"] is None and candidate["acceptedAt"] is None
+    async with db_session.get_sessionmaker()() as session:
+        for model in (ConfirmedTask, TaskReminder):
+            assert await session.scalar(select(func.count()).select_from(model).where(model.club_id == case["club"])) == 0
+
+    repeated = client.patch(url, headers=headers, json={"expectedVersion": 2, **fields})
+    assert repeated.status_code == 200, repeated.text
+    listed = client.get(base, headers=headers, params={"meetingId": case["meeting"]})
+    assert listed.status_code == 200, listed.text
+    assert [(item["id"], item["status"], item["version"]) for item in listed.json()["data"]] == [
+        (case["suggestion"], "PROPOSED", 3),
+    ]
+    async with db_session.get_sessionmaker()() as session:
+        for model, count in ((TaskSuggestion, 1), (ConfirmedTask, 0), (TaskReminder, 0)):
+            assert await session.scalar(select(func.count()).select_from(model).where(model.club_id == case["club"])) == count
+
+    reserved = _confirm(client, case, {**_body(case), "expectedVersion": 3})
+    assert reserved.status_code == 200, reserved.text
+    assert reserved.json()["data"]["suggestionId"] == case["suggestion"]
+    assert reserved.json()["data"]["reminder"]["status"] == "PENDING"
+    accepted = client.get(url, headers=headers).json()["data"]
+    assert accepted["status"] == "ACCEPTED" and accepted["version"] == 4
+    assert accepted["acceptedBy"] is not None and accepted["acceptedAt"] is not None
+    async with db_session.get_sessionmaker()() as session:
+        for model in (TaskSuggestion, ConfirmedTask, TaskReminder):
+            assert await session.scalar(select(func.count()).select_from(model).where(model.club_id == case["club"])) == 1
 
 
 async def test_ordinary_foreign_or_pending_recipient_and_past_time_cannot_reserve(client: TestClient, case: dict) -> None:
@@ -317,8 +386,10 @@ async def test_토리_본인_확정_할일만_조회하고_소속을_검증한�
     assert result.status_code == 200, result.text
     assert [item['title'] for item in result.json()['data']['tasks']['items']] == [body['title']]
     assert result.json()['data']['tasks']['scope'] == 'self'
+    assert result.json()['data']['reply'].startswith('내 할 일이 1개 있어요.')
     other = client.post(url, headers=case['headers'][1], json={'message':'내 할 일'})
     assert other.status_code == 200 and other.json()['data']['tasks']['items'] == []
+    assert other.json()['data']['reply'] == '이 기간에 확정한 내 할 일이 없어요.'
     assert client.post(url, headers=case['headers'][4], json={'message':'내 할 일'}).status_code == 403
     assert client.post(url, json={'message':'내 할 일'}).status_code == 401
 

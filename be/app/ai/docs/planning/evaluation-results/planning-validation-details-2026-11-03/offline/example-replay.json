@@ -1,0 +1,55 @@
+{
+  "replay_version": 1,
+  "recorded_source": {
+    "commit": "14be4f260604b3fec05d8bbb38f9c041103b29b0",
+    "sha256": {
+      "features/planning/generation/graph.py": "c9c19c89c078968d11afb121de15a46f2c918fe7bc96f92c3a1ac194cca1d112",
+      "features/planning/generation/validation.py": "d473ab9aea7528abbf73dc3b8b174e6d5c22f08b8fd53e4d595a6890f1079e01",
+      "features/planning/generation/schemas.py": "78c19e499702e2aec6ea55c8da85e8c1b2507c13331182816b0bc7a7dd886253",
+      "features/planning/generation/catalog.py": "f100ef03fd8ed059edf8a74f58c5200cd2316590f1454852eacb2a0caaf0c7d5",
+      "contracts.py": "af92fab0ac1fec0c71853a79af113855550194544b6e185ba0b92a8894bd87fc",
+      "planning_catalog.py": "79a09450a2a26a149faf28a82a9b6bacd08a55551898701eab5f7d187db4ded0",
+      "errors.py": "68d223bf71b58a42c786ee3a9e63322827b81cb41bc6a9e5f47870c426dab296"
+    }
+  },
+  "current_source": {
+    "commit": "14be4f260604b3fec05d8bbb38f9c041103b29b0",
+    "sha256": {
+      "features/planning/generation/graph.py": "c9c19c89c078968d11afb121de15a46f2c918fe7bc96f92c3a1ac194cca1d112",
+      "features/planning/generation/validation.py": "d473ab9aea7528abbf73dc3b8b174e6d5c22f08b8fd53e4d595a6890f1079e01",
+      "features/planning/generation/schemas.py": "78c19e499702e2aec6ea55c8da85e8c1b2507c13331182816b0bc7a7dd886253",
+      "features/planning/generation/catalog.py": "f100ef03fd8ed059edf8a74f58c5200cd2316590f1454852eacb2a0caaf0c7d5",
+      "contracts.py": "af92fab0ac1fec0c71853a79af113855550194544b6e185ba0b92a8894bd87fc",
+      "planning_catalog.py": "79a09450a2a26a149faf28a82a9b6bacd08a55551898701eab5f7d187db4ded0",
+      "errors.py": "68d223bf71b58a42c786ee3a9e63322827b81cb41bc6a9e5f47870c426dab296"
+    }
+  },
+  "same_validator_source": true,
+  "expected_violation": {
+    "rule": "event_start_mismatch",
+    "path": "/steps/0/starts_at",
+    "step_code": "EVENT_DAY",
+    "action_index": null,
+    "expected": "2026-11-07",
+    "actual": {
+      "timestamp": "2026-11-08T09:00:00+09:00",
+      "local_date": "2026-11-08"
+    },
+    "timezone": "Asia/Seoul"
+  },
+  "reproduced": true,
+  "status": "rejected",
+  "actual_violation": {
+    "rule": "event_start_mismatch",
+    "path": "/steps/0/starts_at",
+    "step_code": "EVENT_DAY",
+    "action_index": null,
+    "expected": "2026-11-07",
+    "actual": {
+      "timestamp": "2026-11-08T09:00:00+09:00",
+      "local_date": "2026-11-08"
+    },
+    "timezone": "Asia/Seoul"
+  },
+  "source_snapshot_sha256": "25e42d81c73e9175a475250be414a76abbe72ff250e4918541b07f68d19c9bde"
+}

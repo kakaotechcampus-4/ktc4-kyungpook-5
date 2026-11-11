@@ -14,20 +14,26 @@ from pydantic import ValidationError
 from ....errors import AIInvalidResponseError, AIOutputLimitError, AIRetryableError, AITimeoutError
 from ....contracts import ExcludedPreviewStep
 from .catalog import BY_CODE, CATALOG, PHASE_ORDER
+from ....llm_stream import TextCallback
 from .model import invoke_plan_composition
+from .validation import PlanValidationError, PlanValidationViolation
 from .schemas import (
     EventPlanPreview, PlanAssumption, PlanComposition, PlanGenerationInput,
     PlanGenerationResult, PreviewStep,
 )
 
 
-PROMPT_VERSION = "planning-generation-v1"
+# v2(#276): 지시문은 v1과 같고, 모델에 보내는 출력 형식의 단계 코드가 카탈로그 13개로 줄었다.
+# 모델이 받는 입력이 바뀌었으므로 측정 기록에서 v1 결과와 구분한다.
+PROMPT_VERSION = "planning-generation-v2"
 PROMPT = (Path(__file__).parent / "prompts/compose.md").read_text()
 logger = logging.getLogger(__name__)
 
 
 class CompositionInvoker(Protocol):
-    async def __call__(self, messages, schema: type[PlanComposition]) -> PlanComposition: ...
+    # on_text는 진행 알림이 있을 때만 넘긴다. 그래서 받지 않는 기존 호출기도 그대로 쓸 수 있다.
+    async def __call__(self, messages, schema: type[PlanComposition], *,
+                       on_text: TextCallback | None = None) -> PlanComposition: ...
 
 
 class GenerationGraphState(TypedDict):
@@ -36,7 +42,8 @@ class GenerationGraphState(TypedDict):
     preview: EventPlanPreview | None
 
 
-async def compose_plan(state: GenerationGraphState, *, invoke: CompositionInvoker) -> dict:
+async def compose_plan(state: GenerationGraphState, *, invoke: CompositionInvoker,
+                       on_text: TextCallback | None = None) -> dict:
     request = state["request"]
     # 출처 객체 대신 f1 같은 근거 번호를 공개한다. 출처는 검증 후 코드가 붙인다.
     context = dict(basis_draft=request.basis_draft.model_dump(mode="json"),
@@ -45,8 +52,9 @@ async def compose_plan(state: GenerationGraphState, *, invoke: CompositionInvoke
         catalog=[x.model_dump(mode="json") for x in CATALOG],
         reference_facts=[dict(id=f"f{i}", content=fact.content)
                          for i, fact in enumerate(request.reference_facts, 1)])
+    streaming = {} if on_text is None else {"on_text": on_text}
     response = await invoke([SystemMessage(content=PROMPT),
-        HumanMessage(content=json.dumps(context, ensure_ascii=False))], PlanComposition)
+        HumanMessage(content=json.dumps(context, ensure_ascii=False))], PlanComposition, **streaming)
     try:
         composition = PlanComposition.model_validate(response)
     except ValidationError as error:
@@ -58,54 +66,86 @@ def validate_plan(state: GenerationGraphState) -> dict:
     request, composition = state["request"], state["composition"]
     codes = [x.code for x in composition.steps]
     excluded = [x.code for x in composition.excluded_steps]
-    def invalid(reason: str):
-        raise AIInvalidResponseError(reason)
+    def invalid(rule, path, expected, actual, **location):
+        # 판정은 이 함수의 기존 분기에서만 한다. 원문 메시지 추측이나 검증 복제는 하지 않는다.
+        raise PlanValidationError(PlanValidationViolation(
+            rule=rule, path=path, expected=expected, actual=actual, **location))
 
     # 취소 단계·중복·설명 없이 사라진 단계를 차단한다. 제외 사유는 모델이 설명한다.
     if (len(set(codes)) != len(codes) or len(set(excluded)) != len(excluded)
             or set(codes) & set(excluded) or set(codes) | set(excluded) != set(BY_CODE)):
-        invalid("계획의 포함·제외 단계가 카탈로그와 맞지 않아요.")
+        invalid('catalog_partition', '', {'catalog_codes': sorted(BY_CODE), 'each_code_once': True},
+                {'included': codes, 'excluded': excluded})
     phases = [PHASE_ORDER.index(BY_CODE[code].phase) for code in codes]
     if phases != sorted(phases):
-        invalid("계획의 세 묶음 순서가 맞지 않아요.")
+        invalid('phase_order', '/steps', {'nondecreasing_phases': list(PHASE_ORDER)},
+                {'step_codes': codes, 'phases': [BY_CODE[code].phase for code in codes]})
 
     zone = ZoneInfo(request.timezone)
     conditions = request.basis_draft.conditions
     def day(moment):
         return moment.astimezone(zone).date() if moment else None
 
+    def date_text(value):
+        return value.isoformat() if value is not None else None
+
+    def moment_details(moment):
+        return {'timestamp': date_text(moment), 'local_date': date_text(day(moment))}
+
     steps = []
-    for step in composition.steps:
+    for step_index, step in enumerate(composition.steps):
         catalog = BY_CODE[step.code]
         start, end = day(step.starts_at), day(step.deadline)
+        path = f'/steps/{step_index}'
+        location = dict(step_code=step.code, timezone=request.timezone)
         if step.starts_at and step.deadline and step.deadline < step.starts_at:
-            invalid("단계 마감이 시작보다 빨라요.")
+            invalid('reversed_period', path + '/deadline',
+                    {'on_or_after_timestamp': date_text(step.starts_at)}, moment_details(step.deadline), **location)
         if conditions.start_date is None and (start or end or any(a.due_date for a in step.actions)):
-            invalid("행사 날짜가 미정이면 단계 날짜와 기한도 미정으로 남겨야 해요.")
+            if start or end:
+                field, moment = ('starts_at', step.starts_at) if start else ('deadline', step.deadline)
+                invalid('dates_when_unknown', path + '/' + field, None, moment_details(moment), **location)
+            index = next(i for i, action in enumerate(step.actions) if action.due_date)
+            invalid('dates_when_unknown', f'{path}/actions/{index}/due_date', None,
+                    date_text(step.actions[index].due_date), action_index=index, **location)
         if any(a.type not in catalog.actions for a in step.actions):
-            invalid("단계에서 허용하지 않은 예정 행동이 있어요.")
-        for action in step.actions:
+            index = next(i for i, action in enumerate(step.actions) if action.type not in catalog.actions)
+            invalid('action_type', f'{path}/actions/{index}/type', list(catalog.actions),
+                    step.actions[index].type, action_index=index, **location)
+        for action_index, action in enumerate(step.actions):
             if action.due_date and ((start and action.due_date < start) or (end and action.due_date > end)):
-                invalid("예정 행동의 기한이 단계 기간 밖에 있어요.")
+                invalid('action_due_outside_step', f'{path}/actions/{action_index}/due_date',
+                        {'earliest_local_date': date_text(start), 'latest_local_date': date_text(end), 'inclusive': True},
+                        date_text(action.due_date), action_index=action_index, **location)
         if conditions.start_date:
             if catalog.phase in PHASE_ORDER[:2] or step.code == "PRE_EVENT_NOTICE":
                 if any(d and d > conditions.start_date for d in (start, end)):
-                    invalid("행사 전에 할 단계가 행사 시작 뒤로 잡혔어요.")
+                    field, moment = (('starts_at', step.starts_at) if start and start > conditions.start_date
+                                     else ('deadline', step.deadline))
+                    invalid('before_event_after_start', path + '/' + field,
+                            {'on_or_before_local_date': date_text(conditions.start_date)}, moment_details(moment), **location)
             if step.code == "EVENT_DAY":
                 if start and start != conditions.start_date:
-                    invalid("행사 당일 단계의 시작일이 현재 조건과 달라요.")
+                    invalid('event_start_mismatch', path + '/starts_at', date_text(conditions.start_date),
+                            moment_details(step.starts_at), **location)
                 if end and end != conditions.end_date:
-                    invalid("행사 당일 단계의 종료일이 현재 조건과 달라요.")
+                    invalid('event_end_mismatch', path + '/deadline', date_text(conditions.end_date),
+                            moment_details(step.deadline), **location)
             if step.code in {"SETTLE_EXPENSES", "REFUND_FEES", "RECORD_FEEDBACK"} and conditions.end_date:
                 if any(d and d < conditions.end_date for d in (start, end)):
-                    invalid("행사 뒤에 할 단계가 종료 전으로 잡혔어요.")
+                    field, moment = (('starts_at', step.starts_at) if start and start < conditions.end_date
+                                     else ('deadline', step.deadline))
+                    invalid('after_event_before_end', path + '/' + field,
+                            {'on_or_after_local_date': date_text(conditions.end_date)}, moment_details(moment), **location)
         steps.append(PreviewStep(**step.model_dump(), name=catalog.name, phase=catalog.phase, actor=catalog.actor))
 
     facts = {f"f{i}": fact for i, fact in enumerate(request.reference_facts, 1)}
     assumptions = []
-    for assumption in composition.assumptions:
+    for assumption_index, assumption in enumerate(composition.assumptions):
         if any(id not in facts for id in assumption.fact_ids):
-            invalid("제공하지 않은 기록 근거가 계획에 포함됐어요.")
+            index = next(i for i, id in enumerate(assumption.fact_ids) if id not in facts)
+            invalid('unknown_fact_id', f'/assumptions/{assumption_index}/fact_ids/{index}',
+                    sorted(facts), assumption.fact_ids[index])
         sources = []
         for id in assumption.fact_ids:
             for source in facts[id].sources:
@@ -124,14 +164,18 @@ def validate_plan(state: GenerationGraphState) -> dict:
         assumptions=tuple(assumptions), open_questions=tuple(questions), warnings=composition.warnings)}
 
 
-async def run_plan_generation(request: PlanGenerationInput, *, invoke: CompositionInvoker = invoke_plan_composition) -> PlanGenerationResult:
-    """원본 조건을 바꾸지 않고 검증된 초안만 반환한다. 저장·외부 실행은 없다."""
+async def run_plan_generation(request: PlanGenerationInput, *, invoke: CompositionInvoker = invoke_plan_composition,
+                              on_text: TextCallback | None = None) -> PlanGenerationResult:
+    """원본 조건을 바꾸지 않고 검증된 초안만 반환한다. 저장·외부 실행은 없다.
+
+    on_text: 모델이 보낸 계획 JSON 글자 조각을 받은 순서대로 받는다(#388, #389). 진행 알림용이며 검증 전 글이다.
+    """
     if request.basis_draft.conditions.event_type is None:
         return PlanGenerationResult(status="needs_clarification", reason="어떤 행사인지 먼저 정해 주세요.")
     graph = StateGraph(GenerationGraphState)
     stage = "compose_plan"
     async def compose(state):
-        return await compose_plan(state, invoke=invoke)
+        return await compose_plan(state, invoke=invoke, on_text=on_text)
     def validate(state):
         nonlocal stage
         stage = "validate_plan"

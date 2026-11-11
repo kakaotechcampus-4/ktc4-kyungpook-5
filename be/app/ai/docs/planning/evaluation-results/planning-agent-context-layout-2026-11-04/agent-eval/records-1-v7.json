@@ -1,0 +1,1143 @@
+{
+  "state": "COMPLETED",
+  "started_at": "2026-11-04T04:49:55.466358+00:00",
+  "model": "gpt-5.6-luna",
+  "reasoning": "provider default",
+  "prompt_version": "planning-agent-v8",
+  "with_records": true,
+  "embedding_model": "text-embedding-3-small",
+  "review_status": "AI가 작성한 검색 연결 확인용 합성 초안, 사람의 정답 검수 전",
+  "reference_date": "2026-10-24",
+  "git_commit": "a03a73f0ed907bb5721c909b8bbe60624f7c4934",
+  "git_dirty": false,
+  "sha256": {
+    "features/planning/agent/generation_tools.py": "0a586b5750d93f86678464a80b2529d4b31dce3aeb9b5843416247321d669bdd",
+    "features/planning/agent/graph.py": "83292a96948abb8a37edb94948c855e503a0b054ea9c02ecbc3f19d04b879b88",
+    "features/planning/agent/nodes.py": "976db5df47a550f1521f60eb57a088a343d095f0734e2d10381ecfc608f49921",
+    "features/planning/agent/record_tool.py": "49c78509084ac094835d7b08a00e8b94bd701767b9796a7f45e621b85dd7e587",
+    "features/planning/agent/schemas.py": "98a149880147d89b018ca3aed23f3f6e6fedcdbaee0892d0a2699b07e687199d",
+    "features/planning/agent/state.py": "9bb22837b9f662ef8e1d8b398fd398ee2032bc5fcd6f75718f5d24130df07180",
+    "features/planning/agent/tools.py": "a7af857e94efc4619a9a021dbb57b2a59ae4f6672a66648daf869aa733fc2c6a",
+    "features/planning/agent/prompts/chat.md": "76ca3203e1f5ad89ed0b6300dd9d4beab7b5dbf6ed2588b3fbc5e721e09be412",
+    "llm.py": "47e55dbcb69ce4ea9cc887b3e5e5857a3f5368f178aed53d3f4a4916ab468e6b",
+    "tests/fixtures/eval/planning_agent_records.json": "97c97fc382c27f2d188883d0f5bd13847e4dd57306ee9095f3dec57ffb86eff5",
+    "scripts/eval_planning_agent.py": "2c457f0d668a758f87721ebd1ce9e37d27d8175de9a4e2418f517d2728a4e45b",
+    "tests/fixtures/records/feedback_2025_autumn_mt.json": "b507d6a04abcb08f95ca5f6b65dafb234cde2ac423a78ef2cb5a767bd7ac6d3c",
+    "tests/fixtures/records/ledger_2023.json": "8bb5e693e9504601120b33d0b3329d129345aff71db8c5942f7c7ceb6a3abb93",
+    "tests/fixtures/records/ledger_2024_h2.json": "41c45a379d893b340eff51d5e306b236ace705a723362b3c920f09ad86705652",
+    "tests/fixtures/records/ledger_2025_h1.json": "20c35a8ebeb7ef7a374bb511a6d191e11aab1b20ccf4b0ed46acae05784a33e3",
+    "tests/fixtures/records/ledger_2025_h2.json": "c361ec6200ef14c47df11d753dad0d84c5630b406f28b13ca70384098c1b5cfb",
+    "tests/fixtures/records/mt_2023_spring_report.json": "f31d779cadb955593943313c849b1c370c9d5b6c8de2e78f5091a935d8670543",
+    "tests/fixtures/records/mt_2024_autumn_report.json": "1f99620d8f72f445bdf828e20dc9ad2c8b4b4a298334d97397aa18b43958b8e5",
+    "tests/fixtures/records/mt_2025_autumn_report.json": "c05e60ed19c45631367026065e9b5007936cd866a5b05cfa38b9086ea1c8ec3d",
+    "tests/fixtures/records/mt_2025_spring_report.json": "df1bbd87c53679f69ee08246f40a13d1d01cd9385e06f1046ad1c0dfaf468620",
+    "tests/fixtures/records/notice_2025_spring_mt.json": "e346c337bcf2ee15395f4477d728ddea0aa2b62defb982501457b20ec1e9da3f",
+    "tests/fixtures/records/rules_2024.json": "6a7db08829a35dbd96a3be1d178f8711351d9f6aacd1184d1c6d343bed13c80e",
+    "tests/fixtures/records/welcome_2025_report.json": "4f0a54468725282ef02f40632d78eb8a7b65d75690ecbbd4cd0d87378625efec",
+    "features/retrieval/chunking.py": "51953ad13b73f9b053c77bfa18b166005c1e811ebc68da9206ee76eb858ce16a",
+    "features/retrieval/memory_port.py": "1662d8cd661ffaa2a38d8723630414683a9e52ad917657e68904fa8cbe864b1f",
+    "features/retrieval/schemas.py": "bf644581fd95765c7448716332541c2de1172fe6a0eaf0cae6302f2da20d630b",
+    "features/retrieval/indexing.py": "808d6859e275bc0a2ce5d9f3503766272c7b4d01e1fddb013e0794812517d9dd",
+    "features/retrieval/nodes.py": "593f93f19fdf873be4dcad18b906efc51dd2fe0d561b4ae7d0dc9dbb999bc4c1",
+    "features/retrieval/prompts/assess_evidence.md": "0fd2a36a66901811c5936c71c47a08a3eb8fa28069867ebbcc5b2ac6b19e7738",
+    "features/retrieval/prompts/rewrite_query.md": "f883566c6015922ff5d23ac3ac1bc3c9aa9e7d8f387190264ec98e6dcd546e09"
+  },
+  "turns": [
+    {
+      "dialog": "search-accept",
+      "turn": 1,
+      "text": "2025년 봄 MT 참가비는 얼마였어?",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": null,
+        "fee_per_person": 25000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "2025년 봄 MT 참가비는 얼마였어?",
+        "updates": {},
+        "tool": "yes",
+        "lookup": "available",
+        "terms": [
+          "45000"
+        ],
+        "source_records": [
+          "rec_mt_2025_report"
+        ]
+      },
+      "reply": "2025년 봄 MT 참가비는 **1인 45,000원**이었어요.\n\n- 「2025 봄 MT 결과보고.pdf」 1쪽\n- 「2025 봄 MT 참가 신청 안내.pdf」 1쪽\n- 「2025 상반기 장부.xlsx」 회비 수납 시트 16~28행\n\n세 기록 모두 같은 금액으로 확인됩니다.",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_AnBvEZ6ZGxOHVsTVeb0Jjdxv",
+          "name": "search_past_events",
+          "result": {
+            "status": "available",
+            "query": "2025년 봄 MT의 참가비가 얼마였는지 확인해 주세요. 행사 기록에 나온 실제 참가비와 문서명·위치를 함께 알려 주세요. 기록이 없거나 대상이 불명확한지도 구분해 주세요.",
+            "result": {
+              "facts": [
+                {
+                  "content": "2025년 봄 MT의 1인 회비는 45,000원이다. 문서명: 「2025 봄 MT 결과보고.pdf」, 위치: 1쪽 · 1. 행사 개요",
+                  "sources": [
+                    {
+                      "record_id": "rec_mt_2025_report",
+                      "file_name": "2025 봄 MT 결과보고.pdf",
+                      "location": {
+                        "label": "1쪽 · 1. 행사 개요"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "content": "2025년 봄 MT의 1인 회비는 45,000원이다. 문서명: 「2025 봄 MT 참가 신청 안내.pdf」, 위치: 1쪽",
+                  "sources": [
+                    {
+                      "record_id": "rec_notice_2025_spring_mt",
+                      "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+                      "location": {
+                        "label": "1쪽"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "content": "2025년 봄 MT 회비 수납 기록에 기재된 참가자별 금액은 45,000원이다. 문서명: 「2025 상반기 장부.xlsx」, 위치: 회비 수납 시트 · 16~28행",
+                  "sources": [
+                    {
+                      "record_id": "rec_ledger_2025_h1",
+                      "file_name": "2025 상반기 장부.xlsx",
+                      "location": {
+                        "label": "회비 수납 시트 · 16~28행"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "not_found": [],
+              "conflicts": []
+            },
+            "reason": null
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0d882a388bf42fa3006aeab97a574887d28e60f1eed7b148f5",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rl8HCvFXPMowO--eGdDFKEfX_5rF2K95WkttnJfbdNhYhKTzKmK4I4m4AcpBa20ak2oLAsnOnGpA1ax-6BSu3nk1TBcsXW2iFuRMVXgN3k9GlRbyWhP6lRjA3x9wpM5TzRHbxnPqKmsiftr21q9xh6KdRYXxSVTbYPmTVqt8JuJ_bRyyjgykpHaOIQwPLaN71st3En5JL8MncJfiDvJCttRynLNoEX6i2jql6vyQt2VowWWONdOwzo4vNA5XF127VhvJFpqwFeZts4Btcq08DCThGQ_SKBCeVVUNV8rXkzxvp736QU8ySXlaepj627ji2VKcunqppR8lmsvjR7FsC7KD3u4_daVlbj2AtEuscE5qpv6ZtzcKG2Jcp9vm08OerTGFqntnn2oyVQEUr5fucpteOHuBy0Z6dUA0Yyte0bidkR9DxIbiphRQSyjl_tvAwjeKSbHpFIbXUMkhBjBW8-uKnIjmDcaV3mpt12NqiuICBtdpVPxxQUvDPEewuVjJAr9_PJ2oI6WII_Ed0AiURrH8RlknVMIBYneRXDUz53cQiI7tcggYBmpiNrFdA7AKQIpLe_F1u-hhP-qr7RTnxaSHJwdFQfXCTWFbiMA8quw4iIUNoixMKo2dO9ORw_mtU7Az6uH7aK_gqxXj_T8vt2-QKug0OWJdTkJV7A-YmsDef-N_rIwoSfYSIgeFzt0qhioD7-E3tGonb_oDJCxjsUD3edrqWh5re4krcUTyNIxuaujMIc2MdBfwX0oo8CHCcghfFVex19xh3LkUQw9WB0ANbd_0C3hWtAgkfR6frwI1lMCsB3N9HJ-j_13mdeB8umsVrGf3MZhraQM9IlTrUeUS8E_XZbqH_oM1SVeca9z7nVgECnM7AC4VesGFIRtLXck-QfPiFghU3yiN-Hq_8dfxUjlC0oj8pxBvK98KDwGrsNW3YCo4AvIWMxuHc6DBLgcxpMnDBjLUnzUMFneuvkGslf8zolgC06gDnawg40FNg7TTbyjgEhqoYsoa9G73Bi3PtM4ffn6Fd6rGyaLw24G8gST5uCKDBMug_djhOCcgUrdUWyka0waA4gsxxXYijyyvuvSa443Zt-FNPOgUI2ETIVUfotUel1yPQDDDMtF1uXy4BPu73oLQisdC17Q--k5C_mKXzDOXcYBwYxc2OhrKrZYyWyOgTzZH84V79T4F_S4koRDaIBzFsMOuPpI3Zd3wUg4xcRxquoYFDAg2M0bMQGwp5etwd-iVYFvTK_vbcqUBNGKlI1Pzb0oOQ1pvrfkoUKnxC3XUeD9iebkldM1EVEILOWwVyKtNZ9wjsloFrAdpOjmWtclxhgHRemKEUKap031uC6lMUxunTQ0aN5w0fhSxyw7UdBJJkNwWs5BOhyPRDpm1hh_-NPMl77sHzdGvcnsyy66SVrvDJ6IrXb0UwALU4MUlytaVpOICFuubtJ6y5_IwGbMP397J2WvrZXLaIlFF-O3rhuvlNnfjf9lLGaxHPrGh6_5M5L2QyYucbd20Pyd6ZBt7ExwJ1nfhLUsz-M5onXZJ4sAOISNMI_HYAxfZPCrwRKMwvsWAELBOQzBnaXla-3U_9kIkh026lG2"
+            },
+            {
+              "arguments": "{\"query\":\"2025년 봄 MT의 참가비가 얼마였는지 확인해 주세요. 행사 기록에 나온 실제 참가비와 문서명·위치를 함께 알려 주세요. 기록이 없거나 대상이 불명확한지도 구분해 주세요.\"}",
+              "call_id": "call_AnBvEZ6ZGxOHVsTVeb0Jjdxv",
+              "name": "search_past_events",
+              "type": "function_call",
+              "id": "fc_0d882a388bf42fa3006aeab97b043087d28df539a8436d2e19",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "search_past_events",
+              "args": {
+                "query": "2025년 봄 MT의 참가비가 얼마였는지 확인해 주세요. 행사 기록에 나온 실제 참가비와 문서명·위치를 함께 알려 주세요. 기록이 없거나 대상이 불명확한지도 구분해 주세요."
+              },
+              "id": "call_AnBvEZ6ZGxOHVsTVeb0Jjdxv",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"available\",\"query\":\"2025년 봄 MT의 참가비가 얼마였는지 확인해 주세요. 행사 기록에 나온 실제 참가비와 문서명·위치를 함께 알려 주세요. 기록이 없거나 대상이 불명확한지도 구분해 주세요.\",\"result\":{\"facts\":[{\"content\":\"2025년 봄 MT의 1인 회비는 45,000원이다. 문서명: 「2025 봄 MT 결과보고.pdf」, 위치: 1쪽 · 1. 행사 개요\",\"sources\":[{\"record_id\":\"rec_mt_2025_report\",\"file_name\":\"2025 봄 MT 결과보고.pdf\",\"location\":{\"label\":\"1쪽 · 1. 행사 개요\"}}]},{\"content\":\"2025년 봄 MT의 1인 회비는 45,000원이다. 문서명: 「2025 봄 MT 참가 신청 안내.pdf」, 위치: 1쪽\",\"sources\":[{\"record_id\":\"rec_notice_2025_spring_mt\",\"file_name\":\"2025 봄 MT 참가 신청 안내.pdf\",\"location\":{\"label\":\"1쪽\"}}]},{\"content\":\"2025년 봄 MT 회비 수납 기록에 기재된 참가자별 금액은 45,000원이다. 문서명: 「2025 상반기 장부.xlsx」, 위치: 회비 수납 시트 · 16~28행\",\"sources\":[{\"record_id\":\"rec_ledger_2025_h1\",\"file_name\":\"2025 상반기 장부.xlsx\",\"location\":{\"label\":\"회비 수납 시트 · 16~28행\"}}]}],\"not_found\":[],\"conflicts\":[]},\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "type": "text",
+              "text": "2025년 봄 MT 참가비는 **1인 45,000원**이었어요.\n\n- 「2025 봄 MT 결과보고.pdf」 1쪽\n- 「2025 봄 MT 참가 신청 안내.pdf」 1쪽\n- 「2025 상반기 장부.xlsx」 회비 수납 시트 16~28행\n\n세 기록 모두 같은 금액으로 확인됩니다.",
+              "annotations": [],
+              "id": "msg_0d882a388bf42fa3006aeab98a06ec87d280543d31c57a700e",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": {
+        "status": "available",
+        "query": "2025년 봄 MT의 참가비가 얼마였는지 확인해 주세요. 행사 기록에 나온 실제 참가비와 문서명·위치를 함께 알려 주세요. 기록이 없거나 대상이 불명확한지도 구분해 주세요.",
+        "result": {
+          "facts": [
+            {
+              "content": "2025년 봄 MT의 1인 회비는 45,000원이다. 문서명: 「2025 봄 MT 결과보고.pdf」, 위치: 1쪽 · 1. 행사 개요",
+              "sources": [
+                {
+                  "record_id": "rec_mt_2025_report",
+                  "file_name": "2025 봄 MT 결과보고.pdf",
+                  "location": {
+                    "label": "1쪽 · 1. 행사 개요"
+                  }
+                }
+              ]
+            },
+            {
+              "content": "2025년 봄 MT의 1인 회비는 45,000원이다. 문서명: 「2025 봄 MT 참가 신청 안내.pdf」, 위치: 1쪽",
+              "sources": [
+                {
+                  "record_id": "rec_notice_2025_spring_mt",
+                  "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+                  "location": {
+                    "label": "1쪽"
+                  }
+                }
+              ]
+            },
+            {
+              "content": "2025년 봄 MT 회비 수납 기록에 기재된 참가자별 금액은 45,000원이다. 문서명: 「2025 상반기 장부.xlsx」, 위치: 회비 수납 시트 · 16~28행",
+              "sources": [
+                {
+                  "record_id": "rec_ledger_2025_h1",
+                  "file_name": "2025 상반기 장부.xlsx",
+                  "location": {
+                    "label": "회비 수납 시트 · 16~28행"
+                  }
+                }
+              ]
+            }
+          ],
+          "not_found": [],
+          "conflicts": []
+        },
+        "reason": null
+      },
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 2,
+      "http_calls": 4,
+      "embedding_http": 1,
+      "limit_reached": false,
+      "ms": 18105
+    },
+    {
+      "dialog": "search-accept",
+      "turn": 2,
+      "text": "올해도 그 금액으로 하자.",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": null,
+        "fee_per_person": 45000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "올해도 그 금액으로 하자.",
+        "updates": {
+          "fee_per_person": 45000
+        },
+        "tool": "yes"
+      },
+      "reply": "올해 MT 참가비도 **1인 45,000원**으로 반영했어요.  \n일정은 언제로 생각하고 계세요?",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": 45000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {
+          "fee_per_person": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "search-accept-user-1",
+              "quote": "올해도 그 금액으로 하자."
+            }
+          }
+        },
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_B0yL8bZMTe8TuiHUaqlIPaX6",
+          "name": "update_event_conditions",
+          "result": {
+            "status": "applied",
+            "draft": {
+              "conditions": {
+                "title": null,
+                "event_type": "MT",
+                "headcount": null,
+                "fee_per_person": 45000,
+                "start_date": null,
+                "end_date": null,
+                "location": null,
+                "budget_total": null
+              },
+              "condition_meta": {
+                "fee_per_person": {
+                  "status": "specified",
+                  "evidence": {
+                    "message_id": "search-accept-user-1",
+                    "quote": "올해도 그 금액으로 하자."
+                  }
+                }
+              },
+              "deferred_topics": []
+            },
+            "changed_fields": [
+              "fee_per_person"
+            ],
+            "reason": null
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0d882a388bf42fa3006aeab98c4ff887d2b0b561f8618f07fc",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rmO3FaSTgSz8aqsG_fw_2liKXUbtCb86jf3O0rSVqCX6PjLqCzJ8u0dzpBOY-Ffuw3YBwadbWLqNutUWDw9qWMB3PO3tcNlG51hQlyGOEilJuvSSHdxlwGDGwsnPj2_C3axG1XqmZQuBcfFn-WJ47PGBasFPaH47xkWjnemkwmUpdOMYgmP3J5f1vhpo0QoNXSLTvYStXdKuelJeDqxPuIAY0D5lSx2vR8J3_CtECy6OSk6WT9NzpI3VRNYTORm_ohD-91YeCUmMeB-_nZRv8CqGB14V0qSQBLEWox43IYjMlWEYOZTH3S_Pms9l5y-UdEPLryPNdBGF16UryIIA5afgvCbMQoUgEywZxa7D1WtAMVBZtOAQyk7UaZUH3CQQZ2uM5yPmNDH-yh-c00qEFBhX6WRRVcN4_Jwrme23JzrL6P3yTXV6c1qvD5lMnd8JijFVGYC7AqxcyOFfpE22UdEjWtzFSYRW8eLoKKl5WN2uVYdOsmMXpIw6e3xV9eweP375Zixmxd8ouGOkBAsBueOX6PZ6-h64bzbfyXG3mR68WnmgADGL-AboSQCGlqLPCZ4upOCTSLQXq-y9OdP5xahvag3ZJAy04ZG6310Zqyq13ytNetPRftHmBrn_mS4QYXV-6h2XzNUwiplNriuS31uBgXwkm8JCNLyqWMIloStthJT_pTnHas4UBAscGXa9a8T-Szgkd-QsLXOnhegLkLwkBC_fBgm4Gv4lFxFNcG3nDgChsl0Y3w8srdFSpJ7pC_n5mcc2ehodi4MprwDetm49GbXh-IvelgDGgH2qaqPqjq0FTUtFwfc9EVQvi7uE-QnP86s5F9zWny4F6orkfYUiRhmuI-TZc6tKZ3kNpdNMVXF5P9DCdOldHVAzXXFdMepYc2bSvP9bTSJP2cjKchS7JZB5UUsy0hTCPn9uMVlOVf5DWoYyJUCMnV9LznupreHbgqunNyf8umtcFpqEoMABThWKSucQfWxloPpkaAjYTHzrUCoemqvWAHaOGQ5JpJI7gAPI9Gf7O5KKhgbrdvEr9OxP2oaPIlc33DgPKGpVB8TooPNhGU7PQFD-Y7oIJqAPNBabI_XcgW0iDRfYdvfyF1AUXPN-2rjWhXzgCe5QzXG70_2xx2xfK2LE4ipa5nIDvzdRY0WRNxmQO_hN35hhRxHo02EhNRLIC4kuRfmhiQssgZC__y8iZkEfWm1bsoa-qs25-6jVt9lduuEc2VmmESxk3mLLtEc6n6_DyZFcck9pUe-ko_byqnmd4_nuAEfvCpDQ5bcg9Hx_HJpik3czOQcUr_8xBnXX6OGSAdhfYEbpdO2V54aWihO6LYfcQC5Rye4bC3NxvU5USMs72I8Dll9hZ7uWO1UZyA47LkEVZot9Lxd-KK1x5TZ4s-dv_PqKCaa6_avDtOqqyjKmnQtUegTgC8tm8ezARCfihr8Ufy8Z6M1LZC7lI7pjiO6yXBhMeszTNNfvNSCX5kpTMTnY1qx6__gIrpICY4c1URQ0Ng4x89TByUXmUwS-WDqBLQaUMEgaQNnQPpogyzsVq4wyWh8vApQIGd9PYvTtQcVqHzkS8C7uFWBn1PeR4d1Eq0lsIykS2LD4NSToDB2yvHV-jOhKU12GirU4I-O3F--1QeoKngMQJZvBAQJBA2RMuZFfEW2Yu9sD05PymSOWUcxL1A8mvy83SmrhHmdbF6JZdUsCJAu6H--nM2r0s2zwvPmEBs2O3lgeFr-ltYMQ-d4gKj1IXJCxGcfITHywyu_ziGTdwT_UZGgjxiWF65GD3yYCnS2cL4uRYM-LX69dNksVKzDB0oVYsyMMV2cM6nDRiRFAU7fn5DRmw3vTLFs_oA-KI4O6AsnGCRl9REVS86Xd5gYNR0M6QUcbgyZ5kQDNHRs9bE-vxkzvTl_Pw9-nc7UePFt3INdJPXIepH7jMx-DexQGKo8VI60uNcMGaE9sXmr5MpeHV5M5i2yHMt2STQbcR5Zk_SGskGJiUjw331YWjhmV46U9oXDcHNmLQ8u-FsjqLoWBX95445xS0sdMfU9exm044E3CvA-3q52Hj9ORk03YnyUbwiSeWCN2JgowCM5pLqwd5i-4_pBLN0JdlGJnJl4wqufOM4zq-xnGUPJOsQio8rJo53kBxKtCg8KQF9L1Ao7qXo32HapdNd7V8kjs70x6xOkeflhMEM39f7j-vKR8f5ia5Ef3EDSsO6I3rJvTlYMTTtmPo5F2iYZXs3A"
+            },
+            {
+              "arguments": "{\"changes\":[{\"op\":\"SET\",\"change\":{\"field\":\"fee_per_person\",\"value\":45000},\"status\":\"specified\",\"evidence\":{\"message_id\":\"search-accept-user-1\",\"quote\":\"올해도 그 금액으로 하자.\"}}],\"defer_topics\":[],\"resume_topics\":[]}",
+              "call_id": "call_B0yL8bZMTe8TuiHUaqlIPaX6",
+              "name": "update_event_conditions",
+              "type": "function_call",
+              "id": "fc_0d882a388bf42fa3006aeab98d179c87d293b47b63f017fefa",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "update_event_conditions",
+              "args": {
+                "changes": [
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "fee_per_person",
+                      "value": 45000
+                    },
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "search-accept-user-1",
+                      "quote": "올해도 그 금액으로 하자."
+                    }
+                  }
+                ],
+                "defer_topics": [],
+                "resume_topics": []
+              },
+              "id": "call_B0yL8bZMTe8TuiHUaqlIPaX6",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":null,\"fee_per_person\":45000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{\"fee_per_person\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"search-accept-user-1\",\"quote\":\"올해도 그 금액으로 하자.\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"fee_per_person\"],\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "type": "text",
+              "text": "올해 MT 참가비도 **1인 45,000원**으로 반영했어요.  \n일정은 언제로 생각하고 계세요?",
+              "annotations": [],
+              "id": "msg_0d882a388bf42fa3006aeab98fdd2487d2b4b2646125b446f8",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": null,
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 2,
+      "http_calls": 2,
+      "embedding_http": 0,
+      "limit_reached": false,
+      "ms": 5789
+    },
+    {
+      "dialog": "reference-only",
+      "turn": 1,
+      "text": "2024년 가을 MT 장소와 참가비를 알려줘.",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 50,
+        "fee_per_person": null,
+        "start_date": null,
+        "end_date": null,
+        "location": "올해 희망지",
+        "budget_total": null
+      },
+      "expected": {
+        "text": "2024년 가을 MT 장소와 참가비를 알려줘.",
+        "updates": {},
+        "tool": "yes",
+        "lookup": "available",
+        "terms": [
+          "양평",
+          "40000"
+        ],
+        "source_records": [
+          "rec_mt_2024_autumn_report"
+        ]
+      },
+      "reply": "2024년 가을 MT 기록은 다음과 같습니다.\n\n- **장소:** 양평 △△펜션\n- **1인 참가비(회비):** 40,000원\n- **참가 인원:** 32명\n\n출처는 「2024 가을 MT 결과보고.pdf」 1쪽 ‘행사 개요’와 2쪽 ‘정산’, 그리고 「2024 하반기 장부.csv」 2~7행입니다. 두 자료의 금액 기록은 서로 일치합니다.",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 50,
+          "fee_per_person": null,
+          "start_date": null,
+          "end_date": null,
+          "location": "올해 희망지",
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_HSGt8Xgd13N69MWQXtGOd90B",
+          "name": "search_past_events",
+          "result": {
+            "status": "available",
+            "query": "동아리의 2024년 가을 MT 기록에서 행사 장소와 1인 참가비가 얼마였는지 찾아 주세요. 실제 문서명과 위치, 확인되지 않은 항목 및 자료 차이가 있으면 함께 알려 주세요.",
+            "result": {
+              "facts": [
+                {
+                  "content": "2024년 가을 MT의 행사 장소는 양평 △△펜션이다. 문서명: 「2024 가을 MT 결과보고.pdf」, 위치: 1쪽 · 1. 행사 개요.",
+                  "sources": [
+                    {
+                      "record_id": "rec_mt_2024_autumn_report",
+                      "file_name": "2024 가을 MT 결과보고.pdf",
+                      "location": {
+                        "label": "1쪽 · 1. 행사 개요"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "content": "2024년 가을 MT의 1인 참가비(기록상 1인 회비)는 40,000원이다. 문서명: 「2024 가을 MT 결과보고.pdf」, 위치: 1쪽 · 1. 행사 개요.",
+                  "sources": [
+                    {
+                      "record_id": "rec_mt_2024_autumn_report",
+                      "file_name": "2024 가을 MT 결과보고.pdf",
+                      "location": {
+                        "label": "1쪽 · 1. 행사 개요"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "content": "2024년 가을 MT 정산에는 회비가 40,000원 × 32명으로 기재되어 있다. 문서명: 「2024 가을 MT 결과보고.pdf」, 위치: 2쪽 · 3. 정산.",
+                  "sources": [
+                    {
+                      "record_id": "rec_mt_2024_autumn_report",
+                      "file_name": "2024 가을 MT 결과보고.pdf",
+                      "location": {
+                        "label": "2쪽 · 3. 정산"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "content": "2024년 가을 MT 회비 일괄 입금 내역에는 32명 × 40,000원으로 기재되어 있다. 문서명: 「2024 하반기 장부.csv」, 위치: 2~7행.",
+                  "sources": [
+                    {
+                      "record_id": "rec_ledger_2024_h2",
+                      "file_name": "2024 하반기 장부.csv",
+                      "location": {
+                        "label": "2~7행"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "not_found": [],
+              "conflicts": []
+            },
+            "reason": null
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0260c95a8279324d006aeab9921c1087d2b5fb2449301f2198",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rmTN-adwDe7AZysPH4g_azaHWoQJMBZe5VY8IyydXVAWe-cX9Sp-NEG9_y6L5M-KhkPK0piD6PVCMnk77VUSpKntiEEX2wcs_3hMpf0QMc-nMRrDQ4EhOwbplH0lf-9Q4vBnI43BVqkHRulkkPzLa3F1GhAlncRG7Y0dHuvO7h93ZJzW1NBzdVi9nRZGqAhYYD2A9WFaLiK7VxKJUJ0RksmzpU17fPO5xudCIFBDVogqH4_inqoJhWIyVjA5BI_JEBTStB-eUZFW3NkRTIziVxtSSxttqWCHwlvFSY5py33LOG1iI7gdDcib-cYeiIqN5Za6sbALMfn4h1uFOrwYUQWsoBtM9UVAFvAY4YqTZxwu39zWHlvHz-i4cUhMrJ6dARUHPMVevV80TUtrQMFbS5mI37RyB1QpG5nqgUiSb5Brm7_tk9mkVIEG7cOCVW8E16doGXNrA4OSdTVtlFbr849pxrgniwxSzWBm_Vpk-A4uIC1ohVzWviJIQw-WjiKLqb6EPVxEv44zM-ZqiwcR25sAvvaX8VqAwlKNsrF7uOBcJNnpBhU4G_kfjyHMdxRd5Qcly13KppIOLJm-jWl-dtjqQVTUdYrbgBE69AKp1MSciLKTD_OHv9ClxTO1Lz1Bm3-X5HXRKpOm2gU9MeGouej6PxlaYIEpXmfZLKc2nMB2ROL1m-0oUDgRN2mlIeCo3UdBfeg8NhVPZDB02i9joT2_s8w84ns1SqngDQzLZh7Nnr8IOI13j_3MMIu-_xPVM5cO1a39iBkprLCjYggJOdky2jQxfGlPOU5pqKjfO9SOwElLwJR5mw4fKsI1MjUv5zU7XJrMARdCmtXIBHy5djAWQIrekY6M_4ms6cJQ1FHidZIze5c5193Kq339d_Uwj7X2BUHFsM9y2e2fgltArOc4TO0a2-xnh_-uNpXw9qnn8OdlbaTXCZkepqqF2U9JEQK0cskfdDZLqhXe7eIvbIAY-DeFMR9e1lfF52DEOwDeADkd_XTohiTaaIK4yrrJSYByXqT0TU-0oVNa5N8pjrHPL346Y1H6gZdWUy2kR-YdaITTpSL0SX4pPRzYPuw3Ql5wPeCWvQApCOEIr5c5J--Dqow_GQtHZdoJ0iUiS1ccIEm0k60uCuw2z2f5AOxV6QlPRsAyE1lOClv1Py41F-1R0D8a4Dk-5e9Fde0L5OvYUKzwGRWFuRJM7wjPt-MQbEv-d8zBf-BKYzTQVJiF0HtfMe7rbUQgzPERlDKGepQ2AxoimoTSij7GlBYyHcs4P_UZrddEtt8-R_oQtSd6eRfR0T3HCmvpRwkw7g1ajqTQtoInFztnTmlzzEz16okWAOsPm68HON2FkzdVLWeEBQBhFfyMtJ25G_swmJyw89q1Vu7d1IJasr6JM4pJXbjE5NvgYO_SK6xPKwZuT7dX6CUF9UPdACiR2AUs-Fa1konuhKuvuMrHw2YcHVdlmN2-sPtn7TDhx0yLdx76SVOCWklYNIVzEuV_wMVVzVoOBrPmYi1HBZxNl0UuZ6Lb0GfG6Z0fJ0fUaAtpP_TBRJWBe5ABzdROjqB39GLQD5j00r4bOLe8EvyEHMVStVxLl5nYPkQCuVVTtD_6tCLcE1IugUgEg=="
+            },
+            {
+              "arguments": "{\"query\":\"동아리의 2024년 가을 MT 기록에서 행사 장소와 1인 참가비가 얼마였는지 찾아 주세요. 실제 문서명과 위치, 확인되지 않은 항목 및 자료 차이가 있으면 함께 알려 주세요.\"}",
+              "call_id": "call_HSGt8Xgd13N69MWQXtGOd90B",
+              "name": "search_past_events",
+              "type": "function_call",
+              "id": "fc_0260c95a8279324d006aeab9925f0487d28c9a8f9bb03cd03f",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "search_past_events",
+              "args": {
+                "query": "동아리의 2024년 가을 MT 기록에서 행사 장소와 1인 참가비가 얼마였는지 찾아 주세요. 실제 문서명과 위치, 확인되지 않은 항목 및 자료 차이가 있으면 함께 알려 주세요."
+              },
+              "id": "call_HSGt8Xgd13N69MWQXtGOd90B",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"available\",\"query\":\"동아리의 2024년 가을 MT 기록에서 행사 장소와 1인 참가비가 얼마였는지 찾아 주세요. 실제 문서명과 위치, 확인되지 않은 항목 및 자료 차이가 있으면 함께 알려 주세요.\",\"result\":{\"facts\":[{\"content\":\"2024년 가을 MT의 행사 장소는 양평 △△펜션이다. 문서명: 「2024 가을 MT 결과보고.pdf」, 위치: 1쪽 · 1. 행사 개요.\",\"sources\":[{\"record_id\":\"rec_mt_2024_autumn_report\",\"file_name\":\"2024 가을 MT 결과보고.pdf\",\"location\":{\"label\":\"1쪽 · 1. 행사 개요\"}}]},{\"content\":\"2024년 가을 MT의 1인 참가비(기록상 1인 회비)는 40,000원이다. 문서명: 「2024 가을 MT 결과보고.pdf」, 위치: 1쪽 · 1. 행사 개요.\",\"sources\":[{\"record_id\":\"rec_mt_2024_autumn_report\",\"file_name\":\"2024 가을 MT 결과보고.pdf\",\"location\":{\"label\":\"1쪽 · 1. 행사 개요\"}}]},{\"content\":\"2024년 가을 MT 정산에는 회비가 40,000원 × 32명으로 기재되어 있다. 문서명: 「2024 가을 MT 결과보고.pdf」, 위치: 2쪽 · 3. 정산.\",\"sources\":[{\"record_id\":\"rec_mt_2024_autumn_report\",\"file_name\":\"2024 가을 MT 결과보고.pdf\",\"location\":{\"label\":\"2쪽 · 3. 정산\"}}]},{\"content\":\"2024년 가을 MT 회비 일괄 입금 내역에는 32명 × 40,000원으로 기재되어 있다. 문서명: 「2024 하반기 장부.csv」, 위치: 2~7행.\",\"sources\":[{\"record_id\":\"rec_ledger_2024_h2\",\"file_name\":\"2024 하반기 장부.csv\",\"location\":{\"label\":\"2~7행\"}}]}],\"not_found\":[],\"conflicts\":[]},\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "type": "text",
+              "text": "2024년 가을 MT 기록은 다음과 같습니다.\n\n- **장소:** 양평 △△펜션\n- **1인 참가비(회비):** 40,000원\n- **참가 인원:** 32명\n\n출처는 「2024 가을 MT 결과보고.pdf」 1쪽 ‘행사 개요’와 2쪽 ‘정산’, 그리고 「2024 하반기 장부.csv」 2~7행입니다. 두 자료의 금액 기록은 서로 일치합니다.",
+              "annotations": [],
+              "id": "msg_0260c95a8279324d006aeab99f8a9887d29836d93e23a8001f",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": {
+        "status": "available",
+        "query": "동아리의 2024년 가을 MT 기록에서 행사 장소와 1인 참가비가 얼마였는지 찾아 주세요. 실제 문서명과 위치, 확인되지 않은 항목 및 자료 차이가 있으면 함께 알려 주세요.",
+        "result": {
+          "facts": [
+            {
+              "content": "2024년 가을 MT의 행사 장소는 양평 △△펜션이다. 문서명: 「2024 가을 MT 결과보고.pdf」, 위치: 1쪽 · 1. 행사 개요.",
+              "sources": [
+                {
+                  "record_id": "rec_mt_2024_autumn_report",
+                  "file_name": "2024 가을 MT 결과보고.pdf",
+                  "location": {
+                    "label": "1쪽 · 1. 행사 개요"
+                  }
+                }
+              ]
+            },
+            {
+              "content": "2024년 가을 MT의 1인 참가비(기록상 1인 회비)는 40,000원이다. 문서명: 「2024 가을 MT 결과보고.pdf」, 위치: 1쪽 · 1. 행사 개요.",
+              "sources": [
+                {
+                  "record_id": "rec_mt_2024_autumn_report",
+                  "file_name": "2024 가을 MT 결과보고.pdf",
+                  "location": {
+                    "label": "1쪽 · 1. 행사 개요"
+                  }
+                }
+              ]
+            },
+            {
+              "content": "2024년 가을 MT 정산에는 회비가 40,000원 × 32명으로 기재되어 있다. 문서명: 「2024 가을 MT 결과보고.pdf」, 위치: 2쪽 · 3. 정산.",
+              "sources": [
+                {
+                  "record_id": "rec_mt_2024_autumn_report",
+                  "file_name": "2024 가을 MT 결과보고.pdf",
+                  "location": {
+                    "label": "2쪽 · 3. 정산"
+                  }
+                }
+              ]
+            },
+            {
+              "content": "2024년 가을 MT 회비 일괄 입금 내역에는 32명 × 40,000원으로 기재되어 있다. 문서명: 「2024 하반기 장부.csv」, 위치: 2~7행.",
+              "sources": [
+                {
+                  "record_id": "rec_ledger_2024_h2",
+                  "file_name": "2024 하반기 장부.csv",
+                  "location": {
+                    "label": "2~7행"
+                  }
+                }
+              ]
+            }
+          ],
+          "not_found": [],
+          "conflicts": []
+        },
+        "reason": null
+      },
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 2,
+      "http_calls": 4,
+      "embedding_http": 1,
+      "limit_reached": false,
+      "ms": 19464
+    },
+    {
+      "dialog": "mixed",
+      "turn": 1,
+      "text": "인원은 40명으로 바꾸고, 2025년 봄 MT 참가비도 찾아줘.",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": 40,
+        "fee_per_person": 25000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "인원은 40명으로 바꾸고, 2025년 봄 MT 참가비도 찾아줘.",
+        "updates": {
+          "headcount": 40
+        },
+        "tool": "yes",
+        "lookup": "available",
+        "terms": [
+          "45000"
+        ],
+        "source_records": [
+          "rec_mt_2025_report"
+        ]
+      },
+      "reply": "인원은 40명으로 변경했어요.\n\n2025년 봄 MT 참가비는 **1인 45,000원**으로 확인됩니다.\n\n- 「2025 봄 MT 결과보고.pdf」 1쪽 · 행사 개요\n- 「2025 봄 MT 참가 신청 안내.pdf」 1쪽\n- 「2025 상반기 장부.xlsx」 회비 수납 시트 16~28행\n\n현재 참가비 25,000원은 그대로 두었고, 과거 기록만 확인했습니다.",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": 40,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {
+          "headcount": {
+            "status": "specified",
+            "evidence": {
+              "message_id": "mixed-user-0",
+              "quote": "인원은 40명으로 바꾸고, 2025년 봄 MT 참가비도 찾아줘."
+            }
+          }
+        },
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_SOWL3x2Wcqs5XbS0sBvsZgRn",
+          "name": "update_event_conditions",
+          "result": {
+            "status": "applied",
+            "draft": {
+              "conditions": {
+                "title": null,
+                "event_type": "MT",
+                "headcount": 40,
+                "fee_per_person": 25000,
+                "start_date": null,
+                "end_date": null,
+                "location": null,
+                "budget_total": null
+              },
+              "condition_meta": {
+                "headcount": {
+                  "status": "specified",
+                  "evidence": {
+                    "message_id": "mixed-user-0",
+                    "quote": "인원은 40명으로 바꾸고, 2025년 봄 MT 참가비도 찾아줘."
+                  }
+                }
+              },
+              "deferred_topics": []
+            },
+            "changed_fields": [
+              "headcount"
+            ],
+            "reason": null
+          }
+        },
+        {
+          "tool_call_id": "call_kH5m2BbQK2rPufiJISS9MMD8",
+          "name": "search_past_events",
+          "result": {
+            "status": "available",
+            "query": "2025년 봄에 동아리에서 진행한 MT의 참가비가 얼마였는지 찾아줘. 참가비 금액, 실제 확인 가능한 행사 기록 문서명과 위치를 알려주고, 기록이 없거나 대상이 불분명하면 그 점도 구분해서 알려줘.",
+            "result": {
+              "facts": [
+                {
+                  "content": "2025년 봄 MT 결과보고의 1인 회비는 45,000원이다.",
+                  "sources": [
+                    {
+                      "record_id": "rec_mt_2025_report",
+                      "file_name": "2025 봄 MT 결과보고.pdf",
+                      "location": {
+                        "label": "1쪽 · 1. 행사 개요"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "content": "확인 가능한 행사 기록 문서는 「2025 봄 MT 결과보고.pdf」이며, 위치는 1쪽 · 1. 행사 개요이다.",
+                  "sources": [
+                    {
+                      "record_id": "rec_mt_2025_report",
+                      "file_name": "2025 봄 MT 결과보고.pdf",
+                      "location": {
+                        "label": "1쪽 · 1. 행사 개요"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "content": "2025년 봄 MT 참가 신청 안내의 1인 회비는 45,000원이다.",
+                  "sources": [
+                    {
+                      "record_id": "rec_notice_2025_spring_mt",
+                      "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+                      "location": {
+                        "label": "1쪽"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "content": "확인 가능한 안내 문서는 「2025 봄 MT 참가 신청 안내.pdf」이며, 위치는 1쪽이다.",
+                  "sources": [
+                    {
+                      "record_id": "rec_notice_2025_spring_mt",
+                      "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+                      "location": {
+                        "label": "1쪽"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "content": "2025년 상반기 장부의 회비 수납 시트 16~28행에 2025년 봄 MT 회비로 45,000원씩 기록되어 있다.",
+                  "sources": [
+                    {
+                      "record_id": "rec_ledger_2025_h1",
+                      "file_name": "2025 상반기 장부.xlsx",
+                      "location": {
+                        "label": "회비 수납 시트 · 16~28행"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "not_found": [],
+              "conflicts": []
+            },
+            "reason": null
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_0324126ad6196c93006aeab9a5b94087d2a26662c81b1a288b",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rmnXjxpvFbVVkC1elIFgGUvus88qUb-EjGOwzwTwDeUmQsy75ptsaNBoiaPJmxgC8KaqtqD8PAnlnJoZ6qckUecjQQedMhvTIwpz9T7YKrZbxqarjI8G-4IkhCj6vj8UkDYa-FbZUXE4S0j-cv0A3jYv0-oC_HAJhBe81GniCmeqZqcyoz8v0ZcM4NlFvl_mr56F3kLV_hF1FwoDLMmH6xDIkOeocfiy3GEjr8r2v-V6YW5wBWK3J619fdgnTkgunNqYzNdruNO0LQXOa2kM6xTT8j0Bk7V-xs5c4TW_kNOlGwGpu0g884xVSq9I8cqRM7vbyQm1FKCcgkXSUmKCXuJhGLaK3tTUZwaPwjZ_mq9qHol5BogZSEF0OCyt7lwa6tCiTHk5aF1ck1wxv5WONa00ofKKQYHQHtAQUdB2aQnk9ob3e2FMfkBx-L67wE8vKCHTGOrofPqKTY863oKzcYWiPPlIQ9vLgKKujgDA965BB9w9yy2F8UJkZydYT799HQ_zR0QabxbjE9tOJkXqnRfSKtI5Yf5TsZtKViJMnIb4it0jl8LnbBg0-fbLU0SU82bw4oXgkk7Fo2d9F8MVBzmqhz7MJ81ZABKmPIr12u-DDNul-kFK-7Q5TjvqmzZrcp2KuOSM0JPIbFm3oeMmZMkcXW9H1U8f3Tqb_OvdqgIWpN4BqqLryDkLdMHFgepQWHTlEWBlhqvro8wnZr-S3u7GQvcOSrx1J-RHA0Uo7WGhjgSdpH4X0HUMoEuentKlpE6wcgYLoAu_rLzeBATF6fIwfR1QJF-RP9wqHOh5lANCasr0Iy0r-uKL9i2PA-G8dO-UiPhKNhgnAMtTHfmUG3XnCbOyiturJgDnjBLfM-TOQoLuh1E1pDQCq10DVJfatevFAHRC6l3LnQ_CwA1ekQhE2206xOdGXFsD1HLq6WteleuZF4ksdmGQ9vXlw1G1M8OCz-6BEqVp4u1D28w8aGsECoooTaZIi1MmpULCYScqcMK9LctIxFh8QqAUNaOM8TQKAHlKQYzgt-tmE_mckZENISKR6ZDS8LtCUpL2ACHD0wk2pVLWeenbIo-jK3J_EPQlHtqCKhA2Rudb6S3g7osVEWLIj40hk39iIUmlGKNc3DODkprmYFa8E8-u9YZpf-d4o924HQ8X7y4ucudRDRxAw0zhIQf1Ff-wIHJcPGQWxa-1DTwSFdLoPjm_x-nrTrW8YuVpV2WQ_8B61K9zAszVJLMxVRCkpNZot2e68aljc5hL5XvCf-NkqavFxbzYE8yE2bMDWzqStZ20we5RCbqaB5L-bzauw3bZXtaDSajq0CiY43W9SUgtkrCJx1eCDqWMBfhpkBFa9y5HNPh2NkmghYkiuha3x2PuRcB3uLtzO4kVSirEr-JY53Emf9sgHoiQnjRn3smPLrU8awaNBJsOrIBsXC-rTMEr8VatGGG1xgX55KHYvk1qBcchnOpKM4AQUjyVJLruczN9cQWhSfVO0LPPkpu4VYRWFvCaMagW8iDt-uqMykmcidgRRTbkrjBekWjnR8tzbBROFpR5SfigywgRrFbgcEshF-q_qX4G09aIHvOxgYsddMNEt22dyMJ3c4WHTrpbLnZtLj4AQGP0ldqspo9tztHFkjWXplI-qbxVd83bVN38Vnxzx2acnUriQvQtXhpV_9gCvz1-ZGerBpkfyBsoLjR6LJbizJHTEa4fRLZIkIV4V8MziMdZ3-BVgxXYhxy7XTJBo7pRBVU285qfQ7Y_hfc8wcNZiKAEUQ="
+            },
+            {
+              "arguments": "{\"changes\":[{\"op\":\"SET\",\"change\":{\"field\":\"headcount\",\"value\":40},\"status\":\"specified\",\"evidence\":{\"message_id\":\"mixed-user-0\",\"quote\":\"인원은 40명으로 바꾸고, 2025년 봄 MT 참가비도 찾아줘.\"}}],\"defer_topics\":[],\"resume_topics\":[]}",
+              "call_id": "call_SOWL3x2Wcqs5XbS0sBvsZgRn",
+              "name": "update_event_conditions",
+              "type": "function_call",
+              "id": "fc_0324126ad6196c93006aeab9a63ef487d2957d396f2c675119",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "update_event_conditions",
+              "args": {
+                "changes": [
+                  {
+                    "op": "SET",
+                    "change": {
+                      "field": "headcount",
+                      "value": 40
+                    },
+                    "status": "specified",
+                    "evidence": {
+                      "message_id": "mixed-user-0",
+                      "quote": "인원은 40명으로 바꾸고, 2025년 봄 MT 참가비도 찾아줘."
+                    }
+                  }
+                ],
+                "defer_topics": [],
+                "resume_topics": []
+              },
+              "id": "call_SOWL3x2Wcqs5XbS0sBvsZgRn",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"applied\",\"draft\":{\"conditions\":{\"title\":null,\"event_type\":\"MT\",\"headcount\":40,\"fee_per_person\":25000,\"start_date\":null,\"end_date\":null,\"location\":null,\"budget_total\":null},\"condition_meta\":{\"headcount\":{\"status\":\"specified\",\"evidence\":{\"message_id\":\"mixed-user-0\",\"quote\":\"인원은 40명으로 바꾸고, 2025년 봄 MT 참가비도 찾아줘.\"}}},\"deferred_topics\":[]},\"changed_fields\":[\"headcount\"],\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "arguments": "{\"query\":\"2025년 봄에 동아리에서 진행한 MT의 참가비가 얼마였는지 찾아줘. 참가비 금액, 실제 확인 가능한 행사 기록 문서명과 위치를 알려주고, 기록이 없거나 대상이 불분명하면 그 점도 구분해서 알려줘.\"}",
+              "call_id": "call_kH5m2BbQK2rPufiJISS9MMD8",
+              "name": "search_past_events",
+              "type": "function_call",
+              "id": "fc_0324126ad6196c93006aeab9a9252c87d2af8a4665a87e94b3",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "search_past_events",
+              "args": {
+                "query": "2025년 봄에 동아리에서 진행한 MT의 참가비가 얼마였는지 찾아줘. 참가비 금액, 실제 확인 가능한 행사 기록 문서명과 위치를 알려주고, 기록이 없거나 대상이 불분명하면 그 점도 구분해서 알려줘."
+              },
+              "id": "call_kH5m2BbQK2rPufiJISS9MMD8",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"available\",\"query\":\"2025년 봄에 동아리에서 진행한 MT의 참가비가 얼마였는지 찾아줘. 참가비 금액, 실제 확인 가능한 행사 기록 문서명과 위치를 알려주고, 기록이 없거나 대상이 불분명하면 그 점도 구분해서 알려줘.\",\"result\":{\"facts\":[{\"content\":\"2025년 봄 MT 결과보고의 1인 회비는 45,000원이다.\",\"sources\":[{\"record_id\":\"rec_mt_2025_report\",\"file_name\":\"2025 봄 MT 결과보고.pdf\",\"location\":{\"label\":\"1쪽 · 1. 행사 개요\"}}]},{\"content\":\"확인 가능한 행사 기록 문서는 「2025 봄 MT 결과보고.pdf」이며, 위치는 1쪽 · 1. 행사 개요이다.\",\"sources\":[{\"record_id\":\"rec_mt_2025_report\",\"file_name\":\"2025 봄 MT 결과보고.pdf\",\"location\":{\"label\":\"1쪽 · 1. 행사 개요\"}}]},{\"content\":\"2025년 봄 MT 참가 신청 안내의 1인 회비는 45,000원이다.\",\"sources\":[{\"record_id\":\"rec_notice_2025_spring_mt\",\"file_name\":\"2025 봄 MT 참가 신청 안내.pdf\",\"location\":{\"label\":\"1쪽\"}}]},{\"content\":\"확인 가능한 안내 문서는 「2025 봄 MT 참가 신청 안내.pdf」이며, 위치는 1쪽이다.\",\"sources\":[{\"record_id\":\"rec_notice_2025_spring_mt\",\"file_name\":\"2025 봄 MT 참가 신청 안내.pdf\",\"location\":{\"label\":\"1쪽\"}}]},{\"content\":\"2025년 상반기 장부의 회비 수납 시트 16~28행에 2025년 봄 MT 회비로 45,000원씩 기록되어 있다.\",\"sources\":[{\"record_id\":\"rec_ledger_2025_h1\",\"file_name\":\"2025 상반기 장부.xlsx\",\"location\":{\"label\":\"회비 수납 시트 · 16~28행\"}}]}],\"not_found\":[],\"conflicts\":[]},\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "type": "text",
+              "text": "인원은 40명으로 변경했어요.\n\n2025년 봄 MT 참가비는 **1인 45,000원**으로 확인됩니다.\n\n- 「2025 봄 MT 결과보고.pdf」 1쪽 · 행사 개요\n- 「2025 봄 MT 참가 신청 안내.pdf」 1쪽\n- 「2025 상반기 장부.xlsx」 회비 수납 시트 16~28행\n\n현재 참가비 25,000원은 그대로 두었고, 과거 기록만 확인했습니다.",
+              "annotations": [],
+              "id": "msg_0324126ad6196c93006aeab9b5d3e087d2beaf93ea9daa31e3",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": {
+        "status": "available",
+        "query": "2025년 봄에 동아리에서 진행한 MT의 참가비가 얼마였는지 찾아줘. 참가비 금액, 실제 확인 가능한 행사 기록 문서명과 위치를 알려주고, 기록이 없거나 대상이 불분명하면 그 점도 구분해서 알려줘.",
+        "result": {
+          "facts": [
+            {
+              "content": "2025년 봄 MT 결과보고의 1인 회비는 45,000원이다.",
+              "sources": [
+                {
+                  "record_id": "rec_mt_2025_report",
+                  "file_name": "2025 봄 MT 결과보고.pdf",
+                  "location": {
+                    "label": "1쪽 · 1. 행사 개요"
+                  }
+                }
+              ]
+            },
+            {
+              "content": "확인 가능한 행사 기록 문서는 「2025 봄 MT 결과보고.pdf」이며, 위치는 1쪽 · 1. 행사 개요이다.",
+              "sources": [
+                {
+                  "record_id": "rec_mt_2025_report",
+                  "file_name": "2025 봄 MT 결과보고.pdf",
+                  "location": {
+                    "label": "1쪽 · 1. 행사 개요"
+                  }
+                }
+              ]
+            },
+            {
+              "content": "2025년 봄 MT 참가 신청 안내의 1인 회비는 45,000원이다.",
+              "sources": [
+                {
+                  "record_id": "rec_notice_2025_spring_mt",
+                  "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+                  "location": {
+                    "label": "1쪽"
+                  }
+                }
+              ]
+            },
+            {
+              "content": "확인 가능한 안내 문서는 「2025 봄 MT 참가 신청 안내.pdf」이며, 위치는 1쪽이다.",
+              "sources": [
+                {
+                  "record_id": "rec_notice_2025_spring_mt",
+                  "file_name": "2025 봄 MT 참가 신청 안내.pdf",
+                  "location": {
+                    "label": "1쪽"
+                  }
+                }
+              ]
+            },
+            {
+              "content": "2025년 상반기 장부의 회비 수납 시트 16~28행에 2025년 봄 MT 회비로 45,000원씩 기록되어 있다.",
+              "sources": [
+                {
+                  "record_id": "rec_ledger_2025_h1",
+                  "file_name": "2025 상반기 장부.xlsx",
+                  "location": {
+                    "label": "회비 수납 시트 · 16~28행"
+                  }
+                }
+              ]
+            }
+          ],
+          "not_found": [],
+          "conflicts": []
+        },
+        "reason": null
+      },
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 3,
+      "http_calls": 5,
+      "embedding_http": 1,
+      "limit_reached": false,
+      "ms": 18915
+    },
+    {
+      "dialog": "empty-records",
+      "turn": 1,
+      "text": "2025년 봄 MT 참가비를 찾아줘.",
+      "expected_conditions": {
+        "title": null,
+        "event_type": "MT",
+        "headcount": null,
+        "fee_per_person": 25000,
+        "start_date": null,
+        "end_date": null,
+        "location": null,
+        "budget_total": null
+      },
+      "expected": {
+        "text": "2025년 봄 MT 참가비를 찾아줘.",
+        "updates": {},
+        "tool": "yes",
+        "lookup": "not_found"
+      },
+      "reply": "2025년 봄 MT 참가비는 과거 행사 기록에서 확인되지 않았습니다. 해당 금액을 뒷받침하는 문서나 위치도 찾지 못했어요.",
+      "draft": {
+        "conditions": {
+          "title": null,
+          "event_type": "MT",
+          "headcount": null,
+          "fee_per_person": 25000,
+          "start_date": null,
+          "end_date": null,
+          "location": null,
+          "budget_total": null
+        },
+        "condition_meta": {},
+        "deferred_topics": []
+      },
+      "executions": [
+        {
+          "tool_call_id": "call_VUojO3ZbkaSywMVZz4fokZAV",
+          "name": "search_past_events",
+          "result": {
+            "status": "not_found",
+            "query": "2025년 봄 MT의 참가비가 얼마였는지, 과거 행사 기록에서 확인해줘. 참가비 금액과 실제 출처 문서명·위치를 함께 찾아줘.",
+            "result": {
+              "facts": [],
+              "not_found": [
+                "2025년 봄 MT의 참가비가 얼마였는지, 과거 행사 기록에서 확인해줘. 참가비 금액과 실제 출처 문서명·위치를 함께 찾아줘."
+              ],
+              "conflicts": []
+            },
+            "reason": null
+          }
+        }
+      ],
+      "trace": [
+        {
+          "type": "ai",
+          "content": [
+            {
+              "id": "rs_07dab38f31301176006aeab9b8630087d2b44fe7ce3e1c93d0",
+              "summary": [],
+              "type": "reasoning",
+              "content": [],
+              "encrypted_content": "gAAAAABq6rm5Pw5ABOzRnt52jro2Qsrt46zCiwW0mQtIP1vKpudPNrz3QQ3pg4Y9TiqmDCnZ2Xmha4kgVy4stZ4t5LOjtlsDrIosRxWY9l4g1lD3v-wBUArPuRbqfYldkbyLSnF1veJBLBhw_ZE0dI78bgcZ6DCjHwDVlnmXI9_0GBe3AEW2ajDmDKQHD_Y1hTTojktb2llMtjoxs85OBNqYoToF0gci22VwtvANxMyELY2zaGIwrsfiN9-gL8dBDhWBYLseqHvMR3es0mN4t1zp_1B4jgsei9QG-UKcWjioyiLG3SAo3riFd8PaMOlBfjvquQ1FO88zmG8A9ewYeMlu8UakQPIznqNV76GzZNnTHuL4GJPRc1V2sOplf8cLxdoeP8IU-4OVp8dN-eYVSWLxTWMZEIKjhTanVlo2z8OVGzcuVuPIEy5cNmSsBiAqREsXUoINCqZDU3gIeHRAt94hqHSs40Ax8uswsxWxTjQN6pKwey5Zarv1tytMEW6k1R3V3KAa9THbE829o6UdkXqR3fPrKFRfWpQN-p-sj-Fqdl1KzuQ0rdRd_9xNJvNEM6XtAnG5TI-NHADWiUWKt6AukHJSqjmogj4hu6iHHVjt1RUzIwXuyvsoC30m4wYCZFFUQhYbcFXHkWV3nUPNtBh0fjtG3IkT24yQmuHm2OKFc8ppcVmTXK11BV2zYyreuoRGTwMw-1WaQ7po9tXahN7bdiJahjgCcvy9DgoGJrW9uiodfycuMkjjdLOK7q1PLN_QEFQcffMbm2eQaY0hQoXqc_mbDu6iX0xOhO8TOQXOm6TGPwJR8F9zlD1XN6KW7j4TeE4t578doPDvxXXgZVoyAMTmfL1QVylQ7NTOnkRCeyIEfRt0cjgzXSTxLs704kBinzY1InQ_l7E8OmlOukhC15faGvKxc9EhhrLCbilIbrV7uZH-YxzAHY3cauUslrcDnU2if3wsW_ZPolLHKl-jp3-V4dQj6JPtbVPLae6t6KDBpV79tWoHfR2jBQIBvXR3E1jX78kHVD85mBtk5eEg9qEWqHpNE_azx98lxNAEPHApXUwo_H0Eyr-LO2JniG0gikMLJfeGs3DGOtNNuDXsZeqB7jQM3mk970YhMKsI-SY5wYmqanh--PaM_5yzLEAaDhamOAI1_wnj5kjtvaeQm_WTWHRG3LtKKSGan-vJ19lNP2ke1iC851k7QxyJ9EJQXqJsrpZHdquz8hV607tUxLahwBZh7e_VXF93Xj-4E9x8grEOxkirq75L-hrmkTgo86b_N6mxACkNSccICJjthnzPrptej7T3maEKReKibPuViNcBg5kdV8ozl6DSyzb88Awp0WFvPlRdhz9MbskoysNANiE_5BMCT6bBsPlc3Ix3L31LrvIW2EkB7V7wDNNSQxJCYXLZyDM8BMXIuBlFKQ1s8epkhS7mV66SpIuXswc5MOeWyZT9WzuSiKhFQnOArpx06yopi3Lum7TdjKXz3mtDWP3IzL-qkEjYvSvTKlfPJ9RoAwaJfHzW1xdgs-iQBxzF49XqRflWFx4Oqwqw6TUzY5qsxmw-Y9AcbKlqHzqHlgftTpo6FyUwnGQ1gzbAqWw4sJMBzkCW0RgzHzJS5KkRvZIKsA=="
+            },
+            {
+              "arguments": "{\"query\":\"2025년 봄 MT의 참가비가 얼마였는지, 과거 행사 기록에서 확인해줘. 참가비 금액과 실제 출처 문서명·위치를 함께 찾아줘.\"}",
+              "call_id": "call_VUojO3ZbkaSywMVZz4fokZAV",
+              "name": "search_past_events",
+              "type": "function_call",
+              "id": "fc_07dab38f31301176006aeab9b8a0ac87d28d0ab5fc2f110980",
+              "status": "completed"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "search_past_events",
+              "args": {
+                "query": "2025년 봄 MT의 참가비가 얼마였는지, 과거 행사 기록에서 확인해줘. 참가비 금액과 실제 출처 문서명·위치를 함께 찾아줘."
+              },
+              "id": "call_VUojO3ZbkaSywMVZz4fokZAV",
+              "type": "tool_call"
+            }
+          ]
+        },
+        {
+          "type": "tool",
+          "content": "{\"status\":\"not_found\",\"query\":\"2025년 봄 MT의 참가비가 얼마였는지, 과거 행사 기록에서 확인해줘. 참가비 금액과 실제 출처 문서명·위치를 함께 찾아줘.\",\"result\":{\"facts\":[],\"not_found\":[\"2025년 봄 MT의 참가비가 얼마였는지, 과거 행사 기록에서 확인해줘. 참가비 금액과 실제 출처 문서명·위치를 함께 찾아줘.\"],\"conflicts\":[]},\"reason\":null}"
+        },
+        {
+          "type": "ai",
+          "content": [
+            {
+              "type": "text",
+              "text": "2025년 봄 MT 참가비는 과거 행사 기록에서 확인되지 않았습니다. 해당 금액을 뒷받침하는 문서나 위치도 찾지 못했어요.",
+              "annotations": [],
+              "id": "msg_07dab38f31301176006aeab9bebb6487d283103fd24d48d327",
+              "phase": "final_answer"
+            }
+          ],
+          "tool_calls": []
+        }
+      ],
+      "record_lookup": {
+        "status": "not_found",
+        "query": "2025년 봄 MT의 참가비가 얼마였는지, 과거 행사 기록에서 확인해줘. 참가비 금액과 실제 출처 문서명·위치를 함께 찾아줘.",
+        "result": {
+          "facts": [],
+          "not_found": [
+            "2025년 봄 MT의 참가비가 얼마였는지, 과거 행사 기록에서 확인해줘. 참가비 금액과 실제 출처 문서명·위치를 함께 찾아줘."
+          ],
+          "conflicts": []
+        },
+        "reason": null
+      },
+      "checks": {
+        "conditions": true,
+        "tool": true,
+        "metadata": true,
+        "metadata_absent": true,
+        "deferral": true,
+        "input_preserved": true,
+        "lookup": true,
+        "evidence_terms": true,
+        "expected_sources": true,
+        "sources_retrieved": true
+      },
+      "passed": true,
+      "model_calls": 2,
+      "http_calls": 3,
+      "embedding_http": 1,
+      "limit_reached": false,
+      "ms": 8400
+    }
+  ],
+  "indexing": {
+    "records": 12,
+    "chunks": 36,
+    "embedding_http": 12,
+    "ms": 5867
+  },
+  "http_calls": 18,
+  "embedding_http": 16,
+  "summary": {
+    "turns": 5,
+    "passed": 5,
+    "median_ms": 18105,
+    "max_ms": 19464,
+    "model_calls": 11
+  }
+}

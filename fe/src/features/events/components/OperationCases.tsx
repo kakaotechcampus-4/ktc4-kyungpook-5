@@ -141,8 +141,8 @@ export function OperationCases({
               {errorText}
             </p>
           )}
-          <Button type="submit" disabled={busy || !draft.trim()}>
-            {actions.create.isPending ? '확인 중…' : '상황 확인하기'}
+          <Button type="submit" loading={busy} disabled={!draft.trim()}>
+            {actions.create.isPending ? '확인하는 중…' : '상황 확인하기'}
           </Button>
         </form>
       ) : (

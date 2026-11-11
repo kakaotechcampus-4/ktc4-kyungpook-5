@@ -1,5 +1,13 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { acceptInvitation, createClub, createInvitation, listClubMembers } from '@/features/clubs/api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  acceptInvitation,
+  createClub,
+  createInvitation,
+  getClub,
+  listClubMembers,
+  updateClub,
+} from '@/features/clubs/api'
+import type { ClubUpdateInput } from '@/features/clubs/types'
 import { ApiError } from '@/shared/api/types'
 
 export function useCreateClub() {
@@ -8,6 +16,27 @@ export function useCreateClub() {
 
 export function useJoinClub() {
   return useMutation({ mutationFn: acceptInvitation })
+}
+
+export function useClub(clubId: string | null) {
+  return useQuery({
+    queryKey: ['clubs', clubId, 'detail'],
+    queryFn: () => getClub(clubId as string),
+    enabled: Boolean(clubId),
+    staleTime: 30_000,
+  })
+}
+
+// 이름이 바뀌면 /me 의 소속 이름과 상단 드롭다운도 달라진다. 둘 다 다시 받는다.
+export function useUpdateClub(clubId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: ClubUpdateInput) => updateClub(clubId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['clubs', clubId] })
+      void queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+    },
+  })
 }
 
 export function useClubMembers(clubId: string | null, enabled = true) {

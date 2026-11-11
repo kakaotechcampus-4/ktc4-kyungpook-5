@@ -2,11 +2,14 @@
 
 인증·동아리·영수 내역·회의·기록·할 일 후보·확정 항목·예약·Push 구독은 실제 DB로 동작합니다.
 자료는 실제 `index_record`와 pgvector 저장소, 음성은 WS PCM→BE VAD→Whisper 어댑터로 연결합니다.
-회의 판단은 최신 AI의 `judge_utterance(request, records=...)`와 결합해야 합니다.
-독립 후보 추출 계약과 실제 공급자 설정이 없으면 해당 기능의 실패를 명시합니다.
 실행·API·상태·검증 범위는 [회의 베타 연결](docs/meeting-beta.md)과 [WS 계약](docs/meeting-audio.md)을 보세요.
-기존 test-support/HTTP STT·Discord 처리의 개발 fixture와 OCR 더미는 실연동이 아닙니다.
-행사(`/events`) 조회·계획 확정·행동 처리와 P1·P2 계획 API도 실제 DB로 동작합니다 (#41, #187). 단계 수정·재배열은 아직 없습니다.
+전체 API 지도(도메인별 엔드포인트·권한·공통 규칙)는 [API Reference](docs/api-reference.md)에 있습니다. 필드 단위
+요청·응답 스키마는 서버 기동 후 `/docs`(Swagger)에서 확인하세요.
+기존 test-support/HTTP STT·Discord 처리의 개발 fixture는 실연동이 아닙니다. 영수증 OCR,
+자료함 통합 검색(pgvector), WS 회의의 실시간 판단(Jev)은 실제 AI를 호출합니다. 기존 HTTP 청크
+경로와 Discord 판단만 더미(`meeting_judge_stub.py`, `context_tools_stub.py`)로 남아 있습니다.
+행사(`/events`) 조회·계획 확정·행동 처리와 P1·P2 계획 API도 실제 DB로 동작합니다 (#41, #187).
+단계·Action의 일정 등 세부 수정은 `routers/plan_items.py`(#106)로 있지만, 단계 순서 재배열은 아직 없습니다.
 모델 확정 내역과 그 근거는 [BE 스키마 검토안](../docs/week6/be/운영해_BE_스키마_검토안.md)에 있습니다.
 
 서비스 사용자는 동아리 **회장·대표(`OWNER`)와 임원(`MANAGER`)**입니다.
@@ -40,6 +43,61 @@ FE 후속이며, AI 독립 테스트 UI를 제품에서 import하지 않습니�
 실패하므로, 적용 순서를 먼저 맞춥니다. 검색 연결만으로 전체 자료의 재색인이 필요한
 것은 아닙니다. 기존 자료의 `INDEXED`/`indexError`를 확인해 필요한 자료만 재시도합니다.
 
+## P1 진행·답변 스트리밍 SSE (#266, #284)
+
+`POST /api/v1/events/{id}/plan/chat/stream`과 `POST /api/v1/events/{id}/plan/generate/stream`은
+기존 `/plan/chat`, `/plan/generate`와 같은 본문·`Idempotency-Key`를 받고, 처리 중인 단계와
+토리 답변을 `text/event-stream`으로 차례로 보냅니다. 기존 JSON 경로는 그대로입니다.
+
+```text
+"인원 60명으로 바꿔줘"
+event: progress     data: {"operationId":"call_1","kind":"condition_started","status":"running","text":"조건을 반영하고 있어요"}
+event: progress     data: {"operationId":"call_1","kind":"condition_applied","status":"completed","text":"예상 인원 60명 반영했어요"}
+event: reply_delta  data: {"text":"예상 인원을 "}
+event: reply_delta  data: {"text":"60명으로 바꿨어요."}
+event: done         data: {...기존 /plan/chat 응답의 data와 같은 PlanViewOut...}
+```
+
+| 이벤트 | data | 뜻 |
+| --- | --- | --- |
+| `progress` | `operationId`, `kind`, `status`(running/completed/failed), `text` | 실제 Tool 결과로 만든 임시 작업 상태. 같은 `operationId`의 running 줄을 결과 줄로 바꿔 표시합니다. DB 저장 완료가 아닙니다 |
+| `reply_delta` | `text` | 토리 최종 답변의 다음 조각. 이어 붙여 표시합니다 |
+| `reply_reset` | `{}` | 지금까지 받은 답변 조각을 버립니다 |
+| `done` | `PlanViewOut` | 저장까지 끝난 결과. 마지막 이벤트입니다 |
+| `error` | `code`, `message` | 저장하지 않았습니다. 마지막 이벤트입니다. 받은 진행·답변 조각을 버리고 계획을 다시 불러옵니다 |
+
+- 권한·계획 단계·멱등 충돌·처리 중(`IDEMPOTENCY_IN_PROGRESS`)·`baseRevision` 불일치는
+  스트림을 열기 전에 기존과 같은 JSON 오류(4xx)로 응답합니다.
+- 15초 동안 보낼 이벤트가 없으면 `: heartbeat` 주석 줄을 보냅니다.
+- 연결이 끊겨도 서버 작업은 끝까지 진행해 저장합니다. 같은 `Idempotency-Key`·같은 본문으로
+  다시 요청하면 처리 중이면 409, 끝났으면 저장된 결과를 `done` 하나로 받습니다. 스트림과
+  JSON 경로는 같은 작업이라 멱등키를 공유합니다.
+- 턴 저장과 멱등키 완료 표시는 한 트랜잭션에서 커밋합니다(#342). 대화가 저장됐으면 키도 완료입니다.
+- 제품 FE는 `fe/src/features/planning/stream.ts`가 받아 진행 줄·답변 조각을 표시합니다. 끊기면 POST를
+  다시 보내지 않고 아래 결과 조회로 확인합니다(#342).
+- 남은 한계: 실행 중이던 작업은 서버 재시작 뒤 이어지지 않습니다. 그 요청의 키는 5분 동안 처리 중으로
+  남고, 그 뒤 결과 조회는 `not_saved`가 됩니다.
+
+### 요청 결과 조회 (#342)
+
+`GET /api/v1/events/{id}/plan/requests/{key}`는 위 두 경로에 보낸 `Idempotency-Key`의 처리 결과만
+읽습니다. AI를 부르지 않습니다. 같은 사용자가 이 행사에 보낸 요청만 찾습니다.
+
+```text
+"작년 MT 숙소 어디였지?" 전송(키 abc) → 응답 도중 연결 끊김 → 서버는 답변 저장
+GET /events/E1/plan/requests/abc
+→ {"status": "completed", "result": {...그 요청이 받았어야 할 PlanViewOut...}}
+```
+
+| `status` | 뜻 | 화면 |
+| --- | --- | --- |
+| `completed` | 저장까지 끝남. `result`는 그때 응답 그대로 | 정상 응답처럼 처리 |
+| `processing` | 아직 처리 중(5분 안) | 잠시 뒤 다시 조회 |
+| `not_saved` | 기록 없음(AI 실패·충돌로 지움, 서버에 닿지 않음) 또는 처리 중인 채 5분 지남 | 잠금을 풀고 다시 보내게 함 |
+
+처리 기록의 `endpoint`에 실제 행사 ID를 넣어(`POST /events/E1/plan/chat`) 행사별로 찾습니다. 이 방식
+이전에 만든 기록은 행사 ID가 없어 `not_saved`로 나옵니다.
+
 ## 기술 스택
 
 | 항목 | 선택 | 결정 이유 / 메모 |
@@ -49,11 +107,11 @@ FE 후속이며, AI 독립 테스트 UI를 제품에서 import하지 않습니�
 | DB | PostgreSQL | 금액은 정수 원 단위로만 저장 (NF2) |
 | ORM | SQLAlchemy 2.0 | 비동기 세션(`AsyncSession`) + psycopg 3. AI 호출이 async라 DB도 async로 맞춤 (#52, #63) |
 | 마이그레이션 | Alembic | `alembic/`. 초기 스키마 리비전과 현재 사용자 시드 리비전이 있습니다 (#63) |
-| 파일 저장 | AWS S3 (`infra/s3.py`) | 영수증·기록 원본 업로드 |
+| 파일 저장 | 로컬 디스크 또는 AWS S3 (`infra/storage.py`) | 영수증·기록 원본 업로드. 기본은 로컬(`STORAGE_DIR`), `STORAGE_BACKEND=s3`로 전환 |
 | 기록 파일 파싱 | pypdf · openpyxl | PDF·XLSX를 `parse_result`로 변환 (`services/record_parser.py`). CSV는 표준 `csv` |
 | 패키지 관리 | uv | AI와 동일하게 `pyproject.toml` 기반 |
 | 인증 | DB 세션·opaque Bearer | 기존 로그인/소속/역할 검증 유지 |
-| 배포 환경 | AWS EC2 + Docker Compose | RDS 병행 여부 미정 |
+| 배포 환경 | AWS EC2 + Docker Compose | PostgreSQL은 별도 Docker 네트워크(`unyounghae-db`)의 컨테이너. 상세는 [`deploy/README.md`](../deploy/README.md) |
 | 테스트 | pytest | `tests/unit`은 `event_rules.py` 순수 함수, `tests/integration`은 라우터 엔드투엔드 |
 | 린트 · 포맷 | 미정 | 첫 구현에서 도구와 실행 명령 결정 |
 
@@ -62,10 +120,8 @@ FE 후속이며, AI 독립 테스트 UI를 제품에서 import하지 않습니�
 - FE 명세 반영이 필요한 5건 — [검토안 §4](../docs/week6/be/운영해_BE_스키마_검토안.md)
 - 회의·확인이 필요한 항목 — [검토안 §5](../docs/week6/be/운영해_BE_스키마_검토안.md)
 - `transactions`(개별 입금 내역) 테이블 — 금액 안건 확정 후 추가. `participants`(행사별 참가 신청)는 #107로 추가됨
-- `app.ai`의 독립 후보 추출 계약과 실제 공급자 설정 — 회의 판단은 공개 `judge_utterance(request, records=...)`를 사용하며 BE↔AI는 HTTP가 아닌 함수 호출
-- S3 버킷 구조와 접근 권한 — 영수증 등 민감 파일이 포함되어 NF6(민감정보 최소 수집)과 연결됨
 
-RAG 임베딩 저장 위치는 PostgreSQL pgvector(`vector(1536)`)로 확정
+RAG 임베딩은 PostgreSQL pgvector(`record_chunks.embedding`, `vector(1536)`)에 저장한다.
 
 ## 반드시 지켜야 할 규칙
 
@@ -90,37 +146,58 @@ be/
 │   │   ├── base.py            # Base · IdMixin · TimestampMixin · enum_column · JsonB
 │   │   └── session.py
 │   ├── routers/
-│   │   ├── auth.py
-│   │   ├── clubs.py
-│   │   ├── events.py        # 계획, 참가자, 결제, 지출, 승인, 업무 전부 포함
-│   │   ├── records.py       # 동아리 기록 업로드·조회
-│   │   ├── accounting.py    # 지출 직접 입력·CSV·영수증 OCR 초안·확정
-│   │   ├── meetings.py      # 회의·음성 청크·전사·WebSocket
-│   │   ├── discord.py       # Discord 연결·수집 메시지 (읽기 전용)
-│   │   ├── tasks.py         # 할 일 후보 조회·수정·수락
-│   │   ├── agent.py         # 작업 상태·Jev 판단 조회·mini 활동 snapshot/SSE
-│   │   └── test_support.py  # TEST_MODE 전용 주입 경로
-│   ├── schemas/               # 라우터 파일마다 하나 (auth·clubs·events·records·accounting·meetings·discord·tasks·agent)
+│   │   ├── auth.py            # LOCAL(이메일+비번)·KAKAO 로그인
+│   │   ├── clubs.py           # 동아리·멤버십
+│   │   ├── events.py          # 행사 조회(#41) + P1·P2 계획 대화·생성(#187)
+│   │   ├── actions.py         # 행동(Action) 승인·거절·확인·완료 처리(#41)
+│   │   ├── steps.py           # 단계 수동 완료
+│   │   ├── plan_items.py      # 단계·Action 세부 수정(#106)
+│   │   ├── records.py         # 자료 업로드·조회·색인 재시도·통합 검색
+│   │   ├── accounting.py      # 지출 직접 입력·CSV·영수증 OCR 확정(#133)
+│   │   ├── meetings.py        # 회의·음성 청크·전사·WebSocket
+│   │   ├── discord.py         # Discord 연결·수집 메시지 (읽기 전용)
+│   │   ├── tasks.py           # 할 일 후보 조회·수정·수락
+│   │   ├── confirmed_tasks.py       # 확정 일정·할 일 조회·변경·취소
+│   │   ├── reminder_recipients.py   # 알림 수신자 선택용 최소 명단
+│   │   ├── push.py            # Web Push 구독 등록·테스트 발송
+│   │   ├── operation_cases.py # 진행 중 행사 운영 상황 질문·제안
+│   │   ├── tori.py            # 토리 대화
+│   │   ├── agent.py           # 작업 상태·Jev 판단 조회·mini 활동 snapshot/SSE
+│   │   └── test_support.py    # TEST_MODE 전용 주입 경로
+│   ├── schemas/               # 라우터 파일마다 하나 (일부는 모델 파일명 기준으로 묶임)
 │   ├── models/
 │   │   ├── __init__.py        # 전 모델 등록 (Base.metadata). 테이블 목록은 아래 "데이터 모델"
 │   │   └── ...
 │   ├── services/
-│   │   ├── auth_service.py
-│   │   ├── club_service.py
+│   │   ├── auth_service.py · club_service.py
 │   │   ├── event_service.py   # 계획/참가자/승인/업무 오케스트레이션
 │   │   ├── event_rules.py     # 참가비·환불·정산 계산 순수함수 (규칙 엔진, NF1)
-│   │   ├── record_service.py
-│   │   ├── record_parser.py   # 기록 원본(PDF·CSV·XLSX) → parse_result
-│   │   ├── accounting_service.py · expense_csv_parser.py · receipt_ocr_stub.py
-│   │   ├── meeting_service.py · meeting_stt_stub.py · meeting_judge_stub.py
-│   │   ├── context_service.py      # Jev 판단 작업·판단 기록·할 일 후보 생성
-│   │   ├── context_tools_stub.py   # 기록 검색·문장 생성·Discord 할 일 도출 더미
-│   │   ├── agent_job_service.py    # 작업 상태 전이 + mini 활동 이벤트 기록
-│   │   ├── activity_service.py     # mini snapshot·SSE 이벤트 조회
+│   │   ├── action_service.py        # 계획 확정·행동 처리·단계 완료(#41)
+│   │   ├── action_draft_service.py  # 공지·발송 Action 본문 AI 초안 (백그라운드, #334)
+│   │   ├── plan_review_service.py   # 계획 편집 버전·AI 검토 기준 스냅샷(#177)
+│   │   ├── planning_service.py · planning_stream.py  # P1 대화·버튼 생성(JSON·SSE, #266/#284)
+│   │   ├── record_service.py        # 자료 업로드·파싱 후 색인(RecordChunk)
+│   │   ├── record_parser.py         # 기록 원본(PDF·CSV·XLSX) → parse_result
+│   │   ├── record_search_port.py    # app.ai.RecordSearchPort의 pgvector 구현
+│   │   ├── record_discovery_service.py  # 자료함 통합 검색(파일명·본문·의미 검색 병합)
+│   │   ├── accounting_service.py · expense_csv_parser.py  # 지출·영수증 OCR(실제 AI, `receipt_ocr_stub.py`는 더 이상 쓰지 않음)
+│   │   ├── meeting_service.py · audio_stream_service.py   # 회의 세션·WS PCM 스트림 처리
+│   │   ├── meeting_ai_service.py    # 회의 AI 공개 경계 adapter (app.ai만 호출)
+│   │   ├── meeting_event_service.py # 회의에서 보이는 행사 사실 조회
+│   │   ├── meeting_stt_stub.py      # 기존 HTTP 청크용 개발 더미 STT (WS 경로는 실제 STT)
+│   │   ├── meeting_review_service.py  # 회의 후 화자 검토 저장·복원
+│   │   ├── context_service.py       # 회의·Discord 판단 작업·판단 기록·할 일 후보 생성
+│   │   ├── meeting_judge_stub.py · context_tools_stub.py  # 기존 HTTP 청크와 Discord 경로용 더미 판단, 기록 검색, 할 일 도출. WS 회의는 실제 AI 사용
+│   │   ├── agent_job_service.py     # 작업 상태 전이 + mini 활동 이벤트 기록
+│   │   ├── activity_service.py      # mini snapshot·SSE 이벤트 조회
 │   │   ├── discord_service.py · task_service.py
+│   │   ├── operation_cases.py       # 진행 중 행사 운영 상황 질문·제안
+│   │   ├── reminder_service.py · push_service.py  # 확정 일정 예약 저장 + Web Push 발송
 │   ├── infra/
+│   │   ├── storage.py          # 업로드 파일 저장. `STORAGE_BACKEND`로 로컬/S3 전환
 │   │   ├── s3.py
-│   │   └── storage.py         # 업로드 파일 저장 (S3 연동 전까지 로컬 디스크 STORAGE_DIR)
+│   │   ├── stt.py · diarization.py · meeting_audio.py  # 실제 STT·화자분리 연동
+│   │   └── web_push.py
 │   └── ai/                    # AI 모듈. 별도 서버 아님 — BE 프로세스 내부
 │       ├── __init__.py        # BE가 쓰는 단일 공개 진입점 (회의 판단은 최신 AI 필요)
 │       ├── facade.py          # BE → AI: 공개 기능 구현 위치
@@ -135,12 +212,14 @@ be/
 │   ├── unit/                  # event_rules.py 순수함수 테스트
 │   └── integration/           # 라우터 엔드투엔드 테스트
 ├── alembic/
+├── docs/                      # API Reference 등 BE 보조 문서
 ├── .env.example
 └── pyproject.toml
 ```
 
 레이어드 아키텍처로 역할을 나누고, 레이어 내부는 인증(`auth`)·동아리(`clubs`)·행사(`events`)·기록(`records`) 도메인별로 파일을 나눕니다.
-`models/`에는 이 넷에 들어가지 않는 `agent.py`(AI 호출 로그)와 `chat.py`(계획 대화)를 더 둡니다. `events.py`에 함께 넣으면 한 파일에 테이블이 여섯 개가 되기 때문입니다.
+`models/`에는 이 넷에 들어가지 않는 도메인 전용 파일(`agent.py`, `chat.py`, `record_chunks.py`, `reminders.py`, `push.py`,
+`operation_cases.py`, `meeting_review.py`)을 더 둡니다. `events.py`에 모두 합치면 한 파일에 테이블이 너무 많아지기 때문입니다.
 
 | 레이어 | 역할 |
 | --- | --- |
@@ -197,13 +276,18 @@ BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE �
 | `models/clubs.py` | `clubs` · `members` · `invitations` |
 | `models/auth.py` | `accounts` · `auth` |
 | `models/common.py` | `idempotency_keys` |
-| `models/events.py` | `events` · `steps` · `actions` · `participants` |
+| `models/events.py` | `events` · `event_cancel_tasks` · `steps` · `actions` · `participants` · `plan_reviews` |
 | `models/records.py` | `records` |
+| `models/record_chunks.py` | `record_chunks` (자료 색인 청크 + pgvector 임베딩) |
 | `models/accounting.py` | `receipt_imports` · `receipt_import_rows` · `expenses` |
 | `models/meetings.py` | `meetings` · `meeting_audio_chunks` · `transcript_segments` |
+| `models/meeting_review.py` | `meeting_reviews` |
 | `models/discord.py` | `discord_connections` · `discord_messages` |
 | `models/agent.py` | `agent_log` · `agent_jobs` · `agent_activity_events` · `context_decisions` |
 | `models/tasks.py` | `task_suggestions` |
+| `models/reminders.py` | `confirmed_tasks` · `task_reminders` |
+| `models/push.py` | `push_subscriptions` |
+| `models/operation_cases.py` | `operation_cases` |
 | `models/chat.py` | `conversations` · `messages` |
 
 팀장 요청 ERD 변경안(2026-10-12)에서는 curl 흐름에 필요한 것만 넣었습니다(`2ffdcc2aee5b` 리비전).
@@ -214,8 +298,11 @@ BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE �
 전사는 정정되면 덮어써지므로, 판단 기록만으로 그때 입력을 다시 만들어 학습 데이터로 쓰기 위해서입니다
 (#241, AI #117). 두 값은 화면·API에 내보내지 않습니다. 변경안의
 `context_sources`/`context_source_versions`, `agent_job_attempts`, `agent_tool_calls`, `transcript_events`,
-`discord_channels`, `task_suggestion_evidence`, `todos`는 아직 만들지 않았습니다(재시도·근거 버전 이력·
-채널별 cursor가 필요해질 때 추가).
+`discord_channels`, `task_suggestion_evidence`는 아직 만들지 않았습니다(재시도·근거 버전 이력·채널별
+cursor가 필요해질 때 추가). 변경안에 없던 `confirmed_tasks`/`task_reminders`(확정 일정·예약 알림),
+`push_subscriptions`(Web Push 구독), `operation_cases`(운영 상황 질문·제안), `meeting_reviews`(회의 후
+화자 검토), `event_cancel_tasks`·`plan_reviews`(행사 취소·계획 편집 버전), `record_chunks`(자료 색인
++ pgvector)는 이후 이슈에서 추가됐습니다.
 
 `participants`는 동아리 전체 명단(`members`)과 별개로 "이 행사에 신청했는지"를 행사별로 추적합니다
 (이슈 #107). 미응답·응답 인원 집계가 이 테이블을 기준으로 계산됩니다.
@@ -232,14 +319,27 @@ BE는 두 방향에서 호출됩니다. 실제로 HTTP를 타는 건 FE → BE �
 | 이름 | 용도 | 상태 |
 | --- | --- | --- |
 | `DATABASE_URL` | PostgreSQL 연결 문자열 (`postgresql+psycopg://...`) | 코드 반영됨 (`app/core/config.py`). 비어 있어도 앱은 뜨고 DB를 쓰는 시점에 실패 |
-| `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | `app/ai/config.py` — ML API 게이트웨이 호출, 채팅 모델(`gpt-5.6-luna`) | 코드 반영됨 (`app/ai/config.py`) |
-| `AI_REQUEST_TIMEOUT_SECONDS` | 단일 요청 응답 대기 상한(초). 비우면 60 | 코드 반영됨 (`app/ai/config.py`) |
-| `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_MODEL` | 임베딩 전용 설정. 키를 비우면 `AI_API_KEY` 재사용 | 코드 반영됨 (`app/ai/config.py`) |
-| `JWT_SECRET_KEY` / `SESSION_SECRET` | 인증 방식 확정 후 결정 | 미정 |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | `infra/s3.py`의 S3 접근 인증 | 미정 |
-| `S3_BUCKET_NAME` | 영수증·기록 파일을 저장할 버킷 | 미정 |
+| `STORAGE_DIR` | 로컬 저장소 경로. 기본 `./var/storage` | 코드 반영됨 |
+| `STORAGE_BACKEND` | `local`(기본) 또는 `s3` | 코드 반영됨 |
+| `S3_BUCKET` / `S3_REGION` | `STORAGE_BACKEND=s3`일 때 쓰는 버킷·리전(기본 `ap-northeast-2`) | 코드 반영됨. AWS 자격증명은 EC2 인스턴스 역할로 받고 키를 따로 받지 않음 |
+| `KAKAO_REST_API_KEY` / `KAKAO_REDIRECT_URI` | 카카오 로그인(OAuth). 비우면 `/auth/kakao/callback`이 실패 | 코드 반영됨 |
+| `KAKAO_CLIENT_SECRET` | 카카오 디벨로퍼스에서 REST API 키의 클라이언트 시크릿을 켰을 때만 채움 | 코드 반영됨 |
+| `TEST_MODE` | `true`일 때만 `/test-support/*` 라우트 등록. 운영 환경은 항상 비움(404) | 코드 반영됨 |
+| `CORS_ORIGINS` | 허용할 FE 출처 목록. 기본 `localhost:5173`/`127.0.0.1:5173` | 코드 반영됨 |
+| `STT_URL` / `STT_API_KEY` / `STT_MODEL` / `STT_TIMEOUT_SECONDS` | 회의 WS 실제 STT 호출 | 코드 반영됨 (`infra/stt.py`) |
+| `AUDIO_VAD_RMS_THRESHOLD` | BE VAD 음성 구간 판정 임계값 | 코드 반영됨 |
+| `PYANNOTE_API_KEY` / `PYANNOTE_MODEL` / `PYANNOTE_TIMEOUT_SECONDS` | 회의 종료 후 화자분리(pyannoteAI) 배치 작업. 비우면 후처리만 보류 | 코드 반영됨 |
+| `WEB_PUSH_VAPID_PUBLIC_KEY` / `WEB_PUSH_VAPID_PRIVATE_KEY` / `WEB_PUSH_VAPID_SUBJECT` | Web Push 발송 | 코드 반영됨 |
+| `WEB_PUSH_TIMEOUT_SECONDS` / `WEB_PUSH_TTL_SECONDS` | Push 요청 타임아웃·TTL | 코드 반영됨 |
+| `REMINDER_DISPATCHER_ENABLED` / `REMINDER_POLL_SECONDS` | 확정 일정 예약 발송기 on/off·폴링 주기 | 코드 반영됨. 배포에서는 Push·수신자 동작 확인 전까지 `false` 유지 |
+| `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | `app/ai/config.py` — ML API 게이트웨이 호출, 채팅 모델 | 코드 반영됨 |
+| `AI_REQUEST_TIMEOUT_SECONDS` | 단일 요청 응답 대기 상한(초). 비우면 60 | 코드 반영됨 |
+| `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_MODEL` | 임베딩 전용 설정. 키를 비우면 `AI_API_KEY` 재사용 | 코드 반영됨 |
+| `JEV_BASE_URL` / `JEV_API_KEY` | 회의 실시간 판단 전용 Jev 배포 접속 정보(#255) | 코드 반영됨 (`app/ai/config.py`). WS 회의의 실시간 판단(`app.ai.judge_utterance`)에서 사용 |
 
 `.env.example`에는 값의 예시만 기록하고, 실제 값이 든 `.env`는 커밋하지 않습니다.
+`JWT_SECRET_KEY`/`SESSION_SECRET` 같은 별도 토큰 서명 키는 없습니다 — 인증은 DB에 저장한 opaque
+Bearer 토큰(`auth` 테이블)을 그대로 조회하는 방식입니다.
 
 ## 개발 환경 설치
 
@@ -328,12 +428,14 @@ TEST_MODE=true uv run python scripts/run_dev.py   # macOS/Linux는 TEST_MODE=tru
 시점에 `GET /agent-jobs/{id}`는 이미 `SUCCEEDED`/`FAILED`입니다. 상태 전이(QUEUED → RUNNING(stage) → 완료)는
 `agent_activity_events`에 남아 `GET /clubs/{id}/activity/stream`(SSE)으로 그대로 볼 수 있습니다.
 
+영수증 OCR은 더 이상 더미가 아닙니다 — `accounting_service.py`가 `app.ai.extract_receipt`(실제 비전 모델)를
+직접 호출합니다(`receipt_ocr_stub.py`는 아무도 import하지 않는 죽은 코드). 아래는 아직 남은 더미입니다.
+
 | 더미 | 동작 |
 | --- | --- |
-| 영수증 OCR (`receipt_ocr_stub.py`) | 파일 해시로 금액을 정한 한 행 초안 |
-| 회의 STT (`meeting_stt_stub.py`) | "(더미 전사) N번 음성 청크 …" 문장. 음성 내용은 읽지 않으므로 Jev 판단은 NONE |
-| Jev 판단 (`meeting_judge_stub.py`) | 물음표 → RAG, "바꿔/써/정리해 주세요" 등 → LLM, 그 외 NONE |
-| 기록 검색 (`context_tools_stub.py`) | 동아리 기록 `parse_result` 블록을 글자 2-gram 겹침으로 찾아 실제 `recordId`·위치를 인용 |
+| 회의 STT (`meeting_stt_stub.py`) | 기존 HTTP 청크 경로 전용. "(더미 전사) N번 음성 청크 …" 문장. 음성 내용은 읽지 않으므로 Jev 판단은 NONE. 실제 음성 베타(WS)는 `infra/stt.py`로 실제 STT를 씁니다 |
+| 기존 HTTP 청크 경로의 회의 판단 (`meeting_judge_stub.py`) | 물음표 → RAG, "바꿔/써/정리해 주세요" 등 → LLM, 그 외 NONE. WS 회의는 `app.ai.judge_utterance`로 실제 Jev를 씁니다 |
+| 기존 HTTP 청크 경로의 기록 검색 (`context_tools_stub.py`) | 동아리 기록 `parse_result` 블록을 글자 2-gram 겹침으로 찾아 실제 `recordId`·위치를 인용. 자료함 통합 검색(`GET /records/search`)의 실제 pgvector 검색과는 별개입니다 |
 | 문장 생성 (`context_tools_stub.py`) | "(더미 생성) 요청 문장: …" |
 | Discord 할 일 도출 (`context_tools_stub.py`) | 최근 메시지에 "~해야" 등이 있으면 LLM 분기로 보고 앞 메시지까지 근거로 후보 생성 |
 
@@ -344,7 +446,8 @@ curl 주석과 다르게 동작하는 부분입니다.
 - `meeting` M09 HTTP `finish`는 활성 WS가 없을 때 바로 종료합니다. 활성 WS에서는 409로 안내하므로 WS `end`→`audio.end_ack`(FINALIZING)→`audio.completed`를 기다립니다.
 - `discord` D01 실제 연결은 `status=DISCONNECTED`입니다(curl 주석은 CONNECTED). 실제 bot 수집기가 없어 D02 `sync` 작업은 `FAILED`(`DISCORD_COLLECTOR_UNAVAILABLE`)로 남습니다. D03부터의 FIXTURE 연결은 `MONITORING`입니다.
 - Discord 이벤트 주입은 `MESSAGE_CREATE`만 받습니다(수정·삭제는 오류 테스트 범위).
-- `Idempotency-Key` 헤더는 받기만 하고 아직 적용하지 않습니다(`core/idempotency.py`는 #131에서 만들어 둠).
+- `Idempotency-Key`는 P1 계획 대화·생성·스트림(`/plan/chat`, `/plan/generate` 등)에서 실제로 적용됩니다
+  (`core/idempotency.py`, #131). 이 curl 흐름의 다른 엔드포인트는 헤더를 보내지 않습니다.
 - mini `characterState`: 대기·처리 중 작업이 있으면 `WORKING`, 검토 안 한 할 일 후보가 있으면 `ATTENTION`, 아니면 `IDLE`. 실패 작업은 `jobs[]`에만 표시합니다.
 
 ## 행사 조회 API (#41)

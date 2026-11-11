@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     stt_timeout_seconds: float = Field(default=60, gt=0)
     audio_vad_rms_threshold: float = Field(default=450, gt=0)
 
+    # 종료 후 회의 음성을 pyannoteAI Precision batch 작업으로 분리한다.
+    # 비워두면 회의 전사와 원본 음성은 유지하고 후처리만 명시적으로 보류한다.
+    pyannote_api_key: SecretStr = SecretStr("")
+    pyannote_model: str = "precision-3"
+    pyannote_timeout_seconds: float = Field(default=60, gt=0)
+
     web_push_vapid_public_key: str = ""
     web_push_vapid_private_key: SecretStr = SecretStr("")
     web_push_vapid_subject: str = ""

@@ -1,3 +1,5 @@
+import type { components } from '@/shared/api/schema'
+
 // 계획 1단계(큰 틀 잡기) 도메인 타입.
 
 export interface ChatMessage {
@@ -6,6 +8,41 @@ export interface ChatMessage {
   text: string
   // 토리가 묻고 바로 고를 수 있게 주는 답. 마지막 말풍선에만 남는다.
   quickReplies?: string[]
+  // 이 답변을 쓰기 전에 끝낸 작업 줄(#290). 이번 화면에서만 있고 저장되지 않는다.
+  receipt?: PlanProgress[]
+}
+
+// SSE progress 이벤트(#285, BE PlanProgressOut). 저장되지 않는 임시 작업 상태다.
+// 같은 operationId의 running 줄은 completed/failed 줄로 바뀐다. DB 저장 완료는 done으로만 안다.
+// skipped는 보여 줄 결과 없이 끝난 작업이다(조건 거절·같은 값). 그 running 줄을 조용히 지운다.
+// empty는 정상으로 끝났지만 찾은 것이 없는 작업이다(기록 검색 자료 없음, #300). 회색 대시로 남긴다.
+// generation_writing은 같은 생성 작업이 생각을 마치고 초안 글자를 쓰기 시작했다는 running 줄이다(#388).
+// generation_step은 같은 생성 작업이 단계 하나의 코드를 다 썼다는 신호다(#389). step에 위치·코드·고정 이름이 온다.
+// 생성 화면의 「초안 작성」 아래 목록에만 쓰고, 대화의 작업 줄로는 그리지 않는다(turn.ts upsertProgress).
+export interface PlanProgress {
+  operationId: string
+  kind:
+    | 'condition_started'
+    | 'condition_applied'
+    | 'search_started'
+    | 'search_finished'
+    | 'generation_started'
+    | 'generation_writing'
+    | 'generation_step'
+    | 'generation_finished'
+  status: 'running' | 'completed' | 'failed' | 'skipped' | 'empty'
+  text: string
+  // generation_step에만 온다. 이름은 모델 글이 아니라 카탈로그 고정 이름이다(검증 전).
+  step?: DraftStep
+  // 조건 완료에만 오는 검증된 초안. 없으면 done에서 저장 결과를 표시한다.
+  conditionDraft?: components['schemas']['PlanDraftOut'] | null
+}
+
+// 작성 중인 초안에서 모델이 고른 단계 하나(#389). index는 초안 안의 위치(0부터)다.
+export interface DraftStep {
+  index: number
+  code: string
+  name: string
 }
 
 // 큰 틀에서 정해야 하는 것. 여섯 개로 고정이라 화면이 흔들리지 않는다.

@@ -1,19 +1,25 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { EXPENSE_PAGE_SIZE } from '@/features/accounting/api'
 import { ExpenseForm } from '@/features/accounting/components/ExpenseForm'
-import { useExpenses } from '@/features/accounting/hooks'
+import { eventLabels } from '@/features/accounting/eventLabels'
+import { expenseFormErrorMessage, useDeleteExpense, useExpenses } from '@/features/accounting/hooks'
 import type { Expense } from '@/features/accounting/types'
+import { useEvents } from '@/features/events/hooks'
 import { ApiError } from '@/shared/api/types'
 import { formatCurrency, formatDotDate } from '@/shared/lib/format'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { Chip } from '@/shared/ui/Chip'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { Skeleton } from '@/shared/ui/Skeleton'
+import { staggerDelay } from '@/shared/lib/stagger'
 
 const SOURCE_LABEL: Record<Expense['source'], string> = {
   MANUAL: '직접 입력',
   CSV_IMPORT: 'CSV 가져오기',
   OCR_IMPORT: '영수 내역 가져오기',
+  // 행사 송금 행동을 실행 완료하면 서버가 남긴다 (#348, #367).
+  ACTION: '자동 기록',
 }
 
 function expenseErrorMessage(error: unknown) {
@@ -25,17 +31,64 @@ function expenseErrorMessage(error: unknown) {
   return '지출 내역을 불러오지 못했어요. 연결 상태를 확인한 뒤 다시 시도해 주세요.'
 }
 
-export function ExpensesPanel({ clubId }: { clubId: string }) {
-  return <ClubExpensesPanel key={clubId} clubId={clubId} />
+// 행사에 연결되지 않았거나 목록에서 찾지 못한 지출은 빈칸이다. ID를 대신 보이지 않는다.
+function EventCell({ label }: { label: string | undefined }) {
+  return (
+    <td className="max-w-[180px] px-[14px] py-[16px] text-ink2">
+      {label && (
+        <span className="block truncate" title={label}>
+          {label}
+        </span>
+      )}
+    </td>
+  )
 }
 
-function ClubExpensesPanel({ clubId }: { clubId: string }) {
+// 방금 만든 지출을 잠깐 강조하는 시간.
+const HIGHLIGHT_MS = 4000
+
+export function ExpensesPanel({
+  clubId,
+  highlightIds = [],
+}: {
+  clubId: string
+  // 영수증 확정 등으로 방금 만든 지출. 보이는 쪽에 있으면 그 행으로 스크롤하고 잠깐 강조한다.
+  highlightIds?: string[]
+}) {
+  return <ClubExpensesPanel key={clubId} clubId={clubId} highlightIds={highlightIds} />
+}
+
+function ClubExpensesPanel({ clubId, highlightIds }: { clubId: string; highlightIds: string[] }) {
   const [page, setPage] = useState(1)
   const [adding, setAdding] = useState(false)
+  // 고치는 중인 한 건. 등록 폼과 동시에 열지 않는다.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const remove = useDeleteExpense(clubId)
   const expenses = useExpenses(clubId, page)
   const rows = expenses.data?.data
   const totalCount = expenses.data?.meta?.totalCount ?? rows?.length ?? 0
   const pageCount = Math.max(1, Math.ceil(totalCount / EXPENSE_PAGE_SIZE))
+  // 행사 이름은 이 목록으로만 붙인다. 못 받았거나 받는 중이면 행사 칸만 비고 장부는 그대로 보인다.
+  const events = useEvents()
+  const eventLabelById = useMemo(() => eventLabels(events.data ?? []), [events.data])
+  const [flashIds, setFlashIds] = useState<string[]>([])
+  // 같은 확정 결과로 두 번 스크롤하지 않는다. 장부를 다시 받은 뒤 행이 보이면 그때 한 번 한다.
+  const shownFor = useRef<string[] | null>(null)
+  useEffect(() => {
+    if (!highlightIds.length || !rows || shownFor.current === highlightIds) return
+    const first = rows.find((row) => highlightIds.includes(row.id))
+    if (!first) return
+    shownFor.current = highlightIds
+    setFlashIds(highlightIds)
+    document
+      .querySelector(`[data-expense-id="${first.id}"]`)
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [highlightIds, rows])
+  useEffect(() => {
+    if (!flashIds.length) return
+    const timer = window.setTimeout(() => setFlashIds([]), HIGHLIGHT_MS)
+    return () => window.clearTimeout(timer)
+  }, [flashIds])
 
   return (
     <Card className="overflow-hidden">
@@ -53,7 +106,14 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
           >
             {expenses.isFetching ? '불러오는 중…' : '새로고침'}
           </Button>
-          <Button size="sm" aria-expanded={adding} onClick={() => setAdding((open) => !open)}>
+          <Button
+            size="sm"
+            aria-expanded={adding}
+            onClick={() => {
+              setEditingId(null)
+              setAdding((open) => !open)
+            }}
+          >
             지출 등록
           </Button>
         </div>
@@ -70,10 +130,31 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
         />
       )}
 
+      {remove.isError && (
+        <div
+          role="alert"
+          className="border-t border-line px-[22px] py-[14px] text-[13px] text-failed"
+        >
+          {expenseFormErrorMessage(remove.error, '삭제')}
+        </div>
+      )}
+
       {expenses.isPending && (
-        <p role="status" className="border-t border-line px-[22px] py-[30px] text-[13px] text-mute">
-          지출 내역을 불러오고 있어요.
-        </p>
+        <div className="border-t border-line" role="status" aria-busy>
+          <p className="sr-only">지출 내역을 불러오고 있어요.</p>
+          {/* 표가 들어올 자리를 행 높이 그대로 잡아 둔다. 숫자는 오른쪽에 붙는다. */}
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="flex items-center gap-[14px] border-t border-line px-[22px] py-[16px] first:border-0"
+            >
+              <Skeleton className="h-[17px] w-[72px] shrink-0" />
+              <Skeleton className="h-[17px] flex-1" />
+              <Skeleton className="h-[17px] w-[64px] shrink-0" />
+              <Skeleton className="h-[17px] w-[88px] shrink-0" />
+            </div>
+          ))}
+        </div>
       )}
       {expenses.isError && (
         <div
@@ -90,7 +171,7 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
       )}
       {rows && rows.length > 0 && (
         <div className="overflow-x-auto border-t border-line">
-          <table className="w-full min-w-[620px] text-left text-[12px]">
+          <table className="w-full min-w-[740px] text-center text-[12px]">
             <caption className="sr-only">선택한 팀의 지출 내역, 최근 지출일 순</caption>
             <thead className="bg-bg text-[11.5px] text-mute">
               <tr>
@@ -101,41 +182,104 @@ function ClubExpensesPanel({ clubId }: { clubId: string }) {
                   사용처 · 내용
                 </th>
                 <th scope="col" className="px-[14px] py-[12px] font-medium">
+                  행사
+                </th>
+                <th scope="col" className="px-[14px] py-[12px] font-medium">
                   분류
                 </th>
-                <th scope="col" className="px-[14px] py-[12px] text-right font-medium">
+                <th scope="col" className="px-[14px] py-[12px] font-medium">
                   금액
                 </th>
                 <th scope="col" className="px-[22px] py-[12px] font-medium">
                   기록 방식
                 </th>
+                <th scope="col" className="px-[22px] py-[12px] font-medium">
+                  <span className="sr-only">수정·삭제</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((expense) => (
-                <tr key={expense.id} className="border-t border-line">
-                  <td className="whitespace-nowrap px-[22px] py-[16px] text-ink2">
-                    {formatDotDate(expense.spentAt)}
-                  </td>
-                  <td className="max-w-[320px] px-[14px] py-[16px]">
-                    <p className="break-words font-bold text-ink">
-                      {expense.merchant || '사용처 미입력'}
-                    </p>
-                    {expense.description && (
-                      <p className="mt-[4px] break-words leading-[18px] text-mute">
-                        {expense.description}
+              {rows.map((expense, i) =>
+                editingId === expense.id ? (
+                  <tr key={expense.id} className="border-t border-line">
+                    <td colSpan={7} className="p-0 text-left">
+                      <ExpenseForm
+                        key={expense.version}
+                        clubId={clubId}
+                        expense={expense}
+                        onDone={() => setEditingId(null)}
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  <tr
+                    key={expense.id}
+                    data-expense-id={expense.id}
+                    className={`border-t border-line transition-colors duration-700 animate-turn-in motion-reduce:animate-none ${
+                      flashIds.includes(expense.id) ? 'bg-blue-100' : ''
+                    }`}
+                    style={{ animationDelay: staggerDelay(i) }}
+                  >
+                    <td className="whitespace-nowrap px-[22px] py-[16px] text-ink2">
+                      {formatDotDate(expense.spentAt)}
+                    </td>
+                    <td className="max-w-[320px] px-[14px] py-[16px]">
+                      <p className="break-words font-bold text-ink">
+                        {expense.merchant || '사용처 미입력'}
                       </p>
-                    )}
-                  </td>
-                  <td className="px-[14px] py-[16px] text-ink2">{expense.category || '미분류'}</td>
-                  <td className="whitespace-nowrap px-[14px] py-[16px] text-right font-bold text-ink">
-                    {formatCurrency(expense.amount)}
-                  </td>
-                  <td className="whitespace-nowrap px-[22px] py-[16px] text-mute">
-                    {SOURCE_LABEL[expense.source]}
-                  </td>
-                </tr>
-              ))}
+                      {expense.description && (
+                        <p className="mt-[4px] break-words leading-[18px] text-mute">
+                          {expense.description}
+                        </p>
+                      )}
+                    </td>
+                    <EventCell
+                      label={expense.eventId ? eventLabelById.get(expense.eventId) : undefined}
+                    />
+                    <td className="px-[14px] py-[16px] text-ink2">
+                      {expense.category || '미분류'}
+                    </td>
+                    <td className="whitespace-nowrap px-[14px] py-[16px] font-bold text-ink">
+                      {formatCurrency(expense.amount)}
+                    </td>
+                    <td className="whitespace-nowrap px-[22px] py-[16px] text-mute">
+                      {SOURCE_LABEL[expense.source]}
+                    </td>
+                    <td className="whitespace-nowrap px-[22px] py-[16px]">
+                      <span className="flex justify-center gap-[6px]">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={remove.isPending}
+                          onClick={() => {
+                            setAdding(false)
+                            setEditingId(expense.id)
+                          }}
+                        >
+                          수정
+                        </Button>
+                        {/* 되돌릴 수 없어 금액과 사용처를 확인 문구에 넣는다. */}
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={remove.isPending}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `${formatDotDate(expense.spentAt)} ${formatCurrency(expense.amount)} (${expense.merchant || '사용처 미입력'}) 지출을 지울까요? 되돌릴 수 없어요.`,
+                              )
+                            ) {
+                              remove.mutate(expense.id)
+                            }
+                          }}
+                        >
+                          삭제
+                        </Button>
+                      </span>
+                    </td>
+                  </tr>
+                ),
+              )}
             </tbody>
           </table>
         </div>

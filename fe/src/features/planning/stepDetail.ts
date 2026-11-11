@@ -55,3 +55,18 @@ export const DERIVES_TO_EVENT: Record<string, string> = {
   COLLECT_FEES: '행사의 1인 참가비가 이 값을 따릅니다',
   SETTLE_EXPENSES: '행사의 총예산이 이 값을 따릅니다',
 }
+
+// 서버는 송금 행동을 실행 완료할 때 이 금액을 그대로 장부 지출로 남긴다(#348).
+// 환급은 1인 금액으로 오해하기 쉬워 총액임을 밝힌다(#367).
+const AMOUNT_HINT: Record<string, string> = {
+  REFUND_FEES: '총 환급액(원) · 실행을 마치면 이 금액이 장부 지출로 남아요',
+}
+
+export const amountHint = (stepCode: string) =>
+  DERIVES_TO_EVENT[stepCode] ?? AMOUNT_HINT[stepCode] ?? '원'
+
+// 금액이 없는 유형에는 금액 칸을 그리지 않는다. 서버가 null 로 둔 채 쓰지 않는다.
+// 송금은 비어 있어도 연다 — 계획이 만든 송금은 금액이 늘 비어 있고, 넣어야 지출로 남는다(#367).
+export function showsAmount(action: StepAction, stepCode: string): boolean {
+  return action.type === 'TRANSFER' || action.amount !== null || stepCode in DERIVES_TO_EVENT
+}

@@ -29,7 +29,12 @@ interface StepModalProps {
   onCompleteAction: (action: EventAction) => void
   // 승인 대기 Action의 [검토하기]. 결정 검토 모달은 화면 쪽에서 띄운다.
   onReviewAction: (action: EventAction) => void
+  // 토리 초안 「다시 받기」와 지금 보내는 중인 Action id
+  onRequestDraft?: (action: EventAction) => void
+  requestingDraftId?: string
   onCompleteStep: (step: EventStep) => void
+  // 「단계 완료로 표시」를 보내고 기다리는 중
+  completing?: boolean
   readOnly?: boolean
 }
 
@@ -42,7 +47,10 @@ export function StepModal({
   onClose,
   onCompleteAction,
   onReviewAction,
+  onRequestDraft,
+  requestingDraftId,
   onCompleteStep,
+  completing = false,
   readOnly = false,
 }: StepModalProps) {
   const chip = STATE_CHIP[step.state]
@@ -51,6 +59,19 @@ export function StepModal({
   // 실패한 일은 다시 시도해야 해서 할 일에 둔다
   const todo = (actions ?? []).filter((a) => ['PENDING', 'APPROVED', 'FAILED'].includes(a.status))
   const handled = (actions ?? []).filter((a) => a.status === 'DONE' || a.status === 'DENIED')
+
+  // 행사 완료는 PENDING·APPROVED 가 하나라도 있으면 서버가 막는다. 단계만 먼저
+  // 닫아 두면 나중에 행사를 못 끝내고, 그때는 어느 단계 때문인지 찾기도 어렵다.
+  // 그래서 같은 기준으로 여기서 막는다. FAILED 는 행사 완료를 막지 않아 뺀다.
+  const awaitingReview = (actions ?? []).filter((a) => a.status === 'PENDING').length
+  const awaitingRecord = (actions ?? []).filter((a) => a.status === 'APPROVED').length
+  const blocked = awaitingReview + awaitingRecord > 0
+  const blockedReason = [
+    awaitingReview > 0 && `검토 ${awaitingReview}건`,
+    awaitingRecord > 0 && `실행 기록 ${awaitingRecord}건`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   // 할 일이 없을 때 이유
   const emptyReason = manual
@@ -74,11 +95,13 @@ export function StepModal({
         .filter(Boolean)
         .join(' · ')}
       footerNote={
-        step.state === 'CURRENT'
-          ? manual
-            ? '직접 수행 단계예요'
-            : '완료는 토리가 정하지 않아요'
-          : undefined
+        step.state !== 'CURRENT'
+          ? undefined
+          : blocked
+            ? `${blockedReason}이 남아 완료할 수 없어요. 먼저 처리해 주세요`
+            : manual
+              ? '직접 수행 단계예요'
+              : '완료는 토리가 정하지 않아요'
       }
       footer={
         <>
@@ -87,7 +110,12 @@ export function StepModal({
           </Button>
           {/* 끝난 단계는 다시 완료할 수 없고, 아직 시작 안 한 단계는 건너뛰지 않는다 */}
           {step.state === 'CURRENT' && (
-            <Button disabled={readOnly} onClick={() => onCompleteStep(step)}>
+            <Button
+              // 아직 못 받았으면 몇 건 남았는지 모른다. 모르는 채로 닫게 두지 않는다.
+              disabled={readOnly || blocked || !actions}
+              loading={completing}
+              onClick={() => onCompleteStep(step)}
+            >
               단계 완료로 표시
             </Button>
           )}
@@ -137,6 +165,9 @@ export function StepModal({
               action={action}
               onComplete={onCompleteAction}
               onReview={onReviewAction}
+              onRequestDraft={onRequestDraft}
+              requestingDraft={requestingDraftId === action.id}
+              stepState={step.state}
               readOnly={readOnly}
             />
           ))}

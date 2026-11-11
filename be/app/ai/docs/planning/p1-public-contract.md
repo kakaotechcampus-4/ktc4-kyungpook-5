@@ -1,12 +1,105 @@
 # P1 공개 계약 초안 — BE가 보내는 것과 AI가 돌려주는 것
 
-상태: **공개 실행·상태 변환과 제품 BE의 검색 port·상세 응답·마지막 조회 복원을 연결했다(#235, #236). 제품 출처 카드의 FE 구현은 후속이다.** 아래 번호별 기록의 과거 구현/검증 시점은 유지하며, 현재 제품 검색 연결 계약은 11절과 인계 안내 §9를 따른다.
+상태: **공개 실행·상태 변환과 제품 BE의 검색 port·상세 응답·누적 조회 복원, 제품 FE 출처 카드·인증 원본 다운로드를 연결했다.** 로컬 검증은 합성 파일과 고정 모델·임베딩 응답을 사용하는 격리 환경이며, 실제 모델·일반 검색 품질·운영 배포 준비 완료를 뜻하지 않는다. 아래 번호별 기록의 과거 구현/검증 시점은 유지하며, 현재 제품 검색 연결 계약은 11절과 인계 안내 §9를 따른다.
 
 구현 이슈: [#180](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/180). 코드의 기준은 루트 `contracts.py`이며 저장 JSON 형식 버전은 1이다.
 
 관련: [협업 이슈 #179](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/179), [P1 인계 안내](p1-handoff.md). 요구사항: AI-PLAN-01~05, AI-PLAN-08, AI-COMMON-02.
 
 ## 1. 이번에 정하는 것
+
+### 진행 알림 계약 (#266, #279)
+
+`chat_planning`과 `generate_planning_preview`는 선택적인 `progress: PlanningProgressPort | None`
+인자를 받는다. 포트의 `async progress(event: PlanningProgress)`는 화면용 진행 상태만 전달한다.
+공개 이벤트는 `contracts.py`, 포트는 `ports.py`에 정의하고 `app.ai`에서 재공개한다.
+반환값·저장 JSON 형식은 유지한다. BE의 SSE 경로(`/plan/chat/stream`, `/plan/generate/stream`)가 포트를 큐에 연결해 이벤트로 보낸다(#284, [BE README](../../../../README.md#p1-진행답변-스트리밍-sse-266-284)). 제품 FE는 `fe/src/features/planning/stream.ts`로 받아 진행 줄과 답변 조각을 표시한다(#285).
+
+### 답변 조각 전달 (#280)
+
+포트가 있으면 대화 모델을 스트리밍으로 받고 `reply_delta(text)`로 최종 답변 조각을
+보낸다. 포트가 없으면 기존 `ainvoke_with_tools`를 사용한다. 생성 모델 JSON 원문은 보내지 않는다.
+작성 중 초안에서 보내는 것은 아래 `generation_step`의 단계 위치·코드·고정 이름뿐이다(#389).
+`reply_reset()`은 임시 답변을 비우는 알림이며, 최종 답변 뒤 Tool 요청이 오거나 모델
+스트림이 실패했을 때 사용한다. 포트의 일반 오류는 턴을 실패시키지 않는다.
+
+답변 글은 일반 텍스트이며 마크다운 일부(굵게 `**`, `- ` 목록, 빈 줄 문단)를 포함할 수 있다.
+AI와 BE는 원문 그대로 전달·저장하고, 제품 FE가 그 범위만 모양으로 그린다(#304).
+
+공급자 `phase`는 text 블록의 시작에만 올 수 있다. 블록 index별로 합친 상태에서
+`final_answer`만 점진 전달하고 commentary/추론/Tool 블록은 보내지 않는다.
+phase 없는 답변은 completed와 검증을 확인한 뒤 한 번에 전달한다. 여러 블록의 순서를
+확정할 수 없는 경우도 버퍼링한다. 정상 반환 전에 전달한 전체 텍스트와 공개 reply를 맞춘다.
+
+invoke/stream 모두 명시된 final_answer가 있으면 해당 블록만 공개 reply로 사용한다.
+phase가 전혀 없으면 기존 text를 사용한다. commentary만 있고 Tool도 없으면 빈 답변 오류다.
+원본 content는 이력에 보존하므로 중간 설명을 다음 턴 문맥에서 삭제하지 않는다.
+이것은 기존의 모든 text 합치기에서 혼합 응답의 사용자 답변만 구분하는 변경이다.
+
+스트림은 completed를 확인해야 하며, 중간 끊김·incomplete·출력 한도·잘못된 Tool 요청은
+오류다. 조립에는 SDK의 chunk 합산을 사용하고 저장 전 블록의 전송용 index를 제거하며
+생략된 빈 text annotations를 보완한다. Tool 인자·ID·phase·사용량은 임의 삭제하지 않는다.
+
+공식 참고: [LangGraph streaming](https://docs.langchain.com/oss/python/langgraph/streaming),
+[LangChain model streaming](https://docs.langchain.com/oss/python/langchain/models#stream).
+전체 Graph의 messages/custom 스트림으로 전환하지 않고 기존 포트와 모델 호출 경계를 유지한다.
+
+이벤트 필드는 `operation_id`, `kind`, `status`, `text`와 선택적 `condition_draft`다. 작업 ID는 한 요청 안에서
+시작과 종료를 연결하며 같은 종류를 반복 실행해도 구분한다. 채팅은 Tool 호출 ID,
+버튼은 요청 ID를 사용한다. FE는 요청별로 진행 상태를 분리해야 한다.
+
+| kind | status | 알리는 시점 / 문구 예 |
+| --- | --- | --- |
+| condition_started | running | 스트림에서 조건 변경 Tool의 첫 조각(이름·호출 ID)을 받았을 때. 인자를 다 받기 전이라 값 없이 “조건을 반영하고 있어요”(#297) |
+| condition_applied | skipped | 같은 호출이 거절·같은 값·보류만으로 끝났을 때. “바뀐 조건이 없어요”. 모델이 거절 이유를 보고 다시 요청할 수 있어, 화면은 답변이 시작될 때 진행 중 줄을 지운다. 그 사이 같은 턴의 `condition_started`가 오면 그 자리를 이어 쓴다(#297) |
+| condition_applied | completed | applied이고 변경 필드가 있을 때. “예상 인원 · 일정 · 참가비 반영했어요”. 시작일·종료일은 「일정」 하나로 세며, 4개 이상이면 앞 두 항목과 나머지 개수만 적는다: “예상 인원 · 일정 외 2개 반영했어요”. 검증 직후 초안 `condition_draft`를 함께 보낸다(#302) |
+| search_started | running | 검증 후 실제 검색 직전. “지난 행사 기록을 찾고 있어요” |
+| search_finished | completed / empty / failed | 자료 있음 “참고할 기록을 찾았어요” / 자료 없음 “맞는 기록이 없었어요” / 검색 실패 “기록을 검색하지 못했어요”. `empty`는 작업이 정상으로 끝났지만 보여 줄 결과가 없다는 뜻이라, 화면은 성공 체크·실패 표시 대신 회색 대시로 남긴다(#300) |
+| generation_started | running | 공통 검증·성공 요청 재사용 분기를 통과한 실제 생성 직전 |
+| generation_writing | running | 같은 생성 작업에서 생성 모델이 계획 JSON의 첫 글자 조각을 보냈을 때. “초안을 작성하는 중이에요”. 생성 한 번에 한 번만 온다. 초안 내용은 싣지 않는다(#388) |
+| generation_step | running | 같은 생성 작업에서 모델이 `steps` 안 단계 하나의 `code`를 다 썼을 때. `text`는 카탈로그 고정 이름(예: “예약”), `step`은 `{index, code, name}`이다. `index`는 0부터 차례로 하나씩 오고, 생성에 성공하면 순서가 최종 초안 `steps`와 같다. `excluded_steps`의 코드로는 오지 않는다(#389) |
+| generation_finished | completed / failed | 최종 생성 결과의 기준 조건 검증까지 통과한 초안 / 생성 실패 |
+
+조건의 unchanged/rejected, 보류만 변경한 경우에는 조건 성공 알림을 만들지 않고 skipped를 보낸다.
+시작 알림은 Tool 실행을 뜻하지 않는다. 실행은 완성된 인자를 검증한 뒤 Node가 한다.
+진행 줄에는 항목 이름만 적고, 값과 잠정 여부는 패널과 답변이 보여 준다.
+`step: PlanningProgressStep | None`은 `generation_step`에만 있고, 그 신호에는 반드시 있다. 이름은 카탈로그와 같아야 한다.
+`condition_draft: PlanningDraft | None`은 `condition_applied/completed`에만 허용한다.
+조건 변경 처리기가 검증한 전체 초안 스냅샷(값·잠정/명시 메타·보류)을 담아 CLEAR(null), 무료(0),
+시작일·종료일 조합과 기존 조건을 함께 해석한다. 모델의 미검증 인자는 보내지 않는다.
+BE는 저장 결과와 같은 `PlanDraftOut`으로 변환해 `conditionDraft`로 전송한다.
+다른 kind/status에서는 이 필드를 생략한다. 이전 이벤트처럼 필드가 없으면 done에서 패널을 맞춘다.
+
+패널은 조건 완료 체크와 같은 화면 갱신에서 이 초안으로 바뀌며, 값이나 상태가 바뀐 칸만 1.5초 강조한다.
+done에서는 마지막으로 보여 준 초안과 저장 결과를 비교한다. 같으면 강조를 다시 시작하지 않고,
+다르면 달라진 칸만 다시 강조한다. 실패하면 임시 초안과 강조를 버리고 저장된 패널로 돌아가며
+진행 줄을 실패로 표시한다. 연결 재확인 중에는 임시 초안을 유지하고, 재확인 결과에 따라 확정/복구한다.
+새 계획 첫 턴도 주소 이동 전부터 패널을 바꾸며, 강조 시각은 계획별 캐시에 보관해 주소 이동으로 재시작하지 않는다.
+움직임 줄이기 설정에서는 움직임 없이 강조 색만 같은 시간 남긴다.
+생성 전 확인이 필요하거나 기존 성공 초안을 재사용하면 생성 시작·작성 중·종료 알림을 보내지 않는다.
+`generation_writing`은 모델이 "생각을 마쳤다"고 따로 알려 준 값이 아니라 첫 글자 조각이 도착한 시각이다.
+글자가 오기 전에 실패하면(시간 초과·연결 실패) 오지 않고, 글자가 온 뒤 출력 한도로 끊기면 작성 중 → 실패 순서다.
+
+**검증 전 초안에서 보이는 범위(#266 결정을 #389에서 다시 정함).** #266에서는 생성 모델이 완성본을 다 모아 검증한 뒤 결과만 알리기로 했다. #389에서 그 범위를 아래처럼 좁혔다([결정 코멘트](https://github.com/kakaotechcampus-4/ktc4-kyungpook-5/issues/389#issuecomment-6689456049)).
+
+| 구분 | 내용 |
+| --- | --- |
+| 보이는 것 | 모델이 고른 카탈로그 단계 코드, 코드가 카탈로그에서 붙이는 고정 이름, 그 순서(`generation_step`) |
+| 보이지 않는 것 | 모델이 쓴 글 전부: 목적, 행동 제목, 일정, 제외 이유, 가정, 질문, 경고 |
+| 표시 방식 | 「초안을 작성하는 중이에요」 아래에만 보인다. “확정”이라는 말을 쓰지 않는다 |
+| 실패할 때 | 생성이 실패하면(형식 검사든 `validate_plan`이든) 화면은 목록을 지우고 지금과 같은 실패 표시를 보인다 |
+
+예: 모델이 `{"code":"BOOK_VENUE","purpose":"30명이 묵을 펜션을 잡아요",…}`를 쓰는 중이면 신호에는 「예약」만 실린다. 목적 글은 검증을 통과해 P2에 가기 전까지 보이지 않는다.
+단계 코드는 출력 형식이 카탈로그 13개로 막지만(#276) 검증 전 글이므로, 카탈로그에 없는 코드는 신호로 보내지 않는다.
+모델이 실제로 `steps`를 맨 앞에, 단계마다 `code`를 맨 앞에 쓰는지는 실제 모델 20건으로 확인했다([측정](evaluation-results/planning-generation-step-signal-2026-11-07/README.md)).
+검색 자료 없음은 검색 처리의 정상 종료이며 검색 실패와 다르다(`empty`와 `failed`). 검색 개수를 사실 개수로 추정하지 않는다.
+
+예: “인원을 60명으로 바꾸고 초안 만들어줘” → 조건 변경 완료 → 생성 진행 중 →
+검증된 초안 생성 완료 → 기존 공개 결과 반환 → BE 저장.
+개별 완료는 AI 내부 처리 성공이며 DB 저장 완료가 아니다. 제품 UI는 진행 중에 부드러운
+애니메이션, 완료에 초록 체크를 표시하되 전체 요청 실패 시 임시 성공 표시를 저장 상태와 맞춘다.
+진행 포트의 일반 예외는 원문 없이 로그를 남기고 턴을 계속한다. 작업 취소는 삼키지 않는다.
+포트 구현체는 네트워크 송신을 기다리지 않고 이벤트를 빠르게 넘겨야 한다.
 
 BE가 `app.ai`만 import해서 P1 대화를 이어갈 수 있도록 입력과 출력의 책임을 정한다. 내부 Agent를 새로 만드는 작업이 아니다. 기존 대화 Graph와 생성 Graph 앞에 공개 계약과 변환 계층을 둔다.
 
@@ -106,7 +199,7 @@ BE의 `expected_headcount`와 AI의 `headcount`는 어댑터에서 변환한다.
 최종 응답: {code: BOOK_VENUE, name: 예약, reason: 별도 시설 예약을 포함하지 않았어요.}
 ```
 
-LLM 출력에는 기존 `ExcludedPlanStep(code, reason)`을 유지한다. 최종 응답은 `ExcludedPreviewStep`으로 구분하므로 모델이 name을 새로 작성하지 않는다. 포함 단계도 같은 이름 목록을 참조한다. 이름 보완에 추가 모델 호출은 없다.
+LLM 출력은 `code, reason` 두 칸을 유지한다(`ModelExcludedStep`, #276부터 code는 계획 카탈로그 13개만 허용). 최종 응답은 `ExcludedPreviewStep`으로 구분하므로 모델이 name을 새로 작성하지 않는다. 포함 단계도 같은 이름 목록을 참조한다. 이름 보완에 추가 모델 호출은 없다.
 
 기존 형식 버전 1의 저장 JSON에는 name이 없을 수 있다. 공개 타입을 읽을 때 누락된 이름만 코드로 보완하며, 새로 직렬화한 JSON에는 이름이 포함된다. 명시된 이름이 카탈로그와 다르거나 null/빈 문자열이면 오류로 구분한다. 코드, 제외 이유, 초안 ID, 현재 조건과 대화/Tool 이력은 유지한다. BE가 상태 payload를 직접 수정하거나 복원을 위해 모델을 다시 호출할 필요는 없다.
 
@@ -309,9 +402,7 @@ preview_result = await generate_planning_preview(click)
 
 제품 연결 계약(#235, #236)에서는 검색 중첩 결과 타입 `RecordLookupResult`,
 `RecordSearchResult`, `RecordFact`, `RecordConflict`를 `app.ai`에서 재공개한다.
-POST `recordLookup`은 이번 검색, GET `lastRecordLookup`은 BE가 별도로 저장한 마지막
-조회다. 후자는 AI 상태 형식의 일부가 아니므로 저장 JSON의 `schema_version=1`은
-유지한다. 상세 응답·복원·옛 데이터 호환은 [인계 안내 §9](p1-handoff.md#9-검색-기능을-연결하려면)를 따른다.
+POST `recordLookup`은 이번 턴 검색, GET `lastRecordLookup`은 BE가 별도로 저장한 마지막 조회다. GET `recordLookupHistory`는 `{revision, lookup}` 목록으로 누적 조회를 제공한다. 새 조회는 조건·메시지·이어가기 상태와 같은 트랜잭션에서 추가하고, null 턴에는 마지막 조회와 이력을 유지한다. 새 실패·없음은 최신 상태가 되고 이전 성공은 이전 조회로 남긴다. 이력 없는 옛 마지막 조회만 revision 0으로 복원하며 저장되지 않은 출처를 만들어내거나 AI 내부 이력을 분석하지 않는다. 이 화면용 필드는 AI 상태 형식의 일부가 아니므로 저장 JSON의 `schema_version=1`은 유지한다. 상세 응답·복원·옛 데이터 호환은 [인계 안내 §9](p1-handoff.md#9-검색-기능을-연결하려면)를 따른다.
 
 조건 변경 성공 후 생성만 실패하면 새 조건과 실패 결과를 함께 반환한다. 대화 전체가 예외로 끝나거나 상태 한도를 넘으면 정상 결과를 반환하지 않으며 입력은 보존한다. BE는 실패한 요청의 중간값을 저장하지 않는다.
 
@@ -413,7 +504,7 @@ await store.commit_planning_result(
 | 복원 실패/조건 불일치 | PlanningStateError 또는 입력 ValidationError | 모델 재시도로 해결하려 하지 말고 상태 확인. 자동 초기화 금지 |
 | 이력 한도 초과 | PlanningStateError(code=history_limit) | 결과를 채택하지 않음. 요약/이력 정책 연결 전 제한 안내 |
 | 저장 직전 revision 충돌 | BE의 충돌 판정 | 오래된 AI 결과를 적용하지 않음 |
-| 저장 성공 후 응답 전달 실패 | BE의 완료 요청 기록 | 재전송에서 기존 결과 반환. 모델 재실행 방지 |
+| 저장 성공 후 응답 전달 실패 | BE의 완료 요청 기록 | 요청 키로 결과만 조회(`GET /events/{id}/plan/requests/{key}`, #342). 모델 재실행 방지 |
 
 PlanningStateError는 ValueError 계열이다. 현재 API에서는 상태 JSON 복원 시 직접 발생하고, Pydantic 요청 검증 내부에서는 ValidationError로 감싸질 수 있다. 사용자에게 예외 문자열 전체를 보여주지 않고 실패 유형별 안전한 문구로 변환한다. HTTP 상태 코드와 사용자 문구는 BE/FE가 합의한다.
 

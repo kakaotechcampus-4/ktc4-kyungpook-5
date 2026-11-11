@@ -1,11 +1,13 @@
 """Jev 판단 오케스트레이션 — 판단 작업 생성, 분기별 도구 호출, 판단·할 일 후보 저장.
 
-실제 WS는 decide_live_meeting_segment에서 공개 AI의 조회와 후보 추출을 독립 호출한다.
+실제 WS는 judge_live_meeting_segment·finish_live_meeting_extraction에서 공개 AI의 조회와
+후보 추출을 독립 호출한다. 판단 결과는 추출을 기다리지 않고 먼저 저장한다(#249).
 이전 decide_meeting_segment/Discord 경로는 개발 fixture이고 실제 AI 결과가 아니다.
 """
 
 import asyncio
 import time
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
 
@@ -27,7 +29,7 @@ from app.models.discord import DiscordMessage
 from app.models.meetings import Meeting, TranscriptSegment
 from app.models.tasks import TaskSuggestion
 from app.services import agent_job_service, context_tools_stub
-from app.services import meeting_ai_service
+from app.services import meeting_ai_service, meeting_event_service
 from app.services.meeting_judge_stub import (
     STUB_MODEL_NAME,
     STUB_PROMPT_VERSION,
@@ -39,10 +41,40 @@ POLICY_VERSION = f"{STUB_PROMPT_VERSION}+{context_tools_stub.STUB_TOOLS_VERSION}
 DISCORD_CONTEXT_WINDOW = 5
 
 
-async def decide_live_meeting_segment(
+@dataclass
+class LiveJudgment:
+    """판단까지 끝나 판단 기록을 저장한 발화 하나. 추출은 아직 돌고 있을 수 있다.
+
+    judge_live_meeting_segment가 만들고 finish_live_meeting_extraction이 마무리한다.
+    """
+
+    job: AgentJob
+    decision: ContextDecision
+    extraction: asyncio.Task  # 판단과 함께 시작한 할 일 후보 추출
+    lookup_failure: dict | None  # 판단이 실패했으면 기능별 실패 항목
+    segment_id: str
+    source: dict
+    source_version: int
+    extraction_duration: list[int]
+    event_failure: dict | None
+
+
+def _failure(tool: str, error: BaseException) -> dict:
+    code = getattr(error, "code", None) or type(error).__name__
+    return {"tool": tool, "status": "FAILED", "code": code}
+
+
+_PARTIAL_REASON = "일부 AI 처리를 완료하지 못했습니다. 기능별 오류를 확인해 주세요."
+
+
+async def judge_live_meeting_segment(
     session: AsyncSession, *, meeting: Meeting, segment: TranscriptSegment
-) -> tuple[AgentJob, ContextDecision]:
-    """실제 WS 전사 경로. 자료 조회와 후보 추출은 서로의 분기로 막지 않는다."""
+) -> LiveJudgment:
+    """실제 WS 전사 경로의 앞부분. 판단을 기다려 판단 기록만 저장한다. 커밋은 호출하는 쪽이 한다.
+
+    자료 조회 판단과 할 일 후보 추출은 서로의 분기로 막지 않는다. 추출은 여기서 함께 시작하지만
+    기다리지 않는다. 판단 결과를 추출 때문에 늦게 보내지 않기 위해서다(#249).
+    """
     job = await agent_job_service.create_job(
         session, club_id=meeting.club_id, kind=AgentJobKind.CONTEXT_DECISION
     )
@@ -72,34 +104,47 @@ async def decide_live_meeting_segment(
     segment.decision_job_id = job.id
     # 전사·진행 job을 먼저 보존하고 모델 대기 중 DB 연결을 반납한다.
     await session.commit()
-    judged, extracted = await asyncio.gather(
-        meeting_ai_service.judge(payload), meeting_ai_service.extract(payload), return_exceptions=True,
-    )
-    tools: list[dict] = []
-    failures: list[dict] = []
-    for name, result in (("meeting.lookup", judged), ("tasks.extract", extracted)):
-        if isinstance(result, BaseException):
-            code = getattr(result, "code", None) or type(result).__name__
-            failure = {"tool": name, "status": "FAILED", "code": code}
-            tools.append(failure)
-            failures.append(failure)
-    lookup_ok = not isinstance(judged, BaseException)
-    extraction_ok = not isinstance(extracted, BaseException)
+    extraction_started = time.perf_counter()
+    async def timed_extract():
+        try:
+            return await meeting_ai_service.extract(payload)
+        finally:
+            extraction_duration.append(round((time.perf_counter() - extraction_started) * 1000))
+    extraction_duration: list[int] = []
+    extraction = asyncio.create_task(timed_extract())
+    event_task = asyncio.create_task(meeting_event_service.answer(payload))
+    try:
+        judged = await meeting_ai_service.judge(payload)
+    except asyncio.CancelledError:
+        # 처리 자체가 취소되면(서버 종료 등) 함께 시작한 추출도 남기지 않는다.
+        extraction.cancel()
+        event_task.cancel()
+        raise
+    except Exception as error:
+        judged = error
+    try:
+        event_answer, event_trace = await event_task
+        event_error = None
+    except Exception as error:
+        event_answer, event_trace, event_error = None, getattr(error, 'trace', None), error
+    lookup_ok = not isinstance(judged, Exception)
+    lookup_failure = None if lookup_ok else _failure("meeting.lookup", judged)
+    tools: list[dict] = [] if lookup_ok else [lookup_failure]
     # Public result validates route/kind/source ids; never turn lookup failure into NONE.
     trace = judged.trace if lookup_ok else None
     # 판단 시간은 실패해도 AIError.trace에 남아 온다(contracts.md "비동기와 실패").
     # trace가 없는 실패(AIError가 아닌 예외, 공개 계약 없음)는 잰 값이 없어 null로 둔다.
     judge_trace = getattr(judged, "trace", None)
-    if trace is not None:
-        tools.extend(item.model_dump(mode="json") for item in trace.tool_calls)
-    if extraction_ok:
-        tools.append({"tool": "tasks.extract", "status": "OK", "resultCount": len(extracted)})
-    status = ContextDecisionStatus.SUCCEEDED
-    if failures:
-        status = ContextDecisionStatus.PARTIAL if lookup_ok or extraction_ok else ContextDecisionStatus.FAILED
-    current = await session.scalar(select(TranscriptSegment).where(
-        TranscriptSegment.id == segment_id,
-    ).with_for_update().execution_options(populate_existing=True))
+    if judge_trace is not None:
+        tools.extend(item.model_dump(mode="json") for item in judge_trace.tool_calls)
+    if event_trace is not None:
+        tools.append({'tool': 'event.classify', 'status': 'FAILED' if event_error else 'OK',
+                      'durationMs': event_trace.judge_ms})
+    if event_error is not None:
+        tools.append(_failure('event.lookup', event_error))
+    # 여기서는 판단 결과만으로 상태를 정한다. 추출이 실패하면 끝낼 때 PARTIAL로 고친다.
+    status = ContextDecisionStatus.SUCCEEDED if lookup_ok else ContextDecisionStatus.FAILED
+    current = await _locked_segment(session, segment_id)
     if current.version != source_version:
         status = ContextDecisionStatus.STALE
     decision = ContextDecision(
@@ -110,7 +155,7 @@ async def decide_live_meeting_segment(
         question=judged.question if lookup_ok else None,
         output=judged.answer if lookup_ok else None,
         citations=None,
-        reason_summary=None if not failures else "일부 AI 처리를 완료하지 못했습니다. 기능별 오류를 확인해 주세요.",
+        reason_summary=None if lookup_ok else _PARTIAL_REASON,
         tool_calls=tools,
         model_version=trace.model if trace is not None else "unavailable",
         policy_version=trace.prompt_version if trace is not None else "unavailable",
@@ -126,10 +171,68 @@ async def decide_live_meeting_segment(
              "location": source.location.model_dump(mode="json")}
             for source in judged.sources
         ]
+    if event_answer is not None and status != ContextDecisionStatus.STALE:
+        decision.output = '\n'.join(filter(None, (decision.output, event_answer['answer'])))
+        decision.question = decision.question or segment.text
+        decision.route = JudgeRoute.LLM
+        decision.kind = JudgeKind.ANSWER
+        decision.citations = [*(decision.citations or []), *event_answer['citations']]
+        if not lookup_ok:
+            decision.status = ContextDecisionStatus.PARTIAL
+    if event_error is not None and status != ContextDecisionStatus.STALE:
+        decision.status = ContextDecisionStatus.PARTIAL if lookup_ok else ContextDecisionStatus.FAILED
+        decision.reason_summary = _PARTIAL_REASON
     session.add(decision)
     await session.flush()
+    if status != ContextDecisionStatus.STALE:
+        current.decision_job_id = job.id
+    return LiveJudgment(
+        job=job, decision=decision, extraction=extraction, lookup_failure=lookup_failure,
+        segment_id=segment_id, source=source, source_version=source_version,
+        extraction_duration=extraction_duration,
+        event_failure=_failure('event.lookup', event_error) if event_error else None,
+    )
+
+
+async def finish_live_meeting_extraction(session: AsyncSession, judged: LiveJudgment) -> None:
+    """실제 WS 전사 경로의 뒷부분. 추출을 기다려 후보를 저장하고 작업 상태를 정한다.
+
+    커밋은 호출하는 쪽이 한다. 끝난 뒤의 판단 기록·후보·작업 상태는 둘을 함께 기다리던
+    때와 같다. 판단 기록은 추출 결과에 따라 PARTIAL·STALE로만 바뀐다.
+    """
+    job = judged.job
+    try:
+        extracted = await judged.extraction
+    except asyncio.CancelledError:
+        raise
+    except Exception as error:
+        extracted = error
+    extraction_ok = not isinstance(extracted, Exception)
+    failures = [failure for failure in (judged.lookup_failure, judged.event_failure) if failure]
+    if extraction_ok:
+        extraction_call = {"tool": "tasks.extract", "status": "OK", "resultCount": len(extracted)}
+    else:
+        extraction_call = _failure("tasks.extract", extracted)
+        failures.append(extraction_call)
+    if judged.extraction_duration:
+        extraction_call['durationMs'] = judged.extraction_duration[0]
+    current = await _locked_segment(session, judged.segment_id)
+    # 판단을 보낸 뒤 전사가 고쳐졌으면 다른 세션이 판단 기록을 STALE로 바꿨을 수 있다. DB 값을 다시 읽는다.
+    decision = await session.scalar(select(ContextDecision).where(
+        ContextDecision.id == judged.decision.id,
+    ).with_for_update().execution_options(populate_existing=True))
+    decision.tool_calls = [*decision.tool_calls, extraction_call]
+    stale = current.version != judged.source_version
+    if stale:
+        decision.status = ContextDecisionStatus.STALE
+    elif failures:
+        decision.status = (
+            ContextDecisionStatus.PARTIAL if judged.lookup_failure is None or extraction_ok
+            else ContextDecisionStatus.FAILED
+        )
+        decision.reason_summary = _PARTIAL_REASON
     suggestion_ids: list[str] = []
-    if extraction_ok and status != ContextDecisionStatus.STALE:
+    if extraction_ok and not stale and decision.status != ContextDecisionStatus.STALE:
         for draft in extracted:
             suggestion = TaskSuggestion(
                 club_id=job.club_id, decision_id=decision.id,
@@ -138,7 +241,7 @@ async def decide_live_meeting_segment(
                 suggested_assignee=draft.suggested_assignee,
                 due_date=draft.due_date, kind=draft.kind, due_at=draft.due_at,
                 scheduled_at=draft.scheduled_at, unresolved_fields=draft.unresolved_fields,
-                evidence=[source],
+                evidence=[judged.source],
             )
             session.add(suggestion)
             await session.flush()
@@ -149,9 +252,25 @@ async def decide_live_meeting_segment(
         agent_job_service.fail(session, job, {"code": "MEETING_AI_FAILED", "features": failures})
     else:
         agent_job_service.succeed(session, job, result)
-    if status != ContextDecisionStatus.STALE:
-        current.decision_job_id = job.id
-    return job, decision
+
+
+async def decide_live_meeting_segment(
+    session: AsyncSession, *, meeting: Meeting, segment: TranscriptSegment
+) -> tuple[AgentJob, ContextDecision]:
+    """판단과 추출을 끝까지 처리해 저장한다. 화면 전송 없이 결과만 필요할 때 쓴다.
+
+    회의 WS는 meeting_service.process_saved_segment에서 두 단계를 나눠 불러 판단 결과를 먼저 보낸다.
+    """
+    judged = await judge_live_meeting_segment(session, meeting=meeting, segment=segment)
+    await session.commit()
+    await finish_live_meeting_extraction(session, judged)
+    return judged.job, judged.decision
+
+
+async def _locked_segment(session: AsyncSession, segment_id: str) -> TranscriptSegment:
+    return await session.scalar(select(TranscriptSegment).where(
+        TranscriptSegment.id == segment_id,
+    ).with_for_update().execution_options(populate_existing=True))
 
 
 class ContextDecisionNotFound(ApiError):
