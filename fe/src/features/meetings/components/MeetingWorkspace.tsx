@@ -339,7 +339,12 @@ export function MeetingWorkspace({
     ),
     ended: <StatusPill kind="ended">끝남</StatusPill>,
     record: <StatusPill kind="ended">끝남</StatusPill>,
-    failed: <StatusPill kind="failed">마무리하지 못했어요 · 저장된 내용은 남아 있어요</StatusPill>,
+    failed: (
+      <StatusPill kind="failed">
+        {meeting.status === 'FAILED' ? '일부 처리 실패' : '마무리하지 못했어요'} · 저장된 내용은
+        남아 있어요
+      </StatusPill>
+    ),
   }[view]
 
   const actions = {
@@ -465,9 +470,21 @@ export function MeetingWorkspace({
       {view === 'finalizing' && (
         <MeetingBanner tone="info">마지막 말을 정리하는 동안 이 화면을 닫지 마세요.</MeetingBanner>
       )}
-      {view === 'failed' && audioError && (
-        <MeetingBanner tone="failed" title="마무리하지 못했어요">
-          {audioError}
+      {/* 서버는 발화 하나만 실패해도 회의를 FAILED로 두고 이유는 저장하지 않는다(#377). */}
+      {view === 'failed' && (
+        <MeetingBanner
+          tone="failed"
+          title={
+            meeting.status === 'FAILED' ? '일부 처리에 실패한 회의예요' : '마무리하지 못했어요'
+          }
+        >
+          {audioError ??
+            '음성 일부를 알아듣지 못했거나, 토리 조회가 실패했거나, 녹음 연결이 끊긴 채 끝났어요. 저장된 들은 말과 토리 답은 아래에서 볼 수 있어요.'}
+        </MeetingBanner>
+      )}
+      {ended && extractionFailed(decisions) && (
+        <MeetingBanner tone="pending">
+          일부 말에서 할 일 후보를 뽑지 못했어요. 들은 말을 보고 빠진 할 일이 없는지 확인해 주세요.
         </MeetingBanner>
       )}
       {view === 'record' && reviewBanner && (

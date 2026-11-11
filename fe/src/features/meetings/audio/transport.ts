@@ -21,6 +21,17 @@ interface TransportCallbacks {
   onFailure: (error: Error) => void
 }
 
+// 다시 해도 같은 결과인 서버 거절은 이유와 할 일을 알린다(#377). 나머지는 일반 안내.
+const FATAL_AUDIO_ERRORS: Record<string, string> = {
+  AUDIO_RESUME_UNSUPPORTED: '이 회의의 저장된 전사를 확인하고 새 회의에서 마이크를 시작해 주세요.',
+  STT_NOT_CONFIGURED: '서버의 음성 인식 설정이 없어 녹음할 수 없어요. 관리자에게 알려 주세요.',
+  AUDIO_ALREADY_RECORDING:
+    '다른 화면에서 이 회의를 녹음하고 있어요. 그 화면에서 이어서 진행해 주세요.',
+  AUDIO_FORBIDDEN: '이 회의를 녹음할 권한이 없어요. 소속을 확인해 주세요.',
+  MEETING_NOT_RECORDING: '이미 끝났거나 마무리 중인 회의라 녹음할 수 없어요.',
+  RECORDING_CONSENT_REQUIRED: '녹음 동의를 확인하지 않은 회의예요. 새 회의를 시작해 주세요.',
+}
+
 interface RetainedFrame {
   metadata: { type: 'audio'; audioSeq: number; startMs: number; endMs: number }
   frame: ArrayBuffer
@@ -270,8 +281,8 @@ export class MeetingAudioTransport {
         }
         this.fail(
           new Error(
-            event.code === 'AUDIO_RESUME_UNSUPPORTED'
-              ? '이 회의의 저장된 전사를 확인하고 새 회의에서 마이크를 시작해 주세요.'
+            typeof event.code === 'string' && Object.hasOwn(FATAL_AUDIO_ERRORS, event.code)
+              ? FATAL_AUDIO_ERRORS[event.code]
               : '서버가 음성을 처리하지 못했어요. 전사 결과를 확인한 뒤 다시 시도해 주세요.',
           ),
         )
