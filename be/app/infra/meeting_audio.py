@@ -46,5 +46,5 @@ def assemble_meeting_wav(chunks: Iterable[tuple[int, int, bytes]], output: Binar
             cursor = end_ms
             found = True
     if not found:
-        raise ValueError('No saved meeting audio')
+        raise ValueError('저장된 회의 음성이 없어요.')
     return cursor
