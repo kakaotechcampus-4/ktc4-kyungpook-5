@@ -5,9 +5,9 @@
 실행·API·상태·검증 범위는 [회의 베타 연결](docs/meeting-beta.md)과 [WS 계약](docs/meeting-audio.md)을 보세요.
 전체 API 지도(도메인별 엔드포인트·권한·공통 규칙)는 [API Reference](docs/api-reference.md)에 있습니다. 필드 단위
 요청·응답 스키마는 서버 기동 후 `/docs`(Swagger)에서 확인하세요.
-기존 test-support/HTTP STT·Discord 처리의 개발 fixture는 실연동이 아닙니다. 영수증 OCR과
-자료함 통합 검색(pgvector)은 실제 AI 호출로 바뀌었고, 회의 중 실시간 판단(Jev)만 아직
-더미(`meeting_judge_stub.py`)로 남아 있습니다.
+기존 test-support/HTTP STT·Discord 처리의 개발 fixture는 실연동이 아닙니다. 영수증 OCR,
+자료함 통합 검색(pgvector), WS 회의의 실시간 판단(Jev)은 실제 AI를 호출합니다. 기존 HTTP 청크
+경로와 Discord 판단만 더미(`meeting_judge_stub.py`, `context_tools_stub.py`)로 남아 있습니다.
 행사(`/events`) 조회·계획 확정·행동 처리와 P1·P2 계획 API도 실제 DB로 동작합니다 (#41, #187).
 단계·Action의 일정 등 세부 수정은 `routers/plan_items.py`(#106)로 있지만, 단계 순서 재배열은 아직 없습니다.
 모델 확정 내역과 그 근거는 [BE 스키마 검토안](../docs/week6/be/운영해_BE_스키마_검토안.md)에 있습니다.
@@ -120,9 +120,6 @@ GET /events/E1/plan/requests/abc
 - FE 명세 반영이 필요한 5건 — [검토안 §4](../docs/week6/be/운영해_BE_스키마_검토안.md)
 - 회의·확인이 필요한 항목 — [검토안 §5](../docs/week6/be/운영해_BE_스키마_검토안.md)
 - `transactions`(개별 입금 내역) 테이블 — 금액 안건 확정 후 추가. `participants`(행사별 참가 신청)는 #107로 추가됨
-- 회의 중 실시간 판단(Jev) 연결 — `app.ai.judge_utterance`와 `JEV_*` 설정은 이미 있지만
-  `context_service.py`는 아직 `meeting_judge_stub.py`를 쓴다. 자료함 검색(`PostgresRecordSearch`,
-  pgvector)은 이미 실제 AI와 연결됐다
 
 RAG 임베딩은 PostgreSQL pgvector(`record_chunks.embedding`, `vector(1536)`)에 저장한다.
 
@@ -190,7 +187,7 @@ be/
 │   │   ├── meeting_stt_stub.py      # 기존 HTTP 청크용 개발 더미 STT (WS 경로는 실제 STT)
 │   │   ├── meeting_review_service.py  # 회의 후 화자 검토 저장·복원
 │   │   ├── context_service.py       # 회의·Discord 판단 작업·판단 기록·할 일 후보 생성
-│   │   ├── meeting_judge_stub.py · context_tools_stub.py  # 회의 실시간 판단(Jev)·기록 검색·Discord 할 일 도출 더미 — 아직 실제 AI 미연결
+│   │   ├── meeting_judge_stub.py · context_tools_stub.py  # 기존 HTTP 청크와 Discord 경로용 더미 판단, 기록 검색, 할 일 도출. WS 회의는 실제 AI 사용
 │   │   ├── agent_job_service.py     # 작업 상태 전이 + mini 활동 이벤트 기록
 │   │   ├── activity_service.py      # mini snapshot·SSE 이벤트 조회
 │   │   ├── discord_service.py · task_service.py
@@ -338,7 +335,7 @@ cursor가 필요해질 때 추가). 변경안에 없던 `confirmed_tasks`/`task_
 | `AI_API_BASE_URL` / `AI_API_KEY` / `AI_MODEL` | `app/ai/config.py` — ML API 게이트웨이 호출, 채팅 모델 | 코드 반영됨 |
 | `AI_REQUEST_TIMEOUT_SECONDS` | 단일 요청 응답 대기 상한(초). 비우면 60 | 코드 반영됨 |
 | `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_MODEL` | 임베딩 전용 설정. 키를 비우면 `AI_API_KEY` 재사용 | 코드 반영됨 |
-| `JEV_BASE_URL` / `JEV_API_KEY` | 회의 실시간 판단 전용 Jev 배포 접속 정보(#255) | 코드 반영됨 (`app/ai/config.py`). `context_service.py`는 아직 이 설정을 쓰지 않음(위 "확인이 필요한 항목") |
+| `JEV_BASE_URL` / `JEV_API_KEY` | 회의 실시간 판단 전용 Jev 배포 접속 정보(#255) | 코드 반영됨 (`app/ai/config.py`). WS 회의의 실시간 판단(`app.ai.judge_utterance`)에서 사용 |
 
 `.env.example`에는 값의 예시만 기록하고, 실제 값이 든 `.env`는 커밋하지 않습니다.
 `JWT_SECRET_KEY`/`SESSION_SECRET` 같은 별도 토큰 서명 키는 없습니다 — 인증은 DB에 저장한 opaque
@@ -437,8 +434,8 @@ TEST_MODE=true uv run python scripts/run_dev.py   # macOS/Linux는 TEST_MODE=tru
 | 더미 | 동작 |
 | --- | --- |
 | 회의 STT (`meeting_stt_stub.py`) | 기존 HTTP 청크 경로 전용. "(더미 전사) N번 음성 청크 …" 문장. 음성 내용은 읽지 않으므로 Jev 판단은 NONE. 실제 음성 베타(WS)는 `infra/stt.py`로 실제 STT를 씁니다 |
-| 회의 실시간 Jev 판단 (`meeting_judge_stub.py`) | 물음표 → RAG, "바꿔/써/정리해 주세요" 등 → LLM, 그 외 NONE |
-| 회의 실시간 기록 검색 (`context_tools_stub.py`) | 동아리 기록 `parse_result` 블록을 글자 2-gram 겹침으로 찾아 실제 `recordId`·위치를 인용. 자료함 통합 검색(`GET /records/search`)의 실제 pgvector 검색과는 별개입니다 |
+| 기존 HTTP 청크 경로의 회의 판단 (`meeting_judge_stub.py`) | 물음표 → RAG, "바꿔/써/정리해 주세요" 등 → LLM, 그 외 NONE. WS 회의는 `app.ai.judge_utterance`로 실제 Jev를 씁니다 |
+| 기존 HTTP 청크 경로의 기록 검색 (`context_tools_stub.py`) | 동아리 기록 `parse_result` 블록을 글자 2-gram 겹침으로 찾아 실제 `recordId`·위치를 인용. 자료함 통합 검색(`GET /records/search`)의 실제 pgvector 검색과는 별개입니다 |
 | 문장 생성 (`context_tools_stub.py`) | "(더미 생성) 요청 문장: …" |
 | Discord 할 일 도출 (`context_tools_stub.py`) | 최근 메시지에 "~해야" 등이 있으면 LLM 분기로 보고 앞 메시지까지 근거로 후보 생성 |
 
