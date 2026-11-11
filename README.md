@@ -18,12 +18,7 @@
 
 </div>
 
-<!--
-🎬 소개 영상 자리
-GitHub에서 README를 편집할 때 영상 파일(mp4, 100MB 이하)을 이 주석 아래 빈 줄에 끌어다 놓으면
-https://github.com/user-attachments/assets/... 주소가 생깁니다. 그 주소만 한 줄로 두면 플레이어로 보입니다.
-영상을 넣은 뒤에는 이 주석을 지워도 됩니다.
--->
+https://github.com/user-attachments/assets/4cca0978-1455-4aa0-b71a-54ebc3e69b71
 
 ---
 
